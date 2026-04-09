@@ -1,0 +1,1032 @@
+import ctypes
+import dataclasses
+import json
+from pathlib import Path
+from typing import Dict, Optional, Union
+
+import numpy
+
+from .define import *
+from .library import Library
+from .buffer import ImageListBuffer, RectBuffer, StringBuffer, ImageBuffer
+from .job import Job, JobWithResult, TaskJob
+from .event_sink import EventSink, NotificationType
+from .resource import Resource
+from .controller import Controller
+from .pipeline import JRecognitionParam, JActionParam, JRecognitionType, JActionType
+
+
+class Tasker:
+    _handle: MaaTaskerHandle
+    _own: bool
+
+    ### public ###
+
+    def __init__(
+        self,
+        handle: Optional[MaaTaskerHandle] = None,
+    ):
+        """创建实例 / Create instance
+
+        Args:
+            handle: 可选的外部句柄 / Optional external handle
+
+        Raises:
+            RuntimeError: 如果创建失败
+        """
+
+        self._set_api_properties()
+
+        if handle:
+            self._handle = handle
+            self._own = False
+        else:
+            self._handle = Library.framework().MaaTaskerCreate()
+            self._own = True
+
+        if not self._handle:
+            raise RuntimeError("Failed to create tasker.")
+
+    def __del__(self):
+        if self._handle and self._own:
+            Library.framework().MaaTaskerDestroy(self._handle)
+
+    def bind(self, resource: Resource, controller: Controller) -> bool:
+        """关联资源和控制器 / Bind resource and controller
+
+        Args:
+            resource: 资源对象 / Resource object
+            controller: 控制器对象 / Controller object
+
+        Returns:
+            bool: 是否成功 / Whether successful
+        """
+        # avoid gc
+        self._resource_holder = resource
+        self._controller_holder = controller
+
+        return bool(
+            Library.framework().MaaTaskerBindResource(self._handle, resource._handle)
+        ) and bool(
+            Library.framework().MaaTaskerBindController(
+                self._handle, controller._handle
+            )
+        )
+
+    @property
+    def resource(self) -> Resource:
+        """获取关联的资源 / Get bound resource
+
+        Returns:
+            Resource: 资源对象 / Resource object
+
+        Raises:
+            RuntimeError: 如果获取失败
+        """
+        resource_handle = Library.framework().MaaTaskerGetResource(self._handle)
+        if not resource_handle:
+            raise RuntimeError("Failed to get resource.")
+
+        return Resource(handle=resource_handle)
+
+    @property
+    def controller(self) -> Controller:
+        """获取关联的控制器 / Get bound controller
+
+        Returns:
+            Controller: 控制器对象 / Controller object
+
+        Raises:
+            RuntimeError: 如果获取失败
+        """
+        controller_handle = Library.framework().MaaTaskerGetController(self._handle)
+        if not controller_handle:
+            raise RuntimeError("Failed to get controller.")
+
+        return Controller(handle=controller_handle)
+
+    @property
+    def inited(self) -> bool:
+        """判断是否正确初始化 / Check if initialized correctly
+
+        Returns:
+            bool: 是否已正确初始化 / Whether correctly initialized
+        """
+        return bool(Library.framework().MaaTaskerInited(self._handle))
+
+    def post_task(self, entry: str, pipeline_override: Dict = {}) -> TaskJob:
+        """异步执行任务 / Asynchronously execute task
+
+        这是一个异步操作，会立即返回一个 TaskJob 对象
+        This is an asynchronous operation that immediately returns a TaskJob object
+
+        Args:
+            entry: 任务入口 / Task entry
+            pipeline_override: 用于覆盖的 json / JSON for overriding
+
+        Returns:
+            TaskJob: 任务作业对象，可通过 status/wait 查询状态，通过 get() 获取结果，通过 override_pipeline() 动态修改 pipeline
+                / Task job object, can query status via status/wait, get result via get(), modify pipeline via override_pipeline()
+        """
+        taskid = Library.framework().MaaTaskerPostTask(
+            self._handle,
+            *Tasker._gen_post_param(entry, pipeline_override),
+        )
+        return self._gen_task_job(taskid)
+
+    def post_recognition(
+        self,
+        reco_type: JRecognitionType,
+        reco_param: JRecognitionParam,
+        image: numpy.ndarray,
+    ) -> TaskJob:
+        """异步执行识别 / Asynchronously execute recognition
+
+        Args:
+            reco_type: 识别类型 / Recognition type
+            reco_param: 识别参数 / Recognition parameters
+            image: 前序截图 / Previous screenshot
+
+        Returns:
+            TaskJob: 任务作业对象 / Task job object
+        """
+        img_buffer = ImageBuffer()
+        img_buffer.set(image)
+        reco_param_json = json.dumps(dataclasses.asdict(reco_param), ensure_ascii=False)
+        taskid = Library.framework().MaaTaskerPostRecognition(
+            self._handle,
+            reco_type.encode(),
+            reco_param_json.encode(),
+            img_buffer._handle,
+        )
+        return self._gen_task_job(taskid)
+
+    def post_action(
+        self,
+        action_type: JActionType,
+        action_param: JActionParam,
+        box: Rect = Rect(0, 0, 0, 0),
+        reco_detail: str = "",
+    ) -> TaskJob:
+        """异步执行操作 / Asynchronously execute action
+
+        Args:
+            action_type: 操作类型 / Action type
+            action_param: 操作参数 / Action parameters
+            box: 前序识别位置 / Previous recognition position
+            reco_detail: 前序识别详情 / Previous recognition details
+
+        Returns:
+            TaskJob: 任务作业对象 / Task job object
+        """
+        rect_buffer = RectBuffer()
+        rect_buffer.set(box)
+        action_param_json = json.dumps(
+            dataclasses.asdict(action_param), ensure_ascii=False
+        )
+        taskid = Library.framework().MaaTaskerPostAction(
+            self._handle,
+            action_type.encode(),
+            action_param_json.encode(),
+            rect_buffer._handle,
+            reco_detail.encode(),
+        )
+        return self._gen_task_job(taskid)
+
+    @property
+    def running(self) -> bool:
+        """判断实例是否还在运行 / Check if instance is still running
+
+        Returns:
+            bool: 是否正在运行 / Whether running
+        """
+        return bool(Library.framework().MaaTaskerRunning(self._handle))
+
+    def post_stop(self) -> Job:
+        """异步停止实例 / Asynchronously stop instance
+
+        这是一个异步操作，会立即返回一个 Job 对象
+        停止操作会中断当前运行的任务，并停止资源加载和控制器操作
+        This is an asynchronous operation that immediately returns a Job object
+        The stop operation will interrupt the currently running task and stop resource loading and controller operations
+
+        Returns:
+            Job: 作业对象，可通过 status/wait 查询状态 / Job object, can query status via status/wait
+        """
+        taskid = Library.framework().MaaTaskerPostStop(self._handle)
+        return self._gen_task_job(taskid)
+
+    @property
+    def stopping(self) -> bool:
+        """判断实例是否正在停止中(尚未停止) / Check if instance is stopping (not yet stopped)
+
+        Returns:
+            bool: 是否正在停止 / Whether stopping
+        """
+        return bool(Library.framework().MaaTaskerStopping(self._handle))
+
+    def get_latest_node(self, name: str) -> Optional[NodeDetail]:
+        """获取任务的最新节点号 / Get latest node id for task
+
+        Args:
+            name: 任务名 / Task name
+
+        Returns:
+            Optional[NodeDetail]: 节点详情，如果不存在则返回 None / Node detail, or None if not exists
+        """
+        c_node_id = MaaNodeId()
+        ret = bool(
+            Library.framework().MaaTaskerGetLatestNode(
+                self._handle,
+                name.encode(),
+                ctypes.pointer(c_node_id),
+            )
+        )
+        if not ret:
+            return None
+
+        return self.get_node_detail(int(c_node_id.value))
+
+    def clear_cache(self) -> bool:
+        """清理所有可查询的信息 / Clear all queryable information
+
+        Returns:
+            bool: 是否成功 / Whether successful
+        """
+        return bool(Library.framework().MaaTaskerClearCache(self._handle))
+
+    def override_pipeline(self, task_id: int, pipeline_override: Dict) -> bool:
+        """覆盖指定任务的 pipeline / Override pipeline for specified task
+
+        在任务执行期间动态修改 pipeline 配置
+        Dynamically modify pipeline configuration during task execution
+
+        Args:
+            task_id: 任务 ID / Task ID
+            pipeline_override: 用于覆盖的 json / JSON for overriding
+
+        Returns:
+            bool: 是否成功 / Whether successful
+        """
+        return self._override_pipeline(
+            task_id,
+            json.dumps(pipeline_override, ensure_ascii=False).encode(),
+        )
+
+    _sink_holder: Dict[int, "EventSink"] = {}
+
+    def add_sink(self, sink: "TaskerEventSink") -> Optional[int]:
+        """添加实例事件监听器 / Add instance event listener
+
+        Args:
+            sink: 事件监听器 / Event sink
+
+        Returns:
+            Optional[int]: 监听器 id，失败返回 None / Listener id, or None if failed
+        """
+        sink_id = int(
+            Library.framework().MaaTaskerAddSink(
+                self._handle, *EventSink._gen_c_param(sink)
+            )
+        )
+        if sink_id == MaaInvalidId:
+            return None
+
+        self._sink_holder[sink_id] = sink
+        return sink_id
+
+    def remove_sink(self, sink_id: int) -> None:
+        """移除实例事件监听器 / Remove instance event listener
+
+        Args:
+            sink_id: 监听器 id / Listener id
+        """
+        Library.framework().MaaTaskerRemoveSink(self._handle, sink_id)
+        self._sink_holder.pop(sink_id)
+
+    def clear_sinks(self) -> None:
+        """清除所有实例事件监听器 / Clear all instance event listeners"""
+        Library.framework().MaaTaskerClearSinks(self._handle)
+
+    def add_context_sink(self, sink: "ContextEventSink") -> Optional[int]:
+        """添加上下文事件监听器 / Add context event listener
+
+        Args:
+            sink: 上下文事件监听器 / Context event sink
+
+        Returns:
+            Optional[int]: 监听器 id，失败返回 None / Listener id, or None if failed
+        """
+        sink_id = int(
+            Library.framework().MaaTaskerAddContextSink(
+                self._handle, *EventSink._gen_c_param(sink)
+            )
+        )
+        if sink_id == MaaInvalidId:
+            return None
+
+        self._sink_holder[sink_id] = sink
+        return sink_id
+
+    def remove_context_sink(self, sink_id: int) -> None:
+        """移除上下文事件监听器 / Remove context event listener
+
+        Args:
+            sink_id: 监听器 id / Listener id
+        """
+        Library.framework().MaaTaskerRemoveContextSink(self._handle, sink_id)
+        self._sink_holder.pop(sink_id)
+
+    def clear_context_sinks(self) -> None:
+        """清除所有上下文事件监听器 / Clear all context event listeners"""
+        Library.framework().MaaTaskerClearContextSinks(self._handle)
+
+    ### private ###
+
+    @staticmethod
+    def _gen_post_param(entry: str, pipeline_override: Dict) -> Tuple[bytes, bytes]:
+        pipeline_json = json.dumps(pipeline_override, ensure_ascii=False)
+
+        return (
+            entry.encode(),
+            pipeline_json.encode(),
+        )
+
+    def _gen_task_job(self, taskid: MaaTaskId) -> TaskJob:
+        return TaskJob(
+            taskid,
+            self._task_status,
+            self._task_wait,
+            self.get_task_detail,
+            self._override_pipeline,
+        )
+
+    def _override_pipeline(self, task_id: int, pipeline_override_bytes: bytes) -> bool:
+        return bool(
+            Library.framework().MaaTaskerOverridePipeline(
+                self._handle,
+                task_id,
+                pipeline_override_bytes,
+            )
+        )
+
+    def _task_status(self, id: int) -> ctypes.c_int32:
+        return Library.framework().MaaTaskerStatus(self._handle, id)
+
+    def _task_wait(self, id: int) -> ctypes.c_int32:
+        return Library.framework().MaaTaskerWait(self._handle, id)
+
+    def get_recognition_detail(self, reco_id: int) -> Optional[RecognitionDetail]:
+        """获取识别信息 / Get recognition info
+
+        Args:
+            reco_id: 识别号 / Recognition id
+
+        Returns:
+            Optional[RecognitionDetail]: 识别详情，如果不存在则返回 None / Recognition detail, or None if not exists
+        """
+        name = StringBuffer()
+        algorithm = StringBuffer()  # type: ignore
+        hit = MaaBool()
+        box = RectBuffer()
+        detail_json = StringBuffer()
+        raw = ImageBuffer()
+        draws = ImageListBuffer()
+        ret = bool(
+            Library.framework().MaaTaskerGetRecognitionDetail(
+                self._handle,
+                MaaRecoId(reco_id),
+                name._handle,
+                algorithm._handle,
+                ctypes.pointer(hit),
+                box._handle,
+                detail_json._handle,
+                raw._handle,
+                draws._handle,
+            )
+        )
+        if not ret:
+            return None
+
+        raw_detail = json.loads(detail_json.get())
+        algorithm_str = algorithm.get()
+        parsed_detail = self._parse_recognition_raw_detail(algorithm_str, raw_detail)
+
+        try:
+            algorithm_enum = AlgorithmEnum(algorithm_str)
+        except ValueError:
+            algorithm_enum = algorithm_str  # type: ignore
+
+        return RecognitionDetail(
+            reco_id=reco_id,
+            name=name.get(),
+            algorithm=algorithm_enum,
+            hit=bool(hit),
+            box=bool(hit) and box.get() or None,
+            all_results=parsed_detail[0],
+            filtered_results=parsed_detail[1],
+            best_result=parsed_detail[2],
+            raw_detail=raw_detail,
+            raw_image=raw.get(),
+            draw_images=draws.get(),
+        )
+
+    def get_action_detail(self, action_id: int) -> Optional[ActionDetail]:
+        """获取操作信息 / Get action info
+
+        Args:
+            action_id: 操作号 / Action id
+
+        Returns:
+            Optional[ActionDetail]: 操作详情，如果不存在则返回 None / Action detail, or None if not exists
+        """
+        name = StringBuffer()
+        action = StringBuffer()
+        box = RectBuffer()
+        c_success = MaaBool()
+        detail_json = StringBuffer()
+
+        ret = bool(
+            Library.framework().MaaTaskerGetActionDetail(
+                self._handle,
+                MaaActId(action_id),
+                name._handle,
+                action._handle,
+                box._handle,
+                ctypes.pointer(c_success),
+                detail_json._handle,
+            )
+        )
+
+        if not ret:
+            return None
+
+        raw_detail = json.loads(detail_json.get())
+        action_str = action.get()
+        parsed_result = Tasker._parse_action_raw_detail(action_str, raw_detail)
+
+        try:
+            action_enum = ActionEnum(action_str)
+        except ValueError:
+            action_enum = action_str  # type: ignore
+
+        return ActionDetail(
+            action_id=action_id,
+            name=name.get(),
+            action=action_enum,
+            box=box.get(),
+            success=bool(c_success),
+            result=parsed_result,
+            raw_detail=raw_detail,
+        )
+
+    def get_node_detail(self, node_id: int) -> Optional[NodeDetail]:
+        """获取节点信息 / Get node info
+
+        Args:
+            node_id: 节点号 / Node id
+
+        Returns:
+            Optional[NodeDetail]: 节点详情，如果不存在则返回 None / Node detail, or None if not exists
+        """
+        name = StringBuffer()
+        c_reco_id = MaaRecoId()
+        c_action_id = MaaActId()
+        c_completed = MaaBool()
+
+        ret = bool(
+            Library.framework().MaaTaskerGetNodeDetail(
+                self._handle,
+                MaaNodeId(node_id),
+                name._handle,
+                ctypes.pointer(c_reco_id),
+                ctypes.pointer(c_action_id),
+                ctypes.pointer(c_completed),
+            )
+        )
+
+        if not ret:
+            return None
+
+        recognition = (
+            self.get_recognition_detail(int(c_reco_id.value))
+            if c_reco_id.value != 0
+            else None
+        )
+        action = (
+            self.get_action_detail(int(c_action_id.value))
+            if c_action_id.value != 0
+            else None
+        )
+
+        return NodeDetail(
+            node_id=node_id,
+            name=name.get(),
+            recognition=recognition,
+            action=action,
+            completed=bool(c_completed),
+        )
+
+    def get_task_detail(self, task_id: int) -> Optional[TaskDetail]:
+        """获取任务信息 / Get task info
+
+        Args:
+            task_id: 任务号 / Task id
+
+        Returns:
+            Optional[TaskDetail]: 任务详情，如果不存在则返回 None / Task detail, or None if not exists
+        """
+        size = MaaSize()
+        entry = StringBuffer()
+        status = MaaStatus()
+        ret = bool(
+            Library.framework().MaaTaskerGetTaskDetail(
+                self._handle,
+                MaaTaskId(task_id),
+                entry._handle,
+                None,
+                ctypes.pointer(size),
+                ctypes.pointer(status),
+            )
+        )
+        if not ret:
+            return None
+
+        c_node_id_list = (MaaNodeId * size.value)()
+        ret = bool(
+            Library.framework().MaaTaskerGetTaskDetail(
+                self._handle,
+                MaaTaskId(task_id),
+                entry._handle,
+                c_node_id_list,
+                ctypes.pointer(size),
+                ctypes.pointer(status),
+            )
+        )
+        if not ret:
+            return None
+
+        node_id_list = [int(c_node_id_list[i]) for i in range(size.value)]
+
+        return TaskDetail(
+            task_id=task_id,
+            entry=entry.get(),
+            node_id_list=node_id_list,
+            status=Status(status),
+            node_detail_func=self.get_node_detail,
+        )
+
+    @staticmethod
+    def set_log_dir(path: Union[Path, str]) -> bool:
+        """设置日志路径 / Set the log path
+
+        Args:
+            path: 日志路径 / Log path
+
+        Returns:
+            bool: 是否成功 / Whether successful
+        """
+        strpath = str(path)
+        return bool(
+            Library.framework().MaaGlobalSetOption(
+                MaaOption(MaaGlobalOptionEnum.LogDir),
+                strpath.encode(),
+                len(strpath),
+            )
+        )
+
+    @staticmethod
+    def set_save_draw(save_draw: bool) -> bool:
+        """设置是否将识别保存到日志路径/vision中 / Set whether to save recognition results to log path/vision
+
+        开启后 RecoDetail 将可以获取到 draws / When enabled, RecoDetail can retrieve draws
+
+        Args:
+            save_draw: 是否保存 / Whether to save
+
+        Returns:
+            bool: 是否成功 / Whether successful
+        """
+        cbool = ctypes.c_bool(save_draw)
+        return bool(
+            Library.framework().MaaGlobalSetOption(
+                MaaOption(MaaGlobalOptionEnum.SaveDraw),
+                ctypes.pointer(cbool),
+                ctypes.sizeof(ctypes.c_bool),
+            )
+        )
+
+    @staticmethod
+    def set_recording(recording: bool) -> bool:
+        """
+        Deprecated
+        """
+        return False
+
+    @staticmethod
+    def set_stdout_level(level: LoggingLevelEnum) -> bool:
+        """设置日志输出到 stdout 中的级别 / Set the log output level to stdout
+
+        Args:
+            level: 日志级别 / Logging level
+
+        Returns:
+            bool: 是否成功 / Whether successful
+        """
+        clevel = MaaLoggingLevel(level)
+        return bool(
+            Library.framework().MaaGlobalSetOption(
+                MaaOption(MaaGlobalOptionEnum.StdoutLevel),
+                ctypes.pointer(clevel),
+                ctypes.sizeof(MaaLoggingLevel),
+            )
+        )
+
+    @staticmethod
+    def set_debug_mode(debug_mode: bool) -> bool:
+        """设置是否启用调试模式 / Set whether to enable debug mode
+
+        调试模式下, RecoDetail 将可以获取到 raw/draws; 所有任务都会被视为 focus 而产生回调
+        In debug mode, RecoDetail can retrieve raw/draws; all tasks are treated as focus and produce callbacks
+
+        Args:
+            debug_mode: 是否启用调试模式 / Whether to enable debug mode
+
+        Returns:
+            bool: 是否成功 / Whether successful
+        """
+        cbool = ctypes.c_bool(debug_mode)
+        return bool(
+            Library.framework().MaaGlobalSetOption(
+                MaaOption(MaaGlobalOptionEnum.DebugMode),
+                ctypes.pointer(cbool),
+                ctypes.sizeof(ctypes.c_bool),
+            )
+        )
+
+    @staticmethod
+    def set_save_on_error(save_on_error: bool) -> bool:
+        """设置是否在错误时保存截图到日志路径/on_error中 / Set whether to save screenshot on error to log path/on_error
+
+        Args:
+            save_on_error: 是否保存 / Whether to save
+
+        Returns:
+            bool: 是否成功 / Whether successful
+        """
+        cbool = ctypes.c_bool(save_on_error)
+        return bool(
+            Library.framework().MaaGlobalSetOption(
+                MaaOption(MaaGlobalOptionEnum.SaveOnError),
+                ctypes.pointer(cbool),
+                ctypes.sizeof(ctypes.c_bool),
+            )
+        )
+
+    @staticmethod
+    def set_draw_quality(quality: int) -> bool:
+        """设置识别可视化图像的 JPEG 质量 / Set the JPEG quality for recognition visualization images
+
+        Args:
+            quality: JPEG 质量（0-100），默认 85 / JPEG quality (0-100), default 85
+
+        Returns:
+            bool: 是否成功 / Whether successful
+        """
+        cquality = ctypes.c_int(quality)
+        return bool(
+            Library.framework().MaaGlobalSetOption(
+                MaaOption(MaaGlobalOptionEnum.DrawQuality),
+                ctypes.pointer(cquality),
+                ctypes.sizeof(ctypes.c_int),
+            )
+        )
+
+    @staticmethod
+    def set_reco_image_cache_limit(limit: int) -> bool:
+        """设置识别图像缓存数量限制 / Set the recognition image cache limit
+
+        Args:
+            limit: 缓存数量限制，默认 4096 / Cache limit, default 4096
+
+        Returns:
+            bool: 是否成功 / Whether successful
+        """
+        climit = ctypes.c_size_t(limit)
+        return bool(
+            Library.framework().MaaGlobalSetOption(
+                MaaOption(MaaGlobalOptionEnum.RecoImageCacheLimit),
+                ctypes.pointer(climit),
+                ctypes.sizeof(ctypes.c_size_t),
+            )
+        )
+
+    @staticmethod
+    def load_plugin(path: Union[Path, str]) -> bool:
+        """加载插件 / Load plugin
+
+        可以使用完整路径或仅使用名称, 仅使用名称时会在系统目录和当前目录中搜索. 也可以递归搜索目录中的插件
+        Can use full path or name only. When using name only, will search in system directory and current directory. Can also recursively search for plugins in a directory
+
+        Args:
+            path: 插件库路径或名称 / Plugin library path or name
+
+        Returns:
+            bool: 是否成功 / Whether successful
+        """
+        strpath = str(path)
+        return bool(
+            Library.framework().MaaGlobalLoadPlugin(
+                strpath.encode(),
+            )
+        )
+
+    _api_properties_initialized: bool = False
+
+    def _parse_recognition_raw_detail(self, algorithm: str, raw_detail):
+        if not raw_detail:
+            return [], [], None
+
+        try:
+            algorithm_enum = AlgorithmEnum(algorithm)
+        except ValueError:
+            return [], [], None
+
+        ResultType = AlgorithmResultDict.get(algorithm_enum)
+        if not ResultType:
+            return [], [], None
+
+        # And/Or 的 detail 是子识别结果数组，递归获取完整的 RecognitionDetail
+        if algorithm_enum in (AlgorithmEnum.And, AlgorithmEnum.Or):
+            sub_results = []
+            for sub in raw_detail:
+                reco_id = sub.get("reco_id")
+                if not reco_id:
+                    continue
+                sub_detail = self.get_recognition_detail(reco_id)
+                if sub_detail:
+                    sub_results.append(sub_detail)
+            result = ResultType(sub_results=sub_results)
+            return [result], [result], result
+
+        all_results: List[RecognitionResult] = []
+        filtered_results: List[RecognitionResult] = []
+        best_result: Optional[RecognitionResult] = None
+
+        raw_all_results = raw_detail.get("all", [])
+        raw_filtered_results = raw_detail.get("filtered", [])
+        raw_best_result = raw_detail.get("best", None)
+
+        for raw_result in raw_all_results:
+            all_results.append(ResultType(**raw_result))
+        for raw_result in raw_filtered_results:
+            filtered_results.append(ResultType(**raw_result))
+        if raw_best_result:
+            best_result = ResultType(**raw_best_result)
+
+        return all_results, filtered_results, best_result
+
+    @staticmethod
+    def _parse_action_raw_detail(
+        action: str, raw_detail: Dict
+    ) -> Optional[ActionResult]:
+        if not raw_detail:
+            return None
+
+        try:
+            action_enum = ActionEnum(action)
+        except ValueError:
+            return None
+
+        ResultType = ActionResultDict.get(action_enum)
+        if not ResultType:
+            return None
+
+        try:
+            # cv::Point 在 JSON 中是数组 [x, y]，不需要转换
+            # 直接使用 raw_detail 创建结果对象
+            return ResultType(**raw_detail)
+        except (TypeError, KeyError):
+            # 如果解析失败，返回 None
+            return None
+
+    @staticmethod
+    def _set_api_properties():
+        if Tasker._api_properties_initialized:
+            return
+        Tasker._api_properties_initialized = True
+
+        Library.framework().MaaGlobalSetOption.restype = MaaBool
+        Library.framework().MaaGlobalSetOption.argtypes = [
+            MaaGlobalOption,
+            MaaOptionValue,
+            MaaOptionValueSize,
+        ]
+
+        Library.framework().MaaGlobalLoadPlugin.restype = MaaBool
+        Library.framework().MaaGlobalLoadPlugin.argtypes = [
+            ctypes.c_char_p,
+        ]
+
+        Library.framework().MaaTaskerCreate.restype = MaaTaskerHandle
+        Library.framework().MaaTaskerCreate.argtypes = []
+
+        Library.framework().MaaTaskerDestroy.restype = None
+        Library.framework().MaaTaskerDestroy.argtypes = [MaaTaskerHandle]
+
+        Library.framework().MaaTaskerBindResource.restype = MaaBool
+        Library.framework().MaaTaskerBindResource.argtypes = [
+            MaaTaskerHandle,
+            MaaResourceHandle,
+        ]
+
+        Library.framework().MaaTaskerBindController.restype = MaaBool
+        Library.framework().MaaTaskerBindController.argtypes = [
+            MaaTaskerHandle,
+            MaaControllerHandle,
+        ]
+
+        Library.framework().MaaTaskerInited.restype = MaaBool
+        Library.framework().MaaTaskerInited.argtypes = [MaaTaskerHandle]
+
+        Library.framework().MaaTaskerPostTask.restype = MaaId
+        Library.framework().MaaTaskerPostTask.argtypes = [
+            MaaTaskerHandle,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+        ]
+
+        Library.framework().MaaTaskerPostRecognition.restype = MaaId
+        Library.framework().MaaTaskerPostRecognition.argtypes = [
+            MaaTaskerHandle,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            MaaImageBufferHandle,
+        ]
+
+        Library.framework().MaaTaskerPostAction.restype = MaaId
+        Library.framework().MaaTaskerPostAction.argtypes = [
+            MaaTaskerHandle,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            MaaRectHandle,
+            ctypes.c_char_p,
+        ]
+
+        Library.framework().MaaTaskerStatus.restype = MaaStatus
+        Library.framework().MaaTaskerStatus.argtypes = [
+            MaaTaskerHandle,
+            MaaTaskId,
+        ]
+
+        Library.framework().MaaTaskerWait.restype = MaaStatus
+        Library.framework().MaaTaskerWait.argtypes = [
+            MaaTaskerHandle,
+            MaaTaskId,
+        ]
+
+        Library.framework().MaaTaskerRunning.restype = MaaBool
+        Library.framework().MaaTaskerRunning.argtypes = [MaaTaskerHandle]
+
+        Library.framework().MaaTaskerPostStop.restype = MaaTaskId
+        Library.framework().MaaTaskerPostStop.argtypes = [MaaTaskerHandle]
+
+        Library.framework().MaaTaskerStopping.restype = MaaBool
+        Library.framework().MaaTaskerStopping.argtypes = [MaaTaskerHandle]
+
+        Library.framework().MaaTaskerGetResource.restype = MaaResourceHandle
+        Library.framework().MaaTaskerGetResource.argtypes = [MaaTaskerHandle]
+
+        Library.framework().MaaTaskerGetController.restype = MaaControllerHandle
+        Library.framework().MaaTaskerGetController.argtypes = [MaaTaskerHandle]
+
+        Library.framework().MaaTaskerGetRecognitionDetail.restype = MaaBool
+        Library.framework().MaaTaskerGetRecognitionDetail.argtypes = [
+            MaaTaskerHandle,
+            MaaRecoId,
+            MaaStringBufferHandle,
+            MaaStringBufferHandle,
+            ctypes.POINTER(MaaBool),
+            MaaRectHandle,
+            MaaStringBufferHandle,
+            MaaImageBufferHandle,
+            MaaImageListBufferHandle,
+        ]
+
+        Library.framework().MaaTaskerGetActionDetail.restype = MaaBool
+        Library.framework().MaaTaskerGetActionDetail.argtypes = [
+            MaaTaskerHandle,
+            MaaActId,
+            MaaStringBufferHandle,
+            MaaStringBufferHandle,
+            MaaRectHandle,
+            ctypes.POINTER(MaaBool),
+            MaaStringBufferHandle,
+        ]
+
+        Library.framework().MaaTaskerGetNodeDetail.restype = MaaBool
+        Library.framework().MaaTaskerGetNodeDetail.argtypes = [
+            MaaTaskerHandle,
+            MaaNodeId,
+            MaaStringBufferHandle,
+            ctypes.POINTER(MaaRecoId),
+            ctypes.POINTER(MaaActId),
+            ctypes.POINTER(MaaBool),
+        ]
+
+        Library.framework().MaaTaskerGetTaskDetail.restype = MaaBool
+        Library.framework().MaaTaskerGetTaskDetail.argtypes = [
+            MaaTaskerHandle,
+            MaaTaskId,
+            MaaStringBufferHandle,
+            ctypes.POINTER(MaaRecoId),
+            ctypes.POINTER(MaaSize),
+            ctypes.POINTER(MaaStatus),
+        ]
+
+        Library.framework().MaaTaskerGetLatestNode.restype = MaaBool
+        Library.framework().MaaTaskerGetLatestNode.argtypes = [
+            MaaTaskerHandle,
+            ctypes.c_char_p,
+            ctypes.POINTER(MaaRecoId),
+        ]
+
+        Library.framework().MaaTaskerClearCache.restype = MaaBool
+        Library.framework().MaaTaskerClearCache.argtypes = [
+            MaaTaskerHandle,
+        ]
+
+        Library.framework().MaaTaskerOverridePipeline.restype = MaaBool
+        Library.framework().MaaTaskerOverridePipeline.argtypes = [
+            MaaTaskerHandle,
+            MaaTaskId,
+            ctypes.c_char_p,
+        ]
+
+        Library.framework().MaaTaskerAddSink.restype = MaaSinkId
+        Library.framework().MaaTaskerAddSink.argtypes = [
+            MaaTaskerHandle,
+            MaaEventCallback,
+            ctypes.c_void_p,
+        ]
+
+        Library.framework().MaaTaskerRemoveSink.restype = None
+        Library.framework().MaaTaskerRemoveSink.argtypes = [
+            MaaTaskerHandle,
+            MaaSinkId,
+        ]
+
+        Library.framework().MaaTaskerClearSinks.restype = None
+        Library.framework().MaaTaskerClearSinks.argtypes = [MaaTaskerHandle]
+
+        Library.framework().MaaTaskerAddContextSink.restype = MaaSinkId
+        Library.framework().MaaTaskerAddContextSink.argtypes = [
+            MaaTaskerHandle,
+            MaaEventCallback,
+            ctypes.c_void_p,
+        ]
+
+        Library.framework().MaaTaskerRemoveContextSink.restype = None
+        Library.framework().MaaTaskerRemoveContextSink.argtypes = [
+            MaaTaskerHandle,
+            MaaSinkId,
+        ]
+
+        Library.framework().MaaTaskerClearContextSinks.restype = None
+        Library.framework().MaaTaskerClearContextSinks.argtypes = [MaaTaskerHandle]
+
+
+class TaskerEventSink(EventSink):
+
+    @dataclass
+    class TaskerTaskDetail:
+        task_id: int
+        entry: str
+        uuid: str
+        hash: str
+
+    def on_tasker_task(
+        self, tasker: Tasker, noti_type: NotificationType, detail: TaskerTaskDetail
+    ):
+        pass
+
+    def on_raw_notification(self, tasker: Tasker, msg: str, details: dict):
+        pass
+
+    def _on_raw_notification(self, handle: ctypes.c_void_p, msg: str, details: dict):
+
+        tasker = Tasker(handle=handle)
+        self.on_raw_notification(tasker, msg, details)
+
+        noti_type = EventSink._notification_type(msg)
+        if msg.startswith("Tasker.Task"):
+            detail = self.TaskerTaskDetail(
+                task_id=details["task_id"],
+                entry=details["entry"],
+                uuid=details["uuid"],
+                hash=details["hash"],
+            )
+            self.on_tasker_task(tasker, noti_type, detail)
+
+        else:
+            self.on_unknown_notification(tasker, msg, details)

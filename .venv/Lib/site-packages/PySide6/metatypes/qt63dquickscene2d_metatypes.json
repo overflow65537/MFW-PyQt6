@@ -1,0 +1,322 @@
+[
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DRender::Quick::QScene2D"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "Scene2D"
+                    },
+                    {
+                        "name": "QML.Extended",
+                        "value": "Qt3DRender::Render::Quick::QQuick3DScene2D"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "521"
+                    }
+                ],
+                "className": "QScene2dForeign",
+                "gadget": true,
+                "lineNumber": 37,
+                "qualifiedClassName": "Qt3DRender::Quick::QScene2dForeign"
+            }
+        ],
+        "inputFile": "qscene2d_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "DefaultProperty",
+                        "value": "item"
+                    }
+                ],
+                "className": "QScene2D",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 38,
+                        "name": "RenderPolicy",
+                        "values": [
+                            "Continuous",
+                            "SingleShot"
+                        ]
+                    }
+                ],
+                "lineNumber": 25,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 29,
+                        "name": "output",
+                        "notify": "outputChanged",
+                        "override": false,
+                        "read": "output",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DRender::QRenderTargetOutput*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setOutput"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 30,
+                        "name": "renderPolicy",
+                        "notify": "renderPolicyChanged",
+                        "override": false,
+                        "read": "renderPolicy",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "RenderPolicy",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setRenderPolicy"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 31,
+                        "name": "item",
+                        "notify": "itemChanged",
+                        "override": false,
+                        "read": "item",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQuickItem*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setItem"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 32,
+                        "name": "mouseEnabled",
+                        "notify": "mouseEnabledChanged",
+                        "override": false,
+                        "read": "isMouseEnabled",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setMouseEnabled"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DRender::Quick::QScene2D",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "output",
+                                "type": "Qt3DRender::QRenderTargetOutput*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 62,
+                        "name": "outputChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "policy",
+                                "type": "QScene2D::RenderPolicy"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 63,
+                        "name": "renderPolicyChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "item",
+                                "type": "QQuickItem*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 64,
+                        "name": "itemChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "enabled",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 65,
+                        "name": "mouseEnabledChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "output",
+                                "type": "Qt3DRender::QRenderTargetOutput*"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 56,
+                        "name": "setOutput",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "policy",
+                                "type": "QScene2D::RenderPolicy"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 57,
+                        "name": "setRenderPolicy",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "item",
+                                "type": "QQuickItem*"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 58,
+                        "name": "setItem",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "enabled",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 59,
+                        "name": "setMouseEnabled",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qscene2d.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QQuick3DScene2D",
+                "lineNumber": 30,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 33,
+                        "name": "entities",
+                        "override": false,
+                        "read": "entities",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<Qt3DCore::QEntity>",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DRender::Render::Quick::QQuick3DScene2D",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qt3dquick3dscene2d_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "RenderQmlEventHandler",
+                "lineNumber": 39,
+                "object": true,
+                "qualifiedClassName": "Qt3DRender::Render::Quick::RenderQmlEventHandler",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "scene2d_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "Scene2DManager",
+                "lineNumber": 38,
+                "object": true,
+                "qualifiedClassName": "Qt3DRender::Quick::Scene2DManager",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "scene2dmanager_p.h",
+        "outputRevision": 69
+    }
+]

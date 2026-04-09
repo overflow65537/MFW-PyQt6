@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// Copyright (C) 2018 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+-->
+<typesystem package="PySide6.QtLocation"
+            namespace-begin="QT_BEGIN_NAMESPACE" namespace-end="QT_END_NAMESPACE">
+  <load-typesystem name="typesystem_core.xml" generate="no"/>
+  <load-typesystem name="typesystem_positioning.xml" generate="no"/>
+  <namespace-type name="QLocation">
+      <enum-type name="Visibility" flags="VisibilityScope"/>
+  </namespace-type>
+  <object-type name="QGeoCodeReply">
+      <enum-type name="Error"/>
+  </object-type>
+  <value-type name="QGeoManeuver">
+      <enum-type name="InstructionDirection"/>
+   </value-type>
+  <value-type name="QGeoRoute"/>
+  <object-type name="QGeoRouteReply">
+      <enum-type name="Error"/>
+  </object-type>
+  <value-type name="QGeoRouteSegment"/>
+  <object-type name="QGeoServiceProvider">
+      <enum-type name="Error"/>
+      <enum-type name="RoutingFeature" flags="RoutingFeatures"/>
+      <enum-type name="GeocodingFeature" flags="GeocodingFeatures"/>
+      <enum-type name="MappingFeature" flags="MappingFeatures"/>
+      <enum-type name="PlacesFeature" flags="PlacesFeatures"/>
+      <enum-type name="NavigationFeature" flags="NavigationFeatures"/>
+  </object-type>
+  <value-type name="QPlace"/>
+  <object-type name="QPlaceContentReply"/>
+  <object-type name="QPlaceDetailsReply"/>
+  <value-type name="QPlaceIcon"/>
+  <object-type name="QPlaceIdReply">
+      <enum-type name="OperationType"/>
+  </object-type>
+  <object-type name="QPlaceManager"/>
+  <value-type name="QPlaceUser"/>
+  <object-type name="QGeoCodingManager"/>
+  <object-type name="QGeoCodingManagerEngine"/>
+  <object-type name="QGeoRouteRequest">
+      <enum-type name="TravelMode" flags="TravelModes"/>
+      <enum-type name="FeatureType" flags="FeatureTypes"/>
+      <enum-type name="FeatureWeight" flags="FeatureWeights"/>
+      <enum-type name="RouteOptimization" flags="RouteOptimizations"/>
+      <enum-type name="SegmentDetail" flags="SegmentDetails"/>
+      <enum-type name="ManeuverDetail" flags="ManeuverDetails"/>
+  </object-type>
+  <object-type name="QGeoRoutingManager"/>
+  <object-type name="QGeoRoutingManagerEngine"/>
+  <object-type name="QGeoServiceProviderFactory"/>
+  <value-type name="QPlaceAttribute"/>
+  <value-type name="QPlaceCategory"/>
+  <value-type name="QPlaceContactDetail"/>
+  <value-type name="QPlaceContent">
+      <enum-type name="Type"/>
+      <enum-type name="DataTag" since="6.5"/>
+  </value-type>
+  <value-type name="QPlaceContentRequest"/>
+  <object-type name="QPlaceManagerEngine"/>
+  <object-type name="QPlaceMatchReply"/>
+  <value-type name="QPlaceMatchRequest"/>
+  <object-type name="QPlaceProposedSearchResult"/>
+  <value-type name="QPlaceRatings"/>
+  <object-type name="QPlaceReply">
+      <enum-type name="Error"/>
+      <enum-type name="Type"/>
+  </object-type>
+  <object-type name="QPlaceResult"/>
+  <object-type name="QPlaceSearchReply"/>
+  <object-type name="QPlaceSearchRequest">
+      <enum-type name="RelevanceHint"/>
+  </object-type>
+  <object-type name="QPlaceSearchResult">
+      <enum-type name="SearchResultType"/>
+  </object-type>
+  <object-type name="QPlaceSearchSuggestionReply"/>
+  <value-type name="QPlaceSupplier"/>
+
+  <!-- QtQml, QtNetwork are pulled in via QtLocationDepends. -->
+  <suppress-warning text="^Scoped enum 'Q(Ocsp)|(Dtls)|(Qml).*' does not have a type entry.*$"/>
+
+</typesystem>

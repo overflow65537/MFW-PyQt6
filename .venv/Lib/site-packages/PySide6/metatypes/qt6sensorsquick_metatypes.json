@@ -1,0 +1,2928 @@
+[
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Accelerometer"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlAccelerometer",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 36,
+                        "name": "AccelerationMode",
+                        "values": [
+                            "Combined",
+                            "Gravity",
+                            "User"
+                        ]
+                    }
+                ],
+                "lineNumber": 24,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 27,
+                        "name": "accelerationMode",
+                        "notify": "accelerationModeChanged",
+                        "override": false,
+                        "read": "accelerationMode",
+                        "required": false,
+                        "revision": 65281,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "AccelerationMode",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAccelerationMode"
+                    }
+                ],
+                "qualifiedClassName": "QmlAccelerometer",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "accelerationMode",
+                                "type": "AccelerationMode"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 49,
+                        "name": "accelerationModeChanged",
+                        "returnType": "void",
+                        "revision": 65281
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "AccelerometerReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create AccelerometerReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlAccelerometerReading",
+                "lineNumber": 56,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableX",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 59,
+                        "name": "x",
+                        "notify": "xChanged",
+                        "override": false,
+                        "read": "x",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableY",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 60,
+                        "name": "y",
+                        "notify": "yChanged",
+                        "override": false,
+                        "read": "y",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableZ",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 61,
+                        "name": "z",
+                        "notify": "zChanged",
+                        "override": false,
+                        "read": "z",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlAccelerometerReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 77,
+                        "name": "xChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 78,
+                        "name": "yChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 79,
+                        "name": "zChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlaccelerometer_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "AmbientLightSensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlAmbientLightSensor",
+                "lineNumber": 25,
+                "object": true,
+                "qualifiedClassName": "QmlAmbientLightSensor",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "AmbientLightReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create AmbientLightReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlAmbientLightSensorReading",
+                "lineNumber": 42,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableLightLevel",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 45,
+                        "name": "lightLevel",
+                        "notify": "lightLevelChanged",
+                        "override": false,
+                        "read": "lightLevel",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QAmbientLightReading::LightLevel",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlAmbientLightSensorReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 59,
+                        "name": "lightLevelChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlambientlightsensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "AmbientTemperatureSensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1281"
+                    }
+                ],
+                "className": "QmlAmbientTemperatureSensor",
+                "lineNumber": 23,
+                "object": true,
+                "qualifiedClassName": "QmlAmbientTemperatureSensor",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "AmbientTemperatureReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create AmbientTemperatureReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1281"
+                    }
+                ],
+                "className": "QmlAmbientTemperatureReading",
+                "lineNumber": 40,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableTemperature",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 43,
+                        "name": "temperature",
+                        "notify": "temperatureChanged",
+                        "override": false,
+                        "read": "temperature",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlAmbientTemperatureReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 56,
+                        "name": "temperatureChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlambienttemperaturesensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Compass"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlCompass",
+                "lineNumber": 24,
+                "object": true,
+                "qualifiedClassName": "QmlCompass",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "CompassReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create CompassReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlCompassReading",
+                "lineNumber": 40,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableAzimuth",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 43,
+                        "name": "azimuth",
+                        "notify": "azimuthChanged",
+                        "override": false,
+                        "read": "azimuth",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableCalibrationLevel",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 44,
+                        "name": "calibrationLevel",
+                        "notify": "calibrationLevelChanged",
+                        "override": false,
+                        "read": "calibrationLevel",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlCompassReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 59,
+                        "name": "azimuthChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 60,
+                        "name": "calibrationLevelChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlcompass_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Gyroscope"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlGyroscope",
+                "lineNumber": 24,
+                "object": true,
+                "qualifiedClassName": "QmlGyroscope",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "GyroscopeReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create GyroscopeReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlGyroscopeReading",
+                "lineNumber": 40,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableX",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 43,
+                        "name": "x",
+                        "notify": "xChanged",
+                        "override": false,
+                        "read": "x",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableY",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 44,
+                        "name": "y",
+                        "notify": "yChanged",
+                        "override": false,
+                        "read": "y",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableZ",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 45,
+                        "name": "z",
+                        "notify": "zChanged",
+                        "override": false,
+                        "read": "z",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlGyroscopeReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 61,
+                        "name": "xChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 62,
+                        "name": "yChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 63,
+                        "name": "zChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlgyroscope_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "HumiditySensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1289"
+                    }
+                ],
+                "className": "QmlHumiditySensor",
+                "lineNumber": 24,
+                "object": true,
+                "qualifiedClassName": "QmlHumiditySensor",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "HumidityReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create HumidityReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1289"
+                    }
+                ],
+                "className": "QmlHumidityReading",
+                "lineNumber": 42,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableRelativeHumidity",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 45,
+                        "name": "relativeHumidity",
+                        "notify": "relativeHumidityChanged",
+                        "override": false,
+                        "read": "relativeHumidity",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableAbsoluteHumidity",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 47,
+                        "name": "absoluteHumidity",
+                        "notify": "absoluteHumidityChanged",
+                        "override": false,
+                        "read": "absoluteHumidity",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlHumidityReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 62,
+                        "name": "relativeHumidityChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 63,
+                        "name": "absoluteHumidityChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlhumiditysensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "IRProximitySensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlIRProximitySensor",
+                "lineNumber": 24,
+                "object": true,
+                "qualifiedClassName": "QmlIRProximitySensor",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "IRProximityReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create IRProximityReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlIRProximitySensorReading",
+                "lineNumber": 40,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableReflectance",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 43,
+                        "name": "reflectance",
+                        "notify": "reflectanceChanged",
+                        "override": false,
+                        "read": "reflectance",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlIRProximitySensorReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 56,
+                        "name": "reflectanceChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlirproximitysensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "LidSensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1289"
+                    }
+                ],
+                "className": "QmlLidSensor",
+                "lineNumber": 23,
+                "object": true,
+                "qualifiedClassName": "QmlLidSensor",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "LidReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create LidReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1289"
+                    }
+                ],
+                "className": "QmlLidReading",
+                "lineNumber": 40,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableBackLidClosed",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 43,
+                        "name": "backLidClosed",
+                        "notify": "backLidChanged",
+                        "override": false,
+                        "read": "backLidClosed",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableFrontLidClosed",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 45,
+                        "name": "frontLidClosed",
+                        "notify": "frontLidChanged",
+                        "override": false,
+                        "read": "frontLidClosed",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlLidReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "closed",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 60,
+                        "name": "backLidChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "closed",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 61,
+                        "name": "frontLidChanged",
+                        "returnType": "bool"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmllidsensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "LightSensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlLightSensor",
+                "lineNumber": 24,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 27,
+                        "name": "fieldOfView",
+                        "notify": "fieldOfViewChanged",
+                        "override": false,
+                        "read": "fieldOfView",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlLightSensor",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "fieldOfView",
+                                "type": "qreal"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 38,
+                        "name": "fieldOfViewChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "LightReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create LightReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlLightSensorReading",
+                "lineNumber": 45,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableIlluminance",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 48,
+                        "name": "illuminance",
+                        "notify": "illuminanceChanged",
+                        "override": false,
+                        "read": "illuminance",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlLightSensorReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 61,
+                        "name": "illuminanceChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmllightsensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Magnetometer"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlMagnetometer",
+                "lineNumber": 24,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 27,
+                        "name": "returnGeoValues",
+                        "notify": "returnGeoValuesChanged",
+                        "override": false,
+                        "read": "returnGeoValues",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setReturnGeoValues"
+                    }
+                ],
+                "qualifiedClassName": "QmlMagnetometer",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "returnGeoValues",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 40,
+                        "name": "returnGeoValuesChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "MagnetometerReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create MagnetometerReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlMagnetometerReading",
+                "lineNumber": 47,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableX",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 50,
+                        "name": "x",
+                        "notify": "xChanged",
+                        "override": false,
+                        "read": "x",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableY",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 51,
+                        "name": "y",
+                        "notify": "yChanged",
+                        "override": false,
+                        "read": "y",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableZ",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 52,
+                        "name": "z",
+                        "notify": "zChanged",
+                        "override": false,
+                        "read": "z",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableCalibrationLevel",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 53,
+                        "name": "calibrationLevel",
+                        "notify": "calibrationLevelChanged",
+                        "override": false,
+                        "read": "calibrationLevel",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlMagnetometerReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 73,
+                        "name": "xChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 74,
+                        "name": "yChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 75,
+                        "name": "zChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 76,
+                        "name": "calibrationLevelChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlmagnetometer_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "OrientationSensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlOrientationSensor",
+                "lineNumber": 25,
+                "object": true,
+                "qualifiedClassName": "QmlOrientationSensor",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "OrientationReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create OrientationReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlOrientationSensorReading",
+                "lineNumber": 41,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableOrientation",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 44,
+                        "name": "orientation",
+                        "notify": "orientationChanged",
+                        "override": false,
+                        "read": "orientation",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QOrientationReading::Orientation",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlOrientationSensorReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 58,
+                        "name": "orientationChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlorientationsensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "PressureSensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1281"
+                    }
+                ],
+                "className": "QmlPressureSensor",
+                "lineNumber": 23,
+                "object": true,
+                "qualifiedClassName": "QmlPressureSensor",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "PressureReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create PressureReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1281"
+                    }
+                ],
+                "className": "QmlPressureReading",
+                "lineNumber": 40,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindablePressure",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 43,
+                        "name": "pressure",
+                        "notify": "pressureChanged",
+                        "override": false,
+                        "read": "pressure",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableTemperature",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 44,
+                        "name": "temperature",
+                        "notify": "temperatureChanged",
+                        "override": false,
+                        "read": "temperature",
+                        "required": false,
+                        "revision": 65281,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlPressureReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 59,
+                        "name": "pressureChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 60,
+                        "name": "temperatureChanged",
+                        "returnType": "void",
+                        "revision": 65281
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlpressuresensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ProximitySensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlProximitySensor",
+                "lineNumber": 26,
+                "object": true,
+                "qualifiedClassName": "QmlProximitySensor",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ProximityReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create ProximityReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlProximitySensorReading",
+                "lineNumber": 42,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableNear",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 45,
+                        "name": "near",
+                        "notify": "nearChanged",
+                        "override": false,
+                        "read": "near",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlProximitySensorReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 57,
+                        "name": "nearChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlproximitysensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "RotationSensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlRotationSensor",
+                "lineNumber": 24,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 27,
+                        "name": "hasZ",
+                        "notify": "hasZChanged",
+                        "override": false,
+                        "read": "hasZ",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlRotationSensor",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "hasZ",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 38,
+                        "name": "hasZChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "RotationReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create RotationReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlRotationSensorReading",
+                "lineNumber": 45,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableX",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 48,
+                        "name": "x",
+                        "notify": "xChanged",
+                        "override": false,
+                        "read": "x",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableY",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 49,
+                        "name": "y",
+                        "notify": "yChanged",
+                        "override": false,
+                        "read": "y",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableZ",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 50,
+                        "name": "z",
+                        "notify": "zChanged",
+                        "override": false,
+                        "read": "z",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlRotationSensorReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 66,
+                        "name": "xChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 67,
+                        "name": "yChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 68,
+                        "name": "zChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlrotationsensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Sensor"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create Sensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlSensor",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 68,
+                        "name": "Feature",
+                        "type": "int",
+                        "values": [
+                            "Buffering",
+                            "AlwaysOn",
+                            "GeoValues",
+                            "FieldOfView",
+                            "AccelerationMode",
+                            "SkipDuplicates",
+                            "AxesOrientation",
+                            "PressureSensorTemperature"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 81,
+                        "name": "AxesOrientationMode",
+                        "values": [
+                            "FixedOrientation",
+                            "AutomaticOrientation",
+                            "UserOrientation"
+                        ]
+                    }
+                ],
+                "interfaces": [
+                    [
+                        {
+                            "className": "QQmlParserStatus",
+                            "id": "\"org.qt-project.Qt.QQmlParserStatus\""
+                        }
+                    ]
+                ],
+                "lineNumber": 37,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "feature",
+                                "type": "Feature"
+                            }
+                        ],
+                        "index": 22,
+                        "isConst": true,
+                        "lineNumber": 123,
+                        "name": "isFeatureSupported",
+                        "returnType": "bool",
+                        "revision": 1543
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 42,
+                        "name": "identifier",
+                        "notify": "identifierChanged",
+                        "override": false,
+                        "read": "identifier",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QByteArray",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setIdentifier"
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 43,
+                        "name": "type",
+                        "override": false,
+                        "read": "type",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QByteArray",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 44,
+                        "name": "connectedToBackend",
+                        "notify": "connectedToBackendChanged",
+                        "override": false,
+                        "read": "isConnectedToBackend",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 45,
+                        "name": "availableDataRates",
+                        "notify": "availableDataRatesChanged",
+                        "override": false,
+                        "read": "availableDataRates",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<QmlSensorRange>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 46,
+                        "name": "dataRate",
+                        "notify": "dataRateChanged",
+                        "override": false,
+                        "read": "dataRate",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setDataRate"
+                    },
+                    {
+                        "bindable": "bindableReading",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 47,
+                        "name": "reading",
+                        "notify": "readingChanged",
+                        "override": false,
+                        "read": "reading",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QmlSensorReading*",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 6,
+                        "lineNumber": 48,
+                        "name": "busy",
+                        "notify": "busyChanged",
+                        "override": false,
+                        "read": "isBusy",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 7,
+                        "lineNumber": 49,
+                        "name": "active",
+                        "notify": "activeChanged",
+                        "override": false,
+                        "read": "isActive",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setActive"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 8,
+                        "lineNumber": 50,
+                        "name": "outputRanges",
+                        "notify": "outputRangesChanged",
+                        "override": false,
+                        "read": "outputRanges",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<QmlSensorOutputRange>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 9,
+                        "lineNumber": 51,
+                        "name": "outputRange",
+                        "notify": "outputRangeChanged",
+                        "override": false,
+                        "read": "outputRange",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setOutputRange"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 10,
+                        "lineNumber": 52,
+                        "name": "description",
+                        "notify": "descriptionChanged",
+                        "override": false,
+                        "read": "description",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 11,
+                        "lineNumber": 53,
+                        "name": "error",
+                        "notify": "errorChanged",
+                        "override": false,
+                        "read": "error",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 12,
+                        "lineNumber": 54,
+                        "name": "alwaysOn",
+                        "notify": "alwaysOnChanged",
+                        "override": false,
+                        "read": "isAlwaysOn",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAlwaysOn"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 13,
+                        "lineNumber": 55,
+                        "name": "skipDuplicates",
+                        "notify": "skipDuplicatesChanged",
+                        "override": false,
+                        "read": "skipDuplicates",
+                        "required": false,
+                        "revision": 65281,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSkipDuplicates"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 14,
+                        "lineNumber": 56,
+                        "name": "axesOrientationMode",
+                        "notify": "axesOrientationModeChanged",
+                        "override": false,
+                        "read": "axesOrientationMode",
+                        "required": false,
+                        "revision": 65281,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "AxesOrientationMode",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAxesOrientationMode"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 15,
+                        "lineNumber": 57,
+                        "name": "currentOrientation",
+                        "notify": "currentOrientationChanged",
+                        "override": false,
+                        "read": "currentOrientation",
+                        "required": false,
+                        "revision": 65281,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 16,
+                        "lineNumber": 58,
+                        "name": "userOrientation",
+                        "notify": "userOrientationChanged",
+                        "override": false,
+                        "read": "userOrientation",
+                        "required": false,
+                        "revision": 65281,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setUserOrientation"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 17,
+                        "lineNumber": 59,
+                        "name": "maxBufferSize",
+                        "notify": "maxBufferSizeChanged",
+                        "override": false,
+                        "read": "maxBufferSize",
+                        "required": false,
+                        "revision": 65281,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 18,
+                        "lineNumber": 60,
+                        "name": "efficientBufferSize",
+                        "notify": "efficientBufferSizeChanged",
+                        "override": false,
+                        "read": "efficientBufferSize",
+                        "required": false,
+                        "revision": 65281,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 19,
+                        "lineNumber": 61,
+                        "name": "bufferSize",
+                        "notify": "bufferSizeChanged",
+                        "override": false,
+                        "read": "bufferSize",
+                        "required": false,
+                        "revision": 65281,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBufferSize"
+                    }
+                ],
+                "qualifiedClassName": "QmlSensor",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 149,
+                        "name": "identifierChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 150,
+                        "name": "connectedToBackendChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 151,
+                        "name": "availableDataRatesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 152,
+                        "name": "dataRateChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 4,
+                        "lineNumber": 153,
+                        "name": "readingChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "lineNumber": 154,
+                        "name": "activeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 6,
+                        "lineNumber": 155,
+                        "name": "outputRangesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 7,
+                        "lineNumber": 156,
+                        "name": "outputRangeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 8,
+                        "lineNumber": 157,
+                        "name": "descriptionChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 9,
+                        "lineNumber": 158,
+                        "name": "errorChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 10,
+                        "lineNumber": 159,
+                        "name": "alwaysOnChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 11,
+                        "lineNumber": 160,
+                        "name": "busyChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "skipDuplicates",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 12,
+                        "lineNumber": 161,
+                        "name": "skipDuplicatesChanged",
+                        "returnType": "void",
+                        "revision": 65281
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axesOrientationMode",
+                                "type": "AxesOrientationMode"
+                            }
+                        ],
+                        "index": 13,
+                        "lineNumber": 162,
+                        "name": "axesOrientationModeChanged",
+                        "returnType": "void",
+                        "revision": 65281
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "currentOrientation",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 14,
+                        "lineNumber": 163,
+                        "name": "currentOrientationChanged",
+                        "returnType": "void",
+                        "revision": 65281
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "userOrientation",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 15,
+                        "lineNumber": 164,
+                        "name": "userOrientationChanged",
+                        "returnType": "void",
+                        "revision": 65281
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "maxBufferSize",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 16,
+                        "lineNumber": 165,
+                        "name": "maxBufferSizeChanged",
+                        "returnType": "void",
+                        "revision": 65281
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "efficientBufferSize",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 17,
+                        "lineNumber": 166,
+                        "name": "efficientBufferSizeChanged",
+                        "returnType": "void",
+                        "revision": 65281
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "bufferSize",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 18,
+                        "lineNumber": 167,
+                        "name": "bufferSizeChanged",
+                        "returnType": "void",
+                        "revision": 65281
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "index": 19,
+                        "lineNumber": 145,
+                        "name": "start",
+                        "returnType": "bool"
+                    },
+                    {
+                        "access": "public",
+                        "index": 20,
+                        "lineNumber": 146,
+                        "name": "stop",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "index": 21,
+                        "lineNumber": 173,
+                        "name": "updateReading",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    },
+                    {
+                        "access": "public",
+                        "name": "QQmlParserStatus"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "SensorReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create SensorReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlSensorReading",
+                "lineNumber": 183,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableTimestamp",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 186,
+                        "name": "timestamp",
+                        "notify": "timestampChanged",
+                        "override": false,
+                        "read": "timestamp",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "quint64",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlSensorReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 200,
+                        "name": "timestampChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlsensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "QmlSensors"
+                    },
+                    {
+                        "name": "QML.Singleton",
+                        "value": "true"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlSensorGlobal",
+                "lineNumber": 27,
+                "methods": [
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "isConst": true,
+                        "lineNumber": 34,
+                        "name": "sensorTypes",
+                        "returnType": "QStringList"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "type",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 2,
+                        "isConst": true,
+                        "lineNumber": 35,
+                        "name": "sensorsForType",
+                        "returnType": "QStringList"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "type",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 3,
+                        "isConst": true,
+                        "lineNumber": 36,
+                        "name": "defaultSensorForType",
+                        "returnType": "QString"
+                    }
+                ],
+                "object": true,
+                "qualifiedClassName": "QmlSensorGlobal",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 42,
+                        "name": "availableSensorsChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlsensorglobal_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Range"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create Range"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlSensorRange",
+                "lineNumber": 24,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 27,
+                        "name": "minimum",
+                        "override": false,
+                        "read": "minimum",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 28,
+                        "name": "maximum",
+                        "override": false,
+                        "read": "maximum",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlSensorRange",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "OutputRange"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create OutputRange"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlSensorOutputRange",
+                "lineNumber": 48,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 51,
+                        "name": "minimum",
+                        "override": false,
+                        "read": "minimum",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 52,
+                        "name": "maximum",
+                        "override": false,
+                        "read": "maximum",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 53,
+                        "name": "accuracy",
+                        "override": false,
+                        "read": "accuracy",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlSensorOutputRange",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmlsensorrange_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "TapSensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlTapSensor",
+                "lineNumber": 25,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 28,
+                        "name": "returnDoubleTapEvents",
+                        "notify": "returnDoubleTapEventsChanged",
+                        "override": false,
+                        "read": "returnDoubleTapEvents",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setReturnDoubleTapEvents"
+                    }
+                ],
+                "qualifiedClassName": "QmlTapSensor",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "returnDoubleTapEvents",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 41,
+                        "name": "returnDoubleTapEventsChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "TapReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create TapReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlTapSensorReading",
+                "lineNumber": 48,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableTapDirection",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 51,
+                        "name": "tapDirection",
+                        "notify": "tapDirectionChanged",
+                        "override": false,
+                        "read": "tapDirection",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QTapReading::TapDirection",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableDoubleTap",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 53,
+                        "name": "doubleTap",
+                        "notify": "isDoubleTapChanged",
+                        "override": false,
+                        "read": "isDoubleTap",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlTapSensorReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 69,
+                        "name": "tapDirectionChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 70,
+                        "name": "isDoubleTapChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmltapsensor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "TiltSensor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlTiltSensor",
+                "lineNumber": 25,
+                "methods": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 34,
+                        "name": "calibrate",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "qualifiedClassName": "QmlTiltSensor",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensor"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "TiltReading"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Cannot create TiltReading"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1280"
+                    }
+                ],
+                "className": "QmlTiltSensorReading",
+                "lineNumber": 43,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableYRotation",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 46,
+                        "name": "yRotation",
+                        "notify": "yRotationChanged",
+                        "override": false,
+                        "read": "yRotation",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "bindable": "bindableXRotation",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 47,
+                        "name": "xRotation",
+                        "notify": "xRotationChanged",
+                        "override": false,
+                        "read": "xRotation",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QmlTiltSensorReading",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 61,
+                        "name": "yRotationChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 62,
+                        "name": "xRotationChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QmlSensorReading"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmltiltsensor_p.h",
+        "outputRevision": 69
+    }
+]

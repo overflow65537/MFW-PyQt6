@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// Copyright (C) 2018 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+-->
+<typesystem package="PySide6.QtSensors"
+            namespace-begin="QT_BEGIN_NAMESPACE" namespace-end="QT_END_NAMESPACE">
+    <load-typesystem name="typesystem_core.xml" generate="no"/>
+<!-- overrides QObject::metaObject() by private method
+    <object-type name="QSensorGesture"/>
+-->
+<!-- Disabled by
+    5991224e6713eef4a456c408fcf797662fa2a66c in qt/qtsensors :
+        https://codereview.qt-project.org/c/qt/qtsensors/+/364924
+    <object-type name="QSensorGestureManager"/>
+    <object-type name="QSensorGesturePluginInterface"/>
+    <object-type name="QSensorGestureRecognizer"/>
+-->
+    <object-type name="QAccelerometer">
+        <enum-type name="AccelerationMode"/>
+    </object-type>
+    <object-type name="QAccelerometerFilter"/>
+    <object-type name="QAccelerometerReading"/>
+    <object-type name="QAmbientLightFilter"/>
+    <object-type name="QAmbientLightReading">
+        <enum-type name="LightLevel"/>
+    </object-type>
+    <object-type name="QAmbientLightSensor"/>
+    <object-type name="QAmbientTemperatureFilter"/>
+    <object-type name="QAmbientTemperatureReading"/>
+    <object-type name="QAmbientTemperatureSensor"/>
+    <object-type name="QCompass"/>
+    <object-type name="QCompassFilter"/>
+    <object-type name="QCompassReading"/>
+    <object-type name="QGyroscope"/>
+    <object-type name="QGyroscopeFilter"/>
+    <object-type name="QGyroscopeReading"/>
+    <object-type name="QHumidityFilter"/>
+    <object-type name="QHumidityReading"/>
+    <object-type name="QHumiditySensor"/>
+    <object-type name="QIRProximityFilter"/>
+    <object-type name="QIRProximityReading"/>
+    <object-type name="QIRProximitySensor"/>
+    <object-type name="QLidFilter"/>
+    <object-type name="QLidReading"/>
+    <object-type name="QLidSensor"/>
+    <object-type name="QLightFilter"/>
+    <object-type name="QLightReading"/>
+    <object-type name="QLightSensor"/>
+    <object-type name="QMagnetometer"/>
+    <object-type name="QMagnetometerFilter"/>
+    <object-type name="QMagnetometerReading"/>
+    <object-type name="QOrientationFilter"/>
+    <object-type name="QOrientationReading">
+        <enum-type name="Orientation"/>
+    </object-type>
+    <object-type name="QOrientationSensor"/>
+    <object-type name="QPressureFilter"/>
+    <object-type name="QPressureReading"/>
+    <object-type name="QPressureSensor"/>
+    <object-type name="QProximityFilter"/>
+    <object-type name="QProximityReading"/>
+    <object-type name="QProximitySensor"/>
+    <object-type name="QRotationFilter"/>
+    <object-type name="QRotationReading"/>
+    <object-type name="QRotationSensor"/>
+    <object-type name="QSensor">
+      <enum-type name="Feature"/>
+      <enum-type name="AxesOrientationMode"/>
+    </object-type>
+    <object-type name="QSensorFilter"/>
+    <object-type name="QSensorReading"/>
+    <value-type name="qoutputrange"/>
+    <object-type name="QSensorBackend"/>
+    <object-type name="QSensorBackendFactory"/>
+    <object-type name="QSensorManager"/>
+    <object-type name="QSensorChangesInterface"/>
+    <object-type name="QSensorPluginInterface"/>
+    <object-type name="QTapFilter"/>
+    <object-type name="QTapReading">
+        <enum-type name="TapDirection"/>
+    </object-type>
+    <object-type name="QTapSensor"/>
+    <object-type name="QTiltFilter"/>
+    <object-type name="QTiltReading"/>
+    <object-type name="QTiltSensor"/>
+</typesystem>

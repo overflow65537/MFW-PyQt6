@@ -1,0 +1,2920 @@
+[
+    {
+        "classes": [
+            {
+                "className": "QAbstractAnimation",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 27,
+                        "name": "AnimationType",
+                        "values": [
+                            "KeyframeAnimation",
+                            "MorphingAnimation",
+                            "VertexBlendAnimation"
+                        ]
+                    }
+                ],
+                "lineNumber": 18,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 21,
+                        "name": "animationName",
+                        "notify": "animationNameChanged",
+                        "override": false,
+                        "read": "animationName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAnimationName"
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 22,
+                        "name": "animationType",
+                        "override": false,
+                        "read": "animationType",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "AnimationType",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 23,
+                        "name": "position",
+                        "notify": "positionChanged",
+                        "override": false,
+                        "read": "position",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPosition"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 24,
+                        "name": "duration",
+                        "notify": "durationChanged",
+                        "override": false,
+                        "read": "duration",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QAbstractAnimation",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 49,
+                        "name": "animationNameChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "position",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 50,
+                        "name": "positionChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "duration",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 51,
+                        "name": "durationChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 40,
+                        "name": "setAnimationName",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "position",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 41,
+                        "name": "setPosition",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qabstractanimation.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAbstractAnimationClip",
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "duration",
+                        "notify": "durationChanged",
+                        "override": false,
+                        "read": "duration",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QAbstractAnimationClip",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "duration",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 28,
+                        "name": "durationChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qabstractanimationclip.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAbstractChannelMapping",
+                "lineNumber": 16,
+                "object": true,
+                "qualifiedClassName": "Qt3DAnimation::QAbstractChannelMapping",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qabstractchannelmapping.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAbstractClipAnimator",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 29,
+                        "name": "Loops",
+                        "values": [
+                            "Infinite"
+                        ]
+                    }
+                ],
+                "lineNumber": 19,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 22,
+                        "name": "running",
+                        "notify": "runningChanged",
+                        "override": false,
+                        "read": "isRunning",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setRunning"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 23,
+                        "name": "loops",
+                        "notify": "loopCountChanged",
+                        "override": false,
+                        "read": "loopCount",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setLoopCount"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 24,
+                        "name": "channelMapper",
+                        "notify": "channelMapperChanged",
+                        "override": false,
+                        "read": "channelMapper",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DAnimation::QChannelMapper*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setChannelMapper"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 25,
+                        "name": "clock",
+                        "notify": "clockChanged",
+                        "override": false,
+                        "read": "clock",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DAnimation::QClock*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setClock"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 26,
+                        "name": "normalizedTime",
+                        "notify": "normalizedTimeChanged",
+                        "override": false,
+                        "read": "normalizedTime",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setNormalizedTime"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QAbstractClipAnimator",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "running",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 51,
+                        "name": "runningChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "channelMapper",
+                                "type": "Qt3DAnimation::QChannelMapper*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 52,
+                        "name": "channelMapperChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "loops",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 53,
+                        "name": "loopCountChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "clock",
+                                "type": "Qt3DAnimation::QClock*"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 54,
+                        "name": "clockChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "index",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 55,
+                        "name": "normalizedTimeChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "running",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 41,
+                        "name": "setRunning",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "channelMapper",
+                                "type": "Qt3DAnimation::QChannelMapper*"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 42,
+                        "name": "setChannelMapper",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "loops",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 43,
+                        "name": "setLoopCount",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "clock",
+                                "type": "Qt3DAnimation::QClock*"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 44,
+                        "name": "setClock",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "timeFraction",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 45,
+                        "name": "setNormalizedTime",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 10,
+                        "lineNumber": 47,
+                        "name": "start",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 11,
+                        "lineNumber": 48,
+                        "name": "stop",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QComponent"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qabstractclipanimator.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAbstractClipBlendNode",
+                "lineNumber": 17,
+                "object": true,
+                "qualifiedClassName": "Qt3DAnimation::QAbstractClipBlendNode",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qabstractclipblendnode.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAdditiveClipBlend",
+                "lineNumber": 15,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 18,
+                        "name": "baseClip",
+                        "notify": "baseClipChanged",
+                        "override": false,
+                        "read": "baseClip",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DAnimation::QAbstractClipBlendNode*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBaseClip"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 19,
+                        "name": "additiveClip",
+                        "notify": "additiveClipChanged",
+                        "override": false,
+                        "read": "additiveClip",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DAnimation::QAbstractClipBlendNode*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAdditiveClip"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 20,
+                        "name": "additiveFactor",
+                        "notify": "additiveFactorChanged",
+                        "override": false,
+                        "read": "additiveFactor",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAdditiveFactor"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QAdditiveClipBlend",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "additiveFactor",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 35,
+                        "name": "additiveFactorChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "baseClip",
+                                "type": "Qt3DAnimation::QAbstractClipBlendNode*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 36,
+                        "name": "baseClipChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "additiveClip",
+                                "type": "Qt3DAnimation::QAbstractClipBlendNode*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 37,
+                        "name": "additiveClipChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "additiveFactor",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 30,
+                        "name": "setAdditiveFactor",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "baseClip",
+                                "type": "Qt3DAnimation::QAbstractClipBlendNode*"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 31,
+                        "name": "setBaseClip",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "additiveClip",
+                                "type": "Qt3DAnimation::QAbstractClipBlendNode*"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 32,
+                        "name": "setAdditiveClip",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DAnimation::QAbstractClipBlendNode",
+                        "name": "QAbstractClipBlendNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qadditiveclipblend.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAnimationAspect",
+                "lineNumber": 16,
+                "object": true,
+                "qualifiedClassName": "Qt3DAnimation::QAnimationAspect",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QAbstractAspect"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qanimationaspect.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAnimationClip",
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "clipData",
+                        "notify": "clipDataChanged",
+                        "override": false,
+                        "read": "clipData",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DAnimation::QAnimationClipData",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setClipData"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QAnimationClip",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "clipData",
+                                "type": "Qt3DAnimation::QAnimationClipData"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 32,
+                        "name": "clipDataChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "clipData",
+                                "type": "Qt3DAnimation::QAnimationClipData"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 29,
+                        "name": "setClipData",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DAnimation::QAbstractAnimationClip",
+                        "name": "QAbstractAnimationClip"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qanimationclip.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAnimationClipLoader",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 29,
+                        "name": "Status",
+                        "values": [
+                            "NotReady",
+                            "Ready",
+                            "Error"
+                        ]
+                    }
+                ],
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "source",
+                        "notify": "sourceChanged",
+                        "override": false,
+                        "read": "source",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QUrl",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSource"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 21,
+                        "name": "status",
+                        "notify": "statusChanged",
+                        "override": false,
+                        "read": "status",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Status",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QAnimationClipLoader",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "source",
+                                "type": "QUrl"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 43,
+                        "name": "sourceChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "status",
+                                "type": "Status"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 44,
+                        "name": "statusChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "source",
+                                "type": "QUrl"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 40,
+                        "name": "setSource",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DAnimation::QAbstractAnimationClip",
+                        "name": "QAbstractAnimationClip"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qanimationcliploader.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAnimationController",
+                "lineNumber": 19,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 12,
+                        "isConst": true,
+                        "lineNumber": 45,
+                        "name": "getAnimationIndex",
+                        "returnType": "int"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "index",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 13,
+                        "isConst": true,
+                        "lineNumber": 46,
+                        "name": "getGroup",
+                        "returnType": "Qt3DAnimation::QAnimationGroup*"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 22,
+                        "name": "activeAnimationGroup",
+                        "notify": "activeAnimationGroupChanged",
+                        "override": false,
+                        "read": "activeAnimationGroup",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setActiveAnimationGroup"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 23,
+                        "name": "position",
+                        "notify": "positionChanged",
+                        "override": false,
+                        "read": "position",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPosition"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 24,
+                        "name": "positionScale",
+                        "notify": "positionScaleChanged",
+                        "override": false,
+                        "read": "positionScale",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPositionScale"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 25,
+                        "name": "positionOffset",
+                        "notify": "positionOffsetChanged",
+                        "override": false,
+                        "read": "positionOffset",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPositionOffset"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 26,
+                        "name": "entity",
+                        "notify": "entityChanged",
+                        "override": false,
+                        "read": "entity",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DCore::QEntity*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setEntity"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 27,
+                        "name": "recursive",
+                        "notify": "recursiveChanged",
+                        "override": false,
+                        "read": "recursive",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setRecursive"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QAnimationController",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "index",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 57,
+                        "name": "activeAnimationGroupChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "position",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 58,
+                        "name": "positionChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "scale",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 59,
+                        "name": "positionScaleChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "offset",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 60,
+                        "name": "positionOffsetChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "entity",
+                                "type": "Qt3DCore::QEntity*"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 61,
+                        "name": "entityChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "recursive",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 62,
+                        "name": "recursiveChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "index",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 49,
+                        "name": "setActiveAnimationGroup",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "position",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 50,
+                        "name": "setPosition",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "scale",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 51,
+                        "name": "setPositionScale",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "offset",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 52,
+                        "name": "setPositionOffset",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "entity",
+                                "type": "Qt3DCore::QEntity*"
+                            }
+                        ],
+                        "index": 10,
+                        "lineNumber": 53,
+                        "name": "setEntity",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "recursive",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 11,
+                        "lineNumber": 54,
+                        "name": "setRecursive",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qanimationcontroller.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAnimationGroup",
+                "lineNumber": 19,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 22,
+                        "name": "name",
+                        "notify": "nameChanged",
+                        "override": false,
+                        "read": "name",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setName"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 23,
+                        "name": "position",
+                        "notify": "positionChanged",
+                        "override": false,
+                        "read": "position",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPosition"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 24,
+                        "name": "duration",
+                        "notify": "durationChanged",
+                        "override": false,
+                        "read": "duration",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QAnimationGroup",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 43,
+                        "name": "nameChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "position",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 44,
+                        "name": "positionChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "duration",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 45,
+                        "name": "durationChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 39,
+                        "name": "setName",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "position",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 40,
+                        "name": "setPosition",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qanimationgroup.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBlendedClipAnimator",
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "blendTree",
+                        "notify": "blendTreeChanged",
+                        "override": false,
+                        "read": "blendTree",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DAnimation::QAbstractClipBlendNode*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBlendTree"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QBlendedClipAnimator",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "blendTree",
+                                "type": "QAbstractClipBlendNode*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 32,
+                        "name": "blendTreeChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "blendTree",
+                                "type": "QAbstractClipBlendNode*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 29,
+                        "name": "setBlendTree",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DAnimation::QAbstractClipAnimator"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qblendedclipanimator.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QCallbackMapping",
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "channelName",
+                        "notify": "channelNameChanged",
+                        "override": false,
+                        "read": "channelName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setChannelName"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QCallbackMapping",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "channelName",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 35,
+                        "name": "channelNameChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "channelName",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 32,
+                        "name": "setChannelName",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DAnimation::QAbstractChannelMapping",
+                        "name": "QAbstractChannelMapping"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qcallbackmapping.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QChannelMapper",
+                "lineNumber": 17,
+                "object": true,
+                "qualifiedClassName": "Qt3DAnimation::QChannelMapper",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qchannelmapper.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QChannelMapping",
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "channelName",
+                        "notify": "channelNameChanged",
+                        "override": false,
+                        "read": "channelName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setChannelName"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 21,
+                        "name": "target",
+                        "notify": "targetChanged",
+                        "override": false,
+                        "read": "target",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DCore::QNode*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTarget"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 22,
+                        "name": "property",
+                        "notify": "propertyChanged",
+                        "override": false,
+                        "read": "property",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setProperty"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QChannelMapping",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "channelName",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 38,
+                        "name": "channelNameChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "target",
+                                "type": "Qt3DCore::QNode*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 39,
+                        "name": "targetChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "property",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 40,
+                        "name": "propertyChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "channelName",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 33,
+                        "name": "setChannelName",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "target",
+                                "type": "Qt3DCore::QNode*"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 34,
+                        "name": "setTarget",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "property",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 35,
+                        "name": "setProperty",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DAnimation::QAbstractChannelMapping",
+                        "name": "QAbstractChannelMapping"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qchannelmapping.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QClipAnimator",
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "clip",
+                        "notify": "clipChanged",
+                        "override": false,
+                        "read": "clip",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DAnimation::QAbstractAnimationClip*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setClip"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QClipAnimator",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "clip",
+                                "type": "Qt3DAnimation::QAbstractAnimationClip*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 32,
+                        "name": "clipChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "clip",
+                                "type": "Qt3DAnimation::QAbstractAnimationClip*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 29,
+                        "name": "setClip",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DAnimation::QAbstractClipAnimator"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qclipanimator.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QClipBlendValue",
+                "lineNumber": 16,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 19,
+                        "name": "clip",
+                        "notify": "clipChanged",
+                        "override": false,
+                        "read": "clip",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DAnimation::QAbstractAnimationClip*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setClip"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QClipBlendValue",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "clip",
+                                "type": "Qt3DAnimation::QAbstractAnimationClip*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 33,
+                        "name": "clipChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "clip",
+                                "type": "Qt3DAnimation::QAbstractAnimationClip*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 30,
+                        "name": "setClip",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DAnimation::QAbstractClipBlendNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qclipblendvalue.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QClock",
+                "lineNumber": 16,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 19,
+                        "name": "playbackRate",
+                        "notify": "playbackRateChanged",
+                        "override": false,
+                        "read": "playbackRate",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "double",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPlaybackRate"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QClock",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "playbackRate",
+                                "type": "double"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 29,
+                        "name": "playbackRateChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qclock.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QKeyframeAnimation",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 33,
+                        "name": "RepeatMode",
+                        "values": [
+                            "None",
+                            "Constant",
+                            "Repeat"
+                        ]
+                    }
+                ],
+                "lineNumber": 20,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 23,
+                        "name": "framePositions",
+                        "notify": "framePositionsChanged",
+                        "override": false,
+                        "read": "framePositions",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QList<float>",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setFramePositions"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 24,
+                        "name": "target",
+                        "notify": "targetChanged",
+                        "override": false,
+                        "read": "target",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DCore::QTransform*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTarget"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 25,
+                        "name": "easing",
+                        "notify": "easingChanged",
+                        "override": false,
+                        "read": "easing",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QEasingCurve",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setEasing"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 26,
+                        "name": "targetName",
+                        "notify": "targetNameChanged",
+                        "override": false,
+                        "read": "targetName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTargetName"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 27,
+                        "name": "startMode",
+                        "notify": "startModeChanged",
+                        "override": false,
+                        "read": "startMode",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "RepeatMode",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setStartMode"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 28,
+                        "name": "endMode",
+                        "notify": "endModeChanged",
+                        "override": false,
+                        "read": "endMode",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "RepeatMode",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setEndMode"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QKeyframeAnimation",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "positions",
+                                "type": "QList<float>"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 62,
+                        "name": "framePositionsChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "target",
+                                "type": "Qt3DCore::QTransform*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 63,
+                        "name": "targetChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "easing",
+                                "type": "QEasingCurve"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 64,
+                        "name": "easingChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 65,
+                        "name": "targetNameChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "startMode",
+                                "type": "QKeyframeAnimation::RepeatMode"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 66,
+                        "name": "startModeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "endMode",
+                                "type": "QKeyframeAnimation::RepeatMode"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 67,
+                        "name": "endModeChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "positions",
+                                "type": "QList<float>"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 54,
+                        "name": "setFramePositions",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "target",
+                                "type": "Qt3DCore::QTransform*"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 55,
+                        "name": "setTarget",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "easing",
+                                "type": "QEasingCurve"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 56,
+                        "name": "setEasing",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 57,
+                        "name": "setTargetName",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mode",
+                                "type": "RepeatMode"
+                            }
+                        ],
+                        "index": 10,
+                        "lineNumber": 58,
+                        "name": "setStartMode",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mode",
+                                "type": "RepeatMode"
+                            }
+                        ],
+                        "index": 11,
+                        "lineNumber": 59,
+                        "name": "setEndMode",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DAnimation::QAbstractAnimation",
+                        "name": "QAbstractAnimation"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qkeyframeanimation.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QLerpClipBlend",
+                "lineNumber": 15,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 18,
+                        "name": "startClip",
+                        "notify": "startClipChanged",
+                        "override": false,
+                        "read": "startClip",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DAnimation::QAbstractClipBlendNode*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setStartClip"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 19,
+                        "name": "endClip",
+                        "notify": "endClipChanged",
+                        "override": false,
+                        "read": "endClip",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DAnimation::QAbstractClipBlendNode*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setEndClip"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 20,
+                        "name": "blendFactor",
+                        "notify": "blendFactorChanged",
+                        "override": false,
+                        "read": "blendFactor",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBlendFactor"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QLerpClipBlend",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "blendFactor",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 36,
+                        "name": "blendFactorChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "startClip",
+                                "type": "Qt3DAnimation::QAbstractClipBlendNode*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 37,
+                        "name": "startClipChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "endClip",
+                                "type": "Qt3DAnimation::QAbstractClipBlendNode*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 38,
+                        "name": "endClipChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "blendFactor",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 31,
+                        "name": "setBlendFactor",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "startClip",
+                                "type": "Qt3DAnimation::QAbstractClipBlendNode*"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 32,
+                        "name": "setStartClip",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "endClip",
+                                "type": "Qt3DAnimation::QAbstractClipBlendNode*"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 33,
+                        "name": "setEndClip",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DAnimation::QAbstractClipBlendNode",
+                        "name": "QAbstractClipBlendNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qlerpclipblend.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QMorphingAnimation",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 32,
+                        "name": "Method",
+                        "values": [
+                            "Normalized",
+                            "Relative"
+                        ]
+                    }
+                ],
+                "lineNumber": 21,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 24,
+                        "name": "targetPositions",
+                        "notify": "targetPositionsChanged",
+                        "override": false,
+                        "read": "targetPositions",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QList<float>",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTargetPositions"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 25,
+                        "name": "interpolator",
+                        "notify": "interpolatorChanged",
+                        "override": false,
+                        "read": "interpolator",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 26,
+                        "name": "target",
+                        "notify": "targetChanged",
+                        "override": false,
+                        "read": "target",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DRender::QGeometryRenderer*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTarget"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 27,
+                        "name": "targetName",
+                        "notify": "targetNameChanged",
+                        "override": false,
+                        "read": "targetName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTargetName"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 28,
+                        "name": "method",
+                        "notify": "methodChanged",
+                        "override": false,
+                        "read": "method",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Method",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setMethod"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 29,
+                        "name": "easing",
+                        "notify": "easingChanged",
+                        "override": false,
+                        "read": "easing",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QEasingCurve",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setEasing"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QMorphingAnimation",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "targetPositions",
+                                "type": "QList<float>"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 65,
+                        "name": "targetPositionsChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "interpolator",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 66,
+                        "name": "interpolatorChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "target",
+                                "type": "Qt3DRender::QGeometryRenderer*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 67,
+                        "name": "targetChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 68,
+                        "name": "targetNameChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "method",
+                                "type": "QMorphingAnimation::Method"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 69,
+                        "name": "methodChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "easing",
+                                "type": "QEasingCurve"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 70,
+                        "name": "easingChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "targetPositions",
+                                "type": "QList<float>"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 58,
+                        "name": "setTargetPositions",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "target",
+                                "type": "Qt3DRender::QGeometryRenderer*"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 59,
+                        "name": "setTarget",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 60,
+                        "name": "setTargetName",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "method",
+                                "type": "QMorphingAnimation::Method"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 61,
+                        "name": "setMethod",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "easing",
+                                "type": "QEasingCurve"
+                            }
+                        ],
+                        "index": 10,
+                        "lineNumber": 62,
+                        "name": "setEasing",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DAnimation::QAbstractAnimation",
+                        "name": "QAbstractAnimation"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmorphinganimation.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QMorphTarget",
+                "lineNumber": 20,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "geometry",
+                                "type": "Qt3DCore::QGeometry*"
+                            },
+                            {
+                                "name": "attributes",
+                                "type": "QStringList"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 35,
+                        "name": "fromGeometry",
+                        "returnType": "QMorphTarget*"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 23,
+                        "name": "attributeNames",
+                        "notify": "attributeNamesChanged",
+                        "override": false,
+                        "read": "attributeNames",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QStringList",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QMorphTarget",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "attributeNames",
+                                "type": "QStringList"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 39,
+                        "name": "attributeNamesChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmorphtarget.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QSkeletonMapping",
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "skeleton",
+                        "notify": "skeletonChanged",
+                        "override": false,
+                        "read": "skeleton",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DCore::QAbstractSkeleton*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSkeleton"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QSkeletonMapping",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "skeleton",
+                                "type": "Qt3DCore::QAbstractSkeleton*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 32,
+                        "name": "skeletonChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "skeleton",
+                                "type": "Qt3DCore::QAbstractSkeleton*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 29,
+                        "name": "setSkeleton",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DAnimation::QAbstractChannelMapping",
+                        "name": "QAbstractChannelMapping"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qskeletonmapping.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QVertexBlendAnimation",
+                "lineNumber": 19,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 22,
+                        "name": "targetPositions",
+                        "notify": "targetPositionsChanged",
+                        "override": false,
+                        "read": "targetPositions",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QList<float>",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTargetPositions"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 23,
+                        "name": "interpolator",
+                        "notify": "interpolatorChanged",
+                        "override": false,
+                        "read": "interpolator",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 24,
+                        "name": "target",
+                        "notify": "targetChanged",
+                        "override": false,
+                        "read": "target",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DRender::QGeometryRenderer*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTarget"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 25,
+                        "name": "targetName",
+                        "notify": "targetNameChanged",
+                        "override": false,
+                        "read": "targetName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTargetName"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DAnimation::QVertexBlendAnimation",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "targetPositions",
+                                "type": "QList<float>"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 47,
+                        "name": "targetPositionsChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "interpolator",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 48,
+                        "name": "interpolatorChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "target",
+                                "type": "Qt3DRender::QGeometryRenderer*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 49,
+                        "name": "targetChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 50,
+                        "name": "targetNameChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "targetPositions",
+                                "type": "QList<float>"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 42,
+                        "name": "setTargetPositions",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "target",
+                                "type": "Qt3DRender::QGeometryRenderer*"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 43,
+                        "name": "setTarget",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 44,
+                        "name": "setTargetName",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DAnimation::QAbstractAnimation",
+                        "name": "QAbstractAnimation"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qvertexblendanimation.h",
+        "outputRevision": 69
+    }
+]

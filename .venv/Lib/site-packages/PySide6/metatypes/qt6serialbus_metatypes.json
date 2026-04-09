@@ -1,0 +1,600 @@
+[
+    {
+        "classes": [
+            {
+                "className": "QCanBus",
+                "lineNumber": 15,
+                "object": true,
+                "qualifiedClassName": "QCanBus",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qcanbus.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QCanBusDevice",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 26,
+                        "name": "CanBusError",
+                        "values": [
+                            "NoError",
+                            "ReadError",
+                            "WriteError",
+                            "ConnectionError",
+                            "ConfigurationError",
+                            "UnknownError",
+                            "OperationError",
+                            "TimeoutError"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 38,
+                        "name": "CanBusDeviceState",
+                        "values": [
+                            "UnconnectedState",
+                            "ConnectingState",
+                            "ConnectedState",
+                            "ClosingState"
+                        ]
+                    },
+                    {
+                        "isClass": true,
+                        "isFlag": false,
+                        "lineNumber": 46,
+                        "name": "CanBusStatus",
+                        "values": [
+                            "Unknown",
+                            "Good",
+                            "Warning",
+                            "Error",
+                            "BusOff"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 55,
+                        "name": "ConfigurationKey",
+                        "values": [
+                            "RawFilterKey",
+                            "ErrorFilterKey",
+                            "LoopbackKey",
+                            "ReceiveOwnKey",
+                            "BitRateKey",
+                            "CanFdKey",
+                            "DataBitRateKey",
+                            "ProtocolKey",
+                            "UserKey"
+                        ]
+                    }
+                ],
+                "lineNumber": 19,
+                "object": true,
+                "qualifiedClassName": "QCanBusDevice",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "type": "QCanBusDevice::CanBusError"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 133,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 134,
+                        "name": "framesReceived",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "framesCount",
+                                "type": "qint64"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 135,
+                        "name": "framesWritten",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "state",
+                                "type": "QCanBusDevice::CanBusDeviceState"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 136,
+                        "name": "stateChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qcanbusdevice.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QCanBusFrame",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 39,
+                        "name": "FrameType",
+                        "values": [
+                            "UnknownFrame",
+                            "DataFrame",
+                            "ErrorFrame",
+                            "RemoteRequestFrame",
+                            "InvalidFrame"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 63,
+                        "name": "FrameError",
+                        "values": [
+                            "NoError",
+                            "TransmissionTimeoutError",
+                            "LostArbitrationError",
+                            "ControllerError",
+                            "ProtocolViolationError",
+                            "TransceiverError",
+                            "MissingAcknowledgmentError",
+                            "BusOffError",
+                            "BusError",
+                            "ControllerRestartError",
+                            "UnknownError",
+                            "AnyError"
+                        ]
+                    },
+                    {
+                        "alias": "FrameError",
+                        "isClass": false,
+                        "isFlag": true,
+                        "lineNumber": 63,
+                        "name": "FrameErrors",
+                        "values": [
+                            "NoError",
+                            "TransmissionTimeoutError",
+                            "LostArbitrationError",
+                            "ControllerError",
+                            "ProtocolViolationError",
+                            "TransceiverError",
+                            "MissingAcknowledgmentError",
+                            "BusOffError",
+                            "BusError",
+                            "ControllerRestartError",
+                            "UnknownError",
+                            "AnyError"
+                        ]
+                    }
+                ],
+                "gadget": true,
+                "lineNumber": 16,
+                "qualifiedClassName": "QCanBusFrame"
+            }
+        ],
+        "inputFile": "qcanbusframe.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QModbusClient",
+                "lineNumber": 18,
+                "object": true,
+                "qualifiedClassName": "QModbusClient",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "newTimeout",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 40,
+                        "name": "timeoutChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QModbusDevice"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmodbusclient.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QModbusDevice",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 21,
+                        "name": "Error",
+                        "values": [
+                            "NoError",
+                            "ReadError",
+                            "WriteError",
+                            "ConnectionError",
+                            "ConfigurationError",
+                            "TimeoutError",
+                            "ProtocolError",
+                            "ReplyAbortedError",
+                            "UnknownError",
+                            "InvalidResponseError"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 35,
+                        "name": "State",
+                        "values": [
+                            "UnconnectedState",
+                            "ConnectingState",
+                            "ConnectedState",
+                            "ClosingState"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 43,
+                        "name": "ConnectionParameter",
+                        "values": [
+                            "SerialPortNameParameter",
+                            "SerialParityParameter",
+                            "SerialBaudRateParameter",
+                            "SerialDataBitsParameter",
+                            "SerialStopBitsParameter",
+                            "NetworkPortParameter",
+                            "NetworkAddressParameter"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 55,
+                        "name": "IntermediateError",
+                        "values": [
+                            "ResponseCrcError",
+                            "ResponseRequestMismatch"
+                        ]
+                    }
+                ],
+                "lineNumber": 15,
+                "object": true,
+                "qualifiedClassName": "QModbusDevice",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QModbusDevice::Error"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 79,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "state",
+                                "type": "QModbusDevice::State"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 80,
+                        "name": "stateChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmodbusdevice.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "Timer",
+                "lineNumber": 36,
+                "object": true,
+                "qualifiedClassName": "Timer",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "timerId",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 52,
+                        "name": "timeout",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmodbusrtuserialclient_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QModbusRtuSerialServer",
+                "lineNumber": 19,
+                "object": true,
+                "qualifiedClassName": "QModbusRtuSerialServer",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QModbusServer"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmodbusrtuserialserver.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QModbusServer",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 24,
+                        "name": "Option",
+                        "values": [
+                            "DiagnosticRegister",
+                            "ExceptionStatusOffset",
+                            "DeviceBusy",
+                            "AsciiInputDelimiter",
+                            "ListenOnlyMode",
+                            "ServerIdentifier",
+                            "RunIndicatorStatus",
+                            "AdditionalData",
+                            "DeviceIdentification",
+                            "UserOption"
+                        ]
+                    }
+                ],
+                "lineNumber": 18,
+                "object": true,
+                "qualifiedClassName": "QModbusServer",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "table",
+                                "type": "QModbusDataUnit::RegisterType"
+                            },
+                            {
+                                "name": "address",
+                                "type": "int"
+                            },
+                            {
+                                "name": "size",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 58,
+                        "name": "dataWritten",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QModbusDevice"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmodbusserver.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QModbusTcpClient",
+                "lineNumber": 14,
+                "object": true,
+                "qualifiedClassName": "QModbusTcpClient",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QModbusClient"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmodbustcpclient.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QModbusTcpServer",
+                "lineNumber": 24,
+                "object": true,
+                "qualifiedClassName": "QModbusTcpServer",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "modbusClient",
+                                "type": "QTcpSocket*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 36,
+                        "name": "modbusClientDisconnected",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QModbusServer"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmodbustcpserver.h",
+        "outputRevision": 69
+    },
+    {
+        "inputFile": "qcanframeprocessor.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QModbusReply",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 23,
+                        "name": "ReplyType",
+                        "values": [
+                            "Raw",
+                            "Common",
+                            "Broadcast"
+                        ]
+                    }
+                ],
+                "lineNumber": 17,
+                "object": true,
+                "qualifiedClassName": "QModbusReply",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 53,
+                        "name": "finished",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QModbusDevice::Error"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 54,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QModbusDevice::IntermediateError"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 55,
+                        "name": "intermediateErrorOccurred",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmodbusreply.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QModbusRtuSerialClient",
+                "lineNumber": 19,
+                "object": true,
+                "qualifiedClassName": "QModbusRtuSerialClient",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QModbusClient"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmodbusrtuserialclient.h",
+        "outputRevision": 69
+    }
+]

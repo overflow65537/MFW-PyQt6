@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+-->
+<typesystem package="PySide6.QtWebEngineQuick" doc-package="PySide6.QtWebEngine"
+            namespace-begin="QT_BEGIN_NAMESPACE" namespace-end="QT_END_NAMESPACE">
+    <load-typesystem name="typesystem_qml.xml" generate="no"/>
+    <load-typesystem name="typesystem_webenginecore.xml" generate="no"/>
+
+    <namespace-type name="QtWebEngineQuick"/> <!-- initialize() -->
+
+    <object-type name="QQuickWebEngineProfile">
+        <enum-type name="HttpCacheType"/>
+        <enum-type name="PersistentCookiesPolicy"/>
+        <enum-type name="PersistentPermissionsPolicy" since="6.8"/>
+    </object-type>
+    <object-type name="QQuickWebEngineDownloadRequest" since="6.9"/>
+
+
+</typesystem>

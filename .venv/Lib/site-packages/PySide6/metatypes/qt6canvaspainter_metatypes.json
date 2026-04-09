@@ -1,0 +1,150 @@
+[
+    {
+        "inputFile": "qcpainterengineutils_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QCanvasBrush",
+                "enums": [
+                    {
+                        "isClass": true,
+                        "isFlag": false,
+                        "lineNumber": 42,
+                        "name": "BrushType",
+                        "values": [
+                            "Invalid",
+                            "LinearGradient",
+                            "RadialGradient",
+                            "ConicalGradient",
+                            "BoxGradient",
+                            "BoxShadow",
+                            "ImagePattern",
+                            "GridPattern",
+                            "Custom"
+                        ]
+                    }
+                ],
+                "gadget": true,
+                "lineNumber": 29,
+                "qualifiedClassName": "QCanvasBrush"
+            }
+        ],
+        "inputFile": "qcanvasbrush.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QCanvasImage",
+                "gadget": true,
+                "lineNumber": 21,
+                "qualifiedClassName": "QCanvasImage"
+            }
+        ],
+        "inputFile": "qcanvasimage.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QCanvasOffscreenCanvas",
+                "gadget": true,
+                "lineNumber": 21,
+                "qualifiedClassName": "QCanvasOffscreenCanvas"
+            }
+        ],
+        "inputFile": "qcanvasoffscreencanvas.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QCanvasPainterItem",
+                "lineNumber": 22,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": true,
+                        "index": 0,
+                        "lineNumber": 25,
+                        "name": "fillColor",
+                        "notify": "fillColorChanged",
+                        "override": false,
+                        "read": "fillColor",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QColor",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setFillColor"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": true,
+                        "index": 1,
+                        "lineNumber": 26,
+                        "name": "debug",
+                        "notify": "debugChanged",
+                        "override": false,
+                        "read": "debug",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QVariantMap",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QCanvasPainterItem",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 44,
+                        "name": "fillColorChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 45,
+                        "name": "debugChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QQuickRhiItem"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qcanvaspainteritem.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QCanvasPainterWidget",
+                "lineNumber": 21,
+                "object": true,
+                "qualifiedClassName": "QCanvasPainterWidget",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QRhiWidget"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qcanvaspainterwidget.h",
+        "outputRevision": 69
+    }
+]

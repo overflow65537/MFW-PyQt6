@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// Copyright (C) 2019 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+-->
+<typesystem package="PySide6.QtRemoteObjects"
+            namespace-begin="QT_BEGIN_NAMESPACE" namespace-end="QT_END_NAMESPACE">
+    <load-typesystem name="core_common.xml" generate="no"/>
+    <load-typesystem name="typesystem_core.xml" generate="no"/>
+    <load-typesystem name="typesystem_network.xml" generate="no"/>
+    <inject-code class="native" position="beginning">
+    #include "pysideremoteobjects.h"
+    </inject-code>
+
+    <rejection class="QRemoteObjectStringLiterals"/>
+    <rejection class="*" function-name="getTypeNameAndMetaobjectFromClassInfo"/>
+    <rejection class="QtRemoteObjects" field-name="staticMetaObject"/>
+    <namespace-type name="QtRemoteObjects">
+        <enum-type name="InitialAction"/>
+        <enum-type name="QRemoteObjectPacketTypeEnum"/>
+    </namespace-type>
+    <object-type name="QAbstractItemModelReplica"/>
+    <object-type name="QConnectionAbstractServer"/>
+    <object-type name="QRemoteObjectAbstractPersistedStore"/>
+    <object-type name="QRemoteObjectDynamicReplica"/>
+    <object-type name="QRemoteObjectHost"/>
+    <object-type name="QRemoteObjectHostBase">
+        <enum-type name="AllowedSchemas"/>
+    </object-type>
+    <object-type name="QRemoteObjectNode">
+        <enum-type name="ErrorCode"/>
+        <add-function signature="acquire(PyTypeObject*, PyObject* @name@ = 0)"
+                      return-type="PyTypeObject*">
+            <inject-code class="target" file="../glue/qtremoteobjects.cpp" snippet="node-acquire"/>
+        </add-function>
+    </object-type>
+    <object-type name="QRemoteObjectPendingCall">
+        <enum-type name="Error"/>
+    </object-type>
+    <object-type name="QRemoteObjectPendingCallWatcher"/>
+    <object-type name="QRemoteObjectRegistry"/>
+    <object-type name="QRemoteObjectRegistryHost"/>
+    <object-type name="QRemoteObjectReplica">
+        <enum-type name="State"/>
+        <enum-type name="ConstructorType" python-type="IntEnum"/> <!-- Needed even though protected -->
+        <modify-function signature="QRemoteObjectReplica(QRemoteObjectReplica::ConstructorType)">
+            <modify-argument index="1">
+                <replace-default-expression with="{}"/>
+            </modify-argument>
+        </modify-function>
+    </object-type>
+    <object-type name="QRemoteObjectSettingsStore"/>
+    <value-type name="QRemoteObjectSourceLocationInfo"/>
+    <object-type name="QtROClientFactory"/>
+    <object-type name="QtROClientIoDevice"/>
+    <object-type name="QtROIoDeviceBase"/>
+    <object-type name="QtROServerFactory"/>
+    <object-type name="QtROServerIoDevice"/>
+
+    <suppress-warning text="^.*Typedef used on signal QRemoteObject.*$"/>
+    <suppress-warning text="^QRemoteObjectPendingCallWatcher inherits from a non polymorphic type.*$"/>
+    <suppress-warning text="^Enum 'QRemoteObjectReplica::ConstructorType'.*does not have a type entry.*$"/>
+    <suppress-warning text="Stripping argument #1 of void QRemoteObjectReplica::QRemoteObjectReplica(QRemoteObjectReplica::ConstructorType) due to unmatched type &quot;QRemoteObjectReplica::ConstructorType&quot; with default expression &quot;DefaultConstructor&quot;."/>
+    <suppress-warning text="skipping protected field 'QRemoteObjectReplica::d_impl' with unmatched type 'QSharedPointer'"/>
+    <!-- QtNetwork is pulled in via QtRemoteObjectsDepends. -->
+    <suppress-warning text="^Scoped enum 'Q(Ocsp)|(Dtls).*' does not have a type entry.*$"/>
+
+    <inject-code class="target" position="end"
+                 file="../glue/qtremoteobjects.cpp" snippet="qtro-init"/>
+
+</typesystem>

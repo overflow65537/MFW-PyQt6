@@ -50,7 +50,7 @@ from qfluentwidgets import (
 from app.utils.markdown_helper import render_markdown
 from app.widget.notice_message import NoticeMessageBox
 from app.common.config import cfg, isWin11, Config
-from app.common.__version__ import __version__ as UI_VERSION
+from app.common import __version__ as version_meta
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
@@ -77,6 +77,7 @@ from app.view.setting_interface.widget.notice_type import (
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
 # 检测已经是 Markdown 链接格式的文本： [text](url)
 _MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+UI_VERSION = getattr(version_meta, "__ui_version__", getattr(version_meta, "__version__", "Unknown"))
 
 
 def start_auto_confirm_countdown(

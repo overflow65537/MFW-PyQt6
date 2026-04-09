@@ -1,0 +1,2428 @@
+[
+    {
+        "classes": [
+            {
+                "className": "LocalClientIo",
+                "lineNumber": 26,
+                "object": true,
+                "qualifiedClassName": "LocalClientIo",
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QLocalSocket::LocalSocketError"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 39,
+                        "name": "onError",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "state",
+                                "type": "QLocalSocket::LocalSocketState"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 40,
+                        "name": "onStateChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QtROClientIoDevice"
+                    }
+                ]
+            },
+            {
+                "className": "LocalServerIo",
+                "final": true,
+                "lineNumber": 60,
+                "object": true,
+                "qualifiedClassName": "LocalServerIo",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QtROServerIoDevice"
+                    }
+                ]
+            },
+            {
+                "className": "LocalServerImpl",
+                "lineNumber": 74,
+                "object": true,
+                "qualifiedClassName": "LocalServerImpl",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QConnectionAbstractServer"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qconnection_local_backend_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "TcpClientIo",
+                "final": true,
+                "lineNumber": 26,
+                "object": true,
+                "qualifiedClassName": "TcpClientIo",
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QAbstractSocket::SocketError"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 39,
+                        "name": "onError",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "state",
+                                "type": "QAbstractSocket::SocketState"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 40,
+                        "name": "onStateChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QtROClientIoDevice"
+                    }
+                ]
+            },
+            {
+                "className": "TcpServerIo",
+                "final": true,
+                "lineNumber": 50,
+                "object": true,
+                "qualifiedClassName": "TcpServerIo",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QtROServerIoDevice"
+                    }
+                ]
+            },
+            {
+                "className": "TcpServerImpl",
+                "final": true,
+                "lineNumber": 64,
+                "object": true,
+                "qualifiedClassName": "TcpServerImpl",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QConnectionAbstractServer"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qconnection_tcpip_backend_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QtROIoDeviceBase",
+                "lineNumber": 30,
+                "object": true,
+                "qualifiedClassName": "QtROIoDeviceBase",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 54,
+                        "name": "readyRead",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 55,
+                        "name": "disconnected",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            },
+            {
+                "className": "QtROServerIoDevice",
+                "lineNumber": 69,
+                "object": true,
+                "qualifiedClassName": "QtROServerIoDevice",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QtROIoDeviceBase"
+                    }
+                ]
+            },
+            {
+                "className": "QConnectionAbstractServer",
+                "lineNumber": 81,
+                "object": true,
+                "qualifiedClassName": "QConnectionAbstractServer",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 101,
+                        "name": "newConnection",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            },
+            {
+                "className": "QtROClientIoDevice",
+                "lineNumber": 104,
+                "object": true,
+                "qualifiedClassName": "QtROClientIoDevice",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "type": "QtROClientIoDevice*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 119,
+                        "name": "shouldReconnect",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "type": "QRemoteObjectNode::ErrorCode"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 120,
+                        "name": "setError",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QtROIoDeviceBase"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qconnectionfactories.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QtROExternalIoDevice",
+                "lineNumber": 39,
+                "object": true,
+                "qualifiedClassName": "QtROExternalIoDevice",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QtROIoDeviceBase"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qconnectionfactories_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAbstractItemModelSourceAdapter",
+                "constructors": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "object",
+                                "type": "QAbstractItemModel*"
+                            },
+                            {
+                                "name": "sel",
+                                "type": "QItemSelectionModel*"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 33,
+                        "name": "QAbstractItemModelSourceAdapter",
+                        "returnType": ""
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "object",
+                                "type": "QAbstractItemModel*"
+                            },
+                            {
+                                "name": "sel",
+                                "type": "QItemSelectionModel*"
+                            }
+                        ],
+                        "index": 1,
+                        "isCloned": true,
+                        "lineNumber": 33,
+                        "name": "QAbstractItemModelSourceAdapter",
+                        "returnType": ""
+                    }
+                ],
+                "lineNumber": 29,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 34,
+                        "name": "availableRoles",
+                        "notify": "availableRolesChanged",
+                        "override": false,
+                        "read": "availableRoles",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QList<int>",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAvailableRoles"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 35,
+                        "name": "roleNames",
+                        "override": false,
+                        "read": "roleNames",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QIntHash",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QAbstractItemModelSourceAdapter",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 67,
+                        "name": "availableRolesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "topLeft",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "bottomRight",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 1,
+                        "isConst": true,
+                        "lineNumber": 68,
+                        "name": "dataChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "start",
+                                "type": "int"
+                            },
+                            {
+                                "name": "end",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 2,
+                        "isConst": true,
+                        "lineNumber": 69,
+                        "name": "rowsInserted",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "start",
+                                "type": "int"
+                            },
+                            {
+                                "name": "end",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 3,
+                        "isConst": true,
+                        "lineNumber": 70,
+                        "name": "rowsRemoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "sourceParent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "sourceRow",
+                                "type": "int"
+                            },
+                            {
+                                "name": "count",
+                                "type": "int"
+                            },
+                            {
+                                "name": "destinationParent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "destinationChild",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 4,
+                        "isConst": true,
+                        "lineNumber": 71,
+                        "name": "rowsMoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "current",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "previous",
+                                "type": "QtPrivate::IndexList"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 72,
+                        "name": "currentChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "start",
+                                "type": "int"
+                            },
+                            {
+                                "name": "end",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 6,
+                        "isConst": true,
+                        "lineNumber": 73,
+                        "name": "columnsInserted",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parents",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "hint",
+                                "type": "QAbstractItemModel::LayoutChangeHint"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 74,
+                        "name": "layoutChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "index": 8,
+                        "isConst": true,
+                        "lineNumber": 40,
+                        "name": "availableRoles",
+                        "returnType": "QList<int>"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "availableRoles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 41,
+                        "name": "setAvailableRoles",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 10,
+                        "isConst": true,
+                        "lineNumber": 50,
+                        "name": "roleNames",
+                        "returnType": "QIntHash"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parentList",
+                                "type": "QtPrivate::IndexList"
+                            }
+                        ],
+                        "index": 11,
+                        "lineNumber": 52,
+                        "name": "replicaSizeRequest",
+                        "returnType": "QSize"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "start",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "end",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 12,
+                        "lineNumber": 53,
+                        "name": "replicaRowRequest",
+                        "returnType": "QtPrivate::DataEntries"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "orientations",
+                                "type": "QList<Qt::Orientation>"
+                            },
+                            {
+                                "name": "sections",
+                                "type": "QList<int>"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 13,
+                        "lineNumber": 54,
+                        "name": "replicaHeaderRequest",
+                        "returnType": "QVariantList"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "index",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "command",
+                                "type": "QItemSelectionModel::SelectionFlags"
+                            }
+                        ],
+                        "index": 14,
+                        "lineNumber": 55,
+                        "name": "replicaSetCurrentIndex",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "index",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "value",
+                                "type": "QVariant"
+                            },
+                            {
+                                "name": "role",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 15,
+                        "lineNumber": 56,
+                        "name": "replicaSetData",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "size",
+                                "type": "size_t"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 16,
+                        "lineNumber": 57,
+                        "name": "replicaCacheRequest",
+                        "returnType": "QtPrivate::MetaAndDataEntries"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "topLeft",
+                                "type": "QModelIndex"
+                            },
+                            {
+                                "name": "bottomRight",
+                                "type": "QModelIndex"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 17,
+                        "isConst": true,
+                        "lineNumber": 59,
+                        "name": "sourceDataChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "topLeft",
+                                "type": "QModelIndex"
+                            },
+                            {
+                                "name": "bottomRight",
+                                "type": "QModelIndex"
+                            }
+                        ],
+                        "index": 18,
+                        "isCloned": true,
+                        "isConst": true,
+                        "lineNumber": 59,
+                        "name": "sourceDataChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QModelIndex"
+                            },
+                            {
+                                "name": "start",
+                                "type": "int"
+                            },
+                            {
+                                "name": "end",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 19,
+                        "lineNumber": 60,
+                        "name": "sourceRowsInserted",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QModelIndex"
+                            },
+                            {
+                                "name": "start",
+                                "type": "int"
+                            },
+                            {
+                                "name": "end",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 20,
+                        "lineNumber": 61,
+                        "name": "sourceColumnsInserted",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QModelIndex"
+                            },
+                            {
+                                "name": "start",
+                                "type": "int"
+                            },
+                            {
+                                "name": "end",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 21,
+                        "lineNumber": 62,
+                        "name": "sourceRowsRemoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "sourceParent",
+                                "type": "QModelIndex"
+                            },
+                            {
+                                "name": "sourceRow",
+                                "type": "int"
+                            },
+                            {
+                                "name": "count",
+                                "type": "int"
+                            },
+                            {
+                                "name": "destinationParent",
+                                "type": "QModelIndex"
+                            },
+                            {
+                                "name": "destinationChild",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 22,
+                        "isConst": true,
+                        "lineNumber": 63,
+                        "name": "sourceRowsMoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "current",
+                                "type": "QModelIndex"
+                            },
+                            {
+                                "name": "previous",
+                                "type": "QModelIndex"
+                            }
+                        ],
+                        "index": 23,
+                        "lineNumber": 64,
+                        "name": "sourceCurrentChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parents",
+                                "type": "QList<QPersistentModelIndex>"
+                            },
+                            {
+                                "name": "hint",
+                                "type": "QAbstractItemModel::LayoutChangeHint"
+                            }
+                        ],
+                        "index": 24,
+                        "lineNumber": 65,
+                        "name": "sourceLayoutChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectabstractitemmodeladapter_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAbstractItemModelReplica",
+                "lineNumber": 17,
+                "object": true,
+                "qualifiedClassName": "QAbstractItemModelReplica",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 45,
+                        "name": "initialized",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QAbstractItemModel"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectabstractitemmodelreplica.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "SizeWatcher",
+                "lineNumber": 252,
+                "object": true,
+                "qualifiedClassName": "SizeWatcher",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QRemoteObjectPendingCallWatcher"
+                    }
+                ]
+            },
+            {
+                "className": "RowWatcher",
+                "lineNumber": 262,
+                "object": true,
+                "qualifiedClassName": "RowWatcher",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QRemoteObjectPendingCallWatcher"
+                    }
+                ]
+            },
+            {
+                "className": "HeaderWatcher",
+                "lineNumber": 275,
+                "object": true,
+                "qualifiedClassName": "HeaderWatcher",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QRemoteObjectPendingCallWatcher"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "RemoteObject Type",
+                        "value": "ServerModelAdapter"
+                    }
+                ],
+                "className": "QAbstractItemModelReplicaImplementation",
+                "lineNumber": 288,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 293,
+                        "name": "availableRoles",
+                        "notify": "availableRolesChanged",
+                        "override": false,
+                        "read": "availableRoles",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QList<int>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 294,
+                        "name": "roleNames",
+                        "override": false,
+                        "read": "roleNames",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QIntHash",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QAbstractItemModelReplicaImplementation",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 319,
+                        "name": "availableRolesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "topLeft",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "bottomRight",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 320,
+                        "name": "dataChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "first",
+                                "type": "int"
+                            },
+                            {
+                                "name": "last",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 321,
+                        "name": "rowsInserted",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "first",
+                                "type": "int"
+                            },
+                            {
+                                "name": "last",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 322,
+                        "name": "rowsRemoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "start",
+                                "type": "int"
+                            },
+                            {
+                                "name": "end",
+                                "type": "int"
+                            },
+                            {
+                                "name": "destination",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "row",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 323,
+                        "name": "rowsMoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "current",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "previous",
+                                "type": "QtPrivate::IndexList"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 324,
+                        "name": "currentChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 6,
+                        "lineNumber": 325,
+                        "name": "modelReset",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "type": "Qt::Orientation"
+                            },
+                            {
+                                "type": "int"
+                            },
+                            {
+                                "type": "int"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 326,
+                        "name": "headerDataChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "first",
+                                "type": "int"
+                            },
+                            {
+                                "name": "last",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 327,
+                        "name": "columnsInserted",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parents",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "hint",
+                                "type": "QAbstractItemModel::LayoutChangeHint"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 328,
+                        "name": "layoutChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parentList",
+                                "type": "QtPrivate::IndexList"
+                            }
+                        ],
+                        "index": 10,
+                        "lineNumber": 330,
+                        "name": "replicaSizeRequest",
+                        "returnType": "QRemoteObjectPendingReply<QSize>"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "start",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "end",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 11,
+                        "lineNumber": 337,
+                        "name": "replicaRowRequest",
+                        "returnType": "QRemoteObjectPendingReply<QtPrivate::DataEntries>"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "orientations",
+                                "type": "QList<Qt::Orientation>"
+                            },
+                            {
+                                "name": "sections",
+                                "type": "QList<int>"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 12,
+                        "lineNumber": 344,
+                        "name": "replicaHeaderRequest",
+                        "returnType": "QRemoteObjectPendingReply<QVariantList>"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "index",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "command",
+                                "type": "QItemSelectionModel::SelectionFlags"
+                            }
+                        ],
+                        "index": 13,
+                        "lineNumber": 351,
+                        "name": "replicaSetCurrentIndex",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "index",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "value",
+                                "type": "QVariant"
+                            },
+                            {
+                                "name": "role",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 14,
+                        "lineNumber": 358,
+                        "name": "replicaSetData",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "size",
+                                "type": "size_t"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 15,
+                        "lineNumber": 365,
+                        "name": "replicaCacheRequest",
+                        "returnType": "QRemoteObjectPendingReply<QtPrivate::MetaAndDataEntries>"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "orientation",
+                                "type": "Qt::Orientation"
+                            },
+                            {
+                                "name": "first",
+                                "type": "int"
+                            },
+                            {
+                                "name": "last",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 16,
+                        "lineNumber": 372,
+                        "name": "onHeaderDataChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "start",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "end",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 17,
+                        "lineNumber": 373,
+                        "name": "onDataChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "start",
+                                "type": "int"
+                            },
+                            {
+                                "name": "end",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 18,
+                        "lineNumber": 374,
+                        "name": "onRowsInserted",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "start",
+                                "type": "int"
+                            },
+                            {
+                                "name": "end",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 19,
+                        "lineNumber": 375,
+                        "name": "onRowsRemoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "start",
+                                "type": "int"
+                            },
+                            {
+                                "name": "end",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 20,
+                        "lineNumber": 376,
+                        "name": "onColumnsInserted",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "srcParent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "srcRow",
+                                "type": "int"
+                            },
+                            {
+                                "name": "count",
+                                "type": "int"
+                            },
+                            {
+                                "name": "destParent",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "destRow",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 21,
+                        "lineNumber": 377,
+                        "name": "onRowsMoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "current",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "previous",
+                                "type": "QtPrivate::IndexList"
+                            }
+                        ],
+                        "index": 22,
+                        "lineNumber": 378,
+                        "name": "onCurrentChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 23,
+                        "lineNumber": 379,
+                        "name": "onModelReset",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "type": "QRemoteObjectPendingCallWatcher*"
+                            }
+                        ],
+                        "index": 24,
+                        "lineNumber": 380,
+                        "name": "requestedData",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "type": "QRemoteObjectPendingCallWatcher*"
+                            }
+                        ],
+                        "index": 25,
+                        "lineNumber": 381,
+                        "name": "requestedHeaderData",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 26,
+                        "lineNumber": 382,
+                        "name": "init",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 27,
+                        "lineNumber": 383,
+                        "name": "fetchPendingData",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 28,
+                        "lineNumber": 384,
+                        "name": "fetchPendingHeaderData",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "watcher",
+                                "type": "QRemoteObjectPendingCallWatcher*"
+                            }
+                        ],
+                        "index": 29,
+                        "lineNumber": 385,
+                        "name": "handleInitDone",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "watcher",
+                                "type": "QRemoteObjectPendingCallWatcher*"
+                            }
+                        ],
+                        "index": 30,
+                        "lineNumber": 386,
+                        "name": "handleModelResetDone",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "watcher",
+                                "type": "QRemoteObjectPendingCallWatcher*"
+                            }
+                        ],
+                        "index": 31,
+                        "lineNumber": 387,
+                        "name": "handleSizeDone",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "current",
+                                "type": "QModelIndex"
+                            },
+                            {
+                                "name": "previous",
+                                "type": "QModelIndex"
+                            }
+                        ],
+                        "index": 32,
+                        "lineNumber": 388,
+                        "name": "onReplicaCurrentChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "pair",
+                                "type": "QtPrivate::IndexValuePair"
+                            },
+                            {
+                                "name": "roles",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 33,
+                        "lineNumber": 389,
+                        "name": "fillCache",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parents",
+                                "type": "QtPrivate::IndexList"
+                            },
+                            {
+                                "name": "hint",
+                                "type": "QAbstractItemModel::LayoutChangeHint"
+                            }
+                        ],
+                        "index": 34,
+                        "lineNumber": 390,
+                        "name": "onLayoutChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QRemoteObjectReplica"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectabstractitemmodelreplica_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "ProxyInfo",
+                "lineNumber": 73,
+                "object": true,
+                "qualifiedClassName": "ProxyInfo",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectnode_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QRemoteObjectPackets",
+                "enums": [
+                    {
+                        "isClass": true,
+                        "isFlag": false,
+                        "lineNumber": 73,
+                        "name": "ObjectType",
+                        "type": "quint8",
+                        "values": [
+                            "CLASS",
+                            "MODEL",
+                            "GADGET"
+                        ]
+                    }
+                ],
+                "lineNumber": 42,
+                "namespace": true,
+                "qualifiedClassName": "QRemoteObjectPackets"
+            }
+        ],
+        "inputFile": "qremoteobjectpacket_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QRemoteObjectPendingCallWatcherHelper",
+                "lineNumber": 48,
+                "object": true,
+                "qualifiedClassName": "QRemoteObjectPendingCallWatcherHelper",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 57,
+                        "name": "finished",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectpendingcall_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "RemoteObject Type",
+                        "value": "Registry"
+                    }
+                ],
+                "className": "QRemoteObjectRegistry",
+                "lineNumber": 15,
+                "object": true,
+                "properties": [
+                    {
+                        "bindable": "bindableSourceLocations",
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "sourceLocations",
+                        "override": false,
+                        "read": "sourceLocations",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": false,
+                        "type": "QRemoteObjectSourceLocations",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QRemoteObjectRegistry",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "entry",
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 31,
+                        "name": "remoteObjectAdded",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "entry",
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 32,
+                        "name": "remoteObjectRemoved",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "protected",
+                        "arguments": [
+                            {
+                                "name": "entry",
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 35,
+                        "name": "addSource",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "protected",
+                        "arguments": [
+                            {
+                                "name": "entry",
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 36,
+                        "name": "removeSource",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "protected",
+                        "index": 4,
+                        "lineNumber": 37,
+                        "name": "pushToRegistryIfNeeded",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QRemoteObjectReplica"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectregistry.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "RemoteObject Type",
+                        "value": "Registry"
+                    }
+                ],
+                "className": "QRegistrySource",
+                "lineNumber": 26,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 31,
+                        "name": "sourceLocations",
+                        "override": false,
+                        "read": "sourceLocations",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QRemoteObjectSourceLocations",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QRegistrySource",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "entry",
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 40,
+                        "name": "remoteObjectAdded",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "entry",
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 41,
+                        "name": "remoteObjectRemoved",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "entry",
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 44,
+                        "name": "addSource",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "entry",
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 45,
+                        "name": "removeSource",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "url",
+                                "type": "QUrl"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 46,
+                        "name": "removeServer",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectregistrysource_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QRemoteObjectReplica",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 29,
+                        "name": "State",
+                        "values": [
+                            "Uninitialized",
+                            "Default",
+                            "Valid",
+                            "Suspect",
+                            "SignatureMismatch"
+                        ]
+                    }
+                ],
+                "lineNumber": 23,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 26,
+                        "name": "node",
+                        "override": false,
+                        "read": "node",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QRemoteObjectNode*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setNode"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 27,
+                        "name": "state",
+                        "notify": "stateChanged",
+                        "override": false,
+                        "read": "state",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "State",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QRemoteObjectReplica",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 49,
+                        "name": "initialized",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 50,
+                        "name": "notified",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "state",
+                                "type": "State"
+                            },
+                            {
+                                "name": "oldState",
+                                "type": "State"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 51,
+                        "name": "stateChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectreplica.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QRemoteObjectSettingsStore",
+                "lineNumber": 14,
+                "object": true,
+                "qualifiedClassName": "QRemoteObjectSettingsStore",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QRemoteObjectAbstractPersistedStore"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectsettingsstore.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QRemoteObjectSourceIo",
+                "lineNumber": 34,
+                "object": true,
+                "qualifiedClassName": "QRemoteObjectSourceIo",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 58,
+                        "name": "remoteObjectAdded",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 59,
+                        "name": "remoteObjectRemoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "url",
+                                "type": "QUrl"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 60,
+                        "name": "serverRemoved",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 53,
+                        "name": "handleConnection",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "obj",
+                                "type": "QObject*"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 54,
+                        "name": "onServerDisconnect",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "isCloned": true,
+                        "lineNumber": 54,
+                        "name": "onServerDisconnect",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "obj",
+                                "type": "QObject*"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 55,
+                        "name": "onServerRead",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectsourceio_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QtRemoteObjects",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 117,
+                        "name": "QRemoteObjectPacketTypeEnum",
+                        "values": [
+                            "Invalid",
+                            "Handshake",
+                            "InitPacket",
+                            "InitDynamicPacket",
+                            "AddObject",
+                            "RemoveObject",
+                            "InvokePacket",
+                            "InvokeReplyPacket",
+                            "PropertyChangePacket",
+                            "ObjectList",
+                            "Ping",
+                            "Pong"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 134,
+                        "name": "InitialAction",
+                        "values": [
+                            "FetchRootSize",
+                            "PrefetchData"
+                        ]
+                    }
+                ],
+                "lineNumber": 84,
+                "namespace": true,
+                "qualifiedClassName": "QtRemoteObjects"
+            }
+        ],
+        "inputFile": "qtremoteobjectglobal.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QRemoteObjectAbstractPersistedStore",
+                "lineNumber": 30,
+                "object": true,
+                "qualifiedClassName": "QRemoteObjectAbstractPersistedStore",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            },
+            {
+                "className": "QRemoteObjectNode",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 54,
+                        "name": "ErrorCode",
+                        "values": [
+                            "NoError",
+                            "RegistryNotAcquired",
+                            "RegistryAlreadyHosted",
+                            "NodeIsNoServer",
+                            "ServerAlreadyCreated",
+                            "UnintendedRegistryHosting",
+                            "OperationNotValidOnClientNode",
+                            "SourceNotRegistered",
+                            "MissingObjectName",
+                            "HostUrlInvalid",
+                            "ProtocolMismatch",
+                            "ListenFailed",
+                            "SocketAccessError"
+                        ]
+                    }
+                ],
+                "lineNumber": 46,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "QUrl"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 75,
+                        "name": "connectToNode",
+                        "returnType": "bool"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 49,
+                        "name": "registryUrl",
+                        "override": false,
+                        "read": "registryUrl",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QUrl",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setRegistryUrl"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 50,
+                        "name": "persistedStore",
+                        "override": false,
+                        "read": "persistedStore",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QRemoteObjectAbstractPersistedStore*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPersistedStore"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 51,
+                        "name": "heartbeatInterval",
+                        "notify": "heartbeatIntervalChanged",
+                        "override": false,
+                        "read": "heartbeatInterval",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setHeartbeatInterval"
+                    }
+                ],
+                "qualifiedClassName": "QRemoteObjectNode",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 116,
+                        "name": "remoteObjectAdded",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "type": "QRemoteObjectSourceLocation"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 117,
+                        "name": "remoteObjectRemoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "errorCode",
+                                "type": "QRemoteObjectNode::ErrorCode"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 119,
+                        "name": "error",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "heartbeatInterval",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 120,
+                        "name": "heartbeatIntervalChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            },
+            {
+                "className": "QRemoteObjectHostBase",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 141,
+                        "name": "AllowedSchemas",
+                        "values": [
+                            "BuiltInSchemasOnly",
+                            "AllowExternalRegistration"
+                        ]
+                    }
+                ],
+                "lineNumber": 137,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "object",
+                                "type": "QObject*"
+                            },
+                            {
+                                "name": "name",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 152,
+                        "name": "enableRemoting",
+                        "returnType": "bool"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "object",
+                                "type": "QObject*"
+                            }
+                        ],
+                        "index": 1,
+                        "isCloned": true,
+                        "lineNumber": 152,
+                        "name": "enableRemoting",
+                        "returnType": "bool"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "remoteObject",
+                                "type": "QObject*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 154,
+                        "name": "disableRemoting",
+                        "returnType": "bool"
+                    }
+                ],
+                "object": true,
+                "qualifiedClassName": "QRemoteObjectHostBase",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QRemoteObjectNode"
+                    }
+                ]
+            },
+            {
+                "className": "QRemoteObjectHost",
+                "lineNumber": 174,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 177,
+                        "name": "hostUrl",
+                        "notify": "hostUrlChanged",
+                        "override": false,
+                        "read": "hostUrl",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QUrl",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setHostUrl"
+                    }
+                ],
+                "qualifiedClassName": "QRemoteObjectHost",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 190,
+                        "name": "hostUrlChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QRemoteObjectHostBase"
+                    }
+                ]
+            },
+            {
+                "className": "QRemoteObjectRegistryHost",
+                "lineNumber": 199,
+                "object": true,
+                "qualifiedClassName": "QRemoteObjectRegistryHost",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QRemoteObjectHostBase"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectnode.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QRemoteObjectPendingCallWatcher",
+                "lineNumber": 54,
+                "object": true,
+                "qualifiedClassName": "QRemoteObjectPendingCallWatcher",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "self",
+                                "type": "QRemoteObjectPendingCallWatcher*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 67,
+                        "name": "finished",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    },
+                    {
+                        "access": "public",
+                        "name": "QRemoteObjectPendingCall"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qremoteobjectpendingcall.h",
+        "outputRevision": 69
+    }
+]

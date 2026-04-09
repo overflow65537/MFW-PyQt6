@@ -96,11 +96,13 @@ from qfluentwidgets import FluentIcon as FIF
 from app.view.task_interface.task_interface_logic import TaskInterface
 from app.view.monitor_interface import MonitorInterface
 from app.view.schedule_interface.schedule_interface import ScheduleInterface
+from app.view.dashboard_interface import DashboardInterface
 from app.view.setting_interface.setting_interface import (
     SettingInterface,
 )
 from app.view.test_interface.test_interface import TestInterface
 from app.view.bundle_interface.bundle_interface import BundleInterface
+from app.view.main_window.v5_style import build_v5_stylesheet
 from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.utils.hotkey_manager import GlobalHotkeyManager
@@ -335,6 +337,17 @@ class MainWindow(MSFluentWindow):
         # 初始化窗口
         self.initWindow()
         self._init_shutdown_overlay()
+
+        self.DashboardInterface = DashboardInterface(
+            self.service_coordinator,
+            open_task=lambda: self._switch_to_interface(self.TaskInterface),
+            start_task=self._start_tasks_from_dashboard,
+            open_monitor=lambda: self._switch_to_interface(self.MonitorInterface),
+            open_schedule=lambda: self._switch_to_interface(self.ScheduleInterface),
+            open_setting=lambda: self._switch_to_interface(self.SettingInterface),
+        )
+        self.addSubInterface(self.DashboardInterface, FIF.HOME, self.tr("Home"))
+
         # 创建子界面
         self.TaskInterface = TaskInterface(self.service_coordinator)
         self.addSubInterface(self.TaskInterface, FIF.CHECKBOX, self.tr("Task"))
@@ -416,6 +429,9 @@ class MainWindow(MSFluentWindow):
             logger.info("✓ Announcement 已添加到导航栏")
         else:
             logger.info("多资源适配已开启，Announcement 不会显示在导航栏")
+
+        self._apply_v5_shell_style()
+        self._switch_to_interface(self.DashboardInterface)
 
         # 添加导航项
         self.splashScreen.finish()
@@ -716,6 +732,43 @@ class MainWindow(MSFluentWindow):
         self.show()
         self._init_background_layer()
         QApplication.processEvents()
+
+    def _switch_to_interface(self, interface: QWidget | None) -> None:
+        if interface is None:
+            return
+        if self.stackedWidget.indexOf(interface) < 0:
+            return
+        self.stackedWidget.setCurrentWidget(interface)
+
+    def _start_tasks_from_dashboard(self) -> None:
+        if self.service_coordinator.run_manager.is_running:
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("Task flow is already running")
+            )
+            return
+
+        async def _start_flow():
+            try:
+                await self.service_coordinator.run_tasks_flow()
+            except Exception as exc:
+                logger.error("首页 Start 按钮触发任务运行失败: %s", exc)
+                signalBus.info_bar_requested.emit(
+                    "error", self.tr("Failed to start task flow")
+                )
+
+        QTimer.singleShot(0, lambda: asyncio.create_task(_start_flow()))
+
+    def _apply_v5_shell_style(self) -> None:
+        self.setObjectName("V5MainWindow")
+        try:
+            self.navigationInterface.setObjectName("v5Navigation")
+        except Exception:
+            pass
+        try:
+            self.stackedWidget.setObjectName("v5StackedWidget")
+        except Exception:
+            pass
+        self.setStyleSheet(build_v5_stylesheet())
 
     def _set_initial_geometry(self):
         """在首次展示前恢复之前的窗口几何，或居中显示。"""

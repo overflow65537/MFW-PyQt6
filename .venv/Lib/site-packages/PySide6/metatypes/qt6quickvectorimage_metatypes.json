@@ -1,0 +1,305 @@
+[
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "VectorImage"
+                    }
+                ],
+                "className": "QQuickVectorImage",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 40,
+                        "name": "FillMode",
+                        "values": [
+                            "NoResize",
+                            "PreserveAspectFit",
+                            "PreserveAspectCrop",
+                            "Stretch"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 48,
+                        "name": "RendererType",
+                        "values": [
+                            "GeometryRenderer",
+                            "CurveRenderer"
+                        ]
+                    }
+                ],
+                "lineNumber": 27,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 31,
+                        "name": "source",
+                        "notify": "sourceChanged",
+                        "override": false,
+                        "read": "source",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QUrl",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSource"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 32,
+                        "name": "fillMode",
+                        "notify": "fillModeChanged",
+                        "override": false,
+                        "read": "fillMode",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "FillMode",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setFillMode"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 33,
+                        "name": "preferredRendererType",
+                        "notify": "preferredRendererTypeChanged",
+                        "override": false,
+                        "read": "preferredRendererType",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "RendererType",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPreferredRendererType"
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": true,
+                        "index": 3,
+                        "lineNumber": 34,
+                        "name": "animations",
+                        "override": false,
+                        "read": "animations",
+                        "required": false,
+                        "revision": 1546,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQuickVectorImageAnimations*",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": true,
+                        "index": 4,
+                        "lineNumber": 35,
+                        "name": "assumeTrustedSource",
+                        "notify": "assumeTrustedSourceChanged",
+                        "override": false,
+                        "read": "assumeTrustedSource",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAssumeTrustedSource"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": true,
+                        "index": 5,
+                        "lineNumber": 36,
+                        "name": "asynchronousShapes",
+                        "notify": "asynchronousShapesChanged",
+                        "override": false,
+                        "read": "asynchronousShapes",
+                        "required": false,
+                        "revision": 1547,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAsynchronousShapes"
+                    }
+                ],
+                "qualifiedClassName": "QQuickVectorImage",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 76,
+                        "name": "sourceChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 77,
+                        "name": "fillModeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 79,
+                        "name": "preferredRendererTypeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 80,
+                        "name": "asynchronousShapesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 4,
+                        "lineNumber": 81,
+                        "name": "assumeTrustedSourceChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "private",
+                        "index": 5,
+                        "lineNumber": 84,
+                        "name": "updateRootItemScale",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "index": 6,
+                        "lineNumber": 85,
+                        "name": "updateAnimationProperties",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QQuickItem"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "anonymous"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1546"
+                    }
+                ],
+                "className": "QQuickVectorImageAnimations",
+                "lineNumber": 92,
+                "methods": [
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 111,
+                        "name": "restart",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": true,
+                        "index": 0,
+                        "lineNumber": 96,
+                        "name": "loops",
+                        "notify": "loopsChanged",
+                        "override": false,
+                        "read": "loops",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setLoops"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": true,
+                        "index": 1,
+                        "lineNumber": 97,
+                        "name": "paused",
+                        "notify": "pausedChanged",
+                        "override": false,
+                        "read": "paused",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPaused"
+                    }
+                ],
+                "qualifiedClassName": "QQuickVectorImageAnimations",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 114,
+                        "name": "loopsChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 115,
+                        "name": "enabledChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 116,
+                        "name": "pausedChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qquickvectorimage_p.h",
+        "outputRevision": 69
+    }
+]

@@ -1,0 +1,1190 @@
+[
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ConeGeometry"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QConeGeometry"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QConeGeometryForeign",
+                "gadget": true,
+                "lineNumber": 64,
+                "qualifiedClassName": "QConeGeometryForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ConeGeometryView"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QConeGeometryView"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "528"
+                    }
+                ],
+                "className": "QConeGeometryViewForeign",
+                "gadget": true,
+                "lineNumber": 72,
+                "qualifiedClassName": "QConeGeometryViewForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ConeMesh"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QConeMesh"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QConeMeshForeign",
+                "gadget": true,
+                "lineNumber": 80,
+                "qualifiedClassName": "QConeMeshForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "CuboidGeometry"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QCuboidGeometry"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QCuboidGeometryForeign",
+                "gadget": true,
+                "lineNumber": 88,
+                "qualifiedClassName": "QCuboidGeometryForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "CuboidGeometryView"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QCuboidGeometryView"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "528"
+                    }
+                ],
+                "className": "QCuboidGeometryViewForeign",
+                "gadget": true,
+                "lineNumber": 96,
+                "qualifiedClassName": "QCuboidGeometryViewForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "CuboidMesh"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QCuboidMesh"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QCuboidMeshForeign",
+                "gadget": true,
+                "lineNumber": 104,
+                "qualifiedClassName": "QCuboidMeshForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "CylinderGeometry"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QCylinderGeometry"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QCylinderGeometryForeign",
+                "gadget": true,
+                "lineNumber": 112,
+                "qualifiedClassName": "QCylinderGeometryForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "CylinderGeometryView"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QCylinderGeometryView"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "528"
+                    }
+                ],
+                "className": "QCylinderGeometryViewForeign",
+                "gadget": true,
+                "lineNumber": 120,
+                "qualifiedClassName": "QCylinderGeometryViewForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "CylinderMesh"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QCylinderMesh"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QCylinderMeshForeign",
+                "gadget": true,
+                "lineNumber": 128,
+                "qualifiedClassName": "QCylinderMeshForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "DiffuseMapMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QDiffuseMapMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QDiffuseMapMaterialForeign",
+                "gadget": true,
+                "lineNumber": 136,
+                "qualifiedClassName": "QDiffuseMapMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "DiffuseSpecularMapMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QDiffuseSpecularMapMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QDiffuseSpecularMapMaterialForeign",
+                "gadget": true,
+                "lineNumber": 144,
+                "qualifiedClassName": "QDiffuseSpecularMapMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "DiffuseSpecularMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QDiffuseSpecularMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "522"
+                    }
+                ],
+                "className": "QDiffuseSpecularMaterialForeign",
+                "gadget": true,
+                "lineNumber": 152,
+                "qualifiedClassName": "QDiffuseSpecularMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ExtrudedTextGeometry"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QExtrudedTextGeometry"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "521"
+                    }
+                ],
+                "className": "QExtrudedTextGeometryForeign",
+                "gadget": true,
+                "lineNumber": 160,
+                "qualifiedClassName": "QExtrudedTextGeometryForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ExtrudedTextMesh"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QExtrudedTextMesh"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "521"
+                    }
+                ],
+                "className": "QExtrudedTextMeshForeign",
+                "gadget": true,
+                "lineNumber": 168,
+                "qualifiedClassName": "QExtrudedTextMeshForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "FirstPersonCameraController"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QFirstPersonCameraController"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QFirstPersonCameraControllerForeign",
+                "gadget": true,
+                "lineNumber": 176,
+                "qualifiedClassName": "QFirstPersonCameraControllerForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ForwardRenderer"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QForwardRenderer"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QForwardRendererForeign",
+                "gadget": true,
+                "lineNumber": 184,
+                "qualifiedClassName": "QForwardRendererForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "GoochMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QGoochMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QGoochMaterialForeign",
+                "gadget": true,
+                "lineNumber": 192,
+                "qualifiedClassName": "QGoochMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "MetalRoughMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QMetalRoughMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "521"
+                    }
+                ],
+                "className": "QMetalRoughMaterialForeign",
+                "gadget": true,
+                "lineNumber": 200,
+                "qualifiedClassName": "QMetalRoughMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "NormalDiffuseMapAlphaMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QNormalDiffuseMapAlphaMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QNormalDiffuseMapAlphaMaterialForeign",
+                "gadget": true,
+                "lineNumber": 208,
+                "qualifiedClassName": "QNormalDiffuseMapAlphaMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "NormalDiffuseMapMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QNormalDiffuseMapMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QNormalDiffuseMapMaterialForeign",
+                "gadget": true,
+                "lineNumber": 216,
+                "qualifiedClassName": "QNormalDiffuseMapMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "NormalDiffuseSpecularMapMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QNormalDiffuseSpecularMapMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QNormalDiffuseSpecularMapMaterialForeign",
+                "gadget": true,
+                "lineNumber": 224,
+                "qualifiedClassName": "QNormalDiffuseSpecularMapMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "OrbitCameraController"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QOrbitCameraController"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QOrbitCameraControllerForeign",
+                "gadget": true,
+                "lineNumber": 232,
+                "qualifiedClassName": "QOrbitCameraControllerForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "PerVertexColorMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QPerVertexColorMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QPerVertexColorMaterialForeign",
+                "gadget": true,
+                "lineNumber": 240,
+                "qualifiedClassName": "QPerVertexColorMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "PhongAlphaMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QPhongAlphaMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QPhongAlphaMaterialForeign",
+                "gadget": true,
+                "lineNumber": 248,
+                "qualifiedClassName": "QPhongAlphaMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "PhongMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QPhongMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QPhongMaterialForeign",
+                "gadget": true,
+                "lineNumber": 256,
+                "qualifiedClassName": "QPhongMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "PlaneGeometry"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QPlaneGeometry"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QPlaneGeometryForeign",
+                "gadget": true,
+                "lineNumber": 264,
+                "qualifiedClassName": "QPlaneGeometryForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "PlaneGeometryView"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QPlaneGeometryView"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "528"
+                    }
+                ],
+                "className": "QPlaneGeometryViewForeign",
+                "gadget": true,
+                "lineNumber": 272,
+                "qualifiedClassName": "QPlaneGeometryViewForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "PlaneMesh"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QPlaneMesh"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QPlaneMeshForeign",
+                "gadget": true,
+                "lineNumber": 280,
+                "qualifiedClassName": "QPlaneMeshForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "SkyboxEntity"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QSkyboxEntity"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QSkyboxEntityForeign",
+                "gadget": true,
+                "lineNumber": 288,
+                "qualifiedClassName": "QSkyboxEntityForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "SphereGeometry"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QSphereGeometry"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QSphereGeometryForeign",
+                "gadget": true,
+                "lineNumber": 296,
+                "qualifiedClassName": "QSphereGeometryForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "SphereGeometryView"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QSphereGeometryView"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "528"
+                    }
+                ],
+                "className": "QSphereGeometryViewForeign",
+                "gadget": true,
+                "lineNumber": 304,
+                "qualifiedClassName": "QSphereGeometryViewForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "SphereMesh"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QSphereMesh"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QSphereMeshForeign",
+                "gadget": true,
+                "lineNumber": 312,
+                "qualifiedClassName": "QSphereMeshForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "SpriteGrid"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QSpriteGrid"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "522"
+                    }
+                ],
+                "className": "QSpriteGridForeign",
+                "gadget": true,
+                "lineNumber": 320,
+                "qualifiedClassName": "QSpriteGridForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "SpriteItem"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QSpriteSheetItem"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "522"
+                    }
+                ],
+                "className": "QSpriteItemForeign",
+                "gadget": true,
+                "lineNumber": 328,
+                "qualifiedClassName": "QSpriteItemForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Text2DEntity"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QText2DEntity"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "521"
+                    }
+                ],
+                "className": "QText2DEntityForeign",
+                "gadget": true,
+                "lineNumber": 336,
+                "qualifiedClassName": "QText2DEntityForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "TextureMaterial"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QTextureMaterial"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QTextureMaterialForeign",
+                "gadget": true,
+                "lineNumber": 344,
+                "qualifiedClassName": "QTextureMaterialForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "TorusGeometry"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QTorusGeometry"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QTorusGeometryForeign",
+                "gadget": true,
+                "lineNumber": 352,
+                "qualifiedClassName": "QTorusGeometryForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "TorusGeometryView"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QTorusGeometryView"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "528"
+                    }
+                ],
+                "className": "QTorusGeometryViewForeign",
+                "gadget": true,
+                "lineNumber": 360,
+                "qualifiedClassName": "QTorusGeometryViewForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "TorusMesh"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QTorusMesh"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "512"
+                    }
+                ],
+                "className": "QTorusMeshForeign",
+                "gadget": true,
+                "lineNumber": 368,
+                "qualifiedClassName": "QTorusMeshForeign"
+            }
+        ],
+        "inputFile": "qt3dquick3dextrasforeign_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "Qt3DQuickWindow",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 57,
+                        "name": "CameraAspectRatioMode",
+                        "values": [
+                            "AutomaticAspectRatio",
+                            "UserAspectRatio"
+                        ]
+                    }
+                ],
+                "lineNumber": 42,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 45,
+                        "name": "cameraAspectRatioMode",
+                        "notify": "cameraAspectRatioModeChanged",
+                        "override": false,
+                        "read": "cameraAspectRatioMode",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "CameraAspectRatioMode",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setCameraAspectRatioMode"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DExtras::Quick::Qt3DQuickWindow",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mode",
+                                "type": "CameraAspectRatioMode"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 67,
+                        "name": "cameraAspectRatioModeChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QWindow"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qt3dquickwindow.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "LevelOfDetailLoader"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "521"
+                    }
+                ],
+                "className": "Quick3DLevelOfDetailLoader",
+                "lineNumber": 30,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "center",
+                                "type": "QVector3D"
+                            },
+                            {
+                                "name": "radius",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 64,
+                        "name": "createBoundingSphere",
+                        "returnType": "Qt3DRender::QLevelOfDetailBoundingSphere"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 37,
+                        "name": "sources",
+                        "notify": "sourcesChanged",
+                        "override": false,
+                        "read": "sources",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QVariantList",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSources"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 39,
+                        "name": "camera",
+                        "notify": "cameraChanged",
+                        "override": false,
+                        "read": "camera",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DRender::QCamera*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setCamera"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 40,
+                        "name": "currentIndex",
+                        "notify": "currentIndexChanged",
+                        "override": false,
+                        "read": "currentIndex",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setCurrentIndex"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 41,
+                        "name": "thresholdType",
+                        "notify": "thresholdTypeChanged",
+                        "override": false,
+                        "read": "thresholdType",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DRender::QLevelOfDetail::ThresholdType",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setThresholdType"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 42,
+                        "name": "thresholds",
+                        "notify": "thresholdsChanged",
+                        "override": false,
+                        "read": "thresholds",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QList<qreal>",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setThresholds"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 43,
+                        "name": "volumeOverride",
+                        "notify": "volumeOverrideChanged",
+                        "override": false,
+                        "read": "volumeOverride",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DRender::QLevelOfDetailBoundingSphere",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setVolumeOverride"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 6,
+                        "lineNumber": 45,
+                        "name": "entity",
+                        "notify": "entityChanged",
+                        "override": false,
+                        "read": "entity",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QObject*",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 7,
+                        "lineNumber": 46,
+                        "name": "source",
+                        "notify": "sourceChanged",
+                        "override": false,
+                        "read": "source",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QUrl",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DExtras::Extras::Quick::Quick3DLevelOfDetailLoader",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 70,
+                        "name": "sourcesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 71,
+                        "name": "cameraChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 72,
+                        "name": "currentIndexChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 73,
+                        "name": "thresholdTypeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 4,
+                        "lineNumber": 74,
+                        "name": "thresholdsChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "lineNumber": 75,
+                        "name": "volumeOverrideChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 6,
+                        "lineNumber": 76,
+                        "name": "entityChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 7,
+                        "lineNumber": 77,
+                        "name": "sourceChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QEntity"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "quick3dlevelofdetailloader_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "DefaultProperty",
+                        "value": "sprites"
+                    }
+                ],
+                "className": "Quick3DSpriteSheet",
+                "lineNumber": 29,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 32,
+                        "name": "sprites",
+                        "override": false,
+                        "read": "sprites",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<Qt3DExtras::QSpriteSheetItem>",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DExtras::Extras::Quick::Quick3DSpriteSheet",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "SpriteSheet"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Qt3DExtras::QSpriteSheet"
+                    },
+                    {
+                        "name": "QML.Extended",
+                        "value": "Qt3DExtras::Extras::Quick::Quick3DSpriteSheet"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "522"
+                    }
+                ],
+                "className": "QSpriteSheetForeign",
+                "gadget": true,
+                "lineNumber": 42,
+                "qualifiedClassName": "Qt3DExtras::Extras::Quick::QSpriteSheetForeign"
+            }
+        ],
+        "inputFile": "quick3dspritesheet_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "Qt3DQuickWindowIncubationController",
+                "lineNumber": 34,
+                "object": true,
+                "qualifiedClassName": "Qt3DExtras::Quick::Qt3DQuickWindowIncubationController",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    },
+                    {
+                        "access": "public",
+                        "name": "QQmlIncubationController"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qt3dquickwindow.cpp",
+        "outputRevision": 69
+    }
+]

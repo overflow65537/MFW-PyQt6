@@ -1,0 +1,46 @@
+[
+    {
+        "classes": [
+            {
+                "className": "QTypedJson",
+                "enums": [
+                    {
+                        "isClass": true,
+                        "isFlag": false,
+                        "lineNumber": 44,
+                        "name": "ObjectOption",
+                        "values": [
+                            "None",
+                            "KeepExtraFields",
+                            "WarnExtra"
+                        ]
+                    },
+                    {
+                        "isClass": true,
+                        "isFlag": false,
+                        "lineNumber": 49,
+                        "name": "ParseMode",
+                        "values": [
+                            "StopOnError"
+                        ]
+                    },
+                    {
+                        "isClass": true,
+                        "isFlag": false,
+                        "lineNumber": 52,
+                        "name": "ParseStatus",
+                        "values": [
+                            "Normal",
+                            "Failed"
+                        ]
+                    }
+                ],
+                "lineNumber": 39,
+                "namespace": true,
+                "qualifiedClassName": "QTypedJson"
+            }
+        ],
+        "inputFile": "qtypedjson_p.h",
+        "outputRevision": 69
+    }
+]

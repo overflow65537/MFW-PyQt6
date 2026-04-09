@@ -1,0 +1,90 @@
+[
+    {
+        "classes": [
+            {
+                "className": "Executor",
+                "lineNumber": 33,
+                "object": true,
+                "qualifiedClassName": "Qt3DLogic::Logic::Executor",
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "nodeIds",
+                                "type": "QList<Qt3DCore::QNodeId>"
+                            },
+                            {
+                                "name": "dt",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 42,
+                        "name": "processLogicFrameUpdates",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "executor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QFrameAction",
+                "lineNumber": 21,
+                "object": true,
+                "qualifiedClassName": "Qt3DLogic::QFrameAction",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "dt",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 33,
+                        "name": "triggered",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QComponent"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qframeaction.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QLogicAspect",
+                "lineNumber": 16,
+                "object": true,
+                "qualifiedClassName": "Qt3DLogic::QLogicAspect",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QAbstractAspect"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qlogicaspect.h",
+        "outputRevision": 69
+    }
+]

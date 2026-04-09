@@ -1,0 +1,57 @@
+Metadata-Version: 2.3
+Name: json-with-comments
+Version: 1.2.10
+Summary: JSON with Comments (jsonc) for Python
+Project-URL: Repository, https://github.com/n-takumasa/json-with-comments
+Author-email: Takumasa Nakamura <n.takumasa@gmail.com>
+License: MIT
+Keywords: json with comments,jsonc
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: Implementation :: PyPy
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+
+# JSON with Comments for Python
+[![pypi version](https://img.shields.io/pypi/v/json-with-comments.svg)](https://pypi.python.org/project/json-with-comments)
+[![Python package](https://github.com/n-takumasa/json-with-comments/actions/workflows/test.yml/badge.svg)](https://github.com/n-takumasa/json-with-comments/actions/workflows/test.yml)
+[![Python Versions](https://img.shields.io/pypi/pyversions/json-with-comments.svg)](https://pypi.org/project/json-with-comments/)
+
+## Features
+* `load()`, `loads()`
+  * Remove single line (`//`) and block comments (`/* */`)
+  * Remove trailing commas from arrays and objects
+* `dump()`, `dumps()`
+  * Add comments
+  * Add trailing commas
+
+## Usage
+
+```sh
+pip install json-with-comments
+```
+
+```py
+>>> import jsonc
+>>> jsonc.loads("{// comment \n}")
+{}
+>>> jsonc.loads("{/* comment */}")
+{}
+>>> jsonc.loads('{"spam": "ham // egg" /* comment */}')
+{'spam': 'ham // egg'}
+>>> jsonc.loads('{"spam": /* comment */"ham /* egg */"}')
+{'spam': 'ham /* egg */'}
+
+```
+
+And just like `json` module

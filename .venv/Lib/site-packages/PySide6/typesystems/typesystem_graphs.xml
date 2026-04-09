@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// Copyright (C) 2023 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+-->
+<typesystem package="PySide6.QtGraphs"
+            namespace-begin="QT_BEGIN_NAMESPACE" namespace-end="QT_END_NAMESPACE">
+
+   <extra-includes>
+      <include file-name="qtgraphs_helper.h" location="global"/>
+   </extra-includes>
+
+  <load-typesystem name="typesystem_quick.xml" generate="no" />
+
+  <function signature="qDefaultSurfaceFormat(bool)"/>
+
+   <namespace-type name="QtGraphs3D">
+     <enum-type name="ElementType"/>
+     <enum-type name="GridLineType"/>
+     <enum-type name="OptimizationHint" flags="OptimizationHints"/>
+     <enum-type name="RenderingMode"/>
+     <enum-type name="SelectionFlag" flags="SelectionFlags"/>
+     <enum-type name="ShadowQuality"/>
+     <enum-type name="TransparencyTechnique" since="6.7"/>
+     <enum-type name="CameraPreset" since="6.7"/>
+     <enum-type name="SliceCaptureType" since="6.10"/>
+   </namespace-type>
+
+   <value-type name="QGraphsLine" since="6.8">
+       <modify-function signature="create(QJSValue)" remove="all"/>
+       <modify-function signature="swap(QGraphsLine&amp;)" remove="all"/>
+   </value-type>
+
+  <object-type name="QAbstract3DAxis">
+    <enum-type name="AxisOrientation"/>
+    <enum-type name="AxisType"/>
+  </object-type>
+  <object-type name="QCategory3DAxis"/>
+  <object-type name="QLogValue3DAxisFormatter"/>
+  <object-type name="QValue3DAxis">
+  <modify-function signature="setFormatter(QValue3DAxisFormatter *)">
+    <modify-argument index="1">
+      <parent index="this" action="add"/>
+    </modify-argument>
+  </modify-function>
+  </object-type>
+  <object-type name="QValue3DAxisFormatter">
+    <modify-function signature="createNewInstance() const">
+      <modify-argument index="return">
+        <define-ownership class="native" owner="c++"/>
+        <define-ownership class="target" owner="default"/>
+      </modify-argument>
+    </modify-function>
+  </object-type>
+  <object-type name="QAbstract3DSeries">
+    <enum-type name="Mesh"/>
+    <enum-type name="SeriesType"/>
+    <enum-type name="LightingMode" since="6.10"/>
+  </object-type>
+  <object-type name="QAbstractDataProxy">
+    <enum-type name="DataType"/>
+  </object-type>
+  <object-type name="QAreaSeries" since="6.8"/>
+  <object-type name="QBar3DSeries">
+    <modify-function signature="setDataProxy(QBarDataProxy*)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+  </object-type>
+  <value-type name="QBarDataItem"/>
+  <object-type name="QBarDataProxy">
+      <enum-type name="RemoveLabels" since="6.8"/>
+  </object-type>
+  <object-type name="QBarModelMapper" since="6.8"/>
+  <object-type name="QCustomSeries" since="6.11"/>
+  <object-type name="QCustom3DItem"/>
+  <object-type name="QCustom3DLabel"/>
+  <object-type name="QCustom3DVolume">
+      <modify-function signature="setTextureData(QList&lt;uchar&gt;*)" remove="all"/>
+      <add-function signature="setTextureData(const QList&lt;uchar&gt;&amp;)">
+          <inject-code class="target" position="beginning" file="../glue/qtdatavisualization.cpp"
+                       snippet="qcustom3dvolume-settexturedata"/>
+      </add-function>
+  </object-type>
+  <object-type name="QDateTimeAxis" since="6.8"/>
+  <object-type name="QHeightMapSurfaceDataProxy"/>
+  <object-type name="QItemModelBarDataProxy">
+    <enum-type name="MultiMatchBehavior"/>
+  </object-type>
+  <object-type name="QItemModelScatterDataProxy"/>
+  <object-type name="QItemModelSurfaceDataProxy">
+    <enum-type name="MultiMatchBehavior"/>
+  </object-type>
+  <value-type name="QLegendData" since="6.8"/>
+  <object-type name="QScatter3DSeries">
+    <modify-function signature="setDataProxy(QScatterDataProxy*)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+  </object-type>
+  <object-type name="QPieModelMapper" since="6.8"/>
+  <object-type name="QPieSeries" since="6.8">
+    <enum-type name="LabelVisibility" since="6.10"/>
+  </object-type>
+  <object-type name="QPieSlice" since="6.8">
+      <enum-type name="LabelPosition"/>
+  </object-type>
+  <value-type name="QScatterDataItem"/>
+  <object-type name="QScatterDataProxy">
+  </object-type>
+  <object-type name="QSplineSeries" since="6.8"/>
+  <object-type name="QSpline3DSeries" since="6.9"/>
+  <object-type name="QSurface3DSeries">
+    <enum-type name="Shading" since="6.8"/>
+    <enum-type name="DrawFlag" flags="DrawFlags"/>
+    <modify-function signature="QSurface3DSeries(QSurfaceDataProxy*,QObject*)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+    <modify-function signature="setDataProxy(QSurfaceDataProxy*)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+  </object-type>
+  <value-type name="QSurfaceDataItem"/>
+  <object-type name="QSurfaceDataProxy">
+    <inject-code class="native" position="beginning">
+      #include &lt;sbknumpycheck.h&gt;
+      #include &lt;qtgraphs_helper.h&gt;
+    </inject-code>
+    <add-function signature="resetArrayNp(double@x@,double@deltaX@,double@z@,double@deltaZ@,PyArrayObject*@data@)">
+        <inject-code file="../glue/qtgraphs.cpp"
+                     snippet="graphs-qsurfacedataproxy-resetarraynp"/>
+        <inject-documentation format="target" mode="append">
+        Populates the data from a 2 dimensional numpy array containing the y
+        values for a range starting a ``x``, ``z`` with steps of ``deltaX``,
+        ``deltaZ``, respectively.
+        </inject-documentation>
+    </add-function>
+  </object-type>
+  <object-type name="Q3DScene"/>
+  <object-type name="QGraphsTheme" since="6.8">
+    <enum-type name="ColorScheme"/>
+    <enum-type name="ColorStyle"/>
+    <enum-type name="ForceTheme"/>
+    <enum-type name="Theme"/>
+  </object-type>
+  <value-type name="QGraphsThemeDirtyBitField" since="6.8"/>
+
+  <!-- 2D -->
+  <object-type name="QBarCategoryAxis">
+    <enum-type name="LabelPosition" since="6.11"/>
+  </object-type>
+  <object-type name="QAbstractAxis">
+    <enum-type name="AxisType"/>
+  </object-type>
+  <object-type name="QValueAxis"/>
+  <object-type name="QBarSeries">
+    <enum-type name="LabelsPosition"/>
+    <enum-type name="BarsType" since="6.8"/>
+    <modify-function signature="append(QBarSet*)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+    <modify-function signature="append(QList&lt;QBarSet*&gt;)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+    <modify-function signature="insert(qsizetype,QBarSet*)">
+      <modify-argument index="2">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+    <modify-function signature="take(QBarSet*)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+  </object-type>
+  <object-type name="QBarSet"/>
+  <object-type name="QLineSeries">
+      <enum-type name="LineStyle" since="6.11"/>
+      <enum-type name="StrokeStyle" since="6.11"/>
+  </object-type>
+  <object-type name="QAbstractSeries">
+    <enum-type name="SeriesType"/>
+  </object-type>
+  <object-type name="QScatterSeries"/>
+  <object-type name="QXYModelMapper" since="6.8"/>
+  <object-type name="QXYSeries">
+      <extra-includes>
+          <include file-name="pyside_numpy.h" location="global"/>
+      </extra-includes>
+      <add-function signature="appendNp(PyArrayObject *@x@, PyArrayObject *@y@)">
+          <inject-code file="../glue/qtcharts.cpp" snippet="qxyseries-appendnp-numpy-x-y"/>
+          <inject-documentation format="target" mode="append">
+          Adds the list of data points specified by two
+          one-dimensional, equally sized numpy arrays representing the x, y values, respectively.
+          </inject-documentation>
+      </add-function>
+      <add-function signature="replaceNp(PyArrayObject *@x@, PyArrayObject *@y@)">
+          <inject-code file="../glue/qtcharts.cpp" snippet="qxyseries-replacenp-numpy-x-y"/>
+          <inject-documentation format="target" mode="append">
+          Replaces the current points with the points specified by two
+          one-dimensional, equally sized numpy arrays representing the x, y values, respectively.
+          </inject-documentation>
+      </add-function>
+  </object-type>
+
+  <extra-includes>
+    <include file-name="qutils.h" location="global"/>
+  </extra-includes>
+</typesystem>

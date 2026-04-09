@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+-->
+<typesystem package="PySide6.QtMultimedia"
+            namespace-begin="QT_BEGIN_NAMESPACE" namespace-end="QT_END_NAMESPACE">
+    <load-typesystem name="typesystem_core.xml" generate="no"/>
+    <load-typesystem name="typesystem_gui.xml" generate="no"/>
+    <load-typesystem name="typesystem_network.xml" generate="no"/>
+
+    <namespace-type name="QAudio">
+        <enum-type name="Error"/>
+        <enum-type name="State"/>
+        <enum-type name="VolumeScale"/>
+        <!-- Compatibility alias that calls QtAudio::convertVolume() -->
+        <add-function signature="convertVolume(float@volume@,QAudio::VolumeScale@from@,QAudio::VolumeScale@to@)"
+                      return-type="float">
+            <inject-code file="../glue/qtmultimedia.cpp" snippet="qaudio-convertvolume"/>
+        </add-function>
+    </namespace-type>
+
+    <namespace-type name="QtAudio">
+        <enum-type name="Error"/>
+        <enum-type name="State"/>
+        <enum-type name="VolumeScale"/>
+        <modify-field name="NoError" remove="true"/>
+        <modify-field name="OpenError" remove="true"/>
+        <modify-field name="IOError" remove="true"/>
+        <modify-field name="UnderrunError" remove="true"/>
+        <modify-field name="FatalError" remove="true"/>
+        <modify-field name="ActiveState" remove="true"/>
+        <modify-field name="SuspendedState" remove="true"/>
+        <modify-field name="StoppedState" remove="true"/>
+        <modify-field name="IdleState" remove="true"/>
+        <modify-field name="LinearVolumeScale" remove="true"/>
+        <modify-field name="CubicVolumeScale" remove="true"/>
+        <modify-field name="LogarithmicVolumeScale" remove="true"/>
+        <modify-field name="DecibelVolumeScale" remove="true"/>
+    </namespace-type>
+
+    <namespace-type name="QtVideo" since="6.7">
+        <enum-type name="Rotation"/>
+    </namespace-type>
+    <object-type name="QAbstractVideoBuffer" since="6.8">
+        <value-type name="MapData"/>
+    </object-type>
+    <value-type name="QAudioBuffer">
+        <add-function signature="data()" return-type="PyBuffer">
+            <inject-code file="../glue/qtmultimedia.cpp" snippet="qaudiobuffer-data"/>
+        </add-function>
+        <add-function signature="constData()" return-type="PyBuffer">
+            <inject-code file="../glue/qtmultimedia.cpp" snippet="qaudiobuffer-const-data"/>
+        </add-function>
+    </value-type>
+    <object-type name="QAudioBufferInput" since="6.8"/>
+    <object-type name="QAudioBufferOutput" since="6.8"/>
+    <object-type name="QAudioDecoder">
+        <enum-type name="Error"/>
+    </object-type>
+    <value-type name="QAudioFormat">
+        <enum-type name="SampleFormat" since="6.1"/>
+        <enum-type name="ChannelConfig"/>
+        <enum-type name="AudioChannelPosition" since="6.2"/>
+        <modify-function signature="normalizedSampleValue(const void*)const">
+            <modify-argument index="1">
+              <replace-type modified-type="PyBuffer"/>
+              <conversion-rule class="native">
+                  <insert-template name="pybuffer_const_char"/>
+              </conversion-rule>
+            </modify-argument>
+        </modify-function>
+    </value-type>
+    <value-type name="QAudioDevice">
+        <enum-type name="Mode"/>
+    </value-type>
+
+    <object-type name="QAudioInput"/>
+    <object-type name="QAudioOutput"/>
+
+    <object-type name="QAudioSource">
+      <modify-function signature="start()" allow-thread="true">
+        <modify-argument index="return">
+          <define-ownership class="target" owner="c++"/>
+        </modify-argument>
+      </modify-function>
+      <modify-function signature="start(QIODevice*)" allow-thread="true">
+        <modify-argument index="1">
+          <define-ownership class="target" owner="c++"/>
+        </modify-argument>
+      </modify-function>
+      <modify-function signature="stop()" allow-thread="true"/>
+    </object-type>
+
+    <object-type name="QAudioSink">
+      <modify-function signature="start()" allow-thread="true">
+        <modify-argument index="return">
+          <define-ownership class="target" owner="c++"/>
+        </modify-argument>
+      </modify-function>
+      <modify-function signature="start(QIODevice*)" allow-thread="true">
+        <modify-argument index="1">
+          <define-ownership class="target" owner="c++"/>
+        </modify-argument>
+      </modify-function>
+      <modify-function signature="stop()" allow-thread="true"/>
+    </object-type>
+
+    <object-type name="QCamera">
+        <enum-type name="Error"/>
+        <enum-type name="ExposureMode" since="6.1"/>
+        <enum-type name="Feature" flags="Features" since="6.1"/>
+        <enum-type name="FlashMode" since="6.1"/>
+        <enum-type name="FocusMode" since="6.1"/>
+        <enum-type name="TorchMode" since="6.1"/>
+        <enum-type name="WhiteBalanceMode" since="6.1"/>
+    </object-type>
+    <value-type name="QCameraFormat" since="6.1"/>
+    <value-type name="QCameraDevice">
+        <enum-type name="Position" since="6.1"/>
+    </value-type>
+
+    <value-type name="QCapturableWindow" since="6.6"/>
+
+    <object-type name="QImageCapture">
+        <enum-type name="Error"/>
+        <enum-type name="FileFormat"/>
+        <enum-type name="Quality"/>
+    </object-type>
+
+    <object-type name="QMediaCaptureSession" since="6.1"/>
+
+    <!-- FFMPEG query functions need threads. -->
+    <object-type name="QMediaDevices" since="6.1" allow-thread="true"/>
+
+    <value-type name="QMediaFormat" since="6.1">
+        <enum-type name="AudioCodec"/>
+        <enum-type name="ConversionMode"/>
+        <enum-type name="FileFormat"/>
+        <enum-type name="VideoCodec"/>
+        <enum-type name="ResolveFlags"/>
+    </value-type>
+
+    <value-type name="QMediaMetaData" since="6.1">
+        <enum-type name="Key"/>
+    </value-type>
+    <object-type name="QMediaPlayer">
+        <enum-type name="MediaStatus"/>
+        <enum-type name="PitchCompensationAvailability" since="6.10"/>
+        <enum-type name="PlaybackState" since="6.1"/>
+        <enum-type name="Error"/>
+        <enum-type name="Loops" python-type="IntEnum" since="6.2.3"/>
+        <modify-function signature="setSource(QUrl)" allow-thread="true"/>
+    </object-type>
+    <!-- see qtmultimedia/5773f7214c7430a98dea3974c0597cb3ee0ea7f5 might reappear in 6.3
+    <object-type name="QMediaPlaylist"/>
+     -->
+    <object-type name="QMediaRecorder">
+        <enum-type name="Error" since="6.1"/>
+        <enum-type name="EncodingMode" since="6.1"/>
+        <enum-type name="RecorderState" since="6.1"/>
+        <enum-type name="Quality" since="6.1"/>
+    </object-type>
+    <value-type name="QMediaTimeRange">
+        <value-type name="Interval"/>
+    </value-type>
+
+    <value-type name="QPlaybackOptions" since="6.10">
+        <enum-type name="PlaybackIntent"/>
+    </value-type>
+
+    <object-type name="QScreenCapture" since="6.5">
+        <enum-type name="Error"/>
+    </object-type>
+
+    <object-type name="QSoundEffect">
+        <enum-type name="Loop"/>
+        <enum-type name="Status"/>
+    </object-type>
+
+    <value-type name="QVideoFrame">
+        <enum-type name="HandleType"/>
+        <enum-type name="MapMode" since="6.1"/>
+        <enum-type name="RotationAngle" since="6.2.3"/>
+        <modify-function signature="bits(int)">
+          <inject-code file="../glue/qtmultimedia.cpp" snippet="qvideoframe-bits"/>
+        </modify-function>
+        <modify-function signature="bits(int)const" remove="all"/>
+        <value-type name="PaintOptions">
+            <enum-type name="PaintFlag" flags="PaintFlags"/>
+        </value-type>
+    </value-type>
+    <value-type name="QVideoFrameFormat" since="6.1">
+        <enum-type name="ColorSpace" since="6.4"/>
+        <enum-type name="ColorTransfer" since="6.4"/>
+        <enum-type name="ColorRange" since="6.4"/>
+        <enum-type name="Direction"/>
+        <enum-type name="PixelFormat"/>
+        <enum-type name="YCbCrColorSpace"/>
+    </value-type>
+    <object-type name="QVideoFrameInput" since="6.8"/>
+
+    <object-type name="QWaveDecoder">
+        <!-- No implementation -->
+        <modify-function signature="setIODevice(QIODevice*)" remove="all"/>
+    </object-type>
+
+    <object-type name="QWindowCapture" since="6.6">
+        <enum-type name="Error"/>
+    </object-type>
+
+    <object-type name="QVideoSink" since="6.1"/>
+</typesystem>

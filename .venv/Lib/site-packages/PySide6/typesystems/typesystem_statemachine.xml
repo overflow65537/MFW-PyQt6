@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+-->
+<typesystem package="PySide6.QtStateMachine"
+            namespace-begin="QT_BEGIN_NAMESPACE" namespace-end="QT_END_NAMESPACE">
+  <load-typesystem name="typesystem_gui.xml" generate="no"/>
+
+  <object-type name="QAbstractState">
+    <modify-function signature="machine()const">
+        <modify-argument index="this">
+            <parent index="return" action="add"/>
+        </modify-argument>
+    </modify-function>
+  </object-type>
+
+  <object-type name="QAbstractTransition">
+    <enum-type name="TransitionType"/>
+
+    <modify-function signature="QAbstractTransition(QState*)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+
+    <modify-function signature="addAnimation(QAbstractAnimation*)">
+      <modify-argument index="1">
+        <reference-count action="add"/>
+      </modify-argument>
+    </modify-function>
+
+    <modify-function signature="removeAnimation(QAbstractAnimation*)">
+      <modify-argument index="1">
+        <reference-count action="remove"/>
+      </modify-argument>
+    </modify-function>
+
+    <modify-function signature="setTargetState(QAbstractState*)">
+      <modify-argument index="1">
+        <reference-count action="set"/>
+      </modify-argument>
+    </modify-function>
+
+    <modify-function signature="targetState()const">
+      <modify-argument index="return">
+        <reference-count action="set" variable-name="setTargetState(QAbstractState*)1"/>
+      </modify-argument>
+    </modify-function>
+
+    <modify-function signature="targetStates()const">
+      <modify-argument index="return">
+        <reference-count action="set" variable-name="setTargetState(QAbstractState*)1"/>
+      </modify-argument>
+    </modify-function>
+
+    <modify-function signature="setTargetStates(QList&lt;QAbstractState*&gt;)">
+      <modify-argument index="1">
+        <reference-count action="set" variable-name="setTargetState(QAbstractState*)1"/>
+      </modify-argument>
+    </modify-function>
+
+  </object-type>
+
+  <object-type name="QEventTransition">
+    <modify-function signature="QEventTransition(QState*)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+
+    <modify-function signature="QEventTransition(QObject*,QEvent::Type,QState*)">
+      <modify-argument index="3">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+
+  </object-type>
+
+  <object-type name="QKeyEventTransition"/>
+  <object-type name="QMouseEventTransition"/>
+
+  <object-type name="QFinalState"/>
+
+  <object-type name="QHistoryState">
+    <enum-type name="HistoryType"/>
+    <modify-documentation xpath='description/code'>
+        &lt;code>machine = QStateMachine()
+
+s1 = QState()
+s11 = QState(s1)
+s12 = QState(s1)
+
+s1h = QHistoryState(s1)
+s1h.setDefaultState(s11)
+
+machine.addState(s1)
+
+s2 = QState()
+machine.addState(s2)
+
+button = QPushButton()
+# Clicking the button will cause the state machine to enter the child state
+# that s1 was in the last time s1 was exited, or the history state's default
+# state if s1 has never been entered.
+s1.addTransition(button.clicked, s1h)&lt;/code>
+    </modify-documentation>
+  </object-type>
+
+  <object-type name="QSignalTransition">
+    <add-function signature="QSignalTransition(PyObject*@signal@,QState*@state@)">
+        <modify-argument index="2">
+            <replace-default-expression with="0"/>
+        </modify-argument>
+        <inject-code file="../glue/qtstatemachine.cpp" snippet="qsignaltransition"/>
+    </add-function>
+  </object-type>
+
+  <object-type name="QState">
+    <enum-type name="ChildMode"/>
+    <enum-type name="RestorePolicy"/>
+    <modify-function signature="addTransition(QAbstractTransition*)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+
+    <modify-function signature="assignProperty(QObject*,const char*,QVariant)">
+        <modify-argument index="2" pyi-type="str"/>
+    </modify-function>
+
+    <modify-function signature="addTransition(const QObject*,const char*,QAbstractState*)">
+      <modify-argument index="return">
+        <parent index="this" action="add"/>
+      </modify-argument>
+      <modify-argument index="2" pyi-type="str"/>
+      <inject-code class="target" position="beginning" file="../glue/qtstatemachine.cpp"
+                   snippet="qstate-addtransition-1"/>
+    </modify-function>
+    <modify-function signature="addTransition(QAbstractState*)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+
+    <!-- FIXME: the proper signature for this added function would be something like
+         addTransition(PySide2.QtCore.Signal, QAbstractState*)
+         but that depends on bug #362. -->
+    <add-function signature="addTransition(PyObject*@signal@,QAbstractState*)" return-type="QSignalTransition*">
+      <modify-argument index="return">
+        <parent index="this" action="add"/>
+      </modify-argument>
+      <inject-code class="target" position="beginning" file="../glue/qtstatemachine.cpp"
+                   snippet="qstate-addtransition-2"/>
+    </add-function>
+
+    <modify-function signature="removeTransition(QAbstractTransition*)">
+      <modify-argument index="1">
+        <parent index="this" action="remove"/>
+      </modify-argument>
+    </modify-function>
+  </object-type>
+
+  <object-type name="QStateMachine">
+    <enum-type name="Error"/>
+    <enum-type name="EventPriority"/>
+
+    <object-type name="SignalEvent"/>
+    <object-type name="WrappedEvent"/>
+
+    <modify-function signature="addState(QAbstractState*)">
+      <modify-argument index="1">
+        <parent index="this" action="add"/>
+      </modify-argument>
+    </modify-function>
+    <modify-function signature="removeState(QAbstractState*)">
+      <modify-argument index="1">
+        <parent index="this" action="remove"/>
+      </modify-argument>
+    </modify-function>
+
+    <modify-function signature="postEvent(QEvent*,QStateMachine::EventPriority)">
+      <modify-argument index="1">
+        <define-ownership owner="c++"/>
+      </modify-argument>
+    </modify-function>
+    <modify-function signature="postDelayedEvent(QEvent*,int)">
+      <modify-argument index="1">
+        <define-ownership owner="c++"/>
+      </modify-argument>
+    </modify-function>
+
+    <add-function signature="configuration()" return-type="QSet&lt;QAbstractState*&gt;">
+        <inject-code class="target" position="beginning" file="../glue/qtstatemachine.cpp"
+                     snippet="qstatemachine-configuration"/>
+    </add-function>
+
+    <!-- Replaced by a added function -->
+    <modify-function signature="defaultAnimations()const" remove="all"/>
+    <add-function signature="defaultAnimations()" return-type="QList&lt;QAbstractAnimation*&gt;">
+        <inject-code class="target" position="beginning" file="../glue/qtstatemachine.cpp"
+                     snippet="qstatemachine-defaultanimations"/>
+    </add-function>
+  </object-type>
+
+</typesystem>

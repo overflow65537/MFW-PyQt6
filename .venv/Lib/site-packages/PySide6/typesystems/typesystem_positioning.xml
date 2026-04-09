@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// Copyright (C) 2018 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+-->
+<typesystem package="PySide6.QtPositioning"
+            namespace-begin="QT_BEGIN_NAMESPACE" namespace-end="QT_END_NAMESPACE">
+  <load-typesystem name="typesystem_core.xml" generate="no"/>
+  <inject-code class="native" position="beginning" file="../glue/qtpositioning.cpp"
+               snippet="darwin_location_permission_plugin"/>
+  <value-type name="QGeoAddress"/>
+  <value-type name="QGeoAreaMonitorInfo"/>
+  <object-type name="QGeoAreaMonitorSource">
+      <enum-type name="Error"/>
+      <enum-type name="AreaMonitorFeature" flags="AreaMonitorFeatures"/>
+  </object-type>
+  <value-type name="QGeoLocation"/>
+  <value-type name="QGeoCircle"/>
+  <value-type name="QGeoCoordinate">
+      <enum-type name="CoordinateType"/>
+      <enum-type name="CoordinateFormat"/>
+  </value-type>
+  <value-type name="QGeoPath"/>
+  <value-type name="QGeoPolygon"/>
+  <value-type name="QGeoPositionInfo">
+      <enum-type name="Attribute"/>
+  </value-type>
+  <object-type name="QGeoPositionInfoSource">
+      <enum-type name="Error"/>
+      <enum-type name="PositioningMethod" flags="PositioningMethods"/>
+  </object-type>
+  <object-type name="QGeoPositionInfoSourceFactory"/>
+  <value-type name="QGeoRectangle"/>
+  <value-type name="QGeoSatelliteInfo">
+      <enum-type name="Attribute"/>
+      <enum-type name="SatelliteSystem"/>
+  </value-type>
+  <object-type name="QGeoSatelliteInfoSource">
+      <enum-type name="Error"/>
+  </object-type>
+  <value-type name="QGeoShape">
+      <enum-type name="ShapeType"/>
+  </value-type>
+  <object-type name="QNmeaPositionInfoSource">
+      <enum-type name="UpdateMode"/>
+  </object-type>
+  <object-type name="QNmeaSatelliteInfoSource">
+      <enum-type name="UpdateMode"/>
+      <enum-type name="SatelliteInfoParseStatus"/>
+  </object-type>
+</typesystem>

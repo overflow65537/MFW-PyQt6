@@ -116,7 +116,9 @@ class MonitorInterface(QWidget):
         self._fps_overlay.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
         )
+        self._fps_overlay.setWordWrap(False)
         self._fps_overlay.adjustSize()
+        self._reposition_fps_overlay()
         self._last_frame_timestamp: Optional[float] = None
         self._last_fps_overlay_update: Optional[float] = None
 
@@ -161,9 +163,11 @@ class MonitorInterface(QWidget):
 
     def _refresh_preview_image(self) -> None:
         if not self._preview_pixmap:
+            self._reposition_fps_overlay()
             return
         target_size = self.preview_label.size()
         if target_size.width() <= 0 or target_size.height() <= 0:
+            self._reposition_fps_overlay()
             return
         scaled = self._preview_pixmap.scaled(
             target_size,
@@ -283,11 +287,23 @@ class MonitorInterface(QWidget):
         if not self._fps_overlay:
             return
         preview_size = self.preview_label.size()
-        overlay_size = self._fps_overlay.size()
         margin = 12
+        max_width = max(0, preview_size.width() - margin * 2)
+        if max_width > 0:
+            self._fps_overlay.setMaximumWidth(max_width)
+        self._fps_overlay.adjustSize()
+        overlay_size = self._fps_overlay.size()
+
+        # 固定在右上角，并确保始终落在预览区域内
         x = preview_size.width() - overlay_size.width() - margin
-        y = preview_size.height() - overlay_size.height() - margin
-        self._fps_overlay.move(max(x, 0), max(y, 0))
+        y = margin
+        if x < 0:
+            x = 0
+        if y + overlay_size.height() > preview_size.height():
+            y = max(0, preview_size.height() - overlay_size.height())
+        if x + overlay_size.width() > preview_size.width():
+            x = max(0, preview_size.width() - overlay_size.width())
+        self._fps_overlay.move(x, y)
 
     def _capture_frame(self) -> Image.Image:
         controller = self.monitor_task.maafw.controller
@@ -460,6 +476,12 @@ class MonitorInterface(QWidget):
         if self._image_width is not None and self._image_height is not None:
             self._update_preview_size_policy(self._image_width, self._image_height, force_update=True)
         self._refresh_preview_image()
+        self._reposition_fps_overlay()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        # 切换到页面时强制重定位一次，避免未启动监控时停留在默认位置
+        QTimer.singleShot(0, self._reposition_fps_overlay)
 
     def _on_save_screenshot(self) -> None:
         logger.info("监控子页面：用户请求保存截图。")

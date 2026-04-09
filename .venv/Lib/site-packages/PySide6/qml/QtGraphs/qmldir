@@ -1,0 +1,9 @@
+module QtGraphs
+linktarget Qt6::Graphsplugin
+optional plugin graphsplugin
+classname QtGraphsPlugin
+typeinfo Graphs.qmltypes
+depends QtQuick
+depends QtQuick3D
+prefer :/qt-project.org/imports/QtGraphs/
+

@@ -1,0 +1,3892 @@
+[
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "AbstractGraph3D"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: AbstractGraph3D."
+                    }
+                ],
+                "className": "AbstractDeclarative",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 66,
+                        "name": "SelectionFlag",
+                        "values": [
+                            "SelectionNone",
+                            "SelectionItem",
+                            "SelectionRow",
+                            "SelectionItemAndRow",
+                            "SelectionColumn",
+                            "SelectionItemAndColumn",
+                            "SelectionRowAndColumn",
+                            "SelectionItemRowAndColumn",
+                            "SelectionSlice",
+                            "SelectionMultiSeries"
+                        ]
+                    },
+                    {
+                        "alias": "SelectionFlag",
+                        "isClass": false,
+                        "isFlag": true,
+                        "lineNumber": 66,
+                        "name": "SelectionFlags",
+                        "values": [
+                            "SelectionNone",
+                            "SelectionItem",
+                            "SelectionRow",
+                            "SelectionItemAndRow",
+                            "SelectionColumn",
+                            "SelectionItemAndColumn",
+                            "SelectionRowAndColumn",
+                            "SelectionItemRowAndColumn",
+                            "SelectionSlice",
+                            "SelectionMultiSeries"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 82,
+                        "name": "ShadowQuality",
+                        "values": [
+                            "ShadowQualityNone",
+                            "ShadowQualityLow",
+                            "ShadowQualityMedium",
+                            "ShadowQualityHigh",
+                            "ShadowQualitySoftLow",
+                            "ShadowQualitySoftMedium",
+                            "ShadowQualitySoftHigh"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 92,
+                        "name": "ElementType",
+                        "values": [
+                            "ElementNone",
+                            "ElementSeries",
+                            "ElementAxisXLabel",
+                            "ElementAxisYLabel",
+                            "ElementAxisZLabel",
+                            "ElementCustomItem"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 101,
+                        "name": "RenderingMode",
+                        "values": [
+                            "RenderDirectToBackground",
+                            "RenderDirectToBackground_NoClear",
+                            "RenderIndirect"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 107,
+                        "name": "OptimizationHint",
+                        "values": [
+                            "OptimizationDefault",
+                            "OptimizationStatic"
+                        ]
+                    },
+                    {
+                        "alias": "OptimizationHint",
+                        "isClass": false,
+                        "isFlag": true,
+                        "lineNumber": 107,
+                        "name": "OptimizationHints",
+                        "values": [
+                            "OptimizationDefault",
+                            "OptimizationStatic"
+                        ]
+                    }
+                ],
+                "lineNumber": 34,
+                "methods": [
+                    {
+                        "access": "public",
+                        "index": 27,
+                        "lineNumber": 147,
+                        "name": "clearSelection",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "series",
+                                "type": "QAbstract3DSeries*"
+                            }
+                        ],
+                        "index": 28,
+                        "lineNumber": 149,
+                        "name": "hasSeries",
+                        "returnType": "bool",
+                        "revision": 1539
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "item",
+                                "type": "QCustom3DItem*"
+                            }
+                        ],
+                        "index": 29,
+                        "lineNumber": 151,
+                        "name": "addCustomItem",
+                        "returnType": "int",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "index": 30,
+                        "lineNumber": 152,
+                        "name": "removeCustomItems",
+                        "returnType": "void",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "item",
+                                "type": "QCustom3DItem*"
+                            }
+                        ],
+                        "index": 31,
+                        "lineNumber": 153,
+                        "name": "removeCustomItem",
+                        "returnType": "void",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "position",
+                                "type": "QVector3D"
+                            }
+                        ],
+                        "index": 32,
+                        "lineNumber": 154,
+                        "name": "removeCustomItemAt",
+                        "returnType": "void",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "item",
+                                "type": "QCustom3DItem*"
+                            }
+                        ],
+                        "index": 33,
+                        "lineNumber": 155,
+                        "name": "releaseCustomItem",
+                        "returnType": "void",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "index": 34,
+                        "isConst": true,
+                        "lineNumber": 157,
+                        "name": "selectedLabelIndex",
+                        "returnType": "int",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "index": 35,
+                        "isConst": true,
+                        "lineNumber": 158,
+                        "name": "selectedAxis",
+                        "returnType": "QAbstract3DAxis*",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "index": 36,
+                        "isConst": true,
+                        "lineNumber": 160,
+                        "name": "selectedCustomItemIndex",
+                        "returnType": "int",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "index": 37,
+                        "isConst": true,
+                        "lineNumber": 161,
+                        "name": "selectedCustomItem",
+                        "returnType": "QCustom3DItem*",
+                        "revision": 257
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 37,
+                        "name": "selectionMode",
+                        "notify": "selectionModeChanged",
+                        "override": false,
+                        "read": "selectionMode",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "SelectionFlags",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSelectionMode"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 38,
+                        "name": "shadowQuality",
+                        "notify": "shadowQualityChanged",
+                        "override": false,
+                        "read": "shadowQuality",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ShadowQuality",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setShadowQuality"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 39,
+                        "name": "shadowsSupported",
+                        "notify": "shadowsSupportedChanged",
+                        "override": false,
+                        "read": "shadowsSupported",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 40,
+                        "name": "msaaSamples",
+                        "notify": "msaaSamplesChanged",
+                        "override": false,
+                        "read": "msaaSamples",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setMsaaSamples"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 41,
+                        "name": "scene",
+                        "notify": "sceneChanged",
+                        "override": false,
+                        "read": "scene",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Declarative3DScene*",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 42,
+                        "name": "inputHandler",
+                        "notify": "inputHandlerChanged",
+                        "override": false,
+                        "read": "inputHandler",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QAbstract3DInputHandler*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setInputHandler"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 6,
+                        "lineNumber": 43,
+                        "name": "theme",
+                        "notify": "themeChanged",
+                        "override": false,
+                        "read": "theme",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Q3DTheme*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTheme"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 7,
+                        "lineNumber": 44,
+                        "name": "renderingMode",
+                        "notify": "renderingModeChanged",
+                        "override": false,
+                        "read": "renderingMode",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "RenderingMode",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setRenderingMode"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 8,
+                        "lineNumber": 45,
+                        "name": "measureFps",
+                        "notify": "measureFpsChanged",
+                        "override": false,
+                        "read": "measureFps",
+                        "required": false,
+                        "revision": 257,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setMeasureFps"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 9,
+                        "lineNumber": 46,
+                        "name": "currentFps",
+                        "notify": "currentFpsChanged",
+                        "override": false,
+                        "read": "currentFps",
+                        "required": false,
+                        "revision": 257,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 10,
+                        "lineNumber": 47,
+                        "name": "customItemList",
+                        "override": false,
+                        "read": "customItemList",
+                        "required": false,
+                        "revision": 257,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<QCustom3DItem>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 11,
+                        "lineNumber": 48,
+                        "name": "orthoProjection",
+                        "notify": "orthoProjectionChanged",
+                        "override": false,
+                        "read": "isOrthoProjection",
+                        "required": false,
+                        "revision": 257,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setOrthoProjection"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 12,
+                        "lineNumber": 49,
+                        "name": "selectedElement",
+                        "notify": "selectedElementChanged",
+                        "override": false,
+                        "read": "selectedElement",
+                        "required": false,
+                        "revision": 257,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ElementType",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 13,
+                        "lineNumber": 50,
+                        "name": "aspectRatio",
+                        "notify": "aspectRatioChanged",
+                        "override": false,
+                        "read": "aspectRatio",
+                        "required": false,
+                        "revision": 257,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAspectRatio"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 14,
+                        "lineNumber": 51,
+                        "name": "optimizationHints",
+                        "notify": "optimizationHintsChanged",
+                        "override": false,
+                        "read": "optimizationHints",
+                        "required": false,
+                        "revision": 257,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "OptimizationHints",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setOptimizationHints"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 15,
+                        "lineNumber": 52,
+                        "name": "polar",
+                        "notify": "polarChanged",
+                        "override": false,
+                        "read": "isPolar",
+                        "required": false,
+                        "revision": 258,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPolar"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 16,
+                        "lineNumber": 53,
+                        "name": "radialLabelOffset",
+                        "notify": "radialLabelOffsetChanged",
+                        "override": false,
+                        "read": "radialLabelOffset",
+                        "required": false,
+                        "revision": 258,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setRadialLabelOffset"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 17,
+                        "lineNumber": 54,
+                        "name": "horizontalAspectRatio",
+                        "notify": "horizontalAspectRatioChanged",
+                        "override": false,
+                        "read": "horizontalAspectRatio",
+                        "required": false,
+                        "revision": 258,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setHorizontalAspectRatio"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 18,
+                        "lineNumber": 55,
+                        "name": "reflection",
+                        "notify": "reflectionChanged",
+                        "override": false,
+                        "read": "isReflection",
+                        "required": false,
+                        "revision": 258,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setReflection"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 19,
+                        "lineNumber": 56,
+                        "name": "reflectivity",
+                        "notify": "reflectivityChanged",
+                        "override": false,
+                        "read": "reflectivity",
+                        "required": false,
+                        "revision": 258,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setReflectivity"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 20,
+                        "lineNumber": 57,
+                        "name": "locale",
+                        "notify": "localeChanged",
+                        "override": false,
+                        "read": "locale",
+                        "required": false,
+                        "revision": 258,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QLocale",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setLocale"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 21,
+                        "lineNumber": 58,
+                        "name": "queriedGraphPosition",
+                        "notify": "queriedGraphPositionChanged",
+                        "override": false,
+                        "read": "queriedGraphPosition",
+                        "required": false,
+                        "revision": 258,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QVector3D",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 22,
+                        "lineNumber": 59,
+                        "name": "margin",
+                        "notify": "marginChanged",
+                        "override": false,
+                        "read": "margin",
+                        "required": false,
+                        "revision": 258,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setMargin"
+                    }
+                ],
+                "qualifiedClassName": "AbstractDeclarative",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mode",
+                                "type": "AbstractDeclarative::SelectionFlags"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 248,
+                        "name": "selectionModeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "quality",
+                                "type": "AbstractDeclarative::ShadowQuality"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 249,
+                        "name": "shadowQualityChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "supported",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 250,
+                        "name": "shadowsSupportedChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "samples",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 251,
+                        "name": "msaaSamplesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "scene",
+                                "type": "Q3DScene*"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 252,
+                        "name": "sceneChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "inputHandler",
+                                "type": "QAbstract3DInputHandler*"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 253,
+                        "name": "inputHandlerChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "theme",
+                                "type": "Q3DTheme*"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 254,
+                        "name": "themeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mode",
+                                "type": "AbstractDeclarative::RenderingMode"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 255,
+                        "name": "renderingModeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "enabled",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 256,
+                        "name": "measureFpsChanged",
+                        "returnType": "void",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "fps",
+                                "type": "qreal"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 257,
+                        "name": "currentFpsChanged",
+                        "returnType": "void",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "type",
+                                "type": "AbstractDeclarative::ElementType"
+                            }
+                        ],
+                        "index": 10,
+                        "lineNumber": 258,
+                        "name": "selectedElementChanged",
+                        "returnType": "void",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "enabled",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 11,
+                        "lineNumber": 259,
+                        "name": "orthoProjectionChanged",
+                        "returnType": "void",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "ratio",
+                                "type": "qreal"
+                            }
+                        ],
+                        "index": 12,
+                        "lineNumber": 260,
+                        "name": "aspectRatioChanged",
+                        "returnType": "void",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "hints",
+                                "type": "AbstractDeclarative::OptimizationHints"
+                            }
+                        ],
+                        "index": 13,
+                        "lineNumber": 261,
+                        "name": "optimizationHintsChanged",
+                        "returnType": "void",
+                        "revision": 257
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "enabled",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 14,
+                        "lineNumber": 262,
+                        "name": "polarChanged",
+                        "returnType": "void",
+                        "revision": 258
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "offset",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 15,
+                        "lineNumber": 263,
+                        "name": "radialLabelOffsetChanged",
+                        "returnType": "void",
+                        "revision": 258
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "ratio",
+                                "type": "qreal"
+                            }
+                        ],
+                        "index": 16,
+                        "lineNumber": 264,
+                        "name": "horizontalAspectRatioChanged",
+                        "returnType": "void",
+                        "revision": 258
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "enabled",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 17,
+                        "lineNumber": 265,
+                        "name": "reflectionChanged",
+                        "returnType": "void",
+                        "revision": 258
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "reflectivity",
+                                "type": "qreal"
+                            }
+                        ],
+                        "index": 18,
+                        "lineNumber": 266,
+                        "name": "reflectivityChanged",
+                        "returnType": "void",
+                        "revision": 258
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "locale",
+                                "type": "QLocale"
+                            }
+                        ],
+                        "index": 19,
+                        "lineNumber": 267,
+                        "name": "localeChanged",
+                        "returnType": "void",
+                        "revision": 258
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "data",
+                                "type": "QVector3D"
+                            }
+                        ],
+                        "index": 20,
+                        "lineNumber": 268,
+                        "name": "queriedGraphPositionChanged",
+                        "returnType": "void",
+                        "revision": 258
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "margin",
+                                "type": "qreal"
+                            }
+                        ],
+                        "index": 21,
+                        "lineNumber": 269,
+                        "name": "marginChanged",
+                        "returnType": "void",
+                        "revision": 258
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 22,
+                        "lineNumber": 223,
+                        "name": "handleAxisXChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 23,
+                        "lineNumber": 224,
+                        "name": "handleAxisYChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 24,
+                        "lineNumber": 225,
+                        "name": "handleAxisZChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "obj",
+                                "type": "QObject*"
+                            }
+                        ],
+                        "index": 25,
+                        "lineNumber": 226,
+                        "name": "windowDestroyed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 26,
+                        "lineNumber": 227,
+                        "name": "destroyContext",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QQuickItem"
+                    },
+                    {
+                        "access": "public",
+                        "name": "AbstractDeclarativeInterface"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "abstractdeclarative_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "auto"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "ColorGradientStop",
+                "lineNumber": 23,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 27,
+                        "name": "position",
+                        "notify": "positionChanged",
+                        "override": false,
+                        "read": "position",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "qreal",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPosition"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 28,
+                        "name": "color",
+                        "notify": "colorChanged",
+                        "override": false,
+                        "read": "color",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QColor",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setColor"
+                    }
+                ],
+                "qualifiedClassName": "ColorGradientStop",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "position",
+                                "type": "qreal"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 43,
+                        "name": "positionChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "color",
+                                "type": "QColor"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 44,
+                        "name": "colorChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "DefaultProperty",
+                        "value": "stops"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "auto"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "ColorGradient",
+                "lineNumber": 54,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 58,
+                        "name": "stops",
+                        "override": false,
+                        "read": "stops",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<ColorGradientStop>",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "ColorGradient",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 74,
+                        "name": "updated",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "colorgradient_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "DefaultProperty",
+                        "value": "seriesList"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "Bars3D"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "DeclarativeBars",
+                "lineNumber": 23,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "series",
+                                "type": "QBar3DSeries*"
+                            }
+                        ],
+                        "index": 15,
+                        "lineNumber": 74,
+                        "name": "addSeries",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "series",
+                                "type": "QBar3DSeries*"
+                            }
+                        ],
+                        "index": 16,
+                        "lineNumber": 75,
+                        "name": "removeSeries",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "index",
+                                "type": "int"
+                            },
+                            {
+                                "name": "series",
+                                "type": "QBar3DSeries*"
+                            }
+                        ],
+                        "index": 17,
+                        "lineNumber": 76,
+                        "name": "insertSeries",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 26,
+                        "name": "rowAxis",
+                        "notify": "rowAxisChanged",
+                        "override": false,
+                        "read": "rowAxis",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QCategory3DAxis*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setRowAxis"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 27,
+                        "name": "valueAxis",
+                        "notify": "valueAxisChanged",
+                        "override": false,
+                        "read": "valueAxis",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QValue3DAxis*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setValueAxis"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 28,
+                        "name": "columnAxis",
+                        "notify": "columnAxisChanged",
+                        "override": false,
+                        "read": "columnAxis",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QCategory3DAxis*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setColumnAxis"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 29,
+                        "name": "multiSeriesUniform",
+                        "notify": "multiSeriesUniformChanged",
+                        "override": false,
+                        "read": "isMultiSeriesUniform",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setMultiSeriesUniform"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 30,
+                        "name": "barThickness",
+                        "notify": "barThicknessChanged",
+                        "override": false,
+                        "read": "barThickness",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBarThickness"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 31,
+                        "name": "barSpacing",
+                        "notify": "barSpacingChanged",
+                        "override": false,
+                        "read": "barSpacing",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QSizeF",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBarSpacing"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 6,
+                        "lineNumber": 32,
+                        "name": "barSpacingRelative",
+                        "notify": "barSpacingRelativeChanged",
+                        "override": false,
+                        "read": "isBarSpacingRelative",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBarSpacingRelative"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 7,
+                        "lineNumber": 33,
+                        "name": "barSeriesMargin",
+                        "notify": "barSeriesMarginChanged",
+                        "override": false,
+                        "read": "barSeriesMargin",
+                        "required": false,
+                        "revision": 1539,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QSizeF",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBarSeriesMargin"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 8,
+                        "lineNumber": 34,
+                        "name": "seriesList",
+                        "override": false,
+                        "read": "seriesList",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<QBar3DSeries>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 9,
+                        "lineNumber": 35,
+                        "name": "selectedSeries",
+                        "notify": "selectedSeriesChanged",
+                        "override": false,
+                        "read": "selectedSeries",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QBar3DSeries*",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 10,
+                        "lineNumber": 36,
+                        "name": "primarySeries",
+                        "notify": "primarySeriesChanged",
+                        "override": false,
+                        "read": "primarySeries",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QBar3DSeries*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setPrimarySeries"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 11,
+                        "lineNumber": 37,
+                        "name": "floorLevel",
+                        "notify": "floorLevelChanged",
+                        "override": false,
+                        "read": "floorLevel",
+                        "required": false,
+                        "revision": 258,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setFloorLevel"
+                    }
+                ],
+                "qualifiedClassName": "DeclarativeBars",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QCategory3DAxis*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 90,
+                        "name": "rowAxisChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QValue3DAxis*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 91,
+                        "name": "valueAxisChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QCategory3DAxis*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 92,
+                        "name": "columnAxisChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "uniform",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 93,
+                        "name": "multiSeriesUniformChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "thicknessRatio",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 94,
+                        "name": "barThicknessChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "spacing",
+                                "type": "QSizeF"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 95,
+                        "name": "barSpacingChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "relative",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 96,
+                        "name": "barSpacingRelativeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "margin",
+                                "type": "QSizeF"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 97,
+                        "name": "barSeriesMarginChanged",
+                        "returnType": "void",
+                        "revision": 1539
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "filename",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 98,
+                        "name": "meshFileNameChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "series",
+                                "type": "QBar3DSeries*"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 99,
+                        "name": "primarySeriesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "series",
+                                "type": "QBar3DSeries*"
+                            }
+                        ],
+                        "index": 10,
+                        "lineNumber": 100,
+                        "name": "selectedSeriesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "level",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 11,
+                        "lineNumber": 101,
+                        "name": "floorLevelChanged",
+                        "returnType": "void",
+                        "revision": 258
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 12,
+                        "lineNumber": 85,
+                        "name": "handleAxisXChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 13,
+                        "lineNumber": 86,
+                        "name": "handleAxisYChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 14,
+                        "lineNumber": 87,
+                        "name": "handleAxisZChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "AbstractDeclarative"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "declarativebars_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ThemeColor"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "DeclarativeColor",
+                "lineNumber": 23,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 26,
+                        "name": "color",
+                        "notify": "colorChanged",
+                        "override": false,
+                        "read": "color",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QColor",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setColor"
+                    }
+                ],
+                "qualifiedClassName": "DeclarativeColor",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "color",
+                                "type": "QColor"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 38,
+                        "name": "colorChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "declarativecolor_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "DeclarativeRenderNode",
+                "lineNumber": 31,
+                "object": true,
+                "qualifiedClassName": "DeclarativeRenderNode",
+                "slots": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 52,
+                        "name": "handleControllerDestroyed",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    },
+                    {
+                        "access": "public",
+                        "name": "QSGGeometryNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "declarativerendernode_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "DefaultProperty",
+                        "value": "seriesList"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "Scatter3D"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "DeclarativeScatter",
+                "lineNumber": 25,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "series",
+                                "type": "QScatter3DSeries*"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 54,
+                        "name": "addSeries",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "series",
+                                "type": "QScatter3DSeries*"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 55,
+                        "name": "removeSeries",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 28,
+                        "name": "axisX",
+                        "notify": "axisXChanged",
+                        "override": false,
+                        "read": "axisX",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QValue3DAxis*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAxisX"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 29,
+                        "name": "axisY",
+                        "notify": "axisYChanged",
+                        "override": false,
+                        "read": "axisY",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QValue3DAxis*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAxisY"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 30,
+                        "name": "axisZ",
+                        "notify": "axisZChanged",
+                        "override": false,
+                        "read": "axisZ",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QValue3DAxis*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAxisZ"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 31,
+                        "name": "selectedSeries",
+                        "notify": "selectedSeriesChanged",
+                        "override": false,
+                        "read": "selectedSeries",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QScatter3DSeries*",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 32,
+                        "name": "seriesList",
+                        "override": false,
+                        "read": "seriesList",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<QScatter3DSeries>",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "DeclarativeScatter",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QValue3DAxis*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 65,
+                        "name": "axisXChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QValue3DAxis*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 66,
+                        "name": "axisYChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QValue3DAxis*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 67,
+                        "name": "axisZChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "series",
+                                "type": "QScatter3DSeries*"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 68,
+                        "name": "selectedSeriesChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 60,
+                        "name": "handleAxisXChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 61,
+                        "name": "handleAxisYChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 62,
+                        "name": "handleAxisZChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "AbstractDeclarative"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "declarativescatter_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Scene3D"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: Scene3D."
+                    }
+                ],
+                "className": "Declarative3DScene",
+                "lineNumber": 23,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 28,
+                        "name": "selectionQueryPosition",
+                        "notify": "selectionQueryPositionChanged",
+                        "override": false,
+                        "read": "selectionQueryPosition",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QPointF",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSelectionQueryPosition"
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 30,
+                        "name": "invalidSelectionPoint",
+                        "override": false,
+                        "read": "invalidSelectionPoint",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QPoint",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Declarative3DScene",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "position",
+                                "type": "QPointF"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 45,
+                        "name": "selectionQueryPositionChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Q3DScene"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "declarativescene_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "DefaultProperty",
+                        "value": "seriesChildren"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "Bar3DSeries"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "DeclarativeBar3DSeries",
+                "lineNumber": 34,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 37,
+                        "name": "seriesChildren",
+                        "override": false,
+                        "read": "seriesChildren",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<QObject>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 40,
+                        "name": "selectedBar",
+                        "notify": "selectedBarChanged",
+                        "override": false,
+                        "read": "selectedBar",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QPointF",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSelectedBar"
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 42,
+                        "name": "invalidSelectionPosition",
+                        "override": false,
+                        "read": "invalidSelectionPosition",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QPointF",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 43,
+                        "name": "baseGradient",
+                        "notify": "baseGradientChanged",
+                        "override": false,
+                        "read": "baseGradient",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ColorGradient*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBaseGradient"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 44,
+                        "name": "singleHighlightGradient",
+                        "notify": "singleHighlightGradientChanged",
+                        "override": false,
+                        "read": "singleHighlightGradient",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ColorGradient*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSingleHighlightGradient"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 45,
+                        "name": "multiHighlightGradient",
+                        "notify": "multiHighlightGradientChanged",
+                        "override": false,
+                        "read": "multiHighlightGradient",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ColorGradient*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setMultiHighlightGradient"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 6,
+                        "lineNumber": 46,
+                        "name": "rowColors",
+                        "override": false,
+                        "read": "rowColors",
+                        "required": false,
+                        "revision": 1539,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<DeclarativeColor>",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "DeclarativeBar3DSeries",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "position",
+                                "type": "QPointF"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 85,
+                        "name": "selectedBarChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "gradient",
+                                "type": "ColorGradient*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 86,
+                        "name": "baseGradientChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "gradient",
+                                "type": "ColorGradient*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 87,
+                        "name": "singleHighlightGradientChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "gradient",
+                                "type": "ColorGradient*"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 88,
+                        "name": "multiHighlightGradientChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "index": 4,
+                        "lineNumber": 79,
+                        "name": "handleBaseGradientUpdate",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "lineNumber": 80,
+                        "name": "handleSingleHighlightGradientUpdate",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 6,
+                        "lineNumber": 81,
+                        "name": "handleMultiHighlightGradientUpdate",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 7,
+                        "lineNumber": 82,
+                        "name": "handleRowColorUpdate",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QBar3DSeries"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "DefaultProperty",
+                        "value": "seriesChildren"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "Scatter3DSeries"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "DeclarativeScatter3DSeries",
+                "lineNumber": 104,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 107,
+                        "name": "seriesChildren",
+                        "override": false,
+                        "read": "seriesChildren",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<QObject>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 108,
+                        "name": "baseGradient",
+                        "notify": "baseGradientChanged",
+                        "override": false,
+                        "read": "baseGradient",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ColorGradient*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBaseGradient"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 109,
+                        "name": "singleHighlightGradient",
+                        "notify": "singleHighlightGradientChanged",
+                        "override": false,
+                        "read": "singleHighlightGradient",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ColorGradient*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSingleHighlightGradient"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 110,
+                        "name": "multiHighlightGradient",
+                        "notify": "multiHighlightGradientChanged",
+                        "override": false,
+                        "read": "multiHighlightGradient",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ColorGradient*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setMultiHighlightGradient"
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 112,
+                        "name": "invalidSelectionIndex",
+                        "override": false,
+                        "read": "invalidSelectionIndex",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "DeclarativeScatter3DSeries",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "gradient",
+                                "type": "ColorGradient*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 140,
+                        "name": "baseGradientChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "gradient",
+                                "type": "ColorGradient*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 141,
+                        "name": "singleHighlightGradientChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "gradient",
+                                "type": "ColorGradient*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 142,
+                        "name": "multiHighlightGradientChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 135,
+                        "name": "handleBaseGradientUpdate",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 4,
+                        "lineNumber": 136,
+                        "name": "handleSingleHighlightGradientUpdate",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "lineNumber": 137,
+                        "name": "handleMultiHighlightGradientUpdate",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QScatter3DSeries"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "DefaultProperty",
+                        "value": "seriesChildren"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "Surface3DSeries"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "DeclarativeSurface3DSeries",
+                "lineNumber": 150,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 153,
+                        "name": "seriesChildren",
+                        "override": false,
+                        "read": "seriesChildren",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<QObject>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 156,
+                        "name": "selectedPoint",
+                        "notify": "selectedPointChanged",
+                        "override": false,
+                        "read": "selectedPoint",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QPointF",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSelectedPoint"
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 158,
+                        "name": "invalidSelectionPosition",
+                        "override": false,
+                        "read": "invalidSelectionPosition",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QPointF",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 159,
+                        "name": "baseGradient",
+                        "notify": "baseGradientChanged",
+                        "override": false,
+                        "read": "baseGradient",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ColorGradient*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBaseGradient"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 160,
+                        "name": "singleHighlightGradient",
+                        "notify": "singleHighlightGradientChanged",
+                        "override": false,
+                        "read": "singleHighlightGradient",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ColorGradient*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSingleHighlightGradient"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 161,
+                        "name": "multiHighlightGradient",
+                        "notify": "multiHighlightGradientChanged",
+                        "override": false,
+                        "read": "multiHighlightGradient",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ColorGradient*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setMultiHighlightGradient"
+                    }
+                ],
+                "qualifiedClassName": "DeclarativeSurface3DSeries",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "position",
+                                "type": "QPointF"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 191,
+                        "name": "selectedPointChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "gradient",
+                                "type": "ColorGradient*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 192,
+                        "name": "baseGradientChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "gradient",
+                                "type": "ColorGradient*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 193,
+                        "name": "singleHighlightGradientChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "gradient",
+                                "type": "ColorGradient*"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 194,
+                        "name": "multiHighlightGradientChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "index": 4,
+                        "lineNumber": 186,
+                        "name": "handleBaseGradientUpdate",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "lineNumber": 187,
+                        "name": "handleSingleHighlightGradientUpdate",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 6,
+                        "lineNumber": 188,
+                        "name": "handleMultiHighlightGradientUpdate",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QSurface3DSeries"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "declarativeseries_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "DefaultProperty",
+                        "value": "seriesList"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "Surface3D"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "DeclarativeSurface",
+                "lineNumber": 25,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "series",
+                                "type": "QSurface3DSeries*"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 55,
+                        "name": "addSeries",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "series",
+                                "type": "QSurface3DSeries*"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 56,
+                        "name": "removeSeries",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 28,
+                        "name": "axisX",
+                        "notify": "axisXChanged",
+                        "override": false,
+                        "read": "axisX",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QValue3DAxis*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAxisX"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 29,
+                        "name": "axisY",
+                        "notify": "axisYChanged",
+                        "override": false,
+                        "read": "axisY",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QValue3DAxis*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAxisY"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 30,
+                        "name": "axisZ",
+                        "notify": "axisZChanged",
+                        "override": false,
+                        "read": "axisZ",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QValue3DAxis*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAxisZ"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 31,
+                        "name": "selectedSeries",
+                        "notify": "selectedSeriesChanged",
+                        "override": false,
+                        "read": "selectedSeries",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QSurface3DSeries*",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 32,
+                        "name": "seriesList",
+                        "override": false,
+                        "read": "seriesList",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<QSurface3DSeries>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 33,
+                        "name": "flipHorizontalGrid",
+                        "notify": "flipHorizontalGridChanged",
+                        "override": false,
+                        "read": "flipHorizontalGrid",
+                        "required": false,
+                        "revision": 258,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setFlipHorizontalGrid"
+                    }
+                ],
+                "qualifiedClassName": "DeclarativeSurface",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QValue3DAxis*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 68,
+                        "name": "axisXChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QValue3DAxis*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 69,
+                        "name": "axisYChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QValue3DAxis*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 70,
+                        "name": "axisZChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "series",
+                                "type": "QSurface3DSeries*"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 71,
+                        "name": "selectedSeriesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "flip",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 72,
+                        "name": "flipHorizontalGridChanged",
+                        "returnType": "void",
+                        "revision": 258
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 63,
+                        "name": "handleAxisXChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 64,
+                        "name": "handleAxisYChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "QAbstract3DAxis*"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 65,
+                        "name": "handleAxisZChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "AbstractDeclarative"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "declarativesurface_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "DefaultProperty",
+                        "value": "themeChildren"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "Theme3D"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "DeclarativeTheme3D",
+                "interfaces": [
+                    [
+                        {
+                            "className": "QQmlParserStatus",
+                            "id": "\"org.qt-project.Qt.QQmlParserStatus\""
+                        }
+                    ]
+                ],
+                "lineNumber": 28,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 32,
+                        "name": "themeChildren",
+                        "override": false,
+                        "read": "themeChildren",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<QObject>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 33,
+                        "name": "baseColors",
+                        "override": false,
+                        "read": "baseColors",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<DeclarativeColor>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 34,
+                        "name": "baseGradients",
+                        "override": false,
+                        "read": "baseGradients",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQmlListProperty<ColorGradient>",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 35,
+                        "name": "singleHighlightGradient",
+                        "notify": "singleHighlightGradientChanged",
+                        "override": false,
+                        "read": "singleHighlightGradient",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ColorGradient*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSingleHighlightGradient"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 36,
+                        "name": "multiHighlightGradient",
+                        "notify": "multiHighlightGradientChanged",
+                        "override": false,
+                        "read": "multiHighlightGradient",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ColorGradient*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setMultiHighlightGradient"
+                    }
+                ],
+                "qualifiedClassName": "DeclarativeTheme3D",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "gradient",
+                                "type": "ColorGradient*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 75,
+                        "name": "singleHighlightGradientChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "gradient",
+                                "type": "ColorGradient*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 76,
+                        "name": "multiHighlightGradientChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Q3DTheme"
+                    },
+                    {
+                        "access": "public",
+                        "name": "QQmlParserStatus"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "declarativetheme_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "anonymous"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Q3DScene"
+                    }
+                ],
+                "className": "Q3DSceneForeign",
+                "gadget": true,
+                "lineNumber": 79,
+                "qualifiedClassName": "Q3DSceneForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Camera3D"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Q3DCamera"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "Q3DCameraDataVisForeign",
+                "gadget": true,
+                "lineNumber": 87,
+                "qualifiedClassName": "Q3DCameraDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Light3D"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Q3DLight"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "Q3DLightDataVisForeign",
+                "gadget": true,
+                "lineNumber": 88,
+                "qualifiedClassName": "Q3DLightDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "CategoryAxis3D"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QCategory3DAxis"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "QCategory3DAxisDataVisForeign",
+                "gadget": true,
+                "lineNumber": 89,
+                "qualifiedClassName": "QCategory3DAxisDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "HeightMapSurfaceDataProxy"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QHeightMapSurfaceDataProxy"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "QHeightMapSurfaceDataProxyDataVisForeign",
+                "gadget": true,
+                "lineNumber": 90,
+                "qualifiedClassName": "QHeightMapSurfaceDataProxyDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ItemModelBarDataProxy"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QItemModelBarDataProxy"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "QItemModelBarDataProxyDataVisForeign",
+                "gadget": true,
+                "lineNumber": 91,
+                "qualifiedClassName": "QItemModelBarDataProxyDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ItemModelScatterDataProxy"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QItemModelScatterDataProxy"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "QItemModelScatterDataProxyDataVisForeign",
+                "gadget": true,
+                "lineNumber": 92,
+                "qualifiedClassName": "QItemModelScatterDataProxyDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ItemModelSurfaceDataProxy"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QItemModelSurfaceDataProxy"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "QItemModelSurfaceDataProxyDataVisForeign",
+                "gadget": true,
+                "lineNumber": 93,
+                "qualifiedClassName": "QItemModelSurfaceDataProxyDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ValueAxis3D"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QValue3DAxis"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    }
+                ],
+                "className": "QValue3DAxisDataVisForeign",
+                "gadget": true,
+                "lineNumber": 94,
+                "qualifiedClassName": "QValue3DAxisDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Custom3DItem"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QCustom3DItem"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "257"
+                    }
+                ],
+                "className": "QCustom3DItemDataVisForeign",
+                "gadget": true,
+                "lineNumber": 96,
+                "qualifiedClassName": "QCustom3DItemDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Custom3DLabel"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QCustom3DLabel"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "257"
+                    }
+                ],
+                "className": "QCustom3DLabelDataVisForeign",
+                "gadget": true,
+                "lineNumber": 97,
+                "qualifiedClassName": "QCustom3DLabelDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "LogValueAxis3DFormatter"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QLogValue3DAxisFormatter"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "257"
+                    }
+                ],
+                "className": "QLogValue3DAxisFormatterDataVisForeign",
+                "gadget": true,
+                "lineNumber": 98,
+                "qualifiedClassName": "QLogValue3DAxisFormatterDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ValueAxis3DFormatter"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QValue3DAxisFormatter"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "257"
+                    }
+                ],
+                "className": "QValue3DAxisFormatterDataVisForeign",
+                "gadget": true,
+                "lineNumber": 99,
+                "qualifiedClassName": "QValue3DAxisFormatterDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "InputHandler3D"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Q3DInputHandler"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "258"
+                    }
+                ],
+                "className": "Q3DInputHandlerDataVisForeign",
+                "gadget": true,
+                "lineNumber": 101,
+                "qualifiedClassName": "Q3DInputHandlerDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Custom3DVolume"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QCustom3DVolume"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "258"
+                    }
+                ],
+                "className": "QCustom3DVolumeDataVisForeign",
+                "gadget": true,
+                "lineNumber": 102,
+                "qualifiedClassName": "QCustom3DVolumeDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "TouchInputHandler3D"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QTouch3DInputHandler"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "258"
+                    }
+                ],
+                "className": "QTouch3DInputHandlerDataVisForeign",
+                "gadget": true,
+                "lineNumber": 103,
+                "qualifiedClassName": "QTouch3DInputHandlerDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Q3DTheme"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Q3DTheme"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: Q3DTheme, use Theme3D instead."
+                    }
+                ],
+                "className": "Q3DThemeDataVisForeign",
+                "gadget": true,
+                "lineNumber": 105,
+                "qualifiedClassName": "Q3DThemeDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "QBar3DSeries"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QBar3DSeries"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: QBar3DSeries, use Bar3DSeries instead."
+                    }
+                ],
+                "className": "QBar3DSeriesDataVisForeign",
+                "gadget": true,
+                "lineNumber": 106,
+                "qualifiedClassName": "QBar3DSeriesDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "QScatter3DSeries"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QScatter3DSeries"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: QScatter3DSeries, use Scatter3DSeries instead."
+                    }
+                ],
+                "className": "QScatter3DSeriesDataVisForeign",
+                "gadget": true,
+                "lineNumber": 107,
+                "qualifiedClassName": "QScatter3DSeriesDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "QSurface3DSeries"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QSurface3DSeries"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: QSurface3DSeries, use Surface3DSeries instead."
+                    }
+                ],
+                "className": "QSurface3DSeriesDataVisForeign",
+                "gadget": true,
+                "lineNumber": 108,
+                "qualifiedClassName": "QSurface3DSeriesDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Object3D"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "Q3DObject"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: Object3D."
+                    }
+                ],
+                "className": "Q3DObjectDataVisForeign",
+                "gadget": true,
+                "lineNumber": 110,
+                "qualifiedClassName": "Q3DObjectDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "AbstractAxis3D"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QAbstract3DAxis"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: AbstractAxis3D."
+                    }
+                ],
+                "className": "QAbstract3DAxisDataVisForeign",
+                "gadget": true,
+                "lineNumber": 111,
+                "qualifiedClassName": "QAbstract3DAxisDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "AbstractInputHandler3D"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QAbstract3DInputHandler"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: AbstractInputHandler3D."
+                    }
+                ],
+                "className": "QAbstract3DInputHandlerDataVisForeign",
+                "gadget": true,
+                "lineNumber": 112,
+                "qualifiedClassName": "QAbstract3DInputHandlerDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "Abstract3DSeries"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QAbstract3DSeries"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: Abstract3DSeries."
+                    }
+                ],
+                "className": "QAbstract3DSeriesDataVisForeign",
+                "gadget": true,
+                "lineNumber": 113,
+                "qualifiedClassName": "QAbstract3DSeriesDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "AbstractDataProxy"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QAbstractDataProxy"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: AbstractDataProxy."
+                    }
+                ],
+                "className": "QAbstractDataProxyDataVisForeign",
+                "gadget": true,
+                "lineNumber": 114,
+                "qualifiedClassName": "QAbstractDataProxyDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "AbstractItemModel"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QAbstractItemModel"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: AbstractItemModel."
+                    }
+                ],
+                "className": "QAbstractItemModelDataVisForeign",
+                "gadget": true,
+                "lineNumber": 115,
+                "qualifiedClassName": "QAbstractItemModelDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "BarDataProxy"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QBarDataProxy"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: BarDataProxy."
+                    }
+                ],
+                "className": "QBarDataProxyDataVisForeign",
+                "gadget": true,
+                "lineNumber": 116,
+                "qualifiedClassName": "QBarDataProxyDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "ScatterDataProxy"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QScatterDataProxy"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: ScatterDataProxy."
+                    }
+                ],
+                "className": "QScatterDataProxyDataVisForeign",
+                "gadget": true,
+                "lineNumber": 117,
+                "qualifiedClassName": "QScatterDataProxyDataVisForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "SurfaceDataProxy"
+                    },
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QSurfaceDataProxy"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "256"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "Trying to create uncreatable: SurfaceDataProxy."
+                    }
+                ],
+                "className": "QSurfaceDataProxyDataVisForeign",
+                "gadget": true,
+                "lineNumber": 118,
+                "qualifiedClassName": "QSurfaceDataProxyDataVisForeign"
+            }
+        ],
+        "inputFile": "foreigntypes_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "GLStateStore",
+                "lineNumber": 23,
+                "object": true,
+                "qualifiedClassName": "GLStateStore",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    },
+                    {
+                        "access": "protected",
+                        "name": "QOpenGLFunctions"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "glstatestore_p.h",
+        "outputRevision": 69
+    }
+]

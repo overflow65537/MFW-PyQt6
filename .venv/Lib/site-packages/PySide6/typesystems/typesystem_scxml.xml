@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// Copyright (C) 2018 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+-->
+<typesystem package="PySide6.QtScxml"
+            namespace-begin="QT_BEGIN_NAMESPACE" namespace-end="QT_END_NAMESPACE">
+    <load-typesystem name="typesystem_core.xml" generate="no"/>
+    <object-type name="QScxmlCompiler">
+        <object-type name="Loader"/>
+    </object-type>
+    <object-type name="QScxmlCppDataModel"/>
+    <!-- PYSIDE-2340: Force value conversion for QScxmlStateMachine::connectToEvent()
+         which expects "func(const QScxmlEvent &)" -->
+    <value-type name="QScxmlEvent">
+        <enum-type name="EventType"/>
+    </value-type>
+    <object-type name="QScxmlDynamicScxmlServiceFactory"/>
+    <object-type name="QScxmlInvokableService"/>
+    <object-type name="QScxmlInvokableServiceFactory"/>
+    <object-type name="QScxmlStaticScxmlServiceFactory"/>
+    <object-type name="QScxmlStateMachine">
+        <modify-function signature="submitEvent(QScxmlEvent*)">
+            <modify-argument index="1">
+                <define-ownership owner="c++"/>
+            </modify-argument>
+        </modify-function>
+    </object-type>
+    <object-type name="QScxmlTableData"/>
+    <object-type name="QScxmlDataModel">
+        <!-- Needs to have exports fixed -->
+        <interface-type name="ForeachLoopBody"/>
+        <modify-function signature="^evaluateTo(String|Bool|Variant)\(.*bool ?\*.*$">
+            <modify-argument index="2">
+              <remove-default-expression/>
+              <remove-argument/>
+            </modify-argument>
+            <inject-code class="target" position="beginning">
+              <insert-template name="fix_args,arg,bool*"/>
+            </inject-code>
+        </modify-function>
+    </object-type>
+    <value-type name="QScxmlError"/>
+    <namespace-type name="QScxmlExecutableContent">
+        <value-type name="AssignmentInfo"/>
+        <value-type name="EvaluatorInfo"/>
+        <value-type name="ForeachInfo"/>
+        <value-type name="InvokeInfo"/>
+        <value-type name="ParameterInfo"/>
+    </namespace-type>
+    <object-type name="QScxmlNullDataModel"/>
+</typesystem>

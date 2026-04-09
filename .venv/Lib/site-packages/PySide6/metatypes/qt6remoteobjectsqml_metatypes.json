@@ -1,0 +1,155 @@
+[
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "QtRemoteObjects"
+                    },
+                    {
+                        "name": "QML.Singleton",
+                        "value": "true"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1294"
+                    }
+                ],
+                "className": "QtQmlRemoteObjects",
+                "lineNumber": 38,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "reply",
+                                "type": "QRemoteObjectPendingCall"
+                            },
+                            {
+                                "name": "timeout",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 56,
+                        "name": "watch",
+                        "returnType": "QJSValue"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "reply",
+                                "type": "QRemoteObjectPendingCall"
+                            }
+                        ],
+                        "index": 1,
+                        "isCloned": true,
+                        "lineNumber": 56,
+                        "name": "watch",
+                        "returnType": "QJSValue"
+                    }
+                ],
+                "object": true,
+                "qualifiedClassName": "QtQmlRemoteObjects",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QRemoteObjectNode"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "Node"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1292"
+                    }
+                ],
+                "className": "QRemoteObjectNodeForeign",
+                "gadget": true,
+                "lineNumber": 113,
+                "qualifiedClassName": "QRemoteObjectNodeForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QRemoteObjectSettingsStore"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "SettingsStore"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1292"
+                    }
+                ],
+                "className": "QRemoteObjectSettingsStoreForeign",
+                "gadget": true,
+                "lineNumber": 121,
+                "qualifiedClassName": "QRemoteObjectSettingsStoreForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QRemoteObjectHost"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "Host"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1295"
+                    }
+                ],
+                "className": "QRemoteObjectHostForeign",
+                "gadget": true,
+                "lineNumber": 129,
+                "qualifiedClassName": "QRemoteObjectHostForeign"
+            },
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Foreign",
+                        "value": "QRemoteObjectAbstractPersistedStore"
+                    },
+                    {
+                        "name": "QML.Element",
+                        "value": "PersistedStore"
+                    },
+                    {
+                        "name": "QML.Creatable",
+                        "value": "false"
+                    },
+                    {
+                        "name": "QML.UncreatableReason",
+                        "value": "QRemoteObjectAbstractPersistedStore is Abstract"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1292"
+                    }
+                ],
+                "className": "QRemoteObjectAbstractPersistedStoreForeign",
+                "gadget": true,
+                "lineNumber": 137,
+                "qualifiedClassName": "QRemoteObjectAbstractPersistedStoreForeign"
+            }
+        ],
+        "inputFile": "qremoteobjectsqml_p.h",
+        "outputRevision": 69
+    }
+]

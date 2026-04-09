@@ -1,0 +1,203 @@
+[
+    {
+        "classes": [
+            {
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "RuntimeLoader"
+                    },
+                    {
+                        "name": "QML.AddedInVersion",
+                        "value": "1538"
+                    }
+                ],
+                "className": "QQuick3DRuntimeLoader",
+                "enums": [
+                    {
+                        "isClass": true,
+                        "isFlag": false,
+                        "lineNumber": 61,
+                        "name": "Status",
+                        "values": [
+                            "Empty",
+                            "Success",
+                            "Error"
+                        ]
+                    }
+                ],
+                "lineNumber": 33,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 40,
+                        "name": "source",
+                        "notify": "sourceChanged",
+                        "override": false,
+                        "read": "source",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QUrl",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSource"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 41,
+                        "name": "status",
+                        "notify": "statusChanged",
+                        "override": false,
+                        "read": "status",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Status",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 42,
+                        "name": "errorString",
+                        "notify": "errorStringChanged",
+                        "override": false,
+                        "read": "errorString",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 43,
+                        "name": "bounds",
+                        "notify": "boundsChanged",
+                        "override": false,
+                        "read": "bounds",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQuick3DBounds3",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 44,
+                        "name": "instancing",
+                        "notify": "instancingChanged",
+                        "override": false,
+                        "read": "instancing",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QQuick3DInstancing*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setInstancing"
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 45,
+                        "name": "supportedExtensions",
+                        "override": false,
+                        "read": "supportedExtensions",
+                        "required": false,
+                        "revision": 1543,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QStringList",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 6,
+                        "lineNumber": 47,
+                        "name": "supportedMimeTypes",
+                        "override": false,
+                        "read": "supportedMimeTypes",
+                        "required": false,
+                        "revision": 1543,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QList<QMimeType>",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "QQuick3DRuntimeLoader",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 71,
+                        "name": "sourceChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 72,
+                        "name": "statusChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 73,
+                        "name": "errorStringChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 74,
+                        "name": "boundsChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 4,
+                        "lineNumber": 75,
+                        "name": "instancingChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QQuick3DNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qquick3druntimeloader_p.h",
+        "outputRevision": 69
+    }
+]

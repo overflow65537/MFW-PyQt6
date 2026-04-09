@@ -1,0 +1,2932 @@
+[
+    {
+        "classes": [
+            {
+                "className": "KeyboardMouseGenericDeviceIntegration",
+                "lineNumber": 28,
+                "object": true,
+                "qualifiedClassName": "Qt3DInput::Input::KeyboardMouseGenericDeviceIntegration",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DInput::QInputDeviceIntegration"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "keyboardmousegenericdeviceintegration_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAbstractActionInput",
+                "lineNumber": 15,
+                "object": true,
+                "qualifiedClassName": "Qt3DInput::QAbstractActionInput",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qabstractactioninput.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAbstractAxisInput",
+                "lineNumber": 18,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 21,
+                        "name": "sourceDevice",
+                        "notify": "sourceDeviceChanged",
+                        "override": false,
+                        "read": "sourceDevice",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DInput::QAbstractPhysicalDevice*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSourceDevice"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QAbstractAxisInput",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "sourceDevice",
+                                "type": "QAbstractPhysicalDevice*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 32,
+                        "name": "sourceDeviceChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "sourceDevice",
+                                "type": "QAbstractPhysicalDevice*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 29,
+                        "name": "setSourceDevice",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qabstractaxisinput.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAbstractPhysicalDevice",
+                "lineNumber": 20,
+                "object": true,
+                "qualifiedClassName": "Qt3DInput::QAbstractPhysicalDevice",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qabstractphysicaldevice.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAbstractPhysicalDeviceProxy",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 37,
+                        "name": "DeviceStatus",
+                        "values": [
+                            "Ready",
+                            "NotFound"
+                        ]
+                    }
+                ],
+                "lineNumber": 30,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 33,
+                        "name": "deviceName",
+                        "override": false,
+                        "read": "deviceName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 34,
+                        "name": "status",
+                        "notify": "statusChanged",
+                        "override": false,
+                        "read": "status",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QAbstractPhysicalDeviceProxy::DeviceStatus",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QAbstractPhysicalDeviceProxy",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "status",
+                                "type": "QAbstractPhysicalDeviceProxy::DeviceStatus"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 54,
+                        "name": "statusChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DInput::QAbstractPhysicalDevice",
+                        "name": "QAbstractPhysicalDevice"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qabstractphysicaldeviceproxy_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAction",
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "active",
+                        "notify": "activeChanged",
+                        "override": false,
+                        "read": "isActive",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QAction",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "isActive",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 32,
+                        "name": "activeChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qaction.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QActionInput",
+                "lineNumber": 18,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 21,
+                        "name": "sourceDevice",
+                        "notify": "sourceDeviceChanged",
+                        "override": false,
+                        "read": "sourceDevice",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DInput::QAbstractPhysicalDevice*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSourceDevice"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 22,
+                        "name": "buttons",
+                        "notify": "buttonsChanged",
+                        "override": false,
+                        "read": "buttons",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QList<int>",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setButtons"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QActionInput",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "sourceDevice",
+                                "type": "QAbstractPhysicalDevice*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 36,
+                        "name": "sourceDeviceChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "buttons",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 37,
+                        "name": "buttonsChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "sourceDevice",
+                                "type": "QAbstractPhysicalDevice*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 32,
+                        "name": "setSourceDevice",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "buttons",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 33,
+                        "name": "setButtons",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DInput::QAbstractActionInput"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qactioninput.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAnalogAxisInput",
+                "lineNumber": 16,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 19,
+                        "name": "axis",
+                        "notify": "axisChanged",
+                        "override": false,
+                        "read": "axis",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAxis"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QAnalogAxisInput",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 31,
+                        "name": "axisChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axis",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 28,
+                        "name": "setAxis",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DInput::QAbstractAxisInput",
+                        "name": "QAbstractAxisInput"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qanalogaxisinput.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAxis",
+                "lineNumber": 16,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 19,
+                        "name": "value",
+                        "notify": "valueChanged",
+                        "override": false,
+                        "read": "value",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QAxis",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 31,
+                        "name": "valueChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qaxis.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAxisAccumulator",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 27,
+                        "name": "SourceAxisType",
+                        "values": [
+                            "Velocity",
+                            "Acceleration"
+                        ]
+                    }
+                ],
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "sourceAxis",
+                        "notify": "sourceAxisChanged",
+                        "override": false,
+                        "read": "sourceAxis",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DInput::QAxis*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSourceAxis"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 21,
+                        "name": "sourceAxisType",
+                        "notify": "sourceAxisTypeChanged",
+                        "override": false,
+                        "read": "sourceAxisType",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "SourceAxisType",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSourceAxisType"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 22,
+                        "name": "scale",
+                        "notify": "scaleChanged",
+                        "override": false,
+                        "read": "scale",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setScale"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 23,
+                        "name": "value",
+                        "notify": "valueChanged",
+                        "override": false,
+                        "read": "value",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 24,
+                        "name": "velocity",
+                        "notify": "velocityChanged",
+                        "override": false,
+                        "read": "velocity",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QAxisAccumulator",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "sourceAxis",
+                                "type": "Qt3DInput::QAxis*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 48,
+                        "name": "sourceAxisChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "sourceAxisType",
+                                "type": "QAxisAccumulator::SourceAxisType"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 49,
+                        "name": "sourceAxisTypeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 50,
+                        "name": "valueChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 51,
+                        "name": "velocityChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "scale",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 52,
+                        "name": "scaleChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "sourceAxis",
+                                "type": "Qt3DInput::QAxis*"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 43,
+                        "name": "setSourceAxis",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "sourceAxisType",
+                                "type": "QAxisAccumulator::SourceAxisType"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 44,
+                        "name": "setSourceAxisType",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "scale",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 45,
+                        "name": "setScale",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QComponent"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qaxisaccumulator.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QAxisSetting",
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "deadZoneRadius",
+                        "notify": "deadZoneRadiusChanged",
+                        "override": false,
+                        "read": "deadZoneRadius",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setDeadZoneRadius"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 21,
+                        "name": "axes",
+                        "notify": "axesChanged",
+                        "override": false,
+                        "read": "axes",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QList<int>",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAxes"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 22,
+                        "name": "smooth",
+                        "notify": "smoothChanged",
+                        "override": false,
+                        "read": "isSmoothEnabled",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSmoothEnabled"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QAxisSetting",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "deadZoneRadius",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 38,
+                        "name": "deadZoneRadiusChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axes",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 39,
+                        "name": "axesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "smooth",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 40,
+                        "name": "smoothChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "deadZoneRadius",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 33,
+                        "name": "setDeadZoneRadius",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "axes",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 34,
+                        "name": "setAxes",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "enabled",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 35,
+                        "name": "setSmoothEnabled",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QNode"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qaxissetting.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QButtonAxisInput",
+                "lineNumber": 16,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 19,
+                        "name": "scale",
+                        "notify": "scaleChanged",
+                        "override": false,
+                        "read": "scale",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setScale"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 20,
+                        "name": "buttons",
+                        "notify": "buttonsChanged",
+                        "override": false,
+                        "read": "buttons",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QList<int>",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setButtons"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 21,
+                        "name": "acceleration",
+                        "notify": "accelerationChanged",
+                        "override": false,
+                        "read": "acceleration",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAcceleration"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 22,
+                        "name": "deceleration",
+                        "notify": "decelerationChanged",
+                        "override": false,
+                        "read": "deceleration",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setDeceleration"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QButtonAxisInput",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "scale",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 42,
+                        "name": "scaleChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "buttons",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 43,
+                        "name": "buttonsChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "acceleration",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 45,
+                        "name": "accelerationChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "deceleration",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 46,
+                        "name": "decelerationChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "scale",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 35,
+                        "name": "setScale",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "buttons",
+                                "type": "QList<int>"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 36,
+                        "name": "setButtons",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "acceleration",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 38,
+                        "name": "setAcceleration",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "deceleration",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 39,
+                        "name": "setDeceleration",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DInput::QAbstractAxisInput",
+                        "name": "QAbstractAxisInput"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbuttonaxisinput.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QGenericInputDevice",
+                "lineNumber": 28,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 31,
+                        "name": "axesMap",
+                        "notify": "axesMapChanged",
+                        "override": false,
+                        "read": "axesMap",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QVariantMap",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAxesMap"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 32,
+                        "name": "buttonsMap",
+                        "notify": "buttonsMapChanged",
+                        "override": false,
+                        "read": "buttonsMap",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QVariantMap",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setButtonsMap"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QGenericInputDevice",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 42,
+                        "name": "axesMapChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 43,
+                        "name": "buttonsMapChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "fullyQualifiedName": "Qt3DInput::QAbstractPhysicalDevice",
+                        "name": "QAbstractPhysicalDevice"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qgenericinputdevice_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QInputAspect",
+                "lineNumber": 18,
+                "object": true,
+                "qualifiedClassName": "Qt3DInput::QInputAspect",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QAbstractAspect"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qinputaspect.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QInputChord",
+                "lineNumber": 18,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 21,
+                        "name": "timeout",
+                        "notify": "timeoutChanged",
+                        "override": false,
+                        "read": "timeout",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTimeout"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QInputChord",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "timeout",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 37,
+                        "name": "timeoutChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "timeout",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 34,
+                        "name": "setTimeout",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DInput::QAbstractActionInput"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qinputchord.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QInputDeviceIntegration",
+                "lineNumber": 41,
+                "object": true,
+                "qualifiedClassName": "Qt3DInput::QInputDeviceIntegration",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qinputdeviceintegration_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QInputDevicePlugin",
+                "lineNumber": 30,
+                "object": true,
+                "qualifiedClassName": "Qt3DInput::QInputDevicePlugin",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qinputdeviceplugin_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QInputSequence",
+                "lineNumber": 18,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 21,
+                        "name": "timeout",
+                        "notify": "timeoutChanged",
+                        "override": false,
+                        "read": "timeout",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setTimeout"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 22,
+                        "name": "buttonInterval",
+                        "notify": "buttonIntervalChanged",
+                        "override": false,
+                        "read": "buttonInterval",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setButtonInterval"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QInputSequence",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "timeout",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 40,
+                        "name": "timeoutChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "buttonInterval",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 41,
+                        "name": "buttonIntervalChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "timeout",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 36,
+                        "name": "setTimeout",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "buttonInterval",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 37,
+                        "name": "setButtonInterval",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DInput::QAbstractActionInput"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qinputsequence.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QInputSettings",
+                "lineNumber": 16,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 19,
+                        "name": "eventSource",
+                        "notify": "eventSourceChanged",
+                        "override": false,
+                        "read": "eventSource",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QObject*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setEventSource"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QInputSettings",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "type": "QObject*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 30,
+                        "name": "eventSourceChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "eventSource",
+                                "type": "QObject*"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 27,
+                        "name": "setEventSource",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QComponent"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qinputsettings.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QKeyboardDevice",
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "activeInput",
+                        "notify": "activeInputChanged",
+                        "override": false,
+                        "read": "activeInput",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DInput::QKeyboardHandler*",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QKeyboardDevice",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "activeInput",
+                                "type": "QKeyboardHandler*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 39,
+                        "name": "activeInputChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DInput::QAbstractPhysicalDevice"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qkeyboarddevice.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QKeyboardHandler",
+                "lineNumber": 18,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 21,
+                        "name": "sourceDevice",
+                        "notify": "sourceDeviceChanged",
+                        "override": false,
+                        "read": "sourceDevice",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DInput::QKeyboardDevice*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSourceDevice"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 22,
+                        "name": "focus",
+                        "notify": "focusChanged",
+                        "override": false,
+                        "read": "focus",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setFocus"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QKeyboardHandler",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "keyboardDevice",
+                                "type": "QKeyboardDevice*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 36,
+                        "name": "sourceDeviceChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "focus",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 37,
+                        "name": "focusChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 39,
+                        "name": "digit0Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 40,
+                        "name": "digit1Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 41,
+                        "name": "digit2Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 42,
+                        "name": "digit3Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 43,
+                        "name": "digit4Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 44,
+                        "name": "digit5Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 45,
+                        "name": "digit6Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 46,
+                        "name": "digit7Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 10,
+                        "lineNumber": 47,
+                        "name": "digit8Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 11,
+                        "lineNumber": 48,
+                        "name": "digit9Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 12,
+                        "lineNumber": 50,
+                        "name": "leftPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 13,
+                        "lineNumber": 51,
+                        "name": "rightPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 14,
+                        "lineNumber": 52,
+                        "name": "upPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 15,
+                        "lineNumber": 53,
+                        "name": "downPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 16,
+                        "lineNumber": 54,
+                        "name": "tabPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 17,
+                        "lineNumber": 55,
+                        "name": "backtabPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 18,
+                        "lineNumber": 57,
+                        "name": "asteriskPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 19,
+                        "lineNumber": 58,
+                        "name": "numberSignPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 20,
+                        "lineNumber": 59,
+                        "name": "escapePressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 21,
+                        "lineNumber": 60,
+                        "name": "returnPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 22,
+                        "lineNumber": 61,
+                        "name": "enterPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 23,
+                        "lineNumber": 62,
+                        "name": "deletePressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 24,
+                        "lineNumber": 63,
+                        "name": "spacePressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 25,
+                        "lineNumber": 64,
+                        "name": "backPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 26,
+                        "lineNumber": 65,
+                        "name": "cancelPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 27,
+                        "lineNumber": 66,
+                        "name": "selectPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 28,
+                        "lineNumber": 67,
+                        "name": "yesPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 29,
+                        "lineNumber": 68,
+                        "name": "noPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 30,
+                        "lineNumber": 69,
+                        "name": "context1Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 31,
+                        "lineNumber": 70,
+                        "name": "context2Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 32,
+                        "lineNumber": 71,
+                        "name": "context3Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 33,
+                        "lineNumber": 72,
+                        "name": "context4Pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 34,
+                        "lineNumber": 73,
+                        "name": "callPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 35,
+                        "lineNumber": 74,
+                        "name": "hangupPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 36,
+                        "lineNumber": 75,
+                        "name": "flipPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 37,
+                        "lineNumber": 76,
+                        "name": "menuPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 38,
+                        "lineNumber": 77,
+                        "name": "volumeUpPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 39,
+                        "lineNumber": 78,
+                        "name": "volumeDownPressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 40,
+                        "lineNumber": 80,
+                        "name": "pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "event",
+                                "type": "Qt3DInput::QKeyEvent*"
+                            }
+                        ],
+                        "index": 41,
+                        "lineNumber": 81,
+                        "name": "released",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "keyboardDevice",
+                                "type": "Qt3DInput::QKeyboardDevice*"
+                            }
+                        ],
+                        "index": 42,
+                        "lineNumber": 32,
+                        "name": "setSourceDevice",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "focus",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 43,
+                        "lineNumber": 33,
+                        "name": "setFocus",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QComponent"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qkeyboardhandler.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QKeyEvent",
+                "lineNumber": 21,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "key_",
+                                "type": "QKeySequence::StandardKey"
+                            }
+                        ],
+                        "index": 0,
+                        "isConst": true,
+                        "lineNumber": 47,
+                        "name": "matches",
+                        "returnType": "bool"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 24,
+                        "name": "key",
+                        "override": false,
+                        "read": "key",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 25,
+                        "name": "text",
+                        "override": false,
+                        "read": "text",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 26,
+                        "name": "modifiers",
+                        "override": false,
+                        "read": "modifiers",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 27,
+                        "name": "isAutoRepeat",
+                        "override": false,
+                        "read": "isAutoRepeat",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 28,
+                        "name": "count",
+                        "override": false,
+                        "read": "count",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 29,
+                        "name": "nativeScanCode",
+                        "override": false,
+                        "read": "nativeScanCode",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "quint32",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 6,
+                        "lineNumber": 30,
+                        "name": "accepted",
+                        "override": false,
+                        "read": "isAccepted",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAccepted"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QKeyEvent",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qkeyevent.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QLogicalDevice",
+                "lineNumber": 18,
+                "object": true,
+                "qualifiedClassName": "Qt3DInput::QLogicalDevice",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QComponent"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qlogicaldevice.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QMouseDevice",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 26,
+                        "name": "Axis",
+                        "values": [
+                            "X",
+                            "Y",
+                            "WheelX",
+                            "WheelY"
+                        ]
+                    }
+                ],
+                "lineNumber": 17,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 20,
+                        "name": "sensitivity",
+                        "notify": "sensitivityChanged",
+                        "override": false,
+                        "read": "sensitivity",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "float",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSensitivity"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 21,
+                        "name": "updateAxesContinuously",
+                        "notify": "updateAxesContinuouslyChanged",
+                        "override": false,
+                        "read": "updateAxesContinuously",
+                        "required": false,
+                        "revision": 65295,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setUpdateAxesContinuously"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QMouseDevice",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 49,
+                        "name": "sensitivityChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "updateAxesContinuously",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 50,
+                        "name": "updateAxesContinuouslyChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "float"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 45,
+                        "name": "setSensitivity",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "updateAxesContinuously",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 46,
+                        "name": "setUpdateAxesContinuously",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DInput::QAbstractPhysicalDevice"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmousedevice.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QMouseEvent",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 29,
+                        "name": "Buttons",
+                        "values": [
+                            "LeftButton",
+                            "RightButton",
+                            "MiddleButton",
+                            "BackButton",
+                            "NoButton"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 38,
+                        "name": "Modifiers",
+                        "values": [
+                            "NoModifier",
+                            "ShiftModifier",
+                            "ControlModifier",
+                            "AltModifier",
+                            "MetaModifier",
+                            "KeypadModifier"
+                        ]
+                    }
+                ],
+                "lineNumber": 18,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 21,
+                        "name": "x",
+                        "override": false,
+                        "read": "x",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 22,
+                        "name": "y",
+                        "override": false,
+                        "read": "y",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 23,
+                        "name": "wasHeld",
+                        "override": false,
+                        "read": "wasHeld",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 24,
+                        "name": "button",
+                        "override": false,
+                        "read": "button",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DInput::QMouseEvent::Buttons",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 25,
+                        "name": "buttons",
+                        "override": false,
+                        "read": "buttons",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 26,
+                        "name": "modifiers",
+                        "override": false,
+                        "read": "modifiers",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DInput::QMouseEvent::Modifiers",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 6,
+                        "lineNumber": 27,
+                        "name": "accepted",
+                        "override": false,
+                        "read": "isAccepted",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAccepted"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QMouseEvent",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            },
+            {
+                "className": "QWheelEvent",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 87,
+                        "name": "Buttons",
+                        "values": [
+                            "LeftButton",
+                            "RightButton",
+                            "MiddleButton",
+                            "BackButton",
+                            "NoButton"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 96,
+                        "name": "Modifiers",
+                        "values": [
+                            "NoModifier",
+                            "ShiftModifier",
+                            "ControlModifier",
+                            "AltModifier",
+                            "MetaModifier",
+                            "KeypadModifier"
+                        ]
+                    }
+                ],
+                "lineNumber": 76,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 79,
+                        "name": "x",
+                        "override": false,
+                        "read": "x",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 80,
+                        "name": "y",
+                        "override": false,
+                        "read": "y",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 81,
+                        "name": "angleDelta",
+                        "override": false,
+                        "read": "angleDelta",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QPoint",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 82,
+                        "name": "buttons",
+                        "override": false,
+                        "read": "buttons",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 83,
+                        "name": "modifiers",
+                        "override": false,
+                        "read": "modifiers",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DInput::QWheelEvent::Modifiers",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 84,
+                        "name": "accepted",
+                        "override": false,
+                        "read": "isAccepted",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAccepted"
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QWheelEvent",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmouseevent.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QMouseHandler",
+                "lineNumber": 18,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 21,
+                        "name": "sourceDevice",
+                        "notify": "sourceDeviceChanged",
+                        "override": false,
+                        "read": "sourceDevice",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "Qt3DInput::QMouseDevice*",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSourceDevice"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 22,
+                        "name": "containsMouse",
+                        "notify": "containsMouseChanged",
+                        "override": false,
+                        "read": "containsMouse",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "Qt3DInput::QMouseHandler",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mouseDevice",
+                                "type": "QMouseDevice*"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 35,
+                        "name": "sourceDeviceChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "containsMouse",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 36,
+                        "name": "containsMouseChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mouse",
+                                "type": "Qt3DInput::QMouseEvent*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 38,
+                        "name": "clicked",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mouse",
+                                "type": "Qt3DInput::QMouseEvent*"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 39,
+                        "name": "doubleClicked",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 4,
+                        "lineNumber": 41,
+                        "name": "entered",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "lineNumber": 42,
+                        "name": "exited",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mouse",
+                                "type": "Qt3DInput::QMouseEvent*"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 44,
+                        "name": "pressed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mouse",
+                                "type": "Qt3DInput::QMouseEvent*"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 45,
+                        "name": "released",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mouse",
+                                "type": "Qt3DInput::QMouseEvent*"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 46,
+                        "name": "pressAndHold",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mouse",
+                                "type": "Qt3DInput::QMouseEvent*"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 47,
+                        "name": "positionChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "wheel",
+                                "type": "Qt3DInput::QWheelEvent*"
+                            }
+                        ],
+                        "index": 10,
+                        "lineNumber": 50,
+                        "name": "wheel",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mouseDevice",
+                                "type": "QMouseDevice*"
+                            }
+                        ],
+                        "index": 11,
+                        "lineNumber": 32,
+                        "name": "setSourceDevice",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "Qt3DCore::QComponent"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qmousehandler.h",
+        "outputRevision": 69
+    }
+]

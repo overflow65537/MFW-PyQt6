@@ -1,0 +1,2309 @@
+[
+    {
+        "classes": [
+            {
+                "className": "QBluetoothDeviceDiscoveryAgentPrivate",
+                "lineNumber": 71,
+                "object": true,
+                "qualifiedClassName": "QBluetoothDeviceDiscoveryAgentPrivate",
+                "slots": [
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QBluetoothDeviceInfo"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 149,
+                        "name": "registerDevice",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "QBluetoothAddress"
+                            },
+                            {
+                                "name": "fields",
+                                "type": "QBluetoothDeviceInfo::Fields"
+                            },
+                            {
+                                "name": "rssi",
+                                "type": "qint16"
+                            },
+                            {
+                                "name": "manufacturerData",
+                                "type": "ManufacturerData"
+                            },
+                            {
+                                "name": "serviceData",
+                                "type": "ServiceData"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 150,
+                        "name": "updateDeviceData",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "e",
+                                "type": "QBluetoothDeviceDiscoveryAgent::Error"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 152,
+                        "name": "onErrorOccured",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "index": 3,
+                        "lineNumber": 153,
+                        "name": "onScanFinished",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothdevicediscoveryagent_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetoothDeviceWatcherWinRT",
+                "lineNumber": 29,
+                "object": true,
+                "qualifiedClassName": "QBluetoothDeviceWatcherWinRT",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "deviceId",
+                                "type": "winrt::hstring"
+                            },
+                            {
+                                "name": "id",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 46,
+                        "name": "deviceAdded",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "deviceId",
+                                "type": "winrt::hstring"
+                            },
+                            {
+                                "name": "id",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 47,
+                        "name": "deviceRemoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "deviceId",
+                                "type": "winrt::hstring"
+                            },
+                            {
+                                "name": "id",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 48,
+                        "name": "deviceUpdated",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 49,
+                        "name": "enumerationCompleted",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 50,
+                        "name": "watcherStopped",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    },
+                    {
+                        "access": "public",
+                        "name": "std::enable_shared_from_this<QBluetoothDeviceWatcherWinRT>"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothdevicewatcher_winrt_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetoothLocalDevicePrivate",
+                "lineNumber": 160,
+                "object": true,
+                "qualifiedClassName": "QBluetoothLocalDevicePrivate",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            },
+                            {
+                                "name": "mode",
+                                "type": "QBluetoothLocalDevice::HostMode"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 187,
+                        "name": "updateMode",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 172,
+                        "name": "onAdapterRemoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 173,
+                        "name": "onAdapterAdded",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            },
+                            {
+                                "name": "mode",
+                                "type": "QBluetoothLocalDevice::HostMode"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 174,
+                        "name": "radioModeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "QBluetoothAddress"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 175,
+                        "name": "onDeviceAdded",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "QBluetoothAddress"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 176,
+                        "name": "onDeviceRemoved",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothlocaldevice_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetoothServiceDiscoveryAgentPrivate",
+                "lineNumber": 71,
+                "object": true,
+                "qualifiedClassName": "QBluetoothServiceDiscoveryAgentPrivate",
+                "slots": [
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "deviceAddress",
+                                "type": "quint64"
+                            },
+                            {
+                                "name": "info",
+                                "type": "QBluetoothServiceInfo"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 179,
+                        "name": "processFoundService",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "deviceAddress",
+                                "type": "quint64"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 180,
+                        "name": "onScanFinished",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "index": 2,
+                        "lineNumber": 181,
+                        "name": "onError",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothservicediscoveryagent_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetoothServiceInfoPrivate",
+                "lineNumber": 58,
+                "object": true,
+                "qualifiedClassName": "QBluetoothServiceInfoPrivate",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothserviceinfo_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetoothSocketPrivateWinRT",
+                "final": true,
+                "lineNumber": 39,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "data",
+                                "type": "QList<QByteArray>"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 93,
+                        "name": "addToPendingData",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "qualifiedClassName": "QBluetoothSocketPrivateWinRT",
+                "slots": [
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "data",
+                                "type": "QList<QByteArray>"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 96,
+                        "name": "handleNewData",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QBluetoothSocket::SocketError"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 97,
+                        "name": "handleError",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QBluetoothSocketBasePrivate"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothsocket_winrt_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QLowEnergyControllerPrivateWinRT",
+                "final": true,
+                "lineNumber": 49,
+                "object": true,
+                "qualifiedClassName": "QLowEnergyControllerPrivateWinRT",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "charHandle",
+                                "type": "quint16"
+                            },
+                            {
+                                "name": "data",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 94,
+                        "name": "characteristicChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 95,
+                        "name": "abortConnection",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "charHandle",
+                                "type": "quint16"
+                            },
+                            {
+                                "name": "data",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 98,
+                        "name": "handleCharacteristicChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 99,
+                        "name": "handleServiceHandlerError",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QLowEnergyControllerPrivate"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qlowenergycontroller_winrt_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetooth",
+                "enums": [
+                    {
+                        "isClass": true,
+                        "isFlag": false,
+                        "lineNumber": 19,
+                        "name": "Security",
+                        "values": [
+                            "NoSecurity",
+                            "Authorization",
+                            "Authentication",
+                            "Encryption",
+                            "Secure"
+                        ]
+                    },
+                    {
+                        "isClass": true,
+                        "isFlag": false,
+                        "lineNumber": 30,
+                        "name": "AttAccessConstraint",
+                        "values": [
+                            "AttAuthorizationRequired",
+                            "AttAuthenticationRequired",
+                            "AttEncryptionRequired"
+                        ]
+                    }
+                ],
+                "lineNumber": 14,
+                "namespace": true,
+                "qualifiedClassName": "QBluetooth"
+            }
+        ],
+        "inputFile": "qbluetooth.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetoothDeviceDiscoveryAgent",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 25,
+                        "name": "Error",
+                        "values": [
+                            "NoError",
+                            "InputOutputError",
+                            "PoweredOffError",
+                            "InvalidBluetoothAdapterError",
+                            "UnsupportedPlatformError",
+                            "UnsupportedDiscoveryMethod",
+                            "LocationServiceTurnedOffError",
+                            "MissingPermissionsError",
+                            "UnknownError"
+                        ]
+                    },
+                    {
+                        "alias": "DiscoveryMethod",
+                        "isClass": false,
+                        "isFlag": true,
+                        "lineNumber": 38,
+                        "name": "DiscoveryMethods",
+                        "values": [
+                            "NoMethod",
+                            "ClassicMethod",
+                            "LowEnergyMethod"
+                        ]
+                    }
+                ],
+                "lineNumber": 18,
+                "object": true,
+                "qualifiedClassName": "QBluetoothDeviceDiscoveryAgent",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QBluetoothDeviceInfo"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 69,
+                        "name": "deviceDiscovered",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QBluetoothDeviceInfo"
+                            },
+                            {
+                                "name": "updatedFields",
+                                "type": "QBluetoothDeviceInfo::Fields"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 70,
+                        "name": "deviceUpdated",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 71,
+                        "name": "finished",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QBluetoothDeviceDiscoveryAgent::Error"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 72,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 4,
+                        "lineNumber": 73,
+                        "name": "canceled",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "lineNumber": 64,
+                        "name": "start",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "method",
+                                "type": "DiscoveryMethods"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 65,
+                        "name": "start",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 7,
+                        "lineNumber": 66,
+                        "name": "stop",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothdevicediscoveryagent.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetoothLocalDevice",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 24,
+                        "name": "Pairing",
+                        "values": [
+                            "Unpaired",
+                            "Paired",
+                            "AuthorizedPaired"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 31,
+                        "name": "HostMode",
+                        "values": [
+                            "HostPoweredOff",
+                            "HostConnectable",
+                            "HostDiscoverable",
+                            "HostDiscoverableLimitedInquiry"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 39,
+                        "name": "Error",
+                        "values": [
+                            "NoError",
+                            "PairingError",
+                            "MissingPermissionsError",
+                            "UnknownError"
+                        ]
+                    }
+                ],
+                "lineNumber": 19,
+                "object": true,
+                "qualifiedClassName": "QBluetoothLocalDevice",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "state",
+                                "type": "QBluetoothLocalDevice::HostMode"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 68,
+                        "name": "hostModeStateChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "QBluetoothAddress"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 69,
+                        "name": "deviceConnected",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "QBluetoothAddress"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 70,
+                        "name": "deviceDisconnected",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "QBluetoothAddress"
+                            },
+                            {
+                                "name": "pairing",
+                                "type": "QBluetoothLocalDevice::Pairing"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 71,
+                        "name": "pairingFinished",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QBluetoothLocalDevice::Error"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 73,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothlocaldevice.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetoothServer",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 27,
+                        "name": "Error",
+                        "values": [
+                            "NoError",
+                            "UnknownError",
+                            "PoweredOffError",
+                            "InputOutputError",
+                            "ServiceAlreadyRegisteredError",
+                            "UnsupportedProtocolError",
+                            "MissingPermissionsError"
+                        ]
+                    }
+                ],
+                "lineNumber": 22,
+                "object": true,
+                "qualifiedClassName": "QBluetoothServer",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 65,
+                        "name": "newConnection",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QBluetoothServer::Error"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 66,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothserver.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetoothServiceDiscoveryAgent",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 31,
+                        "name": "Error",
+                        "values": [
+                            "NoError",
+                            "InputOutputError",
+                            "PoweredOffError",
+                            "InvalidBluetoothAdapterError",
+                            "MissingPermissionsError",
+                            "UnknownError"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 43,
+                        "name": "DiscoveryMode",
+                        "values": [
+                            "MinimalDiscovery",
+                            "FullDiscovery"
+                        ]
+                    }
+                ],
+                "lineNumber": 25,
+                "object": true,
+                "qualifiedClassName": "QBluetoothServiceDiscoveryAgent",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QBluetoothServiceInfo"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 72,
+                        "name": "serviceDiscovered",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 73,
+                        "name": "finished",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 74,
+                        "name": "canceled",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QBluetoothServiceDiscoveryAgent::Error"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 75,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mode",
+                                "type": "DiscoveryMode"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 67,
+                        "name": "start",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "isCloned": true,
+                        "lineNumber": 67,
+                        "name": "start",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 6,
+                        "lineNumber": 68,
+                        "name": "stop",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 7,
+                        "lineNumber": 69,
+                        "name": "clear",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothservicediscoveryagent.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetoothSocket",
+                "enums": [
+                    {
+                        "isClass": true,
+                        "isFlag": false,
+                        "lineNumber": 39,
+                        "name": "SocketState",
+                        "values": [
+                            "UnconnectedState",
+                            "ServiceLookupState",
+                            "ConnectingState",
+                            "ConnectedState",
+                            "BoundState",
+                            "ClosingState",
+                            "ListeningState"
+                        ]
+                    },
+                    {
+                        "isClass": true,
+                        "isFlag": false,
+                        "lineNumber": 50,
+                        "name": "SocketError",
+                        "values": [
+                            "NoSocketError",
+                            "UnknownSocketError",
+                            "RemoteHostClosedError",
+                            "HostNotFoundError",
+                            "ServiceNotFoundError",
+                            "NetworkError",
+                            "UnsupportedProtocolError",
+                            "OperationError",
+                            "MissingPermissionsError"
+                        ]
+                    }
+                ],
+                "lineNumber": 21,
+                "object": true,
+                "qualifiedClassName": "QBluetoothSocket",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 121,
+                        "name": "connected",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 122,
+                        "name": "disconnected",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QBluetoothSocket::SocketError"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 123,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "state",
+                                "type": "QBluetoothSocket::SocketState"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 124,
+                        "name": "stateChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "service",
+                                "type": "QBluetoothServiceInfo"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 136,
+                        "name": "serviceDiscovered",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "index": 5,
+                        "lineNumber": 137,
+                        "name": "discoveryFinished",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QIODevice"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothsocket.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QBluetoothSocketBasePrivate",
+                "lineNumber": 56,
+                "object": true,
+                "qualifiedClassName": "QBluetoothSocketBasePrivate",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothsocketbase_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QLowEnergyController",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 25,
+                        "name": "Error",
+                        "values": [
+                            "NoError",
+                            "UnknownError",
+                            "UnknownRemoteDeviceError",
+                            "NetworkError",
+                            "InvalidBluetoothAdapterError",
+                            "ConnectionError",
+                            "AdvertisingError",
+                            "RemoteHostClosedError",
+                            "AuthorizationError",
+                            "MissingPermissionsError",
+                            "RssiReadError"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 40,
+                        "name": "ControllerState",
+                        "values": [
+                            "UnconnectedState",
+                            "ConnectingState",
+                            "ConnectedState",
+                            "DiscoveringState",
+                            "DiscoveredState",
+                            "ClosingState",
+                            "AdvertisingState"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 51,
+                        "name": "RemoteAddressType",
+                        "values": [
+                            "PublicAddress",
+                            "RandomAddress"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 57,
+                        "name": "Role",
+                        "values": [
+                            "CentralRole",
+                            "PeripheralRole"
+                        ]
+                    }
+                ],
+                "lineNumber": 21,
+                "object": true,
+                "qualifiedClassName": "QLowEnergyController",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 110,
+                        "name": "connected",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 111,
+                        "name": "disconnected",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "state",
+                                "type": "QLowEnergyController::ControllerState"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 112,
+                        "name": "stateChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "newError",
+                                "type": "QLowEnergyController::Error"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 113,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mtu",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 114,
+                        "name": "mtuChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "rssi",
+                                "type": "qint16"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 115,
+                        "name": "rssiRead",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "newService",
+                                "type": "QBluetoothUuid"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 117,
+                        "name": "serviceDiscovered",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 7,
+                        "lineNumber": 118,
+                        "name": "discoveryFinished",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "parameters",
+                                "type": "QLowEnergyConnectionParameters"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 119,
+                        "name": "connectionUpdated",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qlowenergycontroller.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QLowEnergyControllerPrivate",
+                "lineNumber": 29,
+                "object": true,
+                "qualifiedClassName": "QLowEnergyControllerPrivate",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qlowenergycontrollerbase_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QLowEnergyService",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 18,
+                        "name": "ServiceType",
+                        "values": [
+                            "PrimaryService",
+                            "IncludedService"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 25,
+                        "name": "ServiceError",
+                        "values": [
+                            "NoError",
+                            "OperationError",
+                            "CharacteristicWriteError",
+                            "DescriptorWriteError",
+                            "UnknownError",
+                            "CharacteristicReadError",
+                            "DescriptorReadError"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 36,
+                        "name": "ServiceState",
+                        "values": [
+                            "InvalidService",
+                            "RemoteService",
+                            "RemoteServiceDiscovering",
+                            "RemoteServiceDiscovered",
+                            "LocalService",
+                            "DiscoveryRequired",
+                            "DiscoveringService",
+                            "ServiceDiscovered"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 61,
+                        "name": "DiscoveryMode",
+                        "values": [
+                            "FullDiscovery",
+                            "SkipValueDiscovery"
+                        ]
+                    },
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 67,
+                        "name": "WriteMode",
+                        "values": [
+                            "WriteWithResponse",
+                            "WriteWithoutResponse",
+                            "WriteSigned"
+                        ]
+                    }
+                ],
+                "lineNumber": 14,
+                "object": true,
+                "qualifiedClassName": "QLowEnergyService",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "newState",
+                                "type": "QLowEnergyService::ServiceState"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 102,
+                        "name": "stateChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QLowEnergyCharacteristic"
+                            },
+                            {
+                                "name": "value",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 103,
+                        "name": "characteristicChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QLowEnergyCharacteristic"
+                            },
+                            {
+                                "name": "value",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 105,
+                        "name": "characteristicRead",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QLowEnergyCharacteristic"
+                            },
+                            {
+                                "name": "value",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 107,
+                        "name": "characteristicWritten",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QLowEnergyDescriptor"
+                            },
+                            {
+                                "name": "value",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 109,
+                        "name": "descriptorRead",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QLowEnergyDescriptor"
+                            },
+                            {
+                                "name": "value",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 111,
+                        "name": "descriptorWritten",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QLowEnergyService::ServiceError"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 113,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qlowenergyservice.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QLowEnergyServicePrivate",
+                "lineNumber": 33,
+                "object": true,
+                "qualifiedClassName": "QLowEnergyServicePrivate",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "newState",
+                                "type": "QLowEnergyService::ServiceState"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 65,
+                        "name": "stateChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QLowEnergyService::ServiceError"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 66,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "characteristic",
+                                "type": "QLowEnergyCharacteristic"
+                            },
+                            {
+                                "name": "newValue",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 67,
+                        "name": "characteristicChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QLowEnergyCharacteristic"
+                            },
+                            {
+                                "name": "value",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 69,
+                        "name": "characteristicRead",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "characteristic",
+                                "type": "QLowEnergyCharacteristic"
+                            },
+                            {
+                                "name": "newValue",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 71,
+                        "name": "characteristicWritten",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QLowEnergyDescriptor"
+                            },
+                            {
+                                "name": "value",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 73,
+                        "name": "descriptorRead",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "descriptor",
+                                "type": "QLowEnergyDescriptor"
+                            },
+                            {
+                                "name": "newValue",
+                                "type": "QByteArray"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 75,
+                        "name": "descriptorWritten",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qlowenergyserviceprivate_p.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "AdvertisementWatcherWrapper",
+                "lineNumber": 106,
+                "object": true,
+                "qualifiedClassName": "AdvertisementWatcherWrapper",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "quint64"
+                            },
+                            {
+                                "name": "rssi",
+                                "type": "qint16"
+                            },
+                            {
+                                "name": "manufacturerData",
+                                "type": "ManufacturerData"
+                            },
+                            {
+                                "name": "serviceData",
+                                "type": "ServiceData"
+                            },
+                            {
+                                "name": "uuids",
+                                "type": "QList<QBluetoothUuid>"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 136,
+                        "name": "advertisementDataReceived",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    },
+                    {
+                        "access": "public",
+                        "name": "std::enable_shared_from_this<AdvertisementWatcherWrapper>"
+                    }
+                ]
+            },
+            {
+                "className": "QWinRTBluetoothDeviceDiscoveryWorker",
+                "lineNumber": 191,
+                "methods": [
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "worker",
+                                "type": "std::shared_ptr<QWinRTBluetoothDeviceDiscoveryWorker>"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 229,
+                        "name": "decrementPendingDevicesCountAndCheckFinished",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "qualifiedClassName": "QWinRTBluetoothDeviceDiscoveryWorker",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "info",
+                                "type": "QBluetoothDeviceInfo"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 233,
+                        "name": "deviceFound",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "QBluetoothAddress"
+                            },
+                            {
+                                "type": "QBluetoothDeviceInfo::Fields"
+                            },
+                            {
+                                "name": "rssi",
+                                "type": "qint16"
+                            },
+                            {
+                                "name": "manufacturerData",
+                                "type": "ManufacturerData"
+                            },
+                            {
+                                "name": "serviceData",
+                                "type": "ServiceData"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 234,
+                        "name": "deviceDataChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QBluetoothDeviceDiscoveryAgent::Error"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 236,
+                        "name": "errorOccured",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 237,
+                        "name": "scanFinished",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "deviceId",
+                                "type": "winrt::hstring"
+                            },
+                            {
+                                "name": "watcherId",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 240,
+                        "name": "onBluetoothDeviceFound",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "watcherId",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 241,
+                        "name": "onDeviceEnumerationCompleted",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "quint64"
+                            },
+                            {
+                                "name": "rssi",
+                                "type": "qint16"
+                            },
+                            {
+                                "name": "manufacturerData",
+                                "type": "ManufacturerData"
+                            },
+                            {
+                                "name": "serviceData",
+                                "type": "ServiceData"
+                            },
+                            {
+                                "name": "uuids",
+                                "type": "QList<QBluetoothUuid>"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 243,
+                        "name": "onAdvertisementDataReceived",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "index": 7,
+                        "lineNumber": 248,
+                        "name": "stopAdvertisementWatcher",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    },
+                    {
+                        "access": "public",
+                        "name": "std::enable_shared_from_this<QWinRTBluetoothDeviceDiscoveryWorker>"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothdevicediscoveryagent_winrt.cpp",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "AdapterManager",
+                "lineNumber": 124,
+                "object": true,
+                "qualifiedClassName": "AdapterManager",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 139,
+                        "name": "adapterAdded",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 140,
+                        "name": "adapterRemoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            },
+                            {
+                                "name": "mode",
+                                "type": "QBluetoothLocalDevice::HostMode"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 141,
+                        "name": "modeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "QBluetoothAddress"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 142,
+                        "name": "deviceAdded",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "address",
+                                "type": "QBluetoothAddress"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 143,
+                        "name": "deviceRemoved",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "client",
+                                "type": "QBluetoothLocalDevicePrivate*"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 134,
+                        "name": "addClient",
+                        "returnType": "QBluetoothLocalDevice::HostMode"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "adapterId",
+                                "type": "winrt::hstring"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 135,
+                        "name": "removeClient",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "adapterId",
+                                "type": "winrt::hstring"
+                            },
+                            {
+                                "name": "mode",
+                                "type": "QBluetoothLocalDevice::HostMode"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 136,
+                        "name": "updateMode",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 154,
+                        "name": "onAdapterAdded",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 155,
+                        "name": "onAdapterRemoved",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            },
+                            {
+                                "name": "numAttempts",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 10,
+                        "lineNumber": 159,
+                        "name": "tryResubscribeToStateChanges",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            }
+                        ],
+                        "index": 11,
+                        "lineNumber": 161,
+                        "name": "onDeviceAdded",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "id",
+                                "type": "winrt::hstring"
+                            }
+                        ],
+                        "index": 12,
+                        "lineNumber": 162,
+                        "name": "onDeviceRemoved",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothlocaldevice_winrt.cpp",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QWinRTBluetoothServiceDiscoveryWorker",
+                "lineNumber": 54,
+                "object": true,
+                "qualifiedClassName": "QWinRTBluetoothServiceDiscoveryWorker",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "deviceAddress",
+                                "type": "quint64"
+                            },
+                            {
+                                "name": "info",
+                                "type": "QBluetoothServiceInfo"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 64,
+                        "name": "serviceFound",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "deviceAddress",
+                                "type": "quint64"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 65,
+                        "name": "scanFinished",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 66,
+                        "name": "errorOccured",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothservicediscoveryagent_winrt.cpp",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "SocketWorker",
+                "lineNumber": 90,
+                "object": true,
+                "qualifiedClassName": "SocketWorker",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "data",
+                                "type": "QList<QByteArray>"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 120,
+                        "name": "newDataReceived",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QBluetoothSocket::SocketError"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 121,
+                        "name": "socketErrorOccured",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 124,
+                        "name": "notifyAboutNewData",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qbluetoothsocket_winrt.cpp",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "QWinRTLowEnergyServiceHandler",
+                "lineNumber": 242,
+                "object": true,
+                "qualifiedClassName": "QWinRTLowEnergyServiceHandler",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "service",
+                                "type": "QBluetoothUuid"
+                            },
+                            {
+                                "name": "charList",
+                                "type": "QHash<QLowEnergyHandle,QLowEnergyServicePrivate::CharData>"
+                            },
+                            {
+                                "name": "indicateChars",
+                                "type": "QList<QBluetoothUuid>"
+                            },
+                            {
+                                "name": "startHandle",
+                                "type": "QLowEnergyHandle"
+                            },
+                            {
+                                "name": "endHandle",
+                                "type": "QLowEnergyHandle"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 421,
+                        "name": "charListObtained",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 425,
+                        "name": "errorOccured",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 262,
+                        "name": "obtainCharList",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 400,
+                        "name": "setAbortRequested",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            },
+            {
+                "className": "QWinRTLowEnergyConnectionHandler",
+                "lineNumber": 444,
+                "object": true,
+                "qualifiedClassName": "QWinRTLowEnergyConnectionHandler",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "device",
+                                "type": "com_ptr<abi::BluetoothLEDevice>"
+                            },
+                            {
+                                "name": "session",
+                                "type": "com_ptr<abi::GattSession>"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 471,
+                        "name": "deviceConnected",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "error",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 472,
+                        "name": "errorOccurred",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 467,
+                        "name": "connectToDevice",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 468,
+                        "name": "handleDeviceDisconnectRequest",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qlowenergycontroller_winrt.cpp",
+        "outputRevision": 69
+    }
+]

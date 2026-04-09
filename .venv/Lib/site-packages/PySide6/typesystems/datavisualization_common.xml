@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// Copyright (C) 2018 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+-->
+<typesystem>
+    <template name="cppqlistofptrtoqlists_to_py_conversion">
+        const Py_ssize_t rowCount = %in.size();
+        PyObject* %out = PyList_New(rowCount);
+        for (Py_ssize_t r = 0; r &lt; rowCount; ++r) {
+            const QList&lt;%INTYPE_0&gt; *row = %in.at(r);
+            const Py_ssize_t columnCount = row->size();
+            PyObject *pyRow = PyList_New(columnCount);
+            for (Py_ssize_t c = 0; c &lt; columnCount; ++c) {
+                const %INTYPE_0 &amp;cppItem = row->at(c);
+                PyList_SetItem(pyRow, c, %CONVERTTOPYTHON[%INTYPE_0](cppItem));
+            }
+            PyList_SetItem(%out, r, pyRow);
+        }
+        return %out;
+    </template>
+
+    <template name="py_to_cppqlistofptrtoqlists_conversion">
+        const Py_ssize_t rowCount = PySequence_Size(%in);
+        %OUTTYPE &amp;result = %out;
+        result.reserve(rowCount);
+        for (Py_ssize_t r = 0; r &lt; rowCount; ++r) {
+            Shiboken::AutoDecRef rowItem(PySequence_GetItem(%in, r));
+            const Py_ssize_t columnCount = PySequence_Size(rowItem);
+            auto *row = new QList&lt;%OUTTYPE_0&gt;;
+            row->reserve(columnCount);
+            for (Py_ssize_t c = 0; c &lt; columnCount; ++c) {
+               Shiboken::AutoDecRef pyItem(PySequence_GetItem(rowItem, c));
+               %OUTTYPE_0 v = %CONVERTTOCPP[%OUTTYPE_0](pyItem);
+               row->append(v);
+            }
+            result.append(row);
+        }
+    </template>
+</typesystem>
