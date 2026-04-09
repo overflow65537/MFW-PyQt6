@@ -1,5 +1,0 @@
-if (NOT PYTHON_CONFIG_SUFFIX)
-    message(STATUS "Shiboken6Config: Using default python: .abi3")
-    SET(PYTHON_CONFIG_SUFFIX .abi3)
-endif()
-include("${CMAKE_CURRENT_LIST_DIR}/Shiboken6Config${PYTHON_CONFIG_SUFFIX}.cmake")
