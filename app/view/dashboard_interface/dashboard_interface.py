@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import platform
 from typing import Callable
 
 from PySide6.QtCore import Qt, Signal
@@ -24,17 +23,7 @@ from qfluentwidgets import (
 
 from app.common import __version__ as version_meta
 from app.core.core import ServiceCoordinator
-from app.utils.gpu_cache import gpu_cache
-
-try:
-    import psutil
-except Exception:
-    psutil = None
-
-try:
-    import wmi as wmi_module
-except Exception:
-    wmi_module = None
+from app.utils.release_notes import load_release_notes, resolve_project_name
 
 APP_VERSION = getattr(version_meta, "__version__", "Unknown")
 UI_VERSION = getattr(version_meta, "__ui_version__", APP_VERSION)
@@ -133,6 +122,7 @@ class DashboardInterface(QWidget):
         self._open_monitor = open_monitor
         self._open_schedule = open_schedule
         self._open_setting = open_setting
+        self._recent_notes_limit = 3
 
         self._init_ui()
 
@@ -155,7 +145,7 @@ class DashboardInterface(QWidget):
         layout.setSpacing(16)
 
         layout.addWidget(self._build_hero_card())
-        layout.addWidget(self._build_system_card())
+        layout.addWidget(self._build_release_note_card())
         layout.addLayout(self._build_action_grid())
         layout.addStretch(1)
 
@@ -172,7 +162,7 @@ class DashboardInterface(QWidget):
         title.setObjectName("V5HeroTitle")
         box.addWidget(title)
 
-        subtitle = QLabel("更现代的控制台界面", card)
+        subtitle = QLabel(self.tr("A More Modern Console Interface"), card)
         subtitle.setObjectName("V5HeroSubtitle")
         box.addWidget(subtitle)
         box.addStretch(1)
@@ -183,7 +173,7 @@ class DashboardInterface(QWidget):
 
         return card
 
-    def _build_system_card(self) -> QWidget:
+    def _build_release_note_card(self) -> QWidget:
         card = QFrame(self)
         card.setObjectName("V5SystemCard")
 
@@ -191,25 +181,48 @@ class DashboardInterface(QWidget):
         box.setContentsMargins(22, 18, 22, 18)
         box.setSpacing(10)
 
-        header = BodyLabel("系统信息", card)
+        header = BodyLabel(self.tr("Update Log"), card)
         header.setObjectName("V5SectionTitle")
         box.addWidget(header)
 
-        info_grid = QGridLayout()
-        info_grid.setHorizontalSpacing(36)
-        info_grid.setVerticalSpacing(10)
+        notes = self._get_recent_release_notes(self._recent_notes_limit)
+        if not notes:
+            empty_label = QLabel(
+                self.tr(
+                    "No update log found locally.\n\n"
+                    "Please check for updates first, or visit the GitHub releases page."
+                ),
+                card,
+            )
+            empty_label.setObjectName("V5InfoValue")
+            empty_label.setWordWrap(True)
+            box.addWidget(empty_label)
+            return card
 
-        rows = self._collect_system_info()
-        for row_index, (name, value) in enumerate(rows):
-            k = QLabel(name, card)
-            k.setObjectName("V5InfoKey")
-            v = QLabel(value, card)
-            v.setObjectName("V5InfoValue")
-            v.setWordWrap(True)
-            info_grid.addWidget(k, row_index, 0)
-            info_grid.addWidget(v, row_index, 1)
+        for version, preview in notes:
+            row = QWidget(card)
+            row_box = QVBoxLayout(row)
+            row_box.setContentsMargins(0, 0, 0, 0)
+            row_box.setSpacing(2)
 
-        box.addLayout(info_grid)
+            version_label = QLabel(version, row)
+            version_label.setObjectName("V5InfoValue")
+            row_box.addWidget(version_label)
+
+            preview_label = QLabel(preview, row)
+            preview_label.setObjectName("V5InfoKey")
+            preview_label.setWordWrap(True)
+            row_box.addWidget(preview_label)
+
+            box.addWidget(row)
+
+        hint = QLabel(
+            self.tr("View full changelog in Settings > Open update log."),
+            card,
+        )
+        hint.setObjectName("V5InfoKey")
+        hint.setWordWrap(True)
+        box.addWidget(hint)
         return card
 
     def _build_action_grid(self):
@@ -220,32 +233,32 @@ class DashboardInterface(QWidget):
         cards = [
             (
                 FIF.CHECKBOX,
-                "任务流程",
-                "配置并执行自动化任务",
+                self.tr("Task"),
+                self.tr("Configure and execute automation tasks"),
                 self._open_task,
                 self.tr("Start"),
                 self._start_task,
             ),
             (
                 FIF.PROJECTOR,
-                "实时监控",
-                "查看识别画面与状态输出",
+                self.tr("Monitor"),
+                self.tr("View real-time frames and runtime status"),
                 self._open_monitor,
                 None,
                 None,
             ),
             (
                 FIF.CALENDAR,
-                "计划任务",
-                "设置定时运行与强制启动",
+                self.tr("Schedule"),
+                self.tr("Configure scheduled runs and force start"),
                 self._open_schedule,
                 None,
                 None,
             ),
             (
                 FIF.SETTING,
-                "系统设置",
-                "主题、更新与资源管理",
+                self.tr("Setting"),
+                self.tr("Theme, update, and resource management"),
                 self._open_setting,
                 None,
                 None,
@@ -267,105 +280,31 @@ class DashboardInterface(QWidget):
 
         return grid
 
-    def _collect_system_info(self) -> list[tuple[str, str]]:
-        os_version = self._get_os_version_text()
-        arch = self._get_arch_text()
-        cpu = self._get_cpu_text()
-        gpu = self._get_gpu_text()
-        memory = self._get_memory_text()
+    def _get_interface_metadata(self) -> dict:
+        interface_data = getattr(self.service_coordinator.task, "interface", None)
+        return interface_data or {}
 
-        return [
-            ("版本", os_version),
-            ("架构", arch),
-            ("CPU", cpu),
-            ("GPU", gpu),
-            ("内存", memory),
-        ]
+    def _get_recent_release_notes(self, limit: int) -> list[tuple[str, str]]:
+        project_name = resolve_project_name(self._get_interface_metadata())
+        notes = load_release_notes(project_name)
+        items = list(notes.items())[: max(0, int(limit))]
+        return [(version, self._summarize_markdown(content)) for version, content in items]
 
-    def _get_os_version_text(self) -> str:
-        if platform.system().lower() == "windows":
-            try:
-                if wmi_module is not None:
-                    conn = wmi_module.WMI()
-                    os_info = conn.Win32_OperatingSystem()[0]
-                    caption = str(getattr(os_info, "Caption", "")).replace(
-                        "Microsoft ", ""
-                    )
-                    build = str(getattr(os_info, "BuildNumber", "")).strip()
-                    if caption and build:
-                        return f"{caption} Build {build}"
-                    if caption:
-                        return caption
-            except Exception:
-                pass
-        return platform.platform(aliased=True, terse=True) or "Unknown"
+    def _summarize_markdown(self, text: str, max_len: int = 180) -> str:
+        lines = []
+        for raw in str(text or "").splitlines():
+            line = raw.strip()
+            if not line:
+                continue
+            if line.startswith("#"):
+                line = line.lstrip("#").strip()
+            if line.startswith("- "):
+                line = line[2:].strip()
+            lines.append(line)
 
-    def _get_arch_text(self) -> str:
-        if platform.system().lower() == "windows":
-            try:
-                if wmi_module is not None:
-                    conn = wmi_module.WMI()
-                    os_info = conn.Win32_OperatingSystem()[0]
-                    arch = str(getattr(os_info, "OSArchitecture", "")).strip()
-                    if arch:
-                        return arch.replace("-bit", " 位")
-            except Exception:
-                pass
-        return "64 位" if "64" in platform.architecture()[0] else "32 位"
-
-    def _get_cpu_text(self) -> str:
-        if platform.system().lower() == "windows":
-            try:
-                if wmi_module is not None:
-                    conn = wmi_module.WMI()
-                    processors = conn.Win32_Processor()
-                    if processors:
-                        cpu_name = str(getattr(processors[0], "Name", "")).strip()
-                        if cpu_name:
-                            return cpu_name
-            except Exception:
-                pass
-        return platform.processor() or platform.machine() or "Unknown"
-
-    def _get_gpu_text(self) -> str:
-        names: list[str] = []
-        try:
-            cache_info = gpu_cache.get_gpu_info()
-            names.extend([str(v).strip() for v in cache_info.values() if str(v).strip()])
-        except Exception:
-            pass
-
-        if not names and platform.system().lower() == "windows":
-            try:
-                if wmi_module is not None:
-                    conn = wmi_module.WMI()
-                    adapters = conn.Win32_VideoController()
-                    names.extend(
-                        [
-                            str(getattr(item, "Name", "")).strip()
-                            for item in adapters
-                            if str(getattr(item, "Name", "")).strip()
-                        ]
-                    )
-            except Exception:
-                pass
-
-        # 去重并保持顺序
-        unique_names: list[str] = []
-        for name in names:
-            if name not in unique_names:
-                unique_names.append(name)
-
-        if not unique_names:
-            return "Unknown"
-        return " / ".join(unique_names)
-
-    def _get_memory_text(self) -> str:
-
-        if psutil is not None:
-            try:
-                total_gb = psutil.virtual_memory().total / (1024**3)
-                return f"{total_gb:.1f} GB"
-            except Exception:
-                return "Unknown"
-        return "Unknown"
+        summary = " ".join(lines).strip()
+        if not summary:
+            return self.tr("No summary available")
+        if len(summary) > max_len:
+            return summary[: max_len - 1].rstrip() + "…"
+        return summary

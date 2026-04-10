@@ -3931,5 +3931,82 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
             <source> The first two are already done for you, please do the third one yourself.</source>
             <translation> 前兩項任務已代勞，第三項請親自完成。</translation>
         </message>
-    </context>
+</context>
+<context>
+    <name>DashboardInterface</name>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="165"/>
+        <source>A More Modern Console Interface</source>
+        <translation>A More Modern Console Interface</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="184"/>
+        <source>Update Log</source>
+        <translation>更新日誌</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="192"/>
+        <source>No update log found locally.
+
+Please check for updates first, or visit the GitHub releases page.</source>
+        <translation>本機未找到更新日誌。
+
+請先檢查更新，或造訪 GitHub 發佈頁面。</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="220"/>
+        <source>View full changelog in Settings &gt; Open update log.</source>
+        <translation>可在 設定 &gt; 開啟更新日誌 查看完整變更記錄。</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="236"/>
+        <source>Task</source>
+        <translation>任務</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="237"/>
+        <source>Configure and execute automation tasks</source>
+        <translation>設定並執行自動化任務</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="239"/>
+        <source>Start</source>
+        <translation>開始</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="244"/>
+        <source>Monitor</source>
+        <translation>監控</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="245"/>
+        <source>View real-time frames and runtime status</source>
+        <translation>查看即時畫面與執行狀態</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="252"/>
+        <source>Schedule</source>
+        <translation>排程</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="253"/>
+        <source>Configure scheduled runs and force start</source>
+        <translation>設定定時執行與強制啟動</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="260"/>
+        <source>Setting</source>
+        <translation>設定</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="261"/>
+        <source>Theme, update, and resource management</source>
+        <translation>主題、更新與資源管理</translation>
+    </message>
+    <message>
+        <location filename="../view/dashboard_interface/dashboard_interface.py" line="307"/>
+        <source>No summary available</source>
+        <translation>暫無摘要</translation>
+    </message>
+</context>
 </TS>

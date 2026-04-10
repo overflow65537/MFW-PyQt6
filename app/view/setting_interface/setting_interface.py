@@ -58,6 +58,11 @@ from app.utils.logger import logger
 from app.utils.update import Update
 from app.view.setting_interface.widget.proxy_setting_card import ProxySettingCard
 from app.utils.hotkey_manager import GlobalHotkeyManager
+from app.utils.release_notes import (
+    load_release_notes,
+    resolve_project_name,
+    save_release_note,
+)
 from app.view.setting_interface.widget.slider_setting_card import SliderSettingCard
 import sys
 from app.view.setting_interface.widget.line_edit_card import (
@@ -1661,20 +1666,12 @@ class SettingInterface(QWidget):
         Returns:
             项目名称，如果无法获取则返回默认值 "MFW_CFA"
         """
-        # 如果已经设置了 self.name，直接使用
-        if hasattr(self, "name") and self.name:
-            return self.name
-
-        # 否则从 interface 数据中获取
-        metadata = self._get_interface_metadata()
-        name = metadata.get("name", "")
-        if name:
-            # 保存到 self.name 以便后续使用
-            self.name = name
-            return name
-
-        # 如果都获取不到，返回默认值
-        return "MFW_CFA"
+        name = resolve_project_name(
+            self._get_interface_metadata(),
+            cached_name=getattr(self, "name", None),
+        )
+        self.name = name
+        return name
 
     def _apply_theme_from_config(self):
         """确保设置界面初始化时与全局主题同步。"""
@@ -2630,47 +2627,14 @@ class SettingInterface(QWidget):
 
     def _save_release_note(self, version: str, content: str):
         """保存更新日志到文件"""
-        import os
-
-        # 获取项目名称，用于创建对应的文件夹
         project_name = self._get_project_name()
-        release_notes_dir = f"./release_notes/{project_name}"
-        os.makedirs(release_notes_dir, exist_ok=True)
-
-        # 清理版本号中的非法字符作为文件名
-        safe_version = version.replace("/", "-").replace("\\", "-").replace(":", "-")
-        file_path = os.path.join(release_notes_dir, f"{safe_version}.md")
-
-        try:
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            logger.info(f"更新日志已保存到: {file_path}")
-        except Exception as e:
-            logger.error(f"保存更新日志失败: {e}")
+        saved_path = save_release_note(project_name, version, content)
+        if saved_path is not None:
+            logger.info("更新日志已保存到: %s", saved_path)
 
     def _load_release_notes(self, name: str) -> dict:
         """加载所有已保存的更新日志"""
-        import os
-
-        release_notes_dir = f"./release_notes/{name}"
-        notes = {}
-
-        if not os.path.exists(release_notes_dir):
-            return notes
-
-        try:
-            for filename in os.listdir(release_notes_dir):
-                if filename.endswith(".md"):
-                    version = filename[:-3]  # 移除 .md 后缀
-                    file_path = os.path.join(release_notes_dir, filename)
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        notes[version] = f.read()
-        except Exception as e:
-            logger.error(f"加载更新日志失败: {e}")
-
-        # 按版本号排序（降序，最新版本在前）
-        sorted_notes = dict(sorted(notes.items(), key=lambda x: x[0], reverse=True))
-        return sorted_notes
+        return load_release_notes(name)
 
     def _on_update_start_clicked(self):
         """点击开始更新"""

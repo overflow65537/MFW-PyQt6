@@ -3932,4 +3932,81 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
             <translation> 最初の2項目は代行しました。3項目目はご自身でお願いします。</translation>
         </message>
     </context>
+    <context>
+        <name>DashboardInterface</name>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="165"/>
+            <source>A More Modern Console Interface</source>
+            <translation>A More Modern Console Interface</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="184"/>
+            <source>Update Log</source>
+            <translation>更新ログ</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="192"/>
+            <source>No update log found locally.
+
+Please check for updates first, or visit the GitHub releases page.</source>
+            <translation>ローカルに更新ログが見つかりません。
+
+まず更新を確認するか、GitHubのリリースページをご覧ください。</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="220"/>
+            <source>View full changelog in Settings &gt; Open update log.</source>
+            <translation>完全な変更履歴は「設定 &gt; 更新ログを開く」で確認できます。</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="236"/>
+            <source>Task</source>
+            <translation>タスク</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="237"/>
+            <source>Configure and execute automation tasks</source>
+            <translation>自動化タスクを設定して実行します</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="239"/>
+            <source>Start</source>
+            <translation>開始</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="244"/>
+            <source>Monitor</source>
+            <translation>モニター</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="245"/>
+            <source>View real-time frames and runtime status</source>
+            <translation>リアルタイム画面と実行状態を確認します</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="252"/>
+            <source>Schedule</source>
+            <translation>スケジュール</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="253"/>
+            <source>Configure scheduled runs and force start</source>
+            <translation>定時実行と強制起動を設定します</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="260"/>
+            <source>Setting</source>
+            <translation>設定</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="261"/>
+            <source>Theme, update, and resource management</source>
+            <translation>テーマ、更新、リソース管理</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="307"/>
+            <source>No summary available</source>
+            <translation>要約はありません</translation>
+        </message>
+    </context>
 </TS>
