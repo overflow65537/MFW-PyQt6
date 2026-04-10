@@ -5,7 +5,9 @@ GPU 信息缓存模块
 """
 
 import platform
+import os
 import subprocess
+import shutil
 from typing import Dict, Optional
 
 from app.utils.logger import logger
@@ -29,16 +31,41 @@ def _parse_gpu_names_from_lines(output: str) -> Dict[int, str]:
 
 def _get_windows_gpu_info() -> Dict[int, str]:
     """通过 PowerShell WMI/CIM Cmdlet 获取 Windows GPU 信息。"""
+
+    def _resolve_powershell() -> list[str] | None:
+        candidates = [
+            os.path.join(
+                os.environ.get("SystemRoot", r"C:\Windows"),
+                "System32",
+                "WindowsPowerShell",
+                "v1.0",
+                "powershell.exe",
+            ),
+            shutil.which("pwsh"),
+            shutil.which("powershell"),
+        ]
+
+        for candidate in candidates:
+            if candidate and os.path.isfile(candidate):
+                return [candidate]
+
+        logger.warning("未找到 PowerShell 可执行文件，无法通过 WMI/CIM 获取 GPU 信息")
+        return None
+
+    pwsh = _resolve_powershell()
+    if pwsh is None:
+        return {}
+
     powershell_commands = [
-        [
-            "powershell",
+        pwsh
+        + [
             "-NoProfile",
             "-NonInteractive",
             "-Command",
             "Get-CimInstance -ClassName Win32_VideoController | Select-Object -ExpandProperty Name",
         ],
-        [
-            "powershell",
+        pwsh
+        + [
             "-NoProfile",
             "-NonInteractive",
             "-Command",
@@ -53,11 +80,8 @@ def _get_windows_gpu_info() -> Dict[int, str]:
                 capture_output=True,
                 text=True,
                 creationflags=CREATE_NO_WINDOW,
-                timeout=5,
+                timeout=10,
             )
-        except FileNotFoundError:
-            logger.warning("未找到 PowerShell，无法通过 WMI/CIM 获取 GPU 信息")
-            return {}
         except subprocess.TimeoutExpired:
             logger.warning("PowerShell 查询 GPU 信息超时")
             continue
@@ -83,17 +107,45 @@ def get_gpu_info() -> Dict[int, str]:
 
     system = platform.system().lower()
 
+    def _resolve_command(command_name: str) -> list[str] | None:
+        """Resolve command to absolute executable path to avoid PATH hijacking."""
+        if platform.system().lower() == "windows" and command_name.lower() == "wmic":
+            system_root = os.environ.get("SystemRoot", r"C:\Windows")
+            wmic_path = os.path.join(system_root, "System32", "wbem", "wmic.exe")
+            if os.path.isfile(wmic_path):
+                return [wmic_path]
+
+        resolved = shutil.which(command_name)
+        if not resolved:
+            logger.debug("命令不可用，跳过 GPU 检测命令: %s", command_name)
+            return None
+        return [resolved]
+
+    def _run_command(args: list[str]) -> subprocess.CompletedProcess[str] | None:
+        try:
+            return subprocess.run(
+                args,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                creationflags=CREATE_NO_WINDOW,
+            )
+        except Exception as e:
+            logger.debug("执行 GPU 检测命令失败 %s: %s", args[0] if args else "?", e)
+            return None
+
     try:
         if system == "windows":
             gpu_info = _get_windows_gpu_info()
 
         elif system == "darwin":  # macOS
             # macOS 系统使用 system_profiler 命令获取 GPU 信息
-            result = subprocess.run(
-                ["system_profiler", "SPDisplaysDataType"],
-                capture_output=True,
-                text=True,
-            )
+            base = _resolve_command("system_profiler")
+            if base is None:
+                return gpu_info
+            result = _run_command(base + ["SPDisplaysDataType"])
+            if result is None:
+                return gpu_info
             if result.returncode == 0:
                 lines = result.stdout.strip().split("\n")
                 gpu_id = 0
@@ -105,11 +157,14 @@ def get_gpu_info() -> Dict[int, str]:
 
         elif system == "linux":
             # Linux 系统使用 lspci 命令获取 GPU 信息
-            result = subprocess.run(
-                ["lspci", "-nn", "-d", "10de:,1002:,1022:"],  # NVIDIA, AMD, ATI
-                capture_output=True,
-                text=True,
+            base = _resolve_command("lspci")
+            if base is None:
+                return gpu_info
+            result = _run_command(
+                base + ["-nn", "-d", "10de:,1002:,1022:"]  # NVIDIA, AMD, ATI
             )
+            if result is None:
+                return gpu_info
             if result.returncode == 0:
                 lines = result.stdout.strip().split("\n")
                 for i, line in enumerate(lines):
