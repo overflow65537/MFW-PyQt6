@@ -1343,7 +1343,7 @@ class SettingInterface(QWidget):
         self.github_api_key_card.lineEdit.setPlaceholderText(
             self.tr("Optional token for authenticated GitHub requests")
         )
-        self.github_api_key_card.lineEdit.setText(cfg.get(cfg.github_api_key) or "")
+        self.github_api_key_card.lineEdit.setText(self._get_github_api_key_text())
         self.github_api_key_card.lineEdit.textChanged.connect(
             self._on_github_api_key_change
         )
@@ -1534,8 +1534,48 @@ class SettingInterface(QWidget):
             )
             return
 
+    def _get_github_api_key_text(self) -> str:
+        """读取 GitHub 令牌，兼容历史明文并在可行时迁移为密文。"""
+        stored_value = cfg.get(cfg.github_api_key) or ""
+        if not stored_value:
+            return ""
+
+        try:
+            token_text = crypto_manager.decrypt_text(
+                stored_value,
+                fallback_to_plaintext=True,
+            ).strip()
+        except Exception as exc:
+            logger.warning("读取 GitHub API Key 失败: %s", exc)
+            signalBus.info_bar_requested.emit(
+                "warning",
+                self.tr("Failed to read GitHub token, please save it again."),
+            )
+            return ""
+
+        if token_text and not crypto_manager.is_encrypted_text(stored_value):
+            try:
+                cfg.set(cfg.github_api_key, crypto_manager.encrypt_text(token_text))
+                logger.info("检测到旧版明文 GitHub API Key，已自动迁移为加密存储")
+            except Exception as exc:
+                logger.warning("迁移 GitHub API Key 到加密存储失败: %s", exc)
+
+        return token_text
+
     def _on_github_api_key_change(self, text: str):
-        cfg.set(cfg.github_api_key, str(text).strip())
+        token_text = str(text).strip()
+        if not token_text:
+            cfg.set(cfg.github_api_key, "")
+            return
+
+        try:
+            cfg.set(cfg.github_api_key, crypto_manager.encrypt_text(token_text))
+        except Exception as exc:
+            logger.error("加密 GitHub API Key 失败: %s", exc)
+            signalBus.info_bar_requested.emit(
+                "error",
+                self.tr("Failed to save GitHub token: {}.").format(str(exc)),
+            )
 
     def _refresh_header_from_interface(self) -> None:
         """

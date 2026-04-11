@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 from cryptography.fernet import Fernet
+from cryptography.fernet import InvalidToken
 
 from app.utils.logger import logger
 
@@ -62,6 +63,11 @@ class CryptoManager:
             raise TypeError("Value must be bytes or str")
         return self.get_fernet().encrypt(data)
 
+    def encrypt_text(self, value: Union[bytes, str]) -> str:
+        """将字符串加密为可直接写入配置的 utf-8 文本。"""
+        encrypted = self.encrypt_payload(value)
+        return encrypted.decode("utf-8")
+
     def decrypt_payload(self, value: Union[bytes, str]) -> bytes:
         """将密文还原为原始字节串。"""
         if isinstance(value, bytes):
@@ -71,6 +77,29 @@ class CryptoManager:
         else:
             raise TypeError("Value must be bytes or str")
         return self.get_fernet().decrypt(token)
+
+    def decrypt_text(
+        self, value: Union[bytes, str], *, fallback_to_plaintext: bool = False
+    ) -> str:
+        """将密文解密为字符串，必要时兼容旧版明文配置。"""
+        try:
+            return self.decrypt_payload(value).decode("utf-8")
+        except InvalidToken:
+            if not fallback_to_plaintext:
+                raise
+            if isinstance(value, bytes):
+                return value.decode("utf-8", errors="ignore")
+            return str(value)
+
+    def is_encrypted_text(self, value: Union[bytes, str]) -> bool:
+        """判断给定文本是否为当前密钥可解密的 Fernet 密文。"""
+        if not value:
+            return False
+        try:
+            self.decrypt_payload(value)
+            return True
+        except Exception:
+            return False
 
 
 crypto_manager = CryptoManager()

@@ -577,7 +577,14 @@ class BaseUpdate(QThread):
         token = cfg.get(cfg.github_api_key)
         if not token:
             return None
-        token_str = str(token).strip()
+        try:
+            token_str = crypto_manager.decrypt_text(
+                token,
+                fallback_to_plaintext=True,
+            ).strip()
+        except Exception as exc:
+            logger.warning("读取 GitHub API Key 失败，将按未配置处理: %s", exc)
+            return None
         if not token_str:
             return None
         return {
