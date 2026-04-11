@@ -4390,7 +4390,7 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
     <message>
         <location filename="../view/dashboard_interface/dashboard_interface.py" line="165"/>
         <source>A More Modern Console Interface</source>
-        <translation>A More Modern Console Interface</translation>
+        <translation>更现代的控制台界面</translation>
     </message>
     <message>
         <location filename="../view/dashboard_interface/dashboard_interface.py" line="184"/>
