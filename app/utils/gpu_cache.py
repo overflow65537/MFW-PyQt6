@@ -10,12 +10,6 @@ from typing import Dict, Optional
 
 from app.utils.logger import logger
 
-# Windows 系统下隐藏命令行窗口的标志
-if platform.system() == "Windows":
-    CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW
-else:
-    CREATE_NO_WINDOW = 0
-
 try:
     import wmi as wmi_module
 except Exception:
