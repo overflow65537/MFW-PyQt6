@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Callable
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, QObject, Qt, Signal
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -21,6 +23,8 @@ from qfluentwidgets import (
     PrimaryPushButton,
 )
 
+from app.common.config import cfg
+from app.common.signal_bus import signalBus
 from app.common import __version__ as version_meta
 from app.core.core import ServiceCoordinator
 from app.utils.release_notes import load_release_notes, resolve_project_name
@@ -123,8 +127,12 @@ class DashboardInterface(QWidget):
         self._open_schedule = open_schedule
         self._open_setting = open_setting
         self._recent_notes_limit = 3
+        self._hero_card: QFrame | None = None
+        self._hero_cover_label: QLabel | None = None
+        self._hero_title_label: QLabel | None = None
 
         self._init_ui()
+        signalBus.background_image_changed.connect(self._on_background_image_changed)
 
     def _init_ui(self) -> None:
         root = QVBoxLayout(self)
@@ -153,14 +161,23 @@ class DashboardInterface(QWidget):
         card = QFrame(self)
         card.setObjectName("V5HeroCard")
         card.setFixedHeight(210)
+        card.installEventFilter(self)
+        self._hero_card = card
+
+        cover = QLabel(card)
+        cover.setObjectName("V5HeroCover")
+        cover.setScaledContents(True)
+        cover.hide()
+        self._hero_cover_label = cover
 
         box = QVBoxLayout(card)
         box.setContentsMargins(28, 26, 28, 24)
         box.setSpacing(6)
 
-        title = QLabel(f"MFW {UI_VERSION}", card)
+        title = QLabel(self._get_hero_title(), card)
         title.setObjectName("V5HeroTitle")
         box.addWidget(title)
+        self._hero_title_label = title
 
         subtitle = QLabel(self.tr("A More Modern Console Interface"), card)
         subtitle.setObjectName("V5HeroSubtitle")
@@ -170,6 +187,7 @@ class DashboardInterface(QWidget):
         version = QLabel(f"App {APP_VERSION}  ·  UI {UI_VERSION}", card)
         version.setObjectName("V5HeroVersion")
         box.addWidget(version, 0, Qt.AlignmentFlag.AlignRight)
+        self._apply_hero_cover(cfg.get(cfg.background_image_path) or "")
 
         return card
 
@@ -283,6 +301,59 @@ class DashboardInterface(QWidget):
     def _get_interface_metadata(self) -> dict:
         interface_data = getattr(self.service_coordinator.task, "interface", None)
         return interface_data or {}
+
+    def _get_hero_title(self) -> str:
+        metadata = self._get_interface_metadata()
+        for key in ("custom_title", "title", "name"):
+            value = str(metadata.get(key, "") or "").strip()
+            if value:
+                return value
+        return f"MFW {UI_VERSION}"
+
+    def _apply_hero_cover(self, image_path: str) -> None:
+        if self._hero_cover_label is None or self._hero_card is None:
+            return
+
+        path = str(image_path or "").strip()
+        if not path:
+            self._hero_cover_label.clear()
+            self._hero_cover_label.hide()
+            return
+
+        image_file = Path(path)
+        if not image_file.is_file():
+            self._hero_cover_label.clear()
+            self._hero_cover_label.hide()
+            return
+
+        pixmap = QPixmap(str(image_file))
+        if pixmap.isNull():
+            self._hero_cover_label.clear()
+            self._hero_cover_label.hide()
+            return
+
+        target_size = self._hero_card.size()
+        scaled = pixmap.scaled(
+            target_size,
+            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self._hero_cover_label.setGeometry(self._hero_card.rect())
+        self._hero_cover_label.setPixmap(scaled)
+        self._hero_cover_label.lower()
+        self._hero_cover_label.show()
+
+    def _on_background_image_changed(self, path: str) -> None:
+        self._apply_hero_cover(path)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if (
+            watched is self._hero_card
+            and event.type() == QEvent.Type.Resize
+            and self._hero_cover_label is not None
+        ):
+            self._apply_hero_cover(cfg.get(cfg.background_image_path) or "")
+        return super().eventFilter(watched, event)
 
     def _get_recent_release_notes(self, limit: int) -> list[tuple[str, str]]:
         project_name = resolve_project_name(self._get_interface_metadata())
