@@ -9,7 +9,6 @@ keyboard
 wmi
 cryptography
 markdown
-chardet
 pyperclip
 pillow
 json-with-comments
