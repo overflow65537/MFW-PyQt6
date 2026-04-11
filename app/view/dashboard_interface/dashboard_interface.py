@@ -133,7 +133,7 @@ class DashboardInterface(QWidget):
         self._hero_title_label: QLabel | None = None
 
         self._init_ui()
-        signalBus.background_image_changed.connect(self._on_background_image_changed)
+        signalBus.home_cover_image_changed.connect(self._on_home_cover_image_changed)
 
     def _init_ui(self) -> None:
         root = QVBoxLayout(self)
@@ -180,15 +180,16 @@ class DashboardInterface(QWidget):
         box.addWidget(title)
         self._hero_title_label = title
 
-        subtitle = QLabel(self.tr("A More Modern Console Interface"), card)
+        subtitle = QLabel(self._get_hero_subtitle(), card)
         subtitle.setObjectName("V5HeroSubtitle")
+        subtitle.setWordWrap(True)
         box.addWidget(subtitle)
         box.addStretch(1)
 
         version = QLabel(f"App {APP_VERSION}  ·  UI {UI_VERSION}", card)
         version.setObjectName("V5HeroVersion")
         box.addWidget(version, 0, Qt.AlignmentFlag.AlignRight)
-        self._apply_hero_cover(cfg.get(cfg.background_image_path) or "")
+        self._apply_hero_cover(cfg.get(cfg.home_cover_image_path) or "")
 
         return card
 
@@ -305,17 +306,31 @@ class DashboardInterface(QWidget):
 
     def _get_hero_title(self) -> str:
         metadata = self._get_interface_metadata()
+        for key in ("custom_title", "title", "name"):
+            value = str(metadata.get(key, "") or "").strip()
+            if value:
+                return value
         concise_description = self._extract_concise_title_from_description(
             metadata.get("description", "")
         )
         if concise_description:
             return concise_description
-
-        for key in ("custom_title", "title", "name"):
-            value = str(metadata.get(key, "") or "").strip()
-            if value:
-                return value
         return f"MFW {UI_VERSION}"
+
+    def _get_hero_subtitle(self) -> str:
+        metadata = self._get_interface_metadata()
+        raw_description = str(metadata.get("description", "") or "").strip()
+        if not raw_description:
+            return self.tr("A More Modern Console Interface")
+
+        lines = [line.strip() for line in raw_description.splitlines() if line.strip()]
+        if not lines:
+            return self.tr("A More Modern Console Interface")
+
+        subtitle = " ".join(lines)
+        subtitle = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", subtitle)  # Markdown links
+        subtitle = re.sub(r"[*_`~]+", "", subtitle).strip()
+        return subtitle or self.tr("A More Modern Console Interface")
 
     def _extract_concise_title_from_description(self, raw_description: object) -> str:
         text = str(raw_description or "").strip()
@@ -373,7 +388,7 @@ class DashboardInterface(QWidget):
         self._hero_cover_label.lower()
         self._hero_cover_label.show()
 
-    def _on_background_image_changed(self, path: str) -> None:
+    def _on_home_cover_image_changed(self, path: str) -> None:
         self._apply_hero_cover(path)
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
@@ -382,7 +397,7 @@ class DashboardInterface(QWidget):
             and event.type() == QEvent.Type.Resize
             and self._hero_cover_label is not None
         ):
-            self._apply_hero_cover(cfg.get(cfg.background_image_path) or "")
+            self._apply_hero_cover(cfg.get(cfg.home_cover_image_path) or "")
         return super().eventFilter(watched, event)
 
     def _get_recent_release_notes(self, limit: int) -> list[tuple[str, str]]:

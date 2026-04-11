@@ -1334,6 +1334,9 @@ class TaskFlowRunner(QObject):
             logger.debug(f"加载资源: {resource}")
             res_cfg = self.task_service.get_task(_RESOURCE_)
             gpu_idx = res_cfg.task_option.get("gpu", -1) if res_cfg else -1
+            if not cfg.get(cfg.enable_gpu_acceleration):
+                # -2 means forcing CPU inference mode in maafw
+                gpu_idx = -2
             await self.maafw.load_resource(resource, gpu_idx)
             logger.debug(f"资源加载完成: {resource}")
         # v2.2.0：控制器 attach_resource_path，在 resource.path 加载完成后额外加载

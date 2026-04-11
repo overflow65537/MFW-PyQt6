@@ -169,6 +169,9 @@ class Config(QConfig):
     low_power_monitoring_mode = ConfigItem(
         "Task", "low_power_monitoring_mode", True, BoolValidator()
     )  # 低功耗监控模式：使用缓存的图像而不是专用监控线程
+    enable_gpu_acceleration = ConfigItem(
+        "Task", "enable_gpu_acceleration", True, BoolValidator()
+    )  # GPU 硬件加速开关（关闭时强制 CPU 推理）
 
     # ===== 日志设置 =====
     log_zip_include_images = ConfigItem(
@@ -280,6 +283,7 @@ class Config(QConfig):
     background_image_path = ConfigItem(
         "Personalization", "background_image_path", _default_background
     )
+    home_cover_image_path = ConfigItem("Personalization", "home_cover_image_path", "")
     background_image_opacity = RangeConfigItem(
         "Personalization", "background_image_opacity", 10, RangeValidator(0, 100)
     )

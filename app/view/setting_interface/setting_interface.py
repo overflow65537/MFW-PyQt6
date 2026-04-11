@@ -940,6 +940,50 @@ class SettingInterface(QWidget):
             clear_insert_index + 1, self.background_image_clear_button, 0
         )
 
+        home_cover_path_value = cfg.get(cfg.home_cover_image_path) or ""
+        self.home_cover_image_card = LineEditCard(
+            FIF.PHOTO,
+            self.tr("Home Cover Image"),
+            holderText=home_cover_path_value,
+            content=self.tr("Select an image as Home hero cover"),
+            parent=self.personalGroup,
+            num_only=False,
+            button=True,
+        )
+        self.home_cover_image_card.lineEdit.setPlaceholderText(
+            self.tr("Choose an image file (png/jpg/webp/bmp)")
+        )
+        self.home_cover_image_card.lineEdit.setText(home_cover_path_value)
+        self.home_cover_image_card.lineEdit.setClearButtonEnabled(True)
+        self.home_cover_image_card.toolbutton.installEventFilter(
+            ToolTipFilter(
+                self.home_cover_image_card.toolbutton,
+                0,
+                ToolTipPosition.TOP,
+            )
+        )
+        self.home_cover_image_card.toolbutton.setToolTip(self.tr("Browse image file"))
+        self.home_cover_image_card.toolbutton.clicked.connect(self._choose_home_cover_image)
+        self.home_cover_image_card.lineEdit.editingFinished.connect(
+            self._on_home_cover_path_editing_finished
+        )
+
+        self.home_cover_image_clear_button = ToolButton(FIF.DELETE, self.home_cover_image_card)
+        self.home_cover_image_clear_button.installEventFilter(
+            ToolTipFilter(
+                self.home_cover_image_clear_button,
+                0,
+                ToolTipPosition.TOP,
+            )
+        )
+        self.home_cover_image_clear_button.setToolTip(self.tr("Clear home cover image"))
+        self.home_cover_image_clear_button.clicked.connect(self._clear_home_cover_image)
+        home_clear_insert_index = self.home_cover_image_card.hBoxLayout.count() - 1
+        self.home_cover_image_card.hBoxLayout.insertSpacing(home_clear_insert_index, 8)
+        self.home_cover_image_card.hBoxLayout.insertWidget(
+            home_clear_insert_index + 1, self.home_cover_image_clear_button, 0
+        )
+
         self.background_opacity_card = SliderSettingCard(
             FIF.TRANSPARENT,
             self.tr("Background Opacity"),
@@ -957,6 +1001,7 @@ class SettingInterface(QWidget):
         self.personalGroup.addSettingCard(self.themeCard)
         self.personalGroup.addSettingCard(self.themeColorCard)
         self.personalGroup.addSettingCard(self.background_image_card)
+        self.personalGroup.addSettingCard(self.home_cover_image_card)
         self.personalGroup.addSettingCard(self.background_opacity_card)
         self.personalGroup.addSettingCard(self.zoomCard)
         self.personalGroup.addSettingCard(self.languageCard)
@@ -1285,6 +1330,16 @@ class SettingInterface(QWidget):
         )
 
         self.taskGroup.addSettingCard(self.low_power_monitoring_mode_card)
+
+        self.gpu_acceleration_card = SwitchSettingCard(
+            FIF.SPEED_HIGH,
+            self.tr("GPU Acceleration"),
+            self.tr("Enable GPU hardware acceleration for resource inference"),
+            configItem=cfg.enable_gpu_acceleration,
+            parent=self.taskGroup,
+        )
+
+        self.taskGroup.addSettingCard(self.gpu_acceleration_card)
         self.add_setting_group(self.taskGroup)
 
     def initialize_update_settings(self):
@@ -1729,6 +1784,24 @@ class SettingInterface(QWidget):
             return
         self._update_background_image("")
 
+    def _choose_home_cover_image(self):
+        """弹出文件选择器选择首页封面图。"""
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            self.tr("Select home cover image"),
+            str(Path.home()),
+            self.tr("Images (*.png *.jpg *.jpeg *.bmp *.webp)"),
+        )
+        if not path:
+            return
+        self._update_home_cover_image(path)
+
+    def _clear_home_cover_image(self):
+        """清除首页封面图配置。"""
+        if not hasattr(self, "home_cover_image_card"):
+            return
+        self._update_home_cover_image("")
+
     def _on_update_ui_clicked(self) -> None:
         """更新 UI 按钮点击回调，占位接口，后续可在此实现 UI 更新逻辑。"""
         # TODO: 在此处实现 UI 更新的具体行为（如检查并更新前端资源等）
@@ -2141,6 +2214,16 @@ class SettingInterface(QWidget):
             return
         self._update_background_image(path, notify_missing=True)
 
+    def _on_home_cover_path_editing_finished(self):
+        """手动输入首页封面路径后校验并应用。"""
+        if not hasattr(self, "home_cover_image_card"):
+            return
+        path = self.home_cover_image_card.lineEdit.text().strip()
+        if not path:
+            self._update_home_cover_image("")
+            return
+        self._update_home_cover_image(path, notify_missing=True)
+
     def _update_background_image(self, path: str, notify_missing: bool = False):
         """更新配置中的背景图路径并通知主窗口。"""
         normalized = str(Path(path).expanduser()) if path else ""
@@ -2159,6 +2242,24 @@ class SettingInterface(QWidget):
         self.background_image_card.lineEdit.setText(normalized)
         self.background_image_card.lineEdit.setToolTip(normalized)
         signalBus.background_image_changed.emit(normalized)
+
+    def _update_home_cover_image(self, path: str, notify_missing: bool = False):
+        """更新配置中的首页封面图路径并通知首页。"""
+        normalized = str(Path(path).expanduser()) if path else ""
+        if normalized and not Path(normalized).is_file():
+            if notify_missing:
+                signalBus.info_bar_requested.emit(
+                    "warning", self.tr("Image file does not exist")
+                )
+            previous = cfg.get(cfg.home_cover_image_path) or ""
+            self.home_cover_image_card.lineEdit.setText(previous)
+            self.home_cover_image_card.lineEdit.setToolTip(previous)
+            return
+
+        cfg.set(cfg.home_cover_image_path, normalized)
+        self.home_cover_image_card.lineEdit.setText(normalized)
+        self.home_cover_image_card.lineEdit.setToolTip(normalized)
+        signalBus.home_cover_image_changed.emit(normalized)
 
     def _on_background_opacity_changed(self, value: int):
         """调整背景透明度并实时应用。"""
