@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import Callable
 
 from PySide6.QtCore import QEvent, QObject, Qt, Signal
@@ -304,11 +305,40 @@ class DashboardInterface(QWidget):
 
     def _get_hero_title(self) -> str:
         metadata = self._get_interface_metadata()
+        concise_description = self._extract_concise_title_from_description(
+            metadata.get("description", "")
+        )
+        if concise_description:
+            return concise_description
+
         for key in ("custom_title", "title", "name"):
             value = str(metadata.get(key, "") or "").strip()
             if value:
                 return value
         return f"MFW {UI_VERSION}"
+
+    def _extract_concise_title_from_description(self, raw_description: object) -> str:
+        text = str(raw_description or "").strip()
+        if not text:
+            return ""
+
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if not lines:
+            return ""
+
+        candidate = lines[0]
+        candidate = re.sub(r"^#+\s*", "", candidate)  # Markdown heading
+        candidate = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", candidate)  # Markdown links
+        candidate = re.sub(r"[*_`~]+", "", candidate).strip()
+        candidate = re.split(r"[。.!?；;，,\(\)\[\]【】|/\\]", candidate)[0].strip()
+
+        if not candidate:
+            return ""
+
+        # 标题保持简洁，超长时截断
+        if len(candidate) > 16:
+            return candidate[:15].rstrip() + "…"
+        return candidate
 
     def _apply_hero_cover(self, image_path: str) -> None:
         if self._hero_cover_label is None or self._hero_card is None:
