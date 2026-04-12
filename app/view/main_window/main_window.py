@@ -304,6 +304,7 @@ class MainWindow(MSFluentWindow):
         self._startup_cleanup_scheduled = (
             False  # 启动完成后清理旧图片/旧文件，仅执行一次
         )
+        self._task_page_auto_switch_handled = False
 
         cfg.set(cfg.save_screenshot, False)
         cfg.set(cfg.show_advanced_startup_options, False)
@@ -747,6 +748,8 @@ class MainWindow(MSFluentWindow):
             )
             return
 
+        self._maybe_switch_home_to_task()
+
         async def _start_flow():
             try:
                 await self.service_coordinator.run_tasks_flow()
@@ -1139,10 +1142,22 @@ class MainWindow(MSFluentWindow):
         signalBus.focus_notification.connect(self._on_focus_notification)
         signalBus.focus_dialog.connect(self._on_focus_dialog)
         signalBus.focus_modal.connect(self._on_focus_modal)
+        signalBus.task_flow_finished.connect(self._on_task_flow_finished)
         # 多资源适配启用后，将 BundleInterface 添加到导航栏
         signalBus.multi_resource_adaptation_enabled.connect(
             self._on_multi_resource_adaptation_enabled
         )
+
+    def _maybe_switch_home_to_task(self) -> None:
+        if self._task_page_auto_switch_handled:
+            return
+        if self.stackedWidget.currentWidget() is not self.DashboardInterface:
+            return
+        self._task_page_auto_switch_handled = True
+        self._switch_to_interface(self.TaskInterface)
+
+    def _on_task_flow_finished(self, _payload: dict) -> None:
+        self._task_page_auto_switch_handled = False
 
     def _on_multi_resource_adaptation_enabled(self) -> None:
         """响应设置页开启多资源适配的信号，将 BundleInterface 添加到导航栏。"""
@@ -2253,6 +2268,7 @@ class MainWindow(MSFluentWindow):
         if not should_run:
             return
         self._auto_run_scheduled = True
+        self._maybe_switch_home_to_task()
 
         async def _start_flow():
             try:

@@ -28,6 +28,7 @@ from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.common import __version__ as version_meta
 from app.core.core import ServiceCoordinator
+from app.utils.markdown_helper import render_markdown
 from app.utils.release_notes import load_release_notes, resolve_project_name
 
 APP_VERSION = getattr(version_meta, "__version__", "Unknown")
@@ -127,7 +128,6 @@ class DashboardInterface(QWidget):
         self._open_monitor = open_monitor
         self._open_schedule = open_schedule
         self._open_setting = open_setting
-        self._recent_notes_limit = 3
         self._hero_card: QFrame | None = None
         self._hero_cover_label: QLabel | None = None
         self._hero_title_label: QLabel | None = None
@@ -205,8 +205,8 @@ class DashboardInterface(QWidget):
         header.setObjectName("V5SectionTitle")
         box.addWidget(header)
 
-        notes = self._get_recent_release_notes(self._recent_notes_limit)
-        if not notes:
+        note = self._get_latest_release_note()
+        if note is None:
             empty_label = QLabel(
                 self.tr(
                     "No update log found locally.\n\n"
@@ -219,22 +219,22 @@ class DashboardInterface(QWidget):
             box.addWidget(empty_label)
             return card
 
-        for version, preview in notes:
-            row = QWidget(card)
-            row_box = QVBoxLayout(row)
-            row_box.setContentsMargins(0, 0, 0, 0)
-            row_box.setSpacing(2)
+        version, content = note
 
-            version_label = QLabel(version, row)
-            version_label.setObjectName("V5InfoValue")
-            row_box.addWidget(version_label)
+        version_label = QLabel(version, card)
+        version_label.setObjectName("V5InfoValue")
+        box.addWidget(version_label)
 
-            preview_label = QLabel(preview, row)
-            preview_label.setObjectName("V5InfoKey")
-            preview_label.setWordWrap(True)
-            row_box.addWidget(preview_label)
-
-            box.addWidget(row)
+        content_label = QLabel(card)
+        content_label.setObjectName("V5InfoKey")
+        content_label.setWordWrap(True)
+        content_label.setTextFormat(Qt.TextFormat.RichText)
+        content_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextBrowserInteraction
+        )
+        content_label.setOpenExternalLinks(True)
+        content_label.setText(render_markdown(content))
+        box.addWidget(content_label)
 
         hint = QLabel(
             self.tr("View full changelog in Settings > Open update log."),
@@ -400,11 +400,10 @@ class DashboardInterface(QWidget):
             self._apply_hero_cover(cfg.get(cfg.home_cover_image_path) or "")
         return super().eventFilter(watched, event)
 
-    def _get_recent_release_notes(self, limit: int) -> list[tuple[str, str]]:
+    def _get_latest_release_note(self) -> tuple[str, str] | None:
         project_name = resolve_project_name(self._get_interface_metadata())
         notes = load_release_notes(project_name)
-        items = list(notes.items())[: max(0, int(limit))]
-        return [(version, self._summarize_markdown(content)) for version, content in items]
+        return next(iter(notes.items()), None)
 
     def _summarize_markdown(self, text: str, max_len: int = 180) -> str:
         lines = []
