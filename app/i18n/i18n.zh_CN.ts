@@ -1024,19 +1024,24 @@ The following configurations using this bundle will also be deleted:
     <context>
         <name>DashboardInterface</name>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="324" />
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="328" />
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="333" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="330" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="334" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="339" />
             <source>A More Modern Console Interface</source>
             <translation>更现代的控制台界面</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="204" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="210" />
             <source>Update Log</source>
             <translation>更新日志</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="212" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="193" />
+            <source>FrameWork Version</source>
+            <translation>框架版本</translation>
+        </message>
+        <message>
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="218" />
             <source>No update log found locally.
 
 Please check for updates first, or visit the GitHub releases page.</source>
@@ -1045,57 +1050,57 @@ Please check for updates first, or visit the GitHub releases page.</source>
 请先检查更新，或访问 GitHub 发布页面。</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="240" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="246" />
             <source>View full changelog in Settings &gt; Open update log.</source>
             <translation>可在 设置 &gt; 打开更新日志 中查看完整变更记录。</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="256" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="262" />
             <source>Task</source>
             <translation>任务</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="257" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="263" />
             <source>Configure and execute automation tasks</source>
             <translation>配置并执行自动化任务</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="259" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="265" />
             <source>Start</source>
             <translation>开始</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="264" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="270" />
             <source>Monitor</source>
             <translation>监控</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="265" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="271" />
             <source>View real-time frames and runtime status</source>
             <translation>查看实时画面与运行状态</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="272" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="278" />
             <source>Schedule</source>
             <translation>计划任务</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="273" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="279" />
             <source>Configure scheduled runs and force start</source>
             <translation>配置定时运行与强制启动</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="280" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="286" />
             <source>Setting</source>
             <translation>设置</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="281" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="287" />
             <source>Theme, update, and resource management</source>
             <translation>主题、更新与资源管理</translation>
         </message>
         <message>
-            <location filename="../view/dashboard_interface/dashboard_interface.py" line="422" />
+            <location filename="../view/dashboard_interface/dashboard_interface.py" line="433" />
             <source>No summary available</source>
             <translation>暂无摘要</translation>
         </message>

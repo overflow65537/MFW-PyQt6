@@ -10,8 +10,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QLabel,
-    QScrollArea,
+ 
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -20,6 +19,7 @@ from qfluentwidgets import (
     BodyLabel,
     CaptionLabel,
     FluentIcon as FIF,
+    ScrollArea,
     IconWidget,
     PrimaryPushButton,
 )
@@ -27,12 +27,15 @@ from qfluentwidgets import (
 from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.common import __version__ as version_meta
+        
 from app.core.core import ServiceCoordinator
 from app.utils.markdown_helper import render_markdown
 from app.utils.release_notes import load_release_notes, resolve_project_name
 
-APP_VERSION = getattr(version_meta, "__version__", "Unknown")
-UI_VERSION = getattr(version_meta, "__ui_version__", APP_VERSION)
+from maa.library import Library
+
+MAAFW_VERSION = Library.version()
+UI_VERSION = getattr(version_meta, "__ui_version__", "Unknown")
 
 
 class _ActionCard(QFrame):
@@ -85,7 +88,7 @@ class _ActionCard(QFrame):
                 self._action_button.clicked.connect(on_action_click)
             root.addWidget(self._action_button, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        arrow = QLabel("›", self)
+        arrow = BodyLabel("›", self)
         arrow.setObjectName("V5ActionArrow")
         root.addWidget(arrow, 0, Qt.AlignmentFlag.AlignVCenter)
 
@@ -129,8 +132,8 @@ class DashboardInterface(QWidget):
         self._open_schedule = open_schedule
         self._open_setting = open_setting
         self._hero_card: QFrame | None = None
-        self._hero_cover_label: QLabel | None = None
-        self._hero_title_label: QLabel | None = None
+        self._hero_cover_label: BodyLabel | None = None
+        self._hero_title_label: BodyLabel | None = None
 
         self._init_ui()
         signalBus.home_cover_image_changed.connect(self._on_home_cover_image_changed)
@@ -139,7 +142,7 @@ class DashboardInterface(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
 
-        scroll = QScrollArea(self)
+        scroll = ScrollArea(self)
         scroll.setObjectName("V5DashboardScroll")
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -165,7 +168,7 @@ class DashboardInterface(QWidget):
         card.installEventFilter(self)
         self._hero_card = card
 
-        cover = QLabel(card)
+        cover = BodyLabel(card)
         cover.setObjectName("V5HeroCover")
         cover.setScaledContents(True)
         cover.hide()
@@ -175,18 +178,21 @@ class DashboardInterface(QWidget):
         box.setContentsMargins(28, 26, 28, 24)
         box.setSpacing(6)
 
-        title = QLabel(self._get_hero_title(), card)
+        title = BodyLabel(self._get_hero_title(), card)
         title.setObjectName("V5HeroTitle")
         box.addWidget(title)
         self._hero_title_label = title
 
-        subtitle = QLabel(self._get_hero_subtitle(), card)
+        subtitle = BodyLabel(self._get_hero_subtitle(), card)
         subtitle.setObjectName("V5HeroSubtitle")
         subtitle.setWordWrap(True)
         box.addWidget(subtitle)
         box.addStretch(1)
 
-        version = QLabel(f"App {APP_VERSION}  ·  UI {UI_VERSION}", card)
+        version = BodyLabel(
+            self.tr("FrameWork Version")+f" {self._get_hero_maafw_version()}  ·  UI {UI_VERSION}",
+            card,
+        )
         version.setObjectName("V5HeroVersion")
         box.addWidget(version, 0, Qt.AlignmentFlag.AlignRight)
         self._apply_hero_cover(cfg.get(cfg.home_cover_image_path) or "")
@@ -207,7 +213,7 @@ class DashboardInterface(QWidget):
 
         note = self._get_latest_release_note()
         if note is None:
-            empty_label = QLabel(
+            empty_label = BodyLabel(
                 self.tr(
                     "No update log found locally.\n\n"
                     "Please check for updates first, or visit the GitHub releases page."
@@ -221,11 +227,11 @@ class DashboardInterface(QWidget):
 
         version, content = note
 
-        version_label = QLabel(version, card)
+        version_label = BodyLabel(version, card)
         version_label.setObjectName("V5InfoValue")
         box.addWidget(version_label)
 
-        content_label = QLabel(card)
+        content_label = BodyLabel(card)
         content_label.setObjectName("V5InfoKey")
         content_label.setWordWrap(True)
         content_label.setTextFormat(Qt.TextFormat.RichText)
@@ -236,7 +242,7 @@ class DashboardInterface(QWidget):
         content_label.setText(render_markdown(content))
         box.addWidget(content_label)
 
-        hint = QLabel(
+        hint = BodyLabel(
             self.tr("View full changelog in Settings > Open update log."),
             card,
         )
@@ -331,6 +337,11 @@ class DashboardInterface(QWidget):
         subtitle = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", subtitle)  # Markdown links
         subtitle = re.sub(r"[*_`~]+", "", subtitle).strip()
         return subtitle or self.tr("A More Modern Console Interface")
+
+    def _get_hero_maafw_version(self) -> str:
+        metadata = self._get_interface_metadata()
+        current_version = str(metadata.get("version", "") or "").strip()
+        return current_version or MAAFW_VERSION
 
     def _extract_concise_title_from_description(self, raw_description: object) -> str:
         text = str(raw_description or "").strip()
