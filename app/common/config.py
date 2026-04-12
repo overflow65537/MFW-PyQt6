@@ -83,6 +83,15 @@ def _detect_default_background_image() -> str:
     return ""
 
 
+def _detect_default_home_cover_image() -> str:
+    """查找默认首页封面图，依次尝试 ./dashboard.jpg 与 ./dashboard.png。"""
+    for name in ("dashboard.jpg", "dashboard.png"):
+        candidate = Path(name)
+        if candidate.is_file():
+            return str(candidate)
+    return ""
+
+
 class Config(QConfig):
     """Application configuration container."""
 
@@ -280,10 +289,13 @@ class Config(QConfig):
 
     # ===== 背景 =====
     _default_background = _detect_default_background_image()
+    _default_home_cover = _detect_default_home_cover_image()
     background_image_path = ConfigItem(
         "Personalization", "background_image_path", _default_background
     )
-    home_cover_image_path = ConfigItem("Personalization", "home_cover_image_path", "")
+    home_cover_image_path = ConfigItem(
+        "Personalization", "home_cover_image_path", _default_home_cover
+    )
     background_image_opacity = RangeConfigItem(
         "Personalization", "background_image_opacity", 10, RangeValidator(0, 100)
     )
