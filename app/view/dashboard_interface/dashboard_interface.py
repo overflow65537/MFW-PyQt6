@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from polars import Unknown
 from qfluentwidgets import (
     BodyLabel,
     CaptionLabel,
@@ -37,8 +38,9 @@ from maa.library import Library
 MAAFW_VERSION = Library.version()
 UI_VERSION = getattr(
     version_meta,
-    "__ui_version__",
-    getattr(version_meta, "__version__", "Unknown"),
+    "__version__",
+    "v0.0.1"
+  
 )
 
 

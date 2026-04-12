@@ -82,7 +82,7 @@ from app.view.setting_interface.widget.notice_type import (
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
 # 检测已经是 Markdown 链接格式的文本： [text](url)
 _MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
-UI_VERSION = getattr(version_meta, "__ui_version__", getattr(version_meta, "__version__", "Unknown"))
+UI_VERSION = getattr(version_meta, "__version__", "v0.0.1")
 
 
 def start_auto_confirm_countdown(
