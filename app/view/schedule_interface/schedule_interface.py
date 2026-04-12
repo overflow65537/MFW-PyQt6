@@ -36,6 +36,7 @@ from qfluentwidgets import (
     TimePicker,
 )
 
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.core.service.schedule_service import (
@@ -522,7 +523,7 @@ class ScheduleInterface(QWidget):
 
         remove_button = TransparentToolButton(FIF.DELETE, self)
         remove_button.setFixedSize(34, 34)
-        remove_button.setToolTip(self.tr("Delete schedule"))
+        apply_fluent_tooltip(remove_button, self.tr("Delete schedule"))
         remove_button.clicked.connect(partial(self._on_remove_schedule, entry.entry_id))
         self.schedule_table.setCellWidget(row, 5, remove_button)
 

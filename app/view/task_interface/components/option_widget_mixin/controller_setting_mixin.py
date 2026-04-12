@@ -6,12 +6,12 @@ from qfluentwidgets import (
     BodyLabel,
     ComboBox,
     LineEdit,
-    ToolTipFilter,
 )
 from pathlib import Path
 
 import jsonc
 import sys
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.utils.gpu_cache import gpu_cache
 from app.utils.logger import logger
 from app.common.config import cfg
@@ -1721,8 +1721,7 @@ class ControllerSettingWidget(QWidget):
 
         # 更换控制器描述
         ctrl_combox: ComboBox = self.resource_setting_widgets["ctrl_combo"]
-        ctrl_combox.installEventFilter(ToolTipFilter(ctrl_combox))
-        ctrl_combox.setToolTip(ctrl_info["description"])
+        apply_fluent_tooltip(ctrl_combox, ctrl_info["description"])
 
         # 设置控制器描述到公告页面
         if hasattr(self, "_set_description") and self._set_description:

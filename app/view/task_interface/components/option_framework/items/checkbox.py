@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 from qfluentwidgets import CheckBox
 
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.core.utils.option_branches_compat import set_option_branches
 from app.utils.logger import logger
 from .base import OptionItemBase
@@ -62,7 +63,7 @@ class CheckBoxOptionItem(OptionItemBase):
 
             cb = CheckBox(label)
             if description:
-                cb.setToolTip(description)
+                apply_fluent_tooltip(cb, description)
 
             cb.stateChanged.connect(self._on_checkbox_changed)
             checkbox_layout.addWidget(cb)

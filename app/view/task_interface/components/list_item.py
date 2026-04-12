@@ -34,6 +34,7 @@ from qfluentwidgets import (
     ProgressRing,
     IconWidget,
 )
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.core.item import TaskItem, ConfigItem
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.core.core import ServiceCoordinator
@@ -674,6 +675,7 @@ class TaskListItem(BaseListItem):
         label.setMarqueeConfig(speed_px_per_sec=25.0, interval_ms=30, pause_ms=1000)
 
         self._option_full_text = ""
+        apply_fluent_tooltip(label)
 
         return label
 
@@ -1042,7 +1044,7 @@ class TaskListItem(BaseListItem):
         """重写基类方法，创建删除按钮"""
         button = TransparentToolButton(FIF.DELETE)
         button.setFixedSize(34, 34)
-        button.setToolTip(self.tr("Delete task"))
+        apply_fluent_tooltip(button, self.tr("Delete task"))
         return button
 
     def _on_delete_button_clicked(self):

@@ -20,9 +20,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from qfluentwidgets import BodyLabel, ComboBox, ToolTipFilter, isDarkTheme, qconfig
+from qfluentwidgets import BodyLabel, ComboBox, isDarkTheme, qconfig
 from qfluentwidgets.components.widgets.combo_box import ComboBoxMenu
 
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.utils.logger import logger
 from app.view.task_interface.components.option_framework.animations import HeightAnimator
 
@@ -414,9 +415,7 @@ class OptionItemBase(QWidget):
             """
         )
         indicator.setCursor(Qt.CursorShape.PointingHandCursor)
-        filter_obj = ToolTipFilter(indicator)
-        indicator.installEventFilter(filter_obj)
-        indicator.setToolTip(tooltip_text)
+        apply_fluent_tooltip(indicator, tooltip_text)
         return indicator
 
     def _create_label_with_optional_icon(

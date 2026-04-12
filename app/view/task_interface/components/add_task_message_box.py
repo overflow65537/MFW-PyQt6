@@ -22,10 +22,9 @@ from qfluentwidgets import (
     SimpleCardWidget,
     FlowLayout,
     TogglePushButton,
-    ToolTipFilter,
-    ToolTipPosition,
 )
 import jsonc
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.core.item import TaskItem, ConfigItem
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.common.config import cfg
@@ -484,14 +483,6 @@ class AddTaskDialog(BaseAddDialog):
         icon = QIcon(str(icon_path))
         return icon if not icon.isNull() else None
 
-    def _apply_fluent_tooltip(self, widget: QWidget, text: str | None) -> None:
-        """为控件启用 qfluentwidgets 风格的 tooltip。"""
-        if not isinstance(text, str) or not text:
-            return
-
-        widget.installEventFilter(ToolTipFilter(widget, 0, ToolTipPosition.TOP))
-        widget.setToolTip(text)
-
     def _grouped_task_names(self) -> dict[str, list[str]]:
         """按分组收集任务名。"""
         grouped_tasks: dict[str, list[str]] = {}
@@ -512,7 +503,7 @@ class AddTaskDialog(BaseAddDialog):
         group_def = self._group_meta.get(group_name, {"name": group_name})
         group_label = group_def.get("label") or group_def.get("name") or group_name
         group_title = StrongBodyLabel(str(group_label), group_widget)
-        self._apply_fluent_tooltip(group_title, group_def.get("description"))
+        apply_fluent_tooltip(group_title, group_def.get("description"))
 
         group_hint = CaptionLabel(
             self.tr("{} tasks").format(len(task_names)), group_widget
@@ -554,7 +545,7 @@ class AddTaskDialog(BaseAddDialog):
         if task_icon:
             task_button.setIcon(task_icon)
 
-        self._apply_fluent_tooltip(task_button, task_def.get("description"))
+        apply_fluent_tooltip(task_button, task_def.get("description"))
         self._task_button_group.addButton(task_button)
         return task_button
 

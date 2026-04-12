@@ -5,12 +5,11 @@ from qfluentwidgets import (
     CheckBox,
     ComboBox,
     LineEdit,
-    ToolTipFilter,
-    ToolTipPosition,
 )
 from PySide6.QtWidgets import QVBoxLayout
 
 
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.utils.logger import logger
 from app.widget.path_line_edit import PathLineEdit
 
@@ -102,10 +101,10 @@ class PostActionSettingMixin:
         # 独立开关：不参与任何互斥逻辑
         always_run = CheckBox(self.tr("always run"))
         always_run.toggled.connect(self._on_post_action_always_run_changed)
-        always_run.installEventFilter(
-            ToolTipFilter(always_run, 0, ToolTipPosition.TOP)
+        apply_fluent_tooltip(
+            always_run,
+            self.tr("Whether to run the post-action regardless of success or failure"),
         )
-        always_run.setToolTip(self.tr("Whether to run the post-action regardless of success or failure"))
         self.option_page_layout.addWidget(always_run)
         self.post_action_widgets[self._ALWAYS_RUN_KEY] = always_run
         self.option_page_layout.addSpacing(8)

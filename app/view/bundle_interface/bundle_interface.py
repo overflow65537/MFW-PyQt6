@@ -30,8 +30,6 @@ from qfluentwidgets import (
     TitleLabel,
     SimpleCardWidget,
     ToolButton,
-    ToolTipFilter,
-    ToolTipPosition,
     FluentIcon as FIF,
     TogglePushButton,
     MessageBoxBase,
@@ -40,6 +38,7 @@ from qfluentwidgets import (
     SubtitleLabel,
 )
 
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.core.core import ServiceCoordinator
 from app.core.service.interface_manager import get_interface_manager
 from app.utils.logger import logger
@@ -129,10 +128,8 @@ class BundleListItem(QWidget):
         # 查看更新日志按钮
         self.update_log_button = ToolButton(FIF.QUICK_NOTE, self)
         self.update_log_button.setFixedSize(32, 32)
-        self.update_log_button.installEventFilter(
-            ToolTipFilter(self.update_log_button, 0, ToolTipPosition.TOP)
-        )
-        self.update_log_button.setToolTip(
+        apply_fluent_tooltip(
+            self.update_log_button,
             QCoreApplication.translate("BundleInterface", "Open update log")
         )
         layout.addWidget(self.update_log_button)
@@ -140,10 +137,8 @@ class BundleListItem(QWidget):
         # 删除按钮
         self.delete_button = ToolButton(FIF.DELETE, self)
         self.delete_button.setFixedSize(32, 32)
-        self.delete_button.installEventFilter(
-            ToolTipFilter(self.delete_button, 0, ToolTipPosition.TOP)
-        )
-        self.delete_button.setToolTip(
+        apply_fluent_tooltip(
+            self.delete_button,
             QCoreApplication.translate("BundleInterface", "Delete bundle")
         )
         layout.addWidget(self.delete_button)
@@ -298,10 +293,10 @@ class UI_BundleInterface(object):
         self.auto_update_switch = TogglePushButton(parent)
         self.auto_update_switch.setIcon(FIF.UPDATE)
         self.auto_update_switch.setText(_translate("BundleInterface", "Auto Update"))
-        self.auto_update_switch.installEventFilter(
-            ToolTipFilter(self.auto_update_switch, 0, ToolTipPosition.TOP)
+        apply_fluent_tooltip(
+            self.auto_update_switch,
+            _translate("BundleInterface", "Auto Update"),
         )
-        self.auto_update_switch.setToolTip(_translate("BundleInterface", "Auto Update"))
         # 从配置读取自动更新状态
         from app.common.config import cfg
 
@@ -311,18 +306,16 @@ class UI_BundleInterface(object):
 
         # 添加bundle按钮
         self.add_bundle_button = ToolButton(FIF.FOLDER_ADD, parent)
-        self.add_bundle_button.installEventFilter(
-            ToolTipFilter(self.add_bundle_button, 0, ToolTipPosition.TOP)
+        apply_fluent_tooltip(
+            self.add_bundle_button,
+            _translate("BundleInterface", "Add Bundle"),
         )
-        self.add_bundle_button.setToolTip(_translate("BundleInterface", "Add Bundle"))
         self.list_title_layout.addWidget(self.add_bundle_button)
 
         # 更新所有bundle按钮
         self.update_all_button = ToolButton(FIF.SYNC, parent)
-        self.update_all_button.installEventFilter(
-            ToolTipFilter(self.update_all_button, 0, ToolTipPosition.TOP)
-        )
-        self.update_all_button.setToolTip(
+        apply_fluent_tooltip(
+            self.update_all_button,
             _translate("BundleInterface", "Update All Bundles")
         )
         self.list_title_layout.addWidget(self.update_all_button)

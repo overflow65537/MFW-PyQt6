@@ -8,14 +8,13 @@ from PySide6.QtWidgets import (
 
 from qfluentwidgets import (
     SimpleCardWidget,
-    ToolTipPosition,
-    ToolTipFilter,
     BodyLabel,
     ListWidget,
     ToolButton,
     FluentIcon as FIF,
 )
 
+from app.common.fluent_tooltip import apply_fluent_tooltip
 
 from app.view.task_interface.components.list_widget import (
     TaskDragListWidget,
@@ -54,38 +53,23 @@ class BaseListToolBarWidget(QWidget):
 
         # 选择全部按钮
         self.select_all_button = ToolButton(FIF.CHECKBOX)
-        self.select_all_button.installEventFilter(
-            ToolTipFilter(self.select_all_button, 0, ToolTipPosition.TOP)
-        )
-        self.select_all_button.setToolTip(self.tr("Select All"))
+        apply_fluent_tooltip(self.select_all_button, self.tr("Select All"))
 
         # 取消选择全部
         self.deselect_all_button = ToolButton(FIF.CLEAR_SELECTION)
-        self.deselect_all_button.installEventFilter(
-            ToolTipFilter(self.deselect_all_button, 0, ToolTipPosition.TOP)
-        )
-        self.deselect_all_button.setToolTip(self.tr("Deselect All"))
+        apply_fluent_tooltip(self.deselect_all_button, self.tr("Deselect All"))
 
         # 添加
         self.add_button = ToolButton(FIF.ADD)
-        self.add_button.installEventFilter(
-            ToolTipFilter(self.add_button, 0, ToolTipPosition.TOP)
-        )
-        self.add_button.setToolTip(self.tr("Add"))
+        apply_fluent_tooltip(self.add_button, self.tr("Add"))
 
         # 删除
         self.delete_button = ToolButton(FIF.DELETE)
-        self.delete_button.installEventFilter(
-            ToolTipFilter(self.delete_button, 0, ToolTipPosition.TOP)
-        )
-        self.delete_button.setToolTip(self.tr("Delete"))
+        apply_fluent_tooltip(self.delete_button, self.tr("Delete"))
 
         # 切换按钮（用于切换到特殊任务列表）
         self.switch_button = ToolButton(FIF.RIGHT_ARROW)
-        self.switch_button.installEventFilter(
-            ToolTipFilter(self.switch_button, 0, ToolTipPosition.TOP)
-        )
-        self.switch_button.setToolTip(self.tr("Switch to Special Tasks"))
+        apply_fluent_tooltip(self.switch_button, self.tr("Switch to Special Tasks"))
         # 默认隐藏，只在普通任务模式下显示
         self.switch_button.hide()
 

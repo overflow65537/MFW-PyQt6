@@ -2,10 +2,10 @@ from typing import Dict, Any, Callable, Protocol, Optional
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
-    ToolTipFilter,
 )
 from PySide6.QtWidgets import QVBoxLayout
 
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.option_framework.option_form_widget import OptionFormWidget
@@ -153,8 +153,7 @@ class ResourceSettingMixin:
                 self.current_config["resource"] = new_resource_name
                 res_combo: ComboBox = self.resource_setting_widgets["resource_combo"]
                 if description := resource.get("description"):
-                    res_combo.installEventFilter(ToolTipFilter(res_combo))
-                    res_combo.setToolTip(description)
+                    apply_fluent_tooltip(res_combo, description)
                     # 设置资源描述到公告页面
                     if hasattr(self, "set_description"):
                         self.set_description(description, has_options=True)

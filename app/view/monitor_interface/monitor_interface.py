@@ -23,6 +23,7 @@ from qfluentwidgets import (
     PrimaryPushButton,
 )
 
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.core.core import ServiceCoordinator
 from app.core.runner.monitor_task import MonitorTask
 from app.utils.logger import (
@@ -99,7 +100,10 @@ class MonitorInterface(QWidget):
         )
         self.main_layout.addWidget(self.preview_label, 1)
         self.preview_label.clicked.connect(self._on_preview_clicked)
-        self.preview_label.setToolTip(self.tr("Click to sync this frame to the device"))
+        apply_fluent_tooltip(
+            self.preview_label,
+            self.tr("Click to sync this frame to the device"),
+        )
         self._fps_overlay = BodyLabel(self.tr("FPS: --"), self.preview_label)
         self._fps_overlay.setObjectName("monitorFpsOverlay")
         self._fps_overlay.setStyleSheet(
@@ -133,7 +137,8 @@ class MonitorInterface(QWidget):
         self.save_button.setIcon(FIF.CAMERA)
         self.save_button.setIconSize(QSize(18, 18))
         self.save_button.clicked.connect(self._on_save_screenshot)
-        self.save_button.setToolTip(
+        apply_fluent_tooltip(
+            self.save_button,
             self.tr("Capture the current preview and store it on disk")
         )
         controls_layout.addWidget(self.save_button)
@@ -142,7 +147,8 @@ class MonitorInterface(QWidget):
         self.monitor_control_button.setIcon(FIF.PLAY)
         self.monitor_control_button.setIconSize(QSize(18, 18))
         self.monitor_control_button.clicked.connect(self._on_monitor_control_clicked)
-        self.monitor_control_button.setToolTip(
+        apply_fluent_tooltip(
+            self.monitor_control_button,
             self.tr("Start monitoring task")
         )
         controls_layout.addWidget(self.monitor_control_button)

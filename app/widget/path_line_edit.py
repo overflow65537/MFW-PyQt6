@@ -5,6 +5,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QFileDialog
 from qfluentwidgets import LineEdit, ToolButton, FluentIcon as FIF
 
+from app.common.fluent_tooltip import apply_fluent_tooltip
+
 
 def _default_file_filter() -> str:
     """跨平台默认文件过滤：Windows 下可选 .exe，macOS/Linux 下用 All Files (*) 以支持无扩展名可执行文件。"""
@@ -83,7 +85,7 @@ class PathLineEdit(QWidget):
 
     def setToolTip(self, tooltip: str):
         """设置提示文本"""
-        self.line_edit.setToolTip(tooltip)
+        apply_fluent_tooltip(self.line_edit, tooltip)
 
     def blockSignals(self, block: bool) -> bool:
         """阻止/允许信号"""

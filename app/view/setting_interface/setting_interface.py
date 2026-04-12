@@ -39,8 +39,6 @@ from qfluentwidgets import (
     ScrollArea,
     SettingCardGroup,
     SwitchSettingCard,
-    ToolTipFilter,
-    ToolTipPosition,
     setTheme,
     setThemeColor,
     TransparentPushButton,
@@ -48,6 +46,7 @@ from qfluentwidgets import (
 )
 
 from app.utils.markdown_helper import render_markdown
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.widget.notice_message import NoticeMessageBox
 from app.common.config import cfg, isWin11, Config
 from app.common import __version__ as version_meta
@@ -907,14 +906,11 @@ class SettingInterface(QWidget):
         )
         self.background_image_card.lineEdit.setText(background_path_value)
         self.background_image_card.lineEdit.setClearButtonEnabled(True)
-        self.background_image_card.toolbutton.installEventFilter(
-            ToolTipFilter(
-                self.background_image_card.toolbutton,
-                0,
-                ToolTipPosition.TOP,
-            )
+        apply_fluent_tooltip(self.background_image_card.lineEdit, background_path_value)
+        apply_fluent_tooltip(
+            self.background_image_card.toolbutton,
+            self.tr("Browse image file"),
         )
-        self.background_image_card.toolbutton.setToolTip(self.tr("Browse image file"))
         self.background_image_card.toolbutton.clicked.connect(
             self._choose_background_image
         )
@@ -925,14 +921,10 @@ class SettingInterface(QWidget):
         self.background_image_clear_button = ToolButton(
             FIF.DELETE, self.background_image_card
         )
-        self.background_image_clear_button.installEventFilter(
-            ToolTipFilter(
-                self.background_image_clear_button,
-                0,
-                ToolTipPosition.TOP,
-            )
+        apply_fluent_tooltip(
+            self.background_image_clear_button,
+            self.tr("Clear background image"),
         )
-        self.background_image_clear_button.setToolTip(self.tr("Clear background image"))
         self.background_image_clear_button.clicked.connect(self._clear_background_image)
         clear_insert_index = self.background_image_card.hBoxLayout.count() - 1
         self.background_image_card.hBoxLayout.insertSpacing(clear_insert_index, 8)
@@ -955,28 +947,21 @@ class SettingInterface(QWidget):
         )
         self.home_cover_image_card.lineEdit.setText(home_cover_path_value)
         self.home_cover_image_card.lineEdit.setClearButtonEnabled(True)
-        self.home_cover_image_card.toolbutton.installEventFilter(
-            ToolTipFilter(
-                self.home_cover_image_card.toolbutton,
-                0,
-                ToolTipPosition.TOP,
-            )
+        apply_fluent_tooltip(self.home_cover_image_card.lineEdit, home_cover_path_value)
+        apply_fluent_tooltip(
+            self.home_cover_image_card.toolbutton,
+            self.tr("Browse image file"),
         )
-        self.home_cover_image_card.toolbutton.setToolTip(self.tr("Browse image file"))
         self.home_cover_image_card.toolbutton.clicked.connect(self._choose_home_cover_image)
         self.home_cover_image_card.lineEdit.editingFinished.connect(
             self._on_home_cover_path_editing_finished
         )
 
         self.home_cover_image_clear_button = ToolButton(FIF.DELETE, self.home_cover_image_card)
-        self.home_cover_image_clear_button.installEventFilter(
-            ToolTipFilter(
-                self.home_cover_image_clear_button,
-                0,
-                ToolTipPosition.TOP,
-            )
+        apply_fluent_tooltip(
+            self.home_cover_image_clear_button,
+            self.tr("Clear home cover image"),
         )
-        self.home_cover_image_clear_button.setToolTip(self.tr("Clear home cover image"))
         self.home_cover_image_clear_button.clicked.connect(self._clear_home_cover_image)
         home_clear_insert_index = self.home_cover_image_card.hBoxLayout.count() - 1
         self.home_cover_image_card.hBoxLayout.insertSpacing(home_clear_insert_index, 8)
