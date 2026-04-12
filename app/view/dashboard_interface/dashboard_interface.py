@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from polars import Unknown
 from qfluentwidgets import (
     BodyLabel,
     CaptionLabel,
