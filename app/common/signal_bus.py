@@ -42,6 +42,7 @@ class SignalBus(QObject):
     # 输出到日志组件
     log_output = Signal(str, str)  # (level,text)
     background_image_changed = Signal(str)
+    home_cover_image_changed = Signal(str)
     background_opacity_changed = Signal(int)
 
     # 显示 InfoBar 的请求

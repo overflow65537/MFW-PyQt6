@@ -21,6 +21,7 @@ Cross-platform GUI built with **[PySide6](https://doc.qt.io/qtforpython-6)** and
 - [Overview](#overview)
 - [Highlights](#highlights)
 - [Speedrun Mode](#speedrun-mode)
+- [Development Guide](#development-guide)
 - [Common CLI Parameters](#common-cli-parameters)
 - [External Notifications](#external-notifications)
 - [Scheduling](#scheduling)
@@ -48,14 +49,19 @@ MFW-ChainFlow Assistant provides a ready-to-use visual orchestrator for MaaFrame
 
 ## Speedrun Mode
 
-- Add a `speedrun` block under each task in `interface.json` to define period and run limits, then enable speedrun mode via UI/CLI for it to take effect.
+- Add a `speedrun` block under each task in `interface.json`, and set `speedrun.enabled: true` to activate the limits.
 - Supports daily / weekly / monthly cycles with run counts and minimal intervals; will skip when quota is exhausted.
 - Full field reference and examples: `docs/speedrun_mode.md`.
+
+## Development Guide
+
+- Development environment, run/debug, testing, i18n workflow, and packaging steps: [docs/development.md](docs/development.md).
 
 ## Common CLI Parameters
 
 - `-c <config_id>`: start with the specified config ID (works for `python main.py` and packaged `MFW.exe`)
 - `-d`: run tasks immediately after launch (also works for `MFW.exe`)
+- `-dev`: enable developer test page
 
 ## External Notifications
 
@@ -136,7 +142,7 @@ When embedded mode is enabled, the system will automatically:
 
 1. Copy the agent entry directory
 2. Generate the corresponding `custom.json` configuration
-3. Remove the `agent` field and use the `custom` field for loading instead
+3. Keep the `agent` field and inject an additional `custom` field for generated runtime loading
 
 ## GitHub Action Build
 

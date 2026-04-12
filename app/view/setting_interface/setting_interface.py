@@ -50,7 +50,7 @@ from qfluentwidgets import (
 from app.utils.markdown_helper import render_markdown
 from app.widget.notice_message import NoticeMessageBox
 from app.common.config import cfg, isWin11, Config
-from app.common.__version__ import __version__ as UI_VERSION
+from app.common import __version__ as version_meta
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
@@ -58,6 +58,11 @@ from app.utils.logger import logger
 from app.utils.update import Update
 from app.view.setting_interface.widget.proxy_setting_card import ProxySettingCard
 from app.utils.hotkey_manager import GlobalHotkeyManager
+from app.utils.release_notes import (
+    load_release_notes,
+    resolve_project_name,
+    save_release_note,
+)
 from app.view.setting_interface.widget.slider_setting_card import SliderSettingCard
 import sys
 from app.view.setting_interface.widget.line_edit_card import (
@@ -77,6 +82,7 @@ from app.view.setting_interface.widget.notice_type import (
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
 # 检测已经是 Markdown 链接格式的文本： [text](url)
 _MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+UI_VERSION = getattr(version_meta, "__version__", "v0.0.1")
 
 
 def start_auto_confirm_countdown(
@@ -934,6 +940,50 @@ class SettingInterface(QWidget):
             clear_insert_index + 1, self.background_image_clear_button, 0
         )
 
+        home_cover_path_value = cfg.get(cfg.home_cover_image_path) or ""
+        self.home_cover_image_card = LineEditCard(
+            FIF.PHOTO,
+            self.tr("Home Cover Image"),
+            holderText=home_cover_path_value,
+            content=self.tr("Select an image as Home hero cover"),
+            parent=self.personalGroup,
+            num_only=False,
+            button=True,
+        )
+        self.home_cover_image_card.lineEdit.setPlaceholderText(
+            self.tr("Choose an image file (png/jpg/webp/bmp)")
+        )
+        self.home_cover_image_card.lineEdit.setText(home_cover_path_value)
+        self.home_cover_image_card.lineEdit.setClearButtonEnabled(True)
+        self.home_cover_image_card.toolbutton.installEventFilter(
+            ToolTipFilter(
+                self.home_cover_image_card.toolbutton,
+                0,
+                ToolTipPosition.TOP,
+            )
+        )
+        self.home_cover_image_card.toolbutton.setToolTip(self.tr("Browse image file"))
+        self.home_cover_image_card.toolbutton.clicked.connect(self._choose_home_cover_image)
+        self.home_cover_image_card.lineEdit.editingFinished.connect(
+            self._on_home_cover_path_editing_finished
+        )
+
+        self.home_cover_image_clear_button = ToolButton(FIF.DELETE, self.home_cover_image_card)
+        self.home_cover_image_clear_button.installEventFilter(
+            ToolTipFilter(
+                self.home_cover_image_clear_button,
+                0,
+                ToolTipPosition.TOP,
+            )
+        )
+        self.home_cover_image_clear_button.setToolTip(self.tr("Clear home cover image"))
+        self.home_cover_image_clear_button.clicked.connect(self._clear_home_cover_image)
+        home_clear_insert_index = self.home_cover_image_card.hBoxLayout.count() - 1
+        self.home_cover_image_card.hBoxLayout.insertSpacing(home_clear_insert_index, 8)
+        self.home_cover_image_card.hBoxLayout.insertWidget(
+            home_clear_insert_index + 1, self.home_cover_image_clear_button, 0
+        )
+
         self.background_opacity_card = SliderSettingCard(
             FIF.TRANSPARENT,
             self.tr("Background Opacity"),
@@ -951,6 +1001,7 @@ class SettingInterface(QWidget):
         self.personalGroup.addSettingCard(self.themeCard)
         self.personalGroup.addSettingCard(self.themeColorCard)
         self.personalGroup.addSettingCard(self.background_image_card)
+        self.personalGroup.addSettingCard(self.home_cover_image_card)
         self.personalGroup.addSettingCard(self.background_opacity_card)
         self.personalGroup.addSettingCard(self.zoomCard)
         self.personalGroup.addSettingCard(self.languageCard)
@@ -1279,6 +1330,16 @@ class SettingInterface(QWidget):
         )
 
         self.taskGroup.addSettingCard(self.low_power_monitoring_mode_card)
+
+        self.gpu_acceleration_card = SwitchSettingCard(
+            FIF.SPEED_HIGH,
+            self.tr("GPU Acceleration"),
+            self.tr("Enable GPU hardware acceleration for resource inference"),
+            configItem=cfg.enable_gpu_acceleration,
+            parent=self.taskGroup,
+        )
+
+        self.taskGroup.addSettingCard(self.gpu_acceleration_card)
         self.add_setting_group(self.taskGroup)
 
     def initialize_update_settings(self):
@@ -1700,20 +1761,12 @@ class SettingInterface(QWidget):
         Returns:
             项目名称，如果无法获取则返回默认值 "MFW_CFA"
         """
-        # 如果已经设置了 self.name，直接使用
-        if hasattr(self, "name") and self.name:
-            return self.name
-
-        # 否则从 interface 数据中获取
-        metadata = self._get_interface_metadata()
-        name = metadata.get("name", "")
-        if name:
-            # 保存到 self.name 以便后续使用
-            self.name = name
-            return name
-
-        # 如果都获取不到，返回默认值
-        return "MFW_CFA"
+        name = resolve_project_name(
+            self._get_interface_metadata(),
+            cached_name=getattr(self, "name", None),
+        )
+        self.name = name
+        return name
 
     def _apply_theme_from_config(self):
         """确保设置界面初始化时与全局主题同步。"""
@@ -1770,6 +1823,24 @@ class SettingInterface(QWidget):
         if not hasattr(self, "background_image_card"):
             return
         self._update_background_image("")
+
+    def _choose_home_cover_image(self):
+        """弹出文件选择器选择首页封面图。"""
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            self.tr("Select home cover image"),
+            str(Path.home()),
+            self.tr("Images (*.png *.jpg *.jpeg *.bmp *.webp)"),
+        )
+        if not path:
+            return
+        self._update_home_cover_image(path)
+
+    def _clear_home_cover_image(self):
+        """清除首页封面图配置。"""
+        if not hasattr(self, "home_cover_image_card"):
+            return
+        self._update_home_cover_image("")
 
     def _on_update_ui_clicked(self) -> None:
         """更新 UI 按钮点击回调，占位接口，后续可在此实现 UI 更新逻辑。"""
@@ -2183,6 +2254,16 @@ class SettingInterface(QWidget):
             return
         self._update_background_image(path, notify_missing=True)
 
+    def _on_home_cover_path_editing_finished(self):
+        """手动输入首页封面路径后校验并应用。"""
+        if not hasattr(self, "home_cover_image_card"):
+            return
+        path = self.home_cover_image_card.lineEdit.text().strip()
+        if not path:
+            self._update_home_cover_image("")
+            return
+        self._update_home_cover_image(path, notify_missing=True)
+
     def _update_background_image(self, path: str, notify_missing: bool = False):
         """更新配置中的背景图路径并通知主窗口。"""
         normalized = str(Path(path).expanduser()) if path else ""
@@ -2201,6 +2282,24 @@ class SettingInterface(QWidget):
         self.background_image_card.lineEdit.setText(normalized)
         self.background_image_card.lineEdit.setToolTip(normalized)
         signalBus.background_image_changed.emit(normalized)
+
+    def _update_home_cover_image(self, path: str, notify_missing: bool = False):
+        """更新配置中的首页封面图路径并通知首页。"""
+        normalized = str(Path(path).expanduser()) if path else ""
+        if normalized and not Path(normalized).is_file():
+            if notify_missing:
+                signalBus.info_bar_requested.emit(
+                    "warning", self.tr("Image file does not exist")
+                )
+            previous = cfg.get(cfg.home_cover_image_path) or ""
+            self.home_cover_image_card.lineEdit.setText(previous)
+            self.home_cover_image_card.lineEdit.setToolTip(previous)
+            return
+
+        cfg.set(cfg.home_cover_image_path, normalized)
+        self.home_cover_image_card.lineEdit.setText(normalized)
+        self.home_cover_image_card.lineEdit.setToolTip(normalized)
+        signalBus.home_cover_image_changed.emit(normalized)
 
     def _on_background_opacity_changed(self, value: int):
         """调整背景透明度并实时应用。"""
@@ -2669,47 +2768,14 @@ class SettingInterface(QWidget):
 
     def _save_release_note(self, version: str, content: str):
         """保存更新日志到文件"""
-        import os
-
-        # 获取项目名称，用于创建对应的文件夹
         project_name = self._get_project_name()
-        release_notes_dir = f"./release_notes/{project_name}"
-        os.makedirs(release_notes_dir, exist_ok=True)
-
-        # 清理版本号中的非法字符作为文件名
-        safe_version = version.replace("/", "-").replace("\\", "-").replace(":", "-")
-        file_path = os.path.join(release_notes_dir, f"{safe_version}.md")
-
-        try:
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            logger.info(f"更新日志已保存到: {file_path}")
-        except Exception as e:
-            logger.error(f"保存更新日志失败: {e}")
+        saved_path = save_release_note(project_name, version, content)
+        if saved_path is not None:
+            logger.info("更新日志已保存到: %s", saved_path)
 
     def _load_release_notes(self, name: str) -> dict:
         """加载所有已保存的更新日志"""
-        import os
-
-        release_notes_dir = f"./release_notes/{name}"
-        notes = {}
-
-        if not os.path.exists(release_notes_dir):
-            return notes
-
-        try:
-            for filename in os.listdir(release_notes_dir):
-                if filename.endswith(".md"):
-                    version = filename[:-3]  # 移除 .md 后缀
-                    file_path = os.path.join(release_notes_dir, filename)
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        notes[version] = f.read()
-        except Exception as e:
-            logger.error(f"加载更新日志失败: {e}")
-
-        # 按版本号排序（降序，最新版本在前）
-        sorted_notes = dict(sorted(notes.items(), key=lambda x: x[0], reverse=True))
-        return sorted_notes
+        return load_release_notes(name)
 
     def _on_update_start_clicked(self):
         """点击开始更新"""

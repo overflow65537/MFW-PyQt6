@@ -10,66 +10,30 @@ from typing import Dict, Optional
 
 from app.utils.logger import logger
 
-# Windows 系统下隐藏命令行窗口的标志
-if platform.system() == "Windows":
-    CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW
-else:
-    CREATE_NO_WINDOW = 0
-
-
-def _parse_gpu_names_from_lines(output: str) -> Dict[int, str]:
-    """将按行输出的 GPU 名称解析为顺序字典。"""
-    gpu_info: Dict[int, str] = {}
-    for index, line in enumerate(output.splitlines()):
-        gpu_name = line.strip()
-        if gpu_name:
-            gpu_info[index] = gpu_name
-    return gpu_info
+try:
+    import wmi as wmi_module
+except Exception:
+    wmi_module = None
 
 
 def _get_windows_gpu_info() -> Dict[int, str]:
-    """通过 PowerShell WMI/CIM Cmdlet 获取 Windows GPU 信息。"""
-    powershell_commands = [
-        [
-            "powershell",
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            "Get-CimInstance -ClassName Win32_VideoController | Select-Object -ExpandProperty Name",
-        ],
-        [
-            "powershell",
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            "Get-WmiObject -Class Win32_VideoController | Select-Object -ExpandProperty Name",
-        ],
-    ]
+    """通过 WMI 库获取 Windows GPU 信息（避免命令调用）。"""
+    if wmi_module is None:
+        logger.debug("wmi 模块不可用，跳过 Windows GPU 检测")
+        return {}
 
-    for command in powershell_commands:
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                creationflags=CREATE_NO_WINDOW,
-                timeout=5,
-            )
-        except FileNotFoundError:
-            logger.warning("未找到 PowerShell，无法通过 WMI/CIM 获取 GPU 信息")
-            return {}
-        except subprocess.TimeoutExpired:
-            logger.warning("PowerShell 查询 GPU 信息超时")
-            continue
-
-        if result.returncode != 0:
-            continue
-
-        gpu_info = _parse_gpu_names_from_lines(result.stdout)
-        if gpu_info:
-            return gpu_info
-
-    return {}
+    gpu_info: Dict[int, str] = {}
+    try:
+        conn = wmi_module.WMI()
+        adapters = conn.Win32_VideoController()
+        for idx, item in enumerate(adapters):
+            name = str(getattr(item, "Name", "")).strip()
+            if name:
+                gpu_info[idx] = name
+    except Exception as e:
+        logger.debug("通过 WMI 获取 GPU 信息失败: %s", e)
+        return {}
+    return gpu_info
 
 
 def get_gpu_info() -> Dict[int, str]:
@@ -93,6 +57,7 @@ def get_gpu_info() -> Dict[int, str]:
                 ["system_profiler", "SPDisplaysDataType"],
                 capture_output=True,
                 text=True,
+                timeout=10,
             )
             if result.returncode == 0:
                 lines = result.stdout.strip().split("\n")
@@ -109,6 +74,7 @@ def get_gpu_info() -> Dict[int, str]:
                 ["lspci", "-nn", "-d", "10de:,1002:,1022:"],  # NVIDIA, AMD, ATI
                 capture_output=True,
                 text=True,
+                timeout=10,
             )
             if result.returncode == 0:
                 lines = result.stdout.strip().split("\n")
@@ -119,6 +85,10 @@ def get_gpu_info() -> Dict[int, str]:
                         gpu_name = line.split(": ", 3)[-1].split(" [", 1)[0]
                         gpu_info[i] = gpu_name
 
+    except FileNotFoundError:
+        logger.debug("GPU 检测命令不存在，跳过")
+    except subprocess.TimeoutExpired:
+        logger.debug("GPU 检测命令执行超时，跳过")
     except Exception as e:
         logger.error(f"获取 GPU 信息失败: {e}")
 
