@@ -35,7 +35,11 @@ from app.utils.release_notes import load_release_notes, resolve_project_name
 from maa.library import Library
 
 MAAFW_VERSION = Library.version()
-UI_VERSION = getattr(version_meta, "__ui_version__", "Unknown")
+UI_VERSION = getattr(
+    version_meta,
+    "__ui_version__",
+    getattr(version_meta, "__version__", "Unknown"),
+)
 
 
 class _ActionCard(QFrame):
