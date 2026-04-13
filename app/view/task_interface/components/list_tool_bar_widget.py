@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -11,6 +11,7 @@ from qfluentwidgets import (
     BodyLabel,
     ListWidget,
     ToolButton,
+    IconWidget,
     FluentIcon as FIF,
 )
 
@@ -32,9 +33,15 @@ from app.common.constants import _RESOURCE_, _CONTROLLER_, PRE_CONFIGURATION
 
 class BaseListToolBarWidget(QWidget):
 
-    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
+    def __init__(
+        self,
+        service_coordinator: ServiceCoordinator,
+        parent=None,
+        title_icon=None,
+    ):
         super().__init__(parent)
         self.service_coordinator = service_coordinator
+        self._title_icon = title_icon if title_icon is not None else FIF.FOLDER
 
         self._init_title()
         self._init_selection()
@@ -46,10 +53,17 @@ class BaseListToolBarWidget(QWidget):
 
     def _init_title(self):
         """初始化标题栏"""
-        # 标题
+        # 标题（图标 + 文案）
+        self.selection_title_icon = IconWidget(self._title_icon, self)
+        self.selection_title_icon.setFixedSize(QSize(22, 22))
         self.selection_title = BodyLabel()
         self.selection_title.setStyleSheet("font-size: 20px;")
         self.selection_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.selection_title_row = QHBoxLayout()
+        self.selection_title_row.setSpacing(8)
+        self.selection_title_row.setContentsMargins(0, 0, 0, 0)
+        self.selection_title_row.addWidget(self.selection_title_icon, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.selection_title_row.addWidget(self.selection_title, 1, Qt.AlignmentFlag.AlignVCenter)
 
         # 选择全部按钮
         self.select_all_button = ToolButton(FIF.CHECKBOX)
@@ -76,7 +90,7 @@ class BaseListToolBarWidget(QWidget):
         # 布局
         self.title_layout = QHBoxLayout()
         # 设置边距
-        self.title_layout.addWidget(self.selection_title)
+        self.title_layout.addLayout(self.selection_title_row)
         self.title_layout.addWidget(self.select_all_button)
         self.title_layout.addWidget(self.deselect_all_button)
         self.title_layout.addWidget(self.delete_button)
@@ -105,7 +119,11 @@ class BaseListToolBarWidget(QWidget):
 
 class ConfigListToolBarWidget(BaseListToolBarWidget):
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
-        super().__init__(service_coordinator=service_coordinator, parent=parent)
+        super().__init__(
+            service_coordinator=service_coordinator,
+            parent=parent,
+            title_icon=FIF.FOLDER,
+        )
 
         self.service_coordinator = service_coordinator
         self._locked: bool = False
@@ -257,7 +275,11 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             if task_filter_mode in ("all", "normal", "special")
             else "all"
         )
-        super().__init__(service_coordinator=service_coordinator, parent=parent)
+        super().__init__(
+            service_coordinator=service_coordinator,
+            parent=parent,
+            title_icon=FIF.APPLICATION,
+        )
         self.core_signalBus = self.service_coordinator.signal_bus
         if self._task_filter_mode == "special":
             self._apply_special_mode_ui()

@@ -22,6 +22,7 @@ from qfluentwidgets import (
     ScrollArea,
     SimpleCardWidget,
     PushButton,
+    IconWidget,
     FluentIcon as FIF,
     isDarkTheme,
     qconfig,
@@ -95,9 +96,16 @@ class LogoutputWidget(QWidget):
             monitor_title_layout.setContentsMargins(0, 22, 0, 0)  # 上部避让12px
             monitor_title_layout.setSpacing(8)
 
+            self.monitor_title_icon = IconWidget(FIF.VIDEO, self)
+            self.monitor_title_icon.setFixedSize(QSize(22, 22))
             self.monitor_title_label = BodyLabel(self.tr("Monitor"))
             self.monitor_title_label.setStyleSheet("font-size: 20px;")
-            monitor_title_layout.addWidget(self.monitor_title_label)
+            monitor_title_layout.addWidget(
+                self.monitor_title_icon, 0, Qt.AlignmentFlag.AlignVCenter
+            )
+            monitor_title_layout.addWidget(
+                self.monitor_title_label, 1, Qt.AlignmentFlag.AlignVCenter
+            )
 
             self.main_layout.addLayout(monitor_title_layout)
 
@@ -234,7 +242,9 @@ class LogoutputWidget(QWidget):
     def _log_output_title(self):
         """初始化日志输出标题"""
 
-        # 日志输出标题
+        # 日志输出标题（图标 + 文案）
+        self.log_output_title_icon = IconWidget(FIF.COMMAND_PROMPT, self)
+        self.log_output_title_icon.setFixedSize(QSize(22, 22))
         self.log_output_title = BodyLabel(self.tr("Log Output"))
 
         # 设置字体大小
@@ -248,7 +258,12 @@ class LogoutputWidget(QWidget):
 
         # 日志输出区域标题栏总体布局
         self.log_output_title_layout = QHBoxLayout()
-        self.log_output_title_layout.addWidget(self.log_output_title)
+        self.log_output_title_layout.addWidget(
+            self.log_output_title_icon, 0, Qt.AlignmentFlag.AlignVCenter
+        )
+        self.log_output_title_layout.addWidget(
+            self.log_output_title, 1, Qt.AlignmentFlag.AlignVCenter
+        )
         self.log_output_title_layout.addWidget(self.generate_log_zip_button)
 
         # 交互信号：由组件发射，外部处理

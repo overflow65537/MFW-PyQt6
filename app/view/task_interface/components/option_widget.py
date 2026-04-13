@@ -6,9 +6,16 @@ import urllib.request
 from pathlib import Path
 from typing import Dict, Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QSplitter
-from qfluentwidgets import BodyLabel, ScrollArea, SimpleCardWidget, SegmentedWidget
+from qfluentwidgets import (
+    BodyLabel,
+    ScrollArea,
+    SimpleCardWidget,
+    SegmentedWidget,
+    IconWidget,
+    FluentIcon as FIF,
+)
 
 from app.utils.logger import logger
 from app.utils.markdown_helper import render_markdown
@@ -228,9 +235,16 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         """初始化UI"""
         self.main_layout = QVBoxLayout(self)
 
+        self.title_icon = IconWidget(FIF.MENU, self)
+        self.title_icon.setFixedSize(QSize(22, 22))
         self.title_widget = BodyLabel(self.tr("Options"))
         self.title_widget.setStyleSheet("font-size: 20px;")
         self.title_widget.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.title_row = QHBoxLayout()
+        self.title_row.setSpacing(8)
+        self.title_row.setContentsMargins(0, 0, 0, 0)
+        self.title_row.addWidget(self.title_icon, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.title_row.addWidget(self.title_widget, 1, Qt.AlignmentFlag.AlignVCenter)
 
         # ==================== 选项区域 ==================== #
         # 创建选项卡片
@@ -408,7 +422,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         )
 
         # 添加到主布局
-        self.main_layout.addWidget(self.title_widget)  # 直接添加标题
+        self.main_layout.addLayout(self.title_row)  # 图标 + 标题
         self.main_layout.addWidget(self.splitter)  # 添加分割器
         # 添加主布局间距
         self.main_layout.setContentsMargins(10, 10, 10, 10)
