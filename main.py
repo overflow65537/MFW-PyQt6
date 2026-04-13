@@ -138,6 +138,7 @@ def _run() -> int:
 
     from app.common.__version__ import __version__
     from app.common.config import Language, cfg, init_language_on_first_run
+    from app.common.theme_manager import apply_theme_from_config
     from app.utils.crypto import crypto_manager
     from app.utils.logger import logger
 
@@ -215,6 +216,7 @@ def _run() -> int:
     # 创建Qt应用实例
     app = QApplication(qt_argv)
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
+    apply_theme_from_config()
 
     # 国际化配置
     locale = cfg.get(cfg.language)

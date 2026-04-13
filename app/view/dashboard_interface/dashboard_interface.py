@@ -24,6 +24,7 @@ from qfluentwidgets import (
     ScrollArea,
     IconWidget,
     PrimaryPushButton,
+    SimpleCardWidget,
 )
 
 from app.common.config import cfg
@@ -45,7 +46,7 @@ UI_VERSION = getattr(
 )
 
 
-class _ActionCard(QFrame):
+class _ActionCard(SimpleCardWidget):
     clicked = Signal()
 
     def __init__(
@@ -61,6 +62,7 @@ class _ActionCard(QFrame):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("V5ActionCard")
+        self.setClickEnabled(False)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setFixedHeight(110)
@@ -102,19 +104,19 @@ class _ActionCard(QFrame):
         if on_click is not None:
             self.clicked.connect(on_click)
 
-    def mousePressEvent(self, event) -> None:  # noqa: N802
-        if event.button() == Qt.MouseButton.LeftButton:
+    def mousePressEvent(self, e) -> None:  # noqa: N802
+        if e.button() == Qt.MouseButton.LeftButton:
             if self._action_button is not None:
-                child = self.childAt(event.position().toPoint())
+                child = self.childAt(e.position().toPoint())
                 if child is self._action_button or (
                     child is not None and self._action_button.isAncestorOf(child)
                 ):
-                    super().mousePressEvent(event)
+                    super().mousePressEvent(e)
                     return
             self.clicked.emit()
-            event.accept()
+            e.accept()
             return
-        super().mousePressEvent(event)
+        super().mousePressEvent(e)
 
 
 class DashboardInterface(QWidget):
@@ -235,8 +237,9 @@ class DashboardInterface(QWidget):
         return card
 
     def _build_release_note_card(self) -> QWidget:
-        card = QFrame(self)
+        card = SimpleCardWidget(self)
         card.setObjectName("V5SystemCard")
+        card.setClickEnabled(False)
 
         box = QVBoxLayout(card)
         box.setContentsMargins(22, 18, 22, 18)

@@ -39,14 +39,13 @@ from qfluentwidgets import (
     ScrollArea,
     SettingCardGroup,
     SwitchSettingCard,
-    setTheme,
-    setThemeColor,
     TransparentPushButton,
     ToolButton,
 )
 
 from app.utils.markdown_helper import render_markdown
 from app.common.fluent_tooltip import apply_fluent_tooltip
+from app.common.theme_manager import apply_theme_from_config, bind_setting_interface_theme
 from app.widget.notice_message import NoticeMessageBox
 from app.common.config import cfg, isWin11, Config
 from app.common import __version__ as version_meta
@@ -1755,12 +1754,7 @@ class SettingInterface(QWidget):
 
     def _apply_theme_from_config(self):
         """确保设置界面初始化时与全局主题同步。"""
-        theme_mode = cfg.get(cfg.themeMode)
-        if theme_mode:
-            try:
-                setTheme(theme_mode)
-            except Exception as exc:
-                logger.warning("应用主题模式失败: %s", exc)
+        apply_theme_from_config()
 
         theme_color_item = getattr(cfg, "themeColor", None)
         if theme_color_item:
@@ -2450,8 +2444,7 @@ class SettingInterface(QWidget):
 
         self.run_after_startup.checkedChanged.connect(self._onRunAfterStartupCardChange)
 
-        cfg.themeChanged.connect(setTheme)
-        self.themeColorCard.colorChanged.connect(lambda c: setThemeColor(c))
+        bind_setting_interface_theme(self)
         self.micaCard.checkedChanged.connect(signalBus.micaEnableChanged)
         self.multi_resource_adaptation_card.checkedChanged.connect(
             self._on_multi_resource_adaptation_changed
