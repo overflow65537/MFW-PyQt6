@@ -79,32 +79,11 @@ jobs:
         with:
           python-version: '3.12'
 
+      # i18n 生成与 LLM 翻译见 .github/workflows/i18n-sync.yml（提交回仓库，避免此处重复翻译）
       - name: Install PySide6
         run: |
           python -m pip install --upgrade pip
           python -m pip install PySide6
-
-      # llm_translate_ts.py 需要 requests；与 tools/README.md 一致
-      - name: Install i18n script dependencies
-        run: |
-          python -m pip install requests
-
-      # 从源码抽取 self.tr 等字符串，更新 app/i18n/*.ts
-      - name: Generate i18n (.ts)
-        run: |
-          python ./tools/generate_i18n.py
-
-      # 在仓库 Settings → Secrets → Actions 中配置 DEEPSEEK_API_KEY（与 tools/README.md 一致）
-      # 未配置时跳过，避免 fork PR 等无 Secret 的场景失败
-      - name: LLM translate i18n (.ts)
-        env:
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: |
-          if [ -z "${DEEPSEEK_API_KEY:-}" ]; then
-            echo "DEEPSEEK_API_KEY 未配置，跳过 LLM 翻译。"
-          else
-            python ./tools/llm_translate_ts.py --workers 2
-          fi
 
       - name: lrelease i18n
         run: |

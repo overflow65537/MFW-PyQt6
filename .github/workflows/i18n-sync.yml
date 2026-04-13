@@ -1,0 +1,74 @@
+# 在 main 上根据源码更新 .ts / .qm，并将结果提交回仓库，避免 install 流水线重复调用 LLM。
+# 机器人提交信息含 [skip i18n]，不会再次触发本工作流。
+
+name: i18n sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**/*.py"
+      - "main.py"
+      - "tools/generate_i18n.py"
+      - "tools/llm_translate_ts.py"
+      - "tools/lrelease.py"
+      - "tools/merge_translations.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: i18n-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # 手动运行始终执行；自动推送时跳过由本工作流产生的提交，防止循环
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip i18n]'))
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PySide6 requests
+
+      - name: Generate i18n (.ts)
+        run: |
+          python ./tools/generate_i18n.py
+
+      - name: LLM translate i18n (.ts)
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          if [ -z "${DEEPSEEK_API_KEY:-}" ]; then
+            echo "DEEPSEEK_API_KEY 未配置，跳过 LLM 翻译（仍将提交 pylupdate 产生的 .ts 变更）。"
+          else
+            python ./tools/llm_translate_ts.py --workers 2
+          fi
+
+      - name: lrelease i18n (.qm)
+        run: |
+          python ./tools/lrelease.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/i18n
+          if git diff --staged --quiet; then
+            echo "No i18n changes to commit."
+          else
+            git commit -m "chore(i18n): sync linguist files [skip i18n]"
+            git push
+          fi
