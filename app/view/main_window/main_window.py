@@ -102,8 +102,6 @@ from app.view.setting_interface.setting_interface import (
 )
 from app.view.test_interface.test_interface import TestInterface
 from app.view.bundle_interface.bundle_interface import BundleInterface
-from app.view.main_window.v5_style import build_v5_stylesheet
-from app.common.theme_manager import apply_v5_window_style
 from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.utils.hotkey_manager import GlobalHotkeyManager
@@ -432,7 +430,6 @@ class MainWindow(MSFluentWindow):
         else:
             logger.info("多资源适配已开启，Announcement 不会显示在导航栏")
 
-        self._apply_v5_shell_style()
         self._switch_to_interface(self.DashboardInterface)
 
         # 添加导航项
@@ -761,9 +758,6 @@ class MainWindow(MSFluentWindow):
                 )
 
         QTimer.singleShot(0, lambda: asyncio.create_task(_start_flow()))
-
-    def _apply_v5_shell_style(self) -> None:
-        apply_v5_window_style(self)
 
     def _set_initial_geometry(self):
         """在首次展示前恢复之前的窗口几何，或居中显示。"""

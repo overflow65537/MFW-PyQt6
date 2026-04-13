@@ -6,7 +6,6 @@ from qfluentwidgets import setTheme, setThemeColor
 
 from app.common.config import cfg
 from app.utils.logger import logger
-from app.view.main_window.v5_style import build_v5_stylesheet
 
 
 def apply_theme_from_config() -> None:
@@ -32,17 +31,3 @@ def bind_setting_interface_theme(setting_interface: Any) -> None:
     """绑定设置页中的主题相关控件到 qfluentwidgets 全局主题。"""
     cfg.themeChanged.connect(setTheme)
     setting_interface.themeColorCard.colorChanged.connect(setThemeColor)
-
-
-def apply_v5_window_style(window: Any) -> None:
-    """应用 V5 页面结构样式，不覆盖 qfluentwidgets 的全局主题配色。"""
-    window.setObjectName("V5MainWindow")
-    try:
-        window.navigationInterface.setObjectName("v5Navigation")
-    except Exception:
-        pass
-    try:
-        window.stackedWidget.setObjectName("v5StackedWidget")
-    except Exception:
-        pass
-    window.setStyleSheet(build_v5_stylesheet())

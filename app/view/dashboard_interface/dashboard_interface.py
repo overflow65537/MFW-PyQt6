@@ -46,6 +46,80 @@ UI_VERSION = getattr(
 )
 
 
+def build_dashboard_stylesheet() -> str:
+    return """
+QWidget#DashboardInterface,
+QWidget#V5DashboardContent {
+    background: transparent;
+}
+
+QScrollArea#V5DashboardScroll {
+    border: none;
+    background: transparent;
+}
+
+QFrame#V5HeroCard {
+    border-radius: 16px;
+}
+
+QLabel#V5HeroTitle {
+    font-size: 44px;
+    font-weight: 700;
+}
+
+QLabel#V5HeroSubtitle {
+    font-size: 22px;
+    font-weight: 500;
+}
+
+QLabel#V5HeroVersion {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+QFrame#V5HeroImageStage {
+    border-radius: 18px;
+}
+
+QLabel#V5HeroImageBackdrop {
+    border-radius: 16px;
+    background: transparent;
+}
+
+QLabel#V5HeroImage {
+    border-radius: 14px;
+}
+
+QLabel#V5SectionTitle {
+    font-size: 26px;
+    font-weight: 650;
+}
+
+QLabel#V5InfoKey {
+    font-size: 15px;
+}
+
+QLabel#V5InfoValue {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+QLabel#V5ActionTitle {
+    font-size: 21px;
+    font-weight: 600;
+}
+
+QLabel#V5ActionDesc {
+    font-size: 14px;
+}
+
+QLabel#V5ActionArrow {
+    font-size: 30px;
+    font-weight: 600;
+}
+"""
+
+
 class _ActionCard(SimpleCardWidget):
     clicked = Signal()
 
@@ -152,6 +226,7 @@ class DashboardInterface(QWidget):
         signalBus.home_cover_image_changed.connect(self._on_home_cover_image_changed)
 
     def _init_ui(self) -> None:
+        self.setStyleSheet(build_dashboard_stylesheet())
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
 
@@ -484,7 +559,6 @@ class DashboardInterface(QWidget):
             "\n".join(
                 [
                     "QFrame#V5HeroCard {",
-                    "    border-radius: 16px;",
                     f"    border: 1px solid {self._color_to_rgba(border, 0.88)};",
                     "    background: qlineargradient(",
                     "        x1: 0, y1: 0, x2: 1, y2: 1,",
@@ -494,16 +568,12 @@ class DashboardInterface(QWidget):
                     "    );",
                     "}",
                     "QFrame#V5HeroImageStage {",
-                    "    border-radius: 18px;",
                     f"    border: 1px solid {self._color_to_rgba(stage_border, 0.72)};",
                     f"    background-color: {self._color_to_rgba(stage_fill, 0.24)};",
                     "}",
                     "QLabel#V5HeroImageBackdrop {",
-                    "    border-radius: 16px;",
-                    "    background: transparent;",
                     "}",
                     "QLabel#V5HeroImage {",
-                    "    border-radius: 14px;",
                     f"    border: 1px solid {self._color_to_rgba(QColor('#ffffff'), 0.18)};",
                     f"    background-color: {self._color_to_rgba(image_fill, 0.34)};",
                     "}",
