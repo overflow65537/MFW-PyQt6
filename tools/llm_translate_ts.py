@@ -104,6 +104,43 @@ def strip_code_fence(s: str) -> str:
     return s
 
 
+def split_translation_entries_into_batches(
+    entries: list[tuple[ET.Element, str]],
+    max_items: int,
+    max_chars: int,
+) -> list[list[tuple[ET.Element, str]]]:
+    """
+    将待译条目切成多批，兼顾「条数上限」与「字符数上限」，减少 API 调用次数、降低重复 system prompt 开销。
+    max_chars<=0 时仅按条数切分。
+    """
+    batches: list[list[tuple[ET.Element, str]]] = []
+    current: list[tuple[ET.Element, str]] = []
+    current_chars = 0
+
+    def flush() -> None:
+        nonlocal current, current_chars
+        if current:
+            batches.append(current)
+            current = []
+            current_chars = 0
+
+    for trans_el, s in entries:
+        l = len(s)
+        if max_chars > 0 and l > max_chars:
+            flush()
+            batches.append([(trans_el, s)])
+            continue
+        if current and (
+            len(current) >= max_items
+            or (max_chars > 0 and current_chars + l > max_chars)
+        ):
+            flush()
+        current.append((trans_el, s))
+        current_chars += l
+    flush()
+    return batches
+
+
 def parse_translations_json(content: str, expected: int) -> list[str]:
     content = strip_code_fence(content)
     data: Any = json.loads(content)
@@ -133,24 +170,23 @@ def deepseek_translate_batch(
     timeout: float,
 ) -> list[str]:
     hint = target_language_prompt(lang)
+    # 紧凑 payload：同一批内多条只付一次 system + 短说明，减少重复 token
     payload = {
         "model": model,
         "messages": [
             {
                 "role": "system",
                 "content": (
-                    "你是 Qt/PySide 应用的界面文案翻译助手。"
-                    "必须严格保留原文中的占位符与格式，例如 {time}、{n}、{month}、%1、%n、\\n 等，"
-                    "不要增删或改写占位符名称。"
-                    "只输出 JSON，不要其它说明文字。"
+                    "Qt/PySide UI 翻译。保留占位符与格式：{var}、%1、%n、\\n 等，勿改占位符名。"
+                    "仅输出 JSON 对象。"
                 ),
             },
             {
                 "role": "user",
                 "content": (
-                    f"将下列 UI 原文翻译为：{hint}。\n"
-                    f"以 JSON 对象输出，键为 translations，值为与输入顺序一致的字符串数组。\n"
-                    f"输入 JSON：{json.dumps({'sources': sources}, ensure_ascii=False)}"
+                    f"目标：{hint}\n"
+                    f'返回 {{"translations":["…"]}}，数组长度={len(sources)}，顺序与 sources 一致。\n'
+                    f"sources={json.dumps(sources, ensure_ascii=False)}"
                 ),
             },
         ],
@@ -208,6 +244,7 @@ def process_file(
     filter_mode: str,
     skip_vanished: bool,
     batch_size: int,
+    max_chars_per_batch: int,
     dry_run: bool,
     timeout: float,
     sleep_s: float,
@@ -240,15 +277,33 @@ def process_file(
             print(f"  - {s[:80]}{'…' if len(s) > 80 else ''}", file=sys.stderr)
         if total > 10:
             print(f"  ... 另有 {total - 10} 条", file=sys.stderr)
+        batches = split_translation_entries_into_batches(
+            entries, max_items=batch_size, max_chars=max_chars_per_batch
+        )
+        print(
+            f"  dry-run：将分为 {len(batches)} 次 API 调用（batch≤{batch_size} 条"
+            + (f"，≤{max_chars_per_batch} 字符/批" if max_chars_per_batch > 0 else "")
+            + "）",
+            file=sys.stderr,
+        )
         return total, 0
+
+    batches = split_translation_entries_into_batches(
+        entries, max_items=batch_size, max_chars=max_chars_per_batch
+    )
+    nb = len(batches)
+    print(
+        f"  分 {nb} 批请求 API（每批最多 {batch_size} 条"
+        + (f"，约 {max_chars_per_batch} 字符上限" if max_chars_per_batch > 0 else "")
+        + "）",
+        file=sys.stderr,
+    )
 
     batch_trans_els: list[list[ET.Element]] = []
     batch_sources: list[list[str]] = []
-    for i in range(0, total, batch_size):
-        batch = entries[i : i + batch_size]
+    for batch in batches:
         batch_trans_els.append([t for t, _ in batch])
         batch_sources.append([s for _, s in batch])
-    nb = len(batch_sources)
 
     def translate_batch_index(batch_idx: int) -> tuple[int, list[str]]:
         trans_els = batch_trans_els[batch_idx]
@@ -331,7 +386,18 @@ def main() -> None:
         action="store_true",
         help="包含 type=vanished 的条目（默认跳过）",
     )
-    p.add_argument("--batch-size", type=int, default=24, help="每批调用 API 的条目数")
+    p.add_argument(
+        "--batch-size",
+        type=int,
+        default=96,
+        help="每批最多条数（与 --max-chars-per-batch 同时生效，先达到上限则切批）",
+    )
+    p.add_argument(
+        "--max-chars-per-batch",
+        type=int,
+        default=48_000,
+        help="每批 sources 总字符数上限（0=不按字符切分，仅按条数）。默认较大以合并更多短句，减少请求次数与重复 system prompt",
+    )
     p.add_argument("--model", default=DEFAULT_MODEL, help="DeepSeek 模型名")
     p.add_argument(
         "--token-file",
@@ -355,8 +421,8 @@ def main() -> None:
     p.add_argument(
         "--workers",
         type=int,
-        default=4,
-        help="并行 API 请求线程数（默认 4）；1 表示串行，可配合 --sleep 限流",
+        default=2,
+        help="并行批次数（默认 2）。增大并行不省 token，仅加快；省 token 主要靠加大每批条数/字符上限",
     )
     args = p.parse_args()
 
@@ -392,6 +458,7 @@ def main() -> None:
             filter_mode=args.filter,
             skip_vanished=skip_vanished,
             batch_size=max(1, args.batch_size),
+            max_chars_per_batch=max(0, args.max_chars_per_batch),
             dry_run=args.dry_run,
             timeout=args.timeout,
             sleep_s=max(0.0, args.sleep),
