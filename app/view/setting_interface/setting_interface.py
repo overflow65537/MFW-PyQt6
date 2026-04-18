@@ -1756,15 +1756,6 @@ class SettingInterface(QWidget):
         """确保设置界面初始化时与全局主题同步。"""
         apply_theme_from_config()
 
-        theme_color_item = getattr(cfg, "themeColor", None)
-        if theme_color_item:
-            theme_color = cfg.get(theme_color_item)
-            if theme_color:
-                try:
-                    setThemeColor(theme_color)
-                except Exception as exc:
-                    logger.warning("应用主题色失败: %s", exc)
-
     def _apply_interface_font(self):
         """略微放大设置界面的默认字体以改善可读性。"""
         font = self.font()
