@@ -200,14 +200,19 @@ def launch_updater_process(*extra_args: str) -> None:
             ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
         )
         command_line = subprocess.list2cmdline([str(resolved_executable)] + args)
+        cmd = [str(resolved_executable)] + args
         if _is_running_with_admin_privileges():
             logger.info(
                 "主程序具有管理员权限，使用管理员方式启动更新程序: %s", command_line
             )
-            _start_windows_process_with_admin(resolved_executable, args)
-            return
+            try:
+                _start_windows_process_with_admin(resolved_executable, args)
+                return
+            except Exception as exc:
+                logger.warning(
+                    "管理员方式启动更新程序失败，回退为普通启动: %s", exc
+                )
         logger.info("启动更新程序: %s", command_line)
-        cmd = [str(resolved_executable)] + args
     elif sys.platform.startswith(("darwin", "linux")):
         updater_executable = Path("./MFWUpdater1")
         resolved_executable = updater_executable.resolve(strict=False)
@@ -2860,11 +2865,16 @@ class SettingInterface(QWidget):
             return
 
         try:
-            self._start_updater()
+            updater_started = self._start_updater()
         except Exception as e:
             self._updater_started = False
             logger.error(f"启动更新程序失败: {e}")
             signalBus.info_bar_requested.emit("error", e)
+            if notify_if_cancel:
+                signalBus.update_stopped.emit(3)
+            return
+        if not updater_started:
+            self._updater_started = False
             if notify_if_cancel:
                 signalBus.update_stopped.emit(3)
             return
@@ -2982,15 +2992,16 @@ class SettingInterface(QWidget):
         """重命名更新程序，复用模块级工具函数。"""
         rename_updater_binary(str(old_name), str(new_name))
 
-    def _start_updater(self):
+    def _start_updater(self) -> bool:
         """启动更新程序（允许更新器自行显示界面）。"""
         try:
             extra_args = ["-d"] if self._propagate_direct_run_arg else []
             launch_updater_process(*extra_args)
+            return True
         except Exception as e:
             logger.error(f"启动更新程序失败: {e}")
             signalBus.info_bar_requested.emit("error", str(e))
-            return
+            return False
 
     def _on_download_progress(self, downloaded: int, total: int):
         """下载进度回调"""
