@@ -294,9 +294,13 @@ class LogZipDialog(MessageBoxBase):
             self._run_checkboxes.append(cb)
             layout.addWidget(cb)
 
-        # 只有一条运行记录（常见于兜底“全部日志”）时默认勾选
-        if len(self._run_checkboxes) == 1:
-            self._run_checkboxes[0].setChecked(True)
+        # 默认选中最新的两次运行记录（列表末尾两条）
+        total = len(self._run_checkboxes)
+        if total <= 0:
+            return
+        start_idx = max(0, total - 2)
+        for idx in range(start_idx, total):
+            self._run_checkboxes[idx].setChecked(True)
 
     def _refresh_preview(self) -> None:
         # 异步计算预览，避免在 UI 线程遍历大量文件导致卡顿
