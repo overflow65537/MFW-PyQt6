@@ -344,6 +344,8 @@ class TaskFlowRunner(QObject):
             logger.warning("任务流已经在运行，忽略新的启动请求")
             return
         self._is_running = True
+        # 写入稳定的任务流开始标记，供日志打包按“运行记录”切分（不依赖语言/文案）
+        logger.info("[RUN_RECORD] TASK_FLOW_START")
         self.need_stop = False
         self._manual_stop = False
         self._task_flow_finished_emitted = False
@@ -1453,7 +1455,8 @@ class TaskFlowRunner(QObject):
                 {"text": "START", "status": "enabled"}
             )
         self._is_running = False
-        logger.info("任务流停止")
+        # 写入稳定的任务流结束标记，供日志打包按“运行记录”切分（不依赖语言/文案）
+        logger.info("[RUN_RECORD] TASK_FLOW_STOP manual=%s", bool(self._manual_stop))
 
     def shutdown_runtime_sync(self) -> None:
         """同步强制清理运行态，供窗口退出阶段兜底调用。"""

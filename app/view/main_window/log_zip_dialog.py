@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Iterable
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QProgressBar, QVBoxLayout, QWidget
 from qfluentwidgets import (
     BodyLabel,
     CheckBox,
-    ComboBox,
     MessageBoxBase,
     PrimaryPushButton,
     PushButton,
@@ -19,40 +18,28 @@ from qfluentwidgets import (
 
 @dataclass(slots=True)
 class LogZipOptions:
-    include_maa_logs: bool = True
-    include_gui_logs: bool = True
-    include_custom_logs: bool = True
-    include_other_files: bool = True
-    include_on_error_images: bool = True
-    include_vision_images: bool = True
-    include_other_images: bool = True
-    on_error_days: int | None = None
-    vision_days: int | None = None
-    other_images_days: int | None = None
+    # 运行记录索引（0-based），允许多选
+    selected_run_indices: list[int]
 
     def has_any_selection(self) -> bool:
-        return any(
-            (
-                self.include_maa_logs,
-                self.include_gui_logs,
-                self.include_custom_logs,
-                self.include_other_files,
-                self.include_on_error_images,
-                self.include_vision_images,
-                self.include_other_images,
-            )
-        )
+        return bool(self.selected_run_indices)
+
+
+@dataclass(slots=True)
+class RunRecordEntry:
+    """供 UI 展示的运行记录条目（时间由外部解析提供）。"""
+
+    index: int
+    start_text: str
+    end_text: str
+    duration_text: str
 
 
 @dataclass(slots=True)
 class LogZipPreview:
-    maa_logs_size: int = 0
-    gui_logs_size: int = 0
-    custom_logs_size: int = 0
-    other_files_size: int = 0
-    on_error_images_size: int = 0
-    vision_images_size: int = 0
-    other_images_size: int = 0
+    text_size: int = 0
+    images_size: int = 0
+    other_size: int = 0
     total_size: int = 0
 
 
@@ -70,21 +57,22 @@ class LogZipDialog(MessageBoxBase):
         self._finished = False
         self._cancel_emitted = False
         self._preview_provider = preview_provider
+        self._run_records: list[RunRecordEntry] = []
 
         self.buttonGroup.hide()
         self.widget.setMinimumWidth(560)
-        self.widget.setMinimumHeight(580)
+        self.widget.setMinimumHeight(560)
 
         self._build_ui()
         self._bind_signals()
-        self._set_status(self.tr("Select the content to include in the log package."))
+        self._set_status(self.tr("Select one or more run records to include in the log package."))
         self._refresh_preview()
 
     def _build_ui(self) -> None:
         title = SubtitleLabel(self.tr("Package logs"), self)
         desc = BodyLabel(
             self.tr(
-                "Choose the log files and image folders to include. Image items can be filtered by time range."
+                "Log contents will be grouped by run records (task flow start/stop). You can select multiple run records."
             ),
             self,
         )
@@ -95,8 +83,7 @@ class LogZipDialog(MessageBoxBase):
         self.viewLayout.addWidget(desc)
         self.viewLayout.addSpacing(12)
 
-        self.viewLayout.addWidget(self._build_logs_card())
-        self.viewLayout.addWidget(self._build_images_card())
+        self.viewLayout.addWidget(self._build_run_records_card())
         self.viewLayout.addSpacing(8)
 
         self.status_label = BodyLabel(self)
@@ -124,84 +111,71 @@ class LogZipDialog(MessageBoxBase):
         button_layout.addWidget(self.cancel_button)
         self.viewLayout.addLayout(button_layout)
 
-    def _build_logs_card(self) -> SimpleCardWidget:
+    def _build_run_records_card(self) -> SimpleCardWidget:
         card = SimpleCardWidget(self)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(16, 14, 16, 14)
         layout.setSpacing(10)
 
-        title = SubtitleLabel(self.tr("Logs"), card)
+        title = SubtitleLabel(self.tr("Run records"), card)
         layout.addWidget(title)
 
-        self.maa_log_checkbox = CheckBox(self.tr("maa.log (including .bak)"), card)
-        self.maa_log_checkbox.setChecked(True)
-        self.gui_log_checkbox = CheckBox(self.tr("gui.log"), card)
-        self.gui_log_checkbox.setChecked(True)
-        self.custom_log_checkbox = CheckBox(self.tr("custom.log"), card)
-        self.custom_log_checkbox.setChecked(True)
-        self.other_files_checkbox = CheckBox(self.tr("other files"), card)
-        self.other_files_checkbox.setChecked(True)
-
-        layout.addWidget(self.maa_log_checkbox)
-        layout.addWidget(self.gui_log_checkbox)
-        layout.addWidget(self.custom_log_checkbox)
-        layout.addWidget(self.other_files_checkbox)
+        self._run_checkboxes: list[CheckBox] = []
+        self._run_empty_hint = BodyLabel(self.tr("No run records found."), card)
+        self._run_empty_hint.setWordWrap(True)
+        layout.addWidget(self._run_empty_hint)
         return card
 
-    def _build_images_card(self) -> SimpleCardWidget:
-        card = SimpleCardWidget(self)
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(16, 14, 16, 14)
-        layout.setSpacing(10)
+    def set_run_records(self, records: Iterable[RunRecordEntry]) -> None:
+        """由外部注入运行记录列表。"""
+        self._run_records = list(records)
+        self._rebuild_run_record_checkboxes()
+        self._refresh_preview()
 
-        title = SubtitleLabel(self.tr("Images"), card)
-        desc = BodyLabel(
-            self.tr("Default is all image categories with time range set to all."),
-            card,
-        )
-        desc.setWordWrap(True)
-        layout.addWidget(title)
-        layout.addWidget(desc)
+    def _rebuild_run_record_checkboxes(self) -> None:
+        card = self._run_empty_hint.parentWidget()
+        if card is None:
+            return
+        layout = card.layout()
+        if layout is None:
+            return
 
-        self.on_error_checkbox, self.on_error_combo = self._create_image_row(
-            self.tr("on_error folder"), card
-        )
-        self.vision_checkbox, self.vision_combo = self._create_image_row(
-            self.tr("vision folder"), card
-        )
-        self.other_images_checkbox, self.other_images_combo = self._create_image_row(
-            self.tr("other images"), card
-        )
+        # 先移除旧复选框
+        for cb in self._run_checkboxes:
+            try:
+                cb.toggled.disconnect(self._refresh_preview)
+            except Exception:
+                pass
+            cb.setParent(None)
+            cb.deleteLater()
+        self._run_checkboxes.clear()
 
-        for checkbox, combo in (
-            (self.on_error_checkbox, self.on_error_combo),
-            (self.vision_checkbox, self.vision_combo),
-            (self.other_images_checkbox, self.other_images_combo),
-        ):
-            row = QHBoxLayout()
-            row.setContentsMargins(0, 0, 0, 0)
-            row.setSpacing(10)
-            row.addWidget(checkbox, 1)
-            row.addWidget(combo, 0)
-            layout.addLayout(row)
+        if not self._run_records:
+            self._run_empty_hint.show()
+            return
 
-        return card
+        self._run_empty_hint.hide()
+        for rec in self._run_records:
+            text = (
+                self.tr("Run record ")
+                + str(rec.index + 1)
+                + ": "
+                + rec.start_text
+                + " ~ "
+                + rec.end_text
+                + " ("
+                + rec.duration_text
+                + ")"
+            )
+            cb = CheckBox(text, card)
+            cb.setChecked(False)
+            cb.toggled.connect(self._refresh_preview)
+            self._run_checkboxes.append(cb)
+            layout.addWidget(cb)
 
-    def _create_image_row(self, text: str, parent: QWidget) -> tuple[CheckBox, ComboBox]:
-        checkbox = CheckBox(text, parent)
-        checkbox.setChecked(True)
-
-        combo = ComboBox(parent)
-        self._populate_time_range_combo(combo)
-        combo.setCurrentIndex(0)
-        combo.setMinimumWidth(150)
-        return checkbox, combo
-
-    def _populate_time_range_combo(self, combo: ComboBox) -> None:
-        combo.addItem(self.tr("all"), userData=None)
-        combo.addItem(self.tr("today"), userData=1)
-        combo.addItem(self.tr("within 2 days"), userData=2)
-        combo.addItem(self.tr("within 3 days"), userData=3)
+        # 只有一条运行记录（常见于兜底“全部日志”）时默认勾选
+        if len(self._run_checkboxes) == 1:
+            self._run_checkboxes[0].setChecked(True)
 
     def _refresh_preview(self) -> None:
         preview = LogZipPreview()
@@ -211,27 +185,6 @@ class LogZipDialog(MessageBoxBase):
             except Exception:
                 preview = LogZipPreview()
 
-        self.maa_log_checkbox.setText(
-            f"{self.tr('maa.log (including .bak)')} ({self._format_size(preview.maa_logs_size)})"
-        )
-        self.gui_log_checkbox.setText(
-            f"{self.tr('gui.log')} ({self._format_size(preview.gui_logs_size)})"
-        )
-        self.custom_log_checkbox.setText(
-            f"{self.tr('custom.log')} ({self._format_size(preview.custom_logs_size)})"
-        )
-        self.other_files_checkbox.setText(
-            f"{self.tr('other files')} ({self._format_size(preview.other_files_size)})"
-        )
-        self.on_error_checkbox.setText(
-            f"{self.tr('on_error folder')} ({self._format_size(preview.on_error_images_size)})"
-        )
-        self.vision_checkbox.setText(
-            f"{self.tr('vision folder')} ({self._format_size(preview.vision_images_size)})"
-        )
-        self.other_images_checkbox.setText(
-            f"{self.tr('other images')} ({self._format_size(preview.other_images_size)})"
-        )
         self.total_size_label.setText(
             self.tr("Selected total size:") + self._format_size(preview.total_size)
         )
@@ -249,55 +202,20 @@ class LogZipDialog(MessageBoxBase):
         self.start_button.clicked.connect(self._on_start_clicked)
         self.cancel_button.clicked.connect(self._on_cancel_clicked)
 
-        for checkbox in (
-            self.maa_log_checkbox,
-            self.gui_log_checkbox,
-            self.custom_log_checkbox,
-            self.other_files_checkbox,
-        ):
-            checkbox.toggled.connect(self._refresh_preview)
-
-        for checkbox, combo in (
-            (self.on_error_checkbox, self.on_error_combo),
-            (self.vision_checkbox, self.vision_combo),
-            (self.other_images_checkbox, self.other_images_combo),
-        ):
-            checkbox.toggled.connect(combo.setEnabled)
-            checkbox.toggled.connect(self._refresh_preview)
-            combo.currentIndexChanged.connect(self._refresh_preview)
-
     def get_options(self) -> LogZipOptions:
-        return LogZipOptions(
-            include_maa_logs=self.maa_log_checkbox.isChecked(),
-            include_gui_logs=self.gui_log_checkbox.isChecked(),
-            include_custom_logs=self.custom_log_checkbox.isChecked(),
-            include_other_files=self.other_files_checkbox.isChecked(),
-            include_on_error_images=self.on_error_checkbox.isChecked(),
-            include_vision_images=self.vision_checkbox.isChecked(),
-            include_other_images=self.other_images_checkbox.isChecked(),
-            on_error_days=self._combo_to_days(self.on_error_combo),
-            vision_days=self._combo_to_days(self.vision_combo),
-            other_images_days=self._combo_to_days(self.other_images_combo),
-        )
+        selected: list[int] = []
+        for idx, cb in enumerate(self._run_checkboxes):
+            if cb.isChecked():
+                selected.append(idx)
+        return LogZipOptions(selected_run_indices=selected)
 
     def set_running(self, running: bool) -> None:
         self._running = running
         self._finished = False if running else self._finished
         self._cancel_emitted = False if running else self._cancel_emitted
 
-        for widget in (
-            self.maa_log_checkbox,
-            self.gui_log_checkbox,
-            self.custom_log_checkbox,
-            self.other_files_checkbox,
-            self.on_error_checkbox,
-            self.vision_checkbox,
-            self.other_images_checkbox,
-            self.on_error_combo,
-            self.vision_combo,
-            self.other_images_combo,
-        ):
-            widget.setEnabled(not running)
+        for cb in self._run_checkboxes:
+            cb.setEnabled(not running)
 
         self.start_button.setEnabled(not running)
         self.cancel_button.setEnabled(True)
@@ -331,7 +249,7 @@ class LogZipDialog(MessageBoxBase):
         options = self.get_options()
         if not options.has_any_selection():
             self._set_status(
-                self.tr("Select at least one log or image category."),
+                self.tr("Select at least one run record."),
                 error=True,
             )
             return
@@ -357,9 +275,6 @@ class LogZipDialog(MessageBoxBase):
             event.ignore()
             return
         super().closeEvent(event)
-
-    def _combo_to_days(self, combo: ComboBox) -> int | None:
-        return combo.currentData()
 
     def _set_status(self, text: str, *, error: bool = False) -> None:
         self.status_label.setText(text)

@@ -108,8 +108,12 @@ from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
-from app.view.main_window.log_zip_dialog import LogZipDialog, LogZipOptions
-from app.view.main_window.log_zip_dialog import LogZipDialog, LogZipOptions, LogZipPreview
+from app.view.main_window.log_zip_dialog import (
+    LogZipDialog,
+    LogZipOptions,
+    LogZipPreview,
+    RunRecordEntry,
+)
 
 
 class LogZipCancelled(Exception):
@@ -128,6 +132,13 @@ class LogZipFileEntry:
 class LogZipLiveEntry:
     arcname: str
     image_bytes: bytes
+
+
+@dataclass(slots=True)
+class RunRecord:
+    index: int
+    start_time: datetime
+    end_time: datetime
 
 
 class TutorialHighlightOverlay(QWidget):
@@ -249,11 +260,8 @@ class MainWindow(MSFluentWindow):
 
     # 可能被占用的日志文件名（需要特殊读取方式）
     _LOCKED_LOG_NAMES = {
-        "maa.log",
         "maafw.log",
         "clash.log",
-        "maa.bak.log",
-        "maa.log.bak",
         "maafw.log.bak",
     }
     _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".webp", ".gif"}
@@ -1212,7 +1220,18 @@ class MainWindow(MSFluentWindow):
             )
             return
 
+        self._log_zip_run_records = self._detect_run_records()
+        if not self._log_zip_run_records:
+            # 兜底：没有任何运行记录时，默认保存全部日志（1970-01-01 ~ 现在）
+            self._log_zip_run_records = [
+                RunRecord(
+                    index=0,
+                    start_time=datetime(1970, 1, 1, 0, 0, 0),
+                    end_time=datetime.now(),
+                )
+            ]
         dialog = LogZipDialog(self, preview_provider=self._build_log_zip_preview)
+        dialog.set_run_records(self._build_run_record_entries(self._log_zip_run_records))
         dialog.startRequested.connect(self._start_log_zip_from_dialog)
         dialog.cancelRequested.connect(self._cancel_log_zip)
         self._log_zip_dialog = dialog
@@ -1266,16 +1285,29 @@ class MainWindow(MSFluentWindow):
         errors: list[str] = []
         cancel_event = self._log_zip_cancel_event or threading.Event()
         try:
-            file_entries, live_entries = self._collect_log_zip_entries(debug_dir, options)
+            selected_runs = self._resolve_selected_run_records(options)
+            if not selected_runs:
+                self._set_log_zip_dialog_finished(
+                    self.tr("No run records were selected."),
+                    error=True,
+                )
+                signalBus.info_bar_requested.emit(
+                    "warning", self.tr("No run records were selected.")
+                )
+                return
+
+            file_entries, live_entries = self._collect_log_zip_entries_by_runs(
+                debug_dir, selected_runs
+            )
             total_items = len(file_entries) + len(live_entries)
             if total_items <= 0:
                 self._set_log_zip_dialog_finished(
-                    self.tr("No matching files were found for the selected options."),
+                    self.tr("No matching files were found for the selected run records."),
                     error=True,
                 )
                 signalBus.info_bar_requested.emit(
                     "warning",
-                    self.tr("No matching files were found for the selected options."),
+                    self.tr("No matching files were found for the selected run records."),
                 )
                 return
 
@@ -1343,205 +1375,182 @@ class MainWindow(MSFluentWindow):
         options: LogZipOptions,
     ) -> tuple[list[LogZipFileEntry], list[LogZipLiveEntry]]:
         """按用户选择生成待打包文件列表。"""
+        # 兼容旧实现：现在不再从 UI 选择类别/天数，统一按运行记录切分。
+        selected_runs = self._resolve_selected_run_records(options)
+        return self._collect_log_zip_entries_by_runs(debug_dir, selected_runs)
+
+    def _collect_log_zip_entries_by_runs(
+        self,
+        debug_dir: Path,
+        run_records: list[RunRecord],
+    ) -> tuple[list[LogZipFileEntry], list[LogZipLiveEntry]]:
+        """按运行记录（时间段）生成待打包文件列表。"""
         seen: set[Path] = set()
         file_entries: list[LogZipFileEntry] = []
+        live_entries: list[LogZipLiveEntry] = []
 
-        def _add_file(path: Path, category: str) -> None:
+        def _add_file(path: Path, arcname: str, category: str) -> None:
             resolved = path.resolve()
             if resolved in seen or not path.is_file():
                 return
             seen.add(resolved)
-            rel_path = path.relative_to(debug_dir).as_posix()
             file_entries.append(
                 LogZipFileEntry(
                     path=path,
-                    arcname=f"{debug_dir.name}/{rel_path}",
+                    arcname=arcname,
                     locked=path.name in self._LOCKED_LOG_NAMES,
                     category=category,
                 )
             )
 
-        for path in sorted(debug_dir.iterdir(), key=lambda item: item.name.lower()):
-            if not path.is_file():
-                continue
-            if options.include_maa_logs and self._is_maa_log_file(path.name):
-                _add_file(path, "maa_logs")
-            if options.include_gui_logs and self._is_gui_log_file(path.name):
-                _add_file(path, "gui_logs")
-            if options.include_custom_logs and self._is_custom_log_file(path.name):
-                _add_file(path, "custom_logs")
+        # 仅打包时间段内的数据，按 run_records 分目录
+        for run in run_records:
+            run_root = f"{debug_dir.name}/runs/run_{run.index + 1:03d}"
 
-        if options.include_other_files:
-            self._collect_other_files(debug_dir, seen, file_entries)
+            # 文本：按行时间过滤写入（以 live_entries 形式写入 zip）
+            # gui.log（含轮转）
+            for log_path in sorted(debug_dir.glob("gui.log*")):
+                if not log_path.is_file():
+                    continue
+                arcname = f"{run_root}/text/{log_path.name}"
+                filtered = self._read_and_filter_log_by_time(
+                    log_path, run.start_time, run.end_time
+                )
+                if filtered is not None:
+                    live_entries.append(
+                        LogZipLiveEntry(arcname=arcname, image_bytes=filtered)
+                    )
 
-        if options.include_on_error_images:
-            self._collect_image_files(
-                debug_dir / "on_error",
+            # maafw.log（含 maafw.bak.log / maafw.bak.YYYY.MM.DD-HH.MM.SS.mmm.log 等）
+            for log_path in sorted(debug_dir.glob("maafw*.log*")):
+                if not log_path.is_file():
+                    continue
+                arcname = f"{run_root}/text/{log_path.name}"
+                filtered = self._read_and_filter_log_by_time(
+                    log_path, run.start_time, run.end_time
+                )
+                if filtered is not None:
+                    live_entries.append(
+                        LogZipLiveEntry(arcname=arcname, image_bytes=filtered)
+                    )
+
+            # custom.log（含轮转）
+            for log_path in sorted(debug_dir.glob("custom.log*")):
+                if not log_path.is_file():
+                    continue
+                arcname = f"{run_root}/text/{log_path.name}"
+                filtered = self._read_and_filter_log_by_time(
+                    log_path, run.start_time, run.end_time
+                )
+                if filtered is not None:
+                    live_entries.append(
+                        LogZipLiveEntry(arcname=arcname, image_bytes=filtered)
+                    )
+
+            # 图片：按 mtime 归入 images
+            self._collect_images_for_run(
                 debug_dir,
-                options.on_error_days,
+                run,
                 seen,
                 file_entries,
-                "on_error_images",
+                run_root=run_root,
+                add_file=_add_file,
             )
 
-        if options.include_vision_images:
-            self._collect_image_files(
-                debug_dir / "vision",
+            # 其他：除日志/图片外的文件，按 mtime 过滤
+            self._collect_other_files_for_run(
                 debug_dir,
-                options.vision_days,
+                run,
                 seen,
                 file_entries,
-                "vision_images",
+                run_root=run_root,
+                add_file=_add_file,
             )
 
-        if options.include_other_images:
-            self._collect_other_image_files(
-                debug_dir,
-                options.other_images_days,
-                seen,
-                file_entries,
-                "other_images",
-            )
-
-        live_entries = self._collect_live_images_for_zip(options) if options.include_other_images else []
         return file_entries, live_entries
 
-    def _collect_image_files(
+    def _collect_images_for_run(
         self,
-        folder: Path,
         debug_dir: Path,
-        days: int | None,
+        run: RunRecord,
         seen: set[Path],
         output: list[LogZipFileEntry],
-        category: str,
+        *,
+        run_root: str,
+        add_file,
     ) -> None:
-        if not folder.exists() or not folder.is_dir():
-            return
-        cutoff = self._build_image_cutoff(days)
-        for path in sorted(folder.rglob("*"), key=lambda item: str(item).lower()):
+        def _include_image(path: Path, category: str) -> None:
             if not path.is_file() or path.suffix.lower() not in self._IMAGE_SUFFIXES:
-                continue
-            if cutoff is not None and datetime.fromtimestamp(path.stat().st_mtime) < cutoff:
-                continue
-            resolved = path.resolve()
-            if resolved in seen:
-                continue
-            seen.add(resolved)
-            output.append(
-                LogZipFileEntry(
-                    path=path,
-                    arcname=f"{debug_dir.name}/{path.relative_to(debug_dir).as_posix()}",
-                    locked=False,
-                    category=category,
-                )
-            )
+                return
+            if not self._is_mtime_in_range(path, run.start_time, run.end_time):
+                return
+            rel = path.relative_to(debug_dir).as_posix()
+            arcname = f"{run_root}/images/{rel}"
+            add_file(path, arcname, category)
 
-    def _collect_other_image_files(
-        self,
-        debug_dir: Path,
-        days: int | None,
-        seen: set[Path],
-        output: list[LogZipFileEntry],
-        category: str,
-    ) -> None:
-        cutoff = self._build_image_cutoff(days)
+        # on_error
+        on_error_dir = debug_dir / "on_error"
+        if on_error_dir.exists():
+            for p in sorted(on_error_dir.rglob("*"), key=lambda item: str(item).lower()):
+                _include_image(p, "on_error_images")
+
+        # vision
+        vision_dir = debug_dir / "vision"
+        if vision_dir.exists():
+            for p in sorted(vision_dir.rglob("*"), key=lambda item: str(item).lower()):
+                _include_image(p, "vision_images")
+
+        # 其他图片（排除 on_error/vision）
         excluded_roots = {"on_error", "vision"}
-        for path in sorted(debug_dir.rglob("*"), key=lambda item: str(item).lower()):
-            if not path.is_file() or path.suffix.lower() not in self._IMAGE_SUFFIXES:
+        for p in sorted(debug_dir.rglob("*"), key=lambda item: str(item).lower()):
+            if not p.is_file() or p.suffix.lower() not in self._IMAGE_SUFFIXES:
                 continue
-            parts = path.relative_to(debug_dir).parts
+            parts = p.relative_to(debug_dir).parts
             if parts and parts[0] in excluded_roots:
                 continue
-            if cutoff is not None and datetime.fromtimestamp(path.stat().st_mtime) < cutoff:
-                continue
-            resolved = path.resolve()
-            if resolved in seen:
-                continue
-            seen.add(resolved)
-            output.append(
-                LogZipFileEntry(
-                    path=path,
-                    arcname=f"{debug_dir.name}/{path.relative_to(debug_dir).as_posix()}",
-                    locked=False,
-                    category=category,
-                )
-            )
+            _include_image(p, "other_images")
 
-    def _collect_other_files(
+    def _collect_other_files_for_run(
         self,
         debug_dir: Path,
+        run: RunRecord,
         seen: set[Path],
         output: list[LogZipFileEntry],
+        *,
+        run_root: str,
+        add_file,
     ) -> None:
         for path in sorted(debug_dir.rglob("*"), key=lambda item: str(item).lower()):
             if not path.is_file():
                 continue
             if path.name.lower() == "debug.zip":
                 continue
+            # 排除图片
             if path.suffix.lower() in self._IMAGE_SUFFIXES:
                 continue
-            resolved = path.resolve()
-            if resolved in seen:
+            # 排除已按“文本日志”处理的文件
+            lowered = path.name.lower()
+            if lowered.startswith(("gui.log", "maafw", "custom.log")):
                 continue
-            seen.add(resolved)
-            output.append(
-                LogZipFileEntry(
-                    path=path,
-                    arcname=f"{debug_dir.name}/{path.relative_to(debug_dir).as_posix()}",
-                    locked=path.name in self._LOCKED_LOG_NAMES,
-                    category="other_files",
-                )
-            )
+            if not self._is_mtime_in_range(path, run.start_time, run.end_time):
+                continue
+            rel = path.relative_to(debug_dir).as_posix()
+            arcname = f"{run_root}/other/{rel}"
+            add_file(path, arcname, "other_files")
+
+    def _collect_other_files(self, debug_dir: Path, seen: set[Path], output: list[LogZipFileEntry]) -> None:
+        # 旧接口保留（已由 _collect_other_files_for_run 取代）
+        for _ in (debug_dir, seen, output):
+            pass
 
     def _collect_live_images_for_zip(self, options: LogZipOptions) -> list[LogZipLiveEntry]:
-        """收集日志面板中的实时图片，归入“其他图片”。"""
-        try:
-            log_widget = getattr(
-                getattr(self, "TaskInterface", None), "log_output_widget", None
-            )
-            if not log_widget or not hasattr(log_widget, "collect_log_images"):
-                return []
-
-            image_map = log_widget.collect_log_images()
-            if not image_map:
-                return []
-
-            log_items = getattr(log_widget, "_log_items", [])
-            timestamps = []
-            task_names = []
-            for item in log_items:
-                data = getattr(item, "_data", None)
-                if data is None:
-                    timestamps.append(datetime.now().strftime("%H_%M_%S"))
-                    task_names.append("Unknown")
-                    continue
-                timestamps.append((data.timestamp or datetime.now().strftime("%H:%M:%S")).replace(":", "_"))
-                task_names.append(self._sanitize_archive_name(data.task_name or "Unknown"))
-
-            entries: list[LogZipLiveEntry] = []
-            for _, (image_bytes, indices) in image_map.items():
-                if not image_bytes or image_bytes.isEmpty() or not indices:
-                    continue
-                min_idx = min(indices)
-                max_idx = max(indices)
-                timestamp_str = timestamps[min_idx] if min_idx < len(timestamps) else datetime.now().strftime("%H_%M_%S")
-                task_name = task_names[min_idx] if min_idx < len(task_names) else "Unknown"
-                if len(indices) == 1:
-                    filename = f"{min_idx:04d}_{task_name}_{timestamp_str}.png"
-                else:
-                    filename = f"{min_idx:04d}_[{min_idx:04d}-{max_idx:04d}]_{task_name}_{timestamp_str}.png"
-                entries.append(
-                    LogZipLiveEntry(
-                        arcname=f"debug/live/{filename}",
-                        image_bytes=image_bytes.data(),
-                    )
-                )
-            return entries
-        except Exception as exc:
-            logger.exception("收集实时图片失败")
-            return []
+        # 本次改造：时间范围由“运行记录”决定，实时图片缺少可靠的日期信息，避免误归类，暂不纳入。
+        for _ in (options,):
+            pass
+        return []
 
     def _build_image_cutoff(self, days: int | None) -> datetime | None:
+        # 旧接口保留（已由运行记录时间段取代）
         if days is None:
             return None
         now = datetime.now()
@@ -1550,14 +1559,10 @@ class MainWindow(MSFluentWindow):
         return now - timedelta(days=days)
 
     def _is_maa_log_file(self, name: str) -> bool:
-        lowered = name.lower()
-        return lowered in {
-            "maa.log",
-            "maa.log.bak",
-            "maa.bak.log",
-            "maafw.log",
-            "maafw.log.bak",
-        }
+        # 已取消 maa.log 支持
+        for _ in (name,):
+            pass
+        return False
 
     def _is_gui_log_file(self, name: str) -> bool:
         lowered = name.lower()
@@ -1572,7 +1577,8 @@ class MainWindow(MSFluentWindow):
         if not debug_dir.exists() or not debug_dir.is_dir():
             return LogZipPreview()
 
-        file_entries, live_entries = self._collect_log_zip_entries(debug_dir, options)
+        selected_runs = self._resolve_selected_run_records(options)
+        file_entries, live_entries = self._collect_log_zip_entries_by_runs(debug_dir, selected_runs)
         preview = LogZipPreview()
 
         for entry in file_entries:
@@ -1580,37 +1586,192 @@ class MainWindow(MSFluentWindow):
                 size = entry.path.stat().st_size
             except OSError:
                 size = 0
-            if entry.category == "maa_logs":
-                preview.maa_logs_size += size
-            elif entry.category == "gui_logs":
-                preview.gui_logs_size += size
-            elif entry.category == "custom_logs":
-                preview.custom_logs_size += size
-            elif entry.category == "other_files":
-                preview.other_files_size += size
-            elif entry.category == "on_error_images":
-                preview.on_error_images_size += size
-            elif entry.category == "vision_images":
-                preview.vision_images_size += size
-            elif entry.category == "other_images":
-                preview.other_images_size += size
+            if entry.category.endswith("_images") or entry.category == "other_images":
+                preview.images_size += size
+            else:
+                preview.other_size += size
 
-        preview.other_images_size += sum(len(entry.image_bytes) for entry in live_entries)
-        preview.total_size = (
-            preview.maa_logs_size
-            + preview.gui_logs_size
-            + preview.custom_logs_size
-            + preview.other_files_size
-            + preview.on_error_images_size
-            + preview.vision_images_size
-            + preview.other_images_size
-        )
+        # 文本日志（按时间过滤后）按写入字节计算
+        preview.text_size = sum(len(entry.image_bytes) for entry in live_entries)
+        preview.total_size = preview.text_size + preview.images_size + preview.other_size
         return preview
 
     def _sanitize_archive_name(self, text: str) -> str:
         safe = "".join("_" if ch in '<>:"/\\|?*' else ch for ch in text.strip())
         safe = safe.replace(" ", "_")
         return safe or "Unknown"
+
+    def _build_run_record_entries(self, runs: list[RunRecord]) -> list[RunRecordEntry]:
+        entries: list[RunRecordEntry] = []
+        for run in runs:
+            start_text = run.start_time.strftime("%Y-%m-%d %H:%M:%S")
+            end_text = run.end_time.strftime("%Y-%m-%d %H:%M:%S")
+            duration_seconds = max(0.0, (run.end_time - run.start_time).total_seconds())
+            minutes = int(duration_seconds // 60)
+            seconds = int(duration_seconds % 60)
+            duration_text = f"{minutes}m{seconds:02d}s" if minutes else f"{seconds}s"
+            entries.append(
+                RunRecordEntry(
+                    index=run.index,
+                    start_text=start_text,
+                    end_text=end_text,
+                    duration_text=duration_text,
+                )
+            )
+        return entries
+
+    def _resolve_selected_run_records(self, options: LogZipOptions) -> list[RunRecord]:
+        runs: list[RunRecord] = list(getattr(self, "_log_zip_run_records", []) or [])
+        selected: list[RunRecord] = []
+        for idx in options.selected_run_indices:
+            if 0 <= idx < len(runs):
+                selected.append(runs[idx])
+        return selected
+
+    def _is_mtime_in_range(self, path: Path, start: datetime, end: datetime) -> bool:
+        try:
+            mtime = datetime.fromtimestamp(path.stat().st_mtime)
+        except OSError:
+            return False
+        return start <= mtime <= end
+
+    def _parse_gui_log_timestamp(self, raw: str) -> datetime | None:
+        text = (raw or "").strip()
+        if not text:
+            return None
+        # logging 默认 asctime: "YYYY-MM-DD HH:MM:SS,mmm"
+        for fmt in ("%Y-%m-%d %H:%M:%S,%f", "%Y-%m-%d %H:%M:%S"):
+            try:
+                return datetime.strptime(text, fmt)
+            except ValueError:
+                continue
+        return None
+
+    def _read_and_filter_log_by_time(
+        self,
+        path: Path,
+        start: datetime,
+        end: datetime,
+    ) -> bytes | None:
+        """读取日志并按行时间戳过滤，返回 UTF-8 bytes。无法读取/无有效行时返回 None。"""
+        try:
+            # 允许读取被占用的日志：失败则回退为尽力读取字节
+            try:
+                raw_bytes = path.read_bytes()
+            except Exception:
+                if path.name in self._LOCKED_LOG_NAMES:
+                    # 复用“只取末尾 100MB”的策略，降低占用失败概率
+                    MAX_TAIL_BYTES = 100 * 1024 * 1024
+                    file_size = path.stat().st_size
+                    if file_size <= MAX_TAIL_BYTES:
+                        raw_bytes = path.read_bytes()
+                    else:
+                        with path.open("rb") as f:
+                            f.seek(max(0, file_size - MAX_TAIL_BYTES))
+                            tail = f.read(MAX_TAIL_BYTES)
+                        newline_index = tail.find(b"\n")
+                        raw_bytes = tail[newline_index + 1 :] if newline_index != -1 else tail
+                else:
+                    raise
+        except Exception:
+            return None
+
+        text = raw_bytes.decode("utf-8", errors="replace")
+        out_lines: list[str] = []
+        for line in text.splitlines():
+            if not line.startswith("["):
+                continue
+            close = line.find("]")
+            if close <= 1:
+                continue
+            ts = self._parse_gui_log_timestamp(line[1:close])
+            if ts is None:
+                continue
+            if start <= ts <= end:
+                out_lines.append(line)
+        if not out_lines:
+            return None
+        return ("\n".join(out_lines) + "\n").encode("utf-8")
+
+    def _detect_run_records(self) -> list[RunRecord]:
+        """从 debug/gui.log* 中解析任务流开始/结束标记，生成运行记录时间段。"""
+        debug_dir = Path.cwd() / "debug"
+        if not debug_dir.exists() or not debug_dir.is_dir():
+            return []
+
+        # 优先读取 gui.log 及轮转文件（时间顺序：旧 -> 新）
+        gui_logs = sorted(
+            [p for p in debug_dir.glob("gui.log*") if p.is_file()],
+            key=lambda p: p.stat().st_mtime if p.exists() else 0,
+        )
+        if not gui_logs:
+            return []
+
+        marker_start = "[RUN_RECORD] TASK_FLOW_START"
+        marker_stop = "[RUN_RECORD] TASK_FLOW_STOP"
+
+        events: list[tuple[datetime, str]] = []
+        for p in gui_logs:
+            try:
+                content = p.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+            for line in content.splitlines():
+                if marker_start not in line and marker_stop not in line:
+                    continue
+                if not line.startswith("["):
+                    continue
+                close = line.find("]")
+                if close <= 1:
+                    continue
+                ts = self._parse_gui_log_timestamp(line[1:close])
+                if ts is None:
+                    continue
+                if marker_start in line:
+                    events.append((ts, "start"))
+                elif marker_stop in line:
+                    events.append((ts, "stop"))
+
+        events.sort(key=lambda item: item[0])
+        runs: list[RunRecord] = []
+        current_start: datetime | None = None
+        for ts, kind in events:
+            if kind == "start":
+                current_start = ts
+                continue
+            if kind == "stop":
+                if current_start is None:
+                    continue
+                if ts >= current_start:
+                    runs.append(
+                        RunRecord(index=len(runs), start_time=current_start, end_time=ts)
+                    )
+                current_start = None
+
+        # 如果最后一个 start 没有 stop，用最后一条日志时间兜底
+        if current_start is not None:
+            last_ts: datetime | None = None
+            for p in reversed(gui_logs):
+                try:
+                    content = p.read_text(encoding="utf-8", errors="replace")
+                except Exception:
+                    continue
+                for line in reversed(content.splitlines()):
+                    if not line.startswith("["):
+                        continue
+                    close = line.find("]")
+                    if close <= 1:
+                        continue
+                    last_ts = self._parse_gui_log_timestamp(line[1:close])
+                    if last_ts is not None:
+                        break
+                if last_ts is not None:
+                    break
+            if last_ts is not None and last_ts >= current_start:
+                runs.append(
+                    RunRecord(index=len(runs), start_time=current_start, end_time=last_ts)
+                )
+        return runs
 
     def _cleanup_old_files(self, debug_dir: Path) -> None:
         """清理debug目录中的旧文件。
@@ -1662,17 +1823,14 @@ class MainWindow(MSFluentWindow):
     ) -> None:
         """读取可能被占用的日志文件并写入压缩包。
 
-        对 maa/maafw 日志（含 .bak）做大小判断：
+        对 maafw 日志（含 .bak）做大小判断：
         - 小于约 100MB：完整保存
         - 大于约 100MB：仅保留末尾约 100MB 的内容，并尽量按行对齐（从下一行开始截取）
         其他被占用日志（如 clash.log）仍然完整读取。
         """
-        # 针对 maa/maafw 日志做“只保留末尾 100MB”的特殊处理
+        # 针对 maafw 日志做“只保留末尾 100MB”的特殊处理
         SPECIAL_TAIL_LOGS = {
-            "maa.log",
             "maafw.log",
-            "maa.bak.log",
-            "maa.log.bak",
             "maafw.log.bak",
         }
         MAX_TAIL_BYTES = 100 * 1024 * 1024  # 约 100MB
