@@ -11,7 +11,7 @@ import os
 import re
 import sys
 import importlib.util
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import List, Dict
 import subprocess
 import threading
@@ -34,8 +34,20 @@ from maa.define import (
     MaaAdbInputMethodEnum,
     MaaWin32InputMethodEnum,
     MaaWin32ScreencapMethodEnum,
-    MaaGamepadTypeEnum,
 )
+
+# 不同 maa 版本对 GamepadType 的导出名字不一致：
+# - 新版本: MaaGamepadTypeEnum
+# - 部分版本: MaaGamepadType（可能是 enum 或常量容器）
+try:
+    from maa.define import MaaGamepadTypeEnum  # type: ignore
+except ImportError:  # pragma: no cover
+    try:
+        from maa.define import MaaGamepadType as MaaGamepadTypeEnum  # type: ignore
+    except ImportError:  # pragma: no cover
+        class MaaGamepadTypeEnum(IntEnum):
+            Xbox360 = 0
+
 from PySide6.QtCore import QObject, Signal
 
 from app.utils.logger import logger
