@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import threading
 from typing import Callable, Iterable
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtWidgets import QHBoxLayout, QProgressBar, QVBoxLayout, QWidget
 from qfluentwidgets import (
     BodyLabel,
@@ -11,6 +12,7 @@ from qfluentwidgets import (
     MessageBoxBase,
     PrimaryPushButton,
     PushButton,
+    ScrollArea,
     SimpleCardWidget,
     SubtitleLabel,
 )
@@ -21,8 +23,33 @@ class LogZipOptions:
     # 运行记录索引（0-based），允许多选
     selected_run_indices: list[int]
 
+    # 日志
+    include_maafw_logs: bool = True
+    include_gui_logs: bool = True
+    include_other_text_logs: bool = True  # debug 内其他 .log/.txt
+
+    # 图片
+    include_on_error_images: bool = True
+    include_vision_images: bool = True
+    include_screenshot_images: bool = True
+    include_other_images: bool = True  # debug 内其他 jpg/png
+
+    # 其他
+    include_other_files: bool = True
+
     def has_any_selection(self) -> bool:
-        return bool(self.selected_run_indices)
+        return bool(self.selected_run_indices) and any(
+            (
+                self.include_maafw_logs,
+                self.include_gui_logs,
+                self.include_other_text_logs,
+                self.include_on_error_images,
+                self.include_vision_images,
+                self.include_screenshot_images,
+                self.include_other_images,
+                self.include_other_files,
+            )
+        )
 
 
 @dataclass(slots=True)
@@ -37,9 +64,6 @@ class RunRecordEntry:
 
 @dataclass(slots=True)
 class LogZipPreview:
-    text_size: int = 0
-    images_size: int = 0
-    other_size: int = 0
     total_size: int = 0
 
 
@@ -58,10 +82,14 @@ class LogZipDialog(MessageBoxBase):
         self._cancel_emitted = False
         self._preview_provider = preview_provider
         self._run_records: list[RunRecordEntry] = []
+        self._preview_request_id = 0
+        self._preview_timer = QTimer(self)
+        self._preview_timer.setSingleShot(True)
+        self._preview_timer.timeout.connect(self._compute_preview_async)
 
         self.buttonGroup.hide()
         self.widget.setMinimumWidth(560)
-        self.widget.setMinimumHeight(560)
+        self.widget.setMinimumHeight(680)
 
         self._build_ui()
         self._bind_signals()
@@ -83,7 +111,27 @@ class LogZipDialog(MessageBoxBase):
         self.viewLayout.addWidget(desc)
         self.viewLayout.addSpacing(12)
 
-        self.viewLayout.addWidget(self._build_run_records_card())
+        # 将主要选项放入滚动区域，避免内容过多时挤压底部状态/进度
+        self.scroll_area = ScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setFrameShape(self.scroll_area.frameShape().NoFrame)  # type: ignore[attr-defined]
+        self.scroll_area.setStyleSheet("background: transparent; border: none;")
+        self.scroll_area.viewport().setStyleSheet("background: transparent; border: none;")
+
+        scroll_container = QWidget(self.scroll_area)
+        scroll_layout = QVBoxLayout(scroll_container)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_layout.setSpacing(10)
+
+        scroll_layout.addWidget(self._build_run_records_card())
+        scroll_layout.addWidget(self._build_logs_card())
+        scroll_layout.addWidget(self._build_images_card())
+        scroll_layout.addWidget(self._build_other_card())
+        scroll_layout.addStretch(1)
+
+        self.scroll_area.setWidget(scroll_container)
+        self.viewLayout.addWidget(self.scroll_area, 1)
         self.viewLayout.addSpacing(8)
 
         self.status_label = BodyLabel(self)
@@ -114,8 +162,8 @@ class LogZipDialog(MessageBoxBase):
     def _build_run_records_card(self) -> SimpleCardWidget:
         card = SimpleCardWidget(self)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(16, 14, 16, 14)
-        layout.setSpacing(10)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
 
         title = SubtitleLabel(self.tr("Run records"), card)
         layout.addWidget(title)
@@ -124,6 +172,79 @@ class LogZipDialog(MessageBoxBase):
         self._run_empty_hint = BodyLabel(self.tr("No run records found."), card)
         self._run_empty_hint.setWordWrap(True)
         layout.addWidget(self._run_empty_hint)
+        return card
+
+    def _build_logs_card(self) -> SimpleCardWidget:
+        card = SimpleCardWidget(self)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
+
+        title = SubtitleLabel(self.tr("Logs"), card)
+        layout.addWidget(title)
+
+        self.maafw_logs_checkbox = CheckBox(self.tr("maafw.log"), card)
+        self.maafw_logs_checkbox.setChecked(True)
+        self.gui_logs_checkbox = CheckBox(self.tr("gui.log"), card)
+        self.gui_logs_checkbox.setChecked(True)
+        self.other_text_logs_checkbox = CheckBox(self.tr("other .log/.txt"), card)
+        self.other_text_logs_checkbox.setChecked(True)
+
+        for cb in (
+            self.maafw_logs_checkbox,
+            self.gui_logs_checkbox,
+            self.other_text_logs_checkbox,
+        ):
+            cb.toggled.connect(self._refresh_preview)
+            layout.addWidget(cb)
+
+        return card
+
+    def _build_images_card(self) -> SimpleCardWidget:
+        card = SimpleCardWidget(self)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
+
+        title = SubtitleLabel(self.tr("Images"), card)
+        layout.addWidget(title)
+
+        self.on_error_images_checkbox = CheckBox(self.tr("on_error (debug/on_error)"), card)
+        self.on_error_images_checkbox.setChecked(True)
+        self.vision_images_checkbox = CheckBox(self.tr("vision (debug/vision)"), card)
+        self.vision_images_checkbox.setChecked(True)
+        self.screenshot_images_checkbox = CheckBox(
+            self.tr("screenshot (debug/screenshot)"), card
+        )
+        self.screenshot_images_checkbox.setChecked(True)
+        self.other_images_checkbox = CheckBox(self.tr("other .jpg/.png"), card)
+        self.other_images_checkbox.setChecked(True)
+
+        for cb in (
+            self.on_error_images_checkbox,
+            self.vision_images_checkbox,
+            self.screenshot_images_checkbox,
+            self.other_images_checkbox,
+        ):
+            cb.toggled.connect(self._refresh_preview)
+            layout.addWidget(cb)
+
+        return card
+
+    def _build_other_card(self) -> SimpleCardWidget:
+        card = SimpleCardWidget(self)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
+
+        title = SubtitleLabel(self.tr("Other"), card)
+        layout.addWidget(title)
+
+        self.other_files_checkbox = CheckBox(self.tr("other files"), card)
+        self.other_files_checkbox.setChecked(True)
+        self.other_files_checkbox.toggled.connect(self._refresh_preview)
+        layout.addWidget(self.other_files_checkbox)
+
         return card
 
     def set_run_records(self, records: Iterable[RunRecordEntry]) -> None:
@@ -178,16 +299,35 @@ class LogZipDialog(MessageBoxBase):
             self._run_checkboxes[0].setChecked(True)
 
     def _refresh_preview(self) -> None:
-        preview = LogZipPreview()
-        if self._preview_provider is not None:
+        # 异步计算预览，避免在 UI 线程遍历大量文件导致卡顿
+        self.total_size_label.setText(self.tr("Selected total size:") + self.tr(" calculating..."))
+        self._preview_request_id += 1
+        self._preview_timer.start(120)
+
+    def _compute_preview_async(self) -> None:
+        provider = self._preview_provider
+        if provider is None:
+            self.total_size_label.setText(self.tr("Selected total size:") + self._format_size(0))
+            return
+        request_id = self._preview_request_id
+        options = self.get_options()
+
+        def _work():
             try:
-                preview = self._preview_provider(self.get_options())
+                preview = provider(options)
             except Exception:
                 preview = LogZipPreview()
 
-        self.total_size_label.setText(
-            self.tr("Selected total size:") + self._format_size(preview.total_size)
-        )
+            def _apply():
+                if request_id != self._preview_request_id:
+                    return
+                self.total_size_label.setText(
+                    self.tr("Selected total size:") + self._format_size(preview.total_size)
+                )
+
+            QTimer.singleShot(0, self, _apply)
+
+        threading.Thread(target=_work, daemon=True).start()
 
     def _format_size(self, size: int) -> str:
         if size < 1024:
@@ -207,7 +347,33 @@ class LogZipDialog(MessageBoxBase):
         for idx, cb in enumerate(self._run_checkboxes):
             if cb.isChecked():
                 selected.append(idx)
-        return LogZipOptions(selected_run_indices=selected)
+        return LogZipOptions(
+            selected_run_indices=selected,
+            include_maafw_logs=self.maafw_logs_checkbox.isChecked()
+            if hasattr(self, "maafw_logs_checkbox")
+            else True,
+            include_gui_logs=self.gui_logs_checkbox.isChecked()
+            if hasattr(self, "gui_logs_checkbox")
+            else True,
+            include_other_text_logs=self.other_text_logs_checkbox.isChecked()
+            if hasattr(self, "other_text_logs_checkbox")
+            else True,
+            include_on_error_images=self.on_error_images_checkbox.isChecked()
+            if hasattr(self, "on_error_images_checkbox")
+            else True,
+            include_vision_images=self.vision_images_checkbox.isChecked()
+            if hasattr(self, "vision_images_checkbox")
+            else True,
+            include_screenshot_images=self.screenshot_images_checkbox.isChecked()
+            if hasattr(self, "screenshot_images_checkbox")
+            else True,
+            include_other_images=self.other_images_checkbox.isChecked()
+            if hasattr(self, "other_images_checkbox")
+            else True,
+            include_other_files=self.other_files_checkbox.isChecked()
+            if hasattr(self, "other_files_checkbox")
+            else True,
+        )
 
     def set_running(self, running: bool) -> None:
         self._running = running
@@ -216,6 +382,19 @@ class LogZipDialog(MessageBoxBase):
 
         for cb in self._run_checkboxes:
             cb.setEnabled(not running)
+        for cb_name in (
+            "maafw_logs_checkbox",
+            "gui_logs_checkbox",
+            "other_text_logs_checkbox",
+            "on_error_images_checkbox",
+            "vision_images_checkbox",
+            "screenshot_images_checkbox",
+            "other_images_checkbox",
+            "other_files_checkbox",
+        ):
+            cb = getattr(self, cb_name, None)
+            if cb is not None:
+                cb.setEnabled(not running)
 
         self.start_button.setEnabled(not running)
         self.cancel_button.setEnabled(True)
@@ -249,7 +428,7 @@ class LogZipDialog(MessageBoxBase):
         options = self.get_options()
         if not options.has_any_selection():
             self._set_status(
-                self.tr("Select at least one run record."),
+                self.tr("Select at least one run record and one content category."),
                 error=True,
             )
             return
