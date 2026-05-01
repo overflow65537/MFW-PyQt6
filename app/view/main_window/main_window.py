@@ -1655,7 +1655,10 @@ class MainWindow(MSFluentWindow):
 
     def _parse_bracket_timestamp_from_line(self, line: str) -> datetime | None:
         """解析形如 [YYYY-MM-DD HH:MM:SS,mmm] 或 [YYYY-MM-DD HH:MM:SS] 的时间戳。"""
-        if not line or not line.startswith("["):
+        if not line:
+            return None
+        line = line.lstrip("\ufeff \t")
+        if not line.startswith("["):
             return None
         close = line.find("]")
         if close <= 1:
@@ -1663,17 +1666,51 @@ class MainWindow(MSFluentWindow):
         return self._parse_gui_log_timestamp(line[1:close])
 
     def _read_first_last_nonempty_line(self, path: Path) -> tuple[str | None, str | None]:
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except Exception:
-            return None, None
-        lines = [ln for ln in text.splitlines() if ln.strip()]
-        if not lines:
-            return None, None
-        return lines[0], lines[-1]
+        """仅取首/尾非空行，避免整文件读入（大 maafw.log 会拖慢或占满内存）。"""
+        chunk_size = 256 * 1024
+
+        def _first_nonempty() -> str | None:
+            try:
+                with path.open("rb") as f:
+                    data = f.read(chunk_size)
+            except OSError:
+                return None
+            if not data:
+                return None
+            text = data.decode("utf-8", errors="replace")
+            for ln in text.splitlines():
+                if ln.strip():
+                    return ln
+            return None
+
+        def _last_nonempty() -> str | None:
+            try:
+                size = path.stat().st_size
+            except OSError:
+                return None
+            if size <= 0:
+                return None
+            try:
+                with path.open("rb") as f:
+                    start = max(0, size - chunk_size)
+                    f.seek(start)
+                    data = f.read()
+            except OSError:
+                return None
+            if not data:
+                return None
+            text = data.decode("utf-8", errors="replace")
+            nonempty = [ln for ln in text.splitlines() if ln.strip()]
+            return nonempty[-1] if nonempty else None
+
+        return _first_nonempty(), _last_nonempty()
 
     def _maafw_log_overlaps_run(self, path: Path, run_start: datetime, run_end: datetime) -> bool:
-        """只读取首/尾行时间戳判断是否与运行记录重合；解析失败则回退为 mtime 命中。"""
+        """只读取首/尾行时间戳判断是否与运行记录重合。
+
+        注意：不能以「mtime 落在 start~end 之间」作为唯一回退——maafw 在任务结束后仍会写日志，
+        mtime 常晚于 run_end，会把本应属于该次运行的文件误排除。
+        """
         first, last = self._read_first_last_nonempty_line(path)
         first_ts = self._parse_bracket_timestamp_from_line(first or "") if first else None
         last_ts = self._parse_bracket_timestamp_from_line(last or "") if last else None
@@ -1681,7 +1718,13 @@ class MainWindow(MSFluentWindow):
             file_start = min(first_ts, last_ts)
             file_end = max(first_ts, last_ts)
             return not (file_end < run_start or file_start > run_end)
-        # 回退：按 mtime 命中（尽力）
+        # 首尾时间不全：与 gui.log 类似，同一天内有修改则认为可能相关（覆盖「段后仍在写」的常见情况）
+        days = self._iter_days_in_range(run_start, run_end)
+        if self._file_mtime_date_in_days(path, days):
+            return True
+        # 仅末尾行能解析：日志通常按时间递增，末尾时间不早于本次运行开始则很可能覆盖该时间段
+        if last_ts is not None and last_ts >= run_start:
+            return True
         return self._is_mtime_in_range(path, run_start, run_end)
 
     def _is_file_time_hit_run(self, path: Path, run_start: datetime, run_end: datetime) -> bool:
@@ -1748,7 +1791,15 @@ class MainWindow(MSFluentWindow):
         if not text:
             return None
         # logging 默认 asctime: "YYYY-MM-DD HH:MM:SS,mmm"
-        for fmt in ("%Y-%m-%d %H:%M:%S,%f", "%Y-%m-%d %H:%M:%S"):
+        # spdlog / 部分 native 日志: "YYYY-MM-DD HH:MM:SS.mmm" 或 ISO "YYYY-MM-DDTHH:MM:SS.mmm"
+        formats = (
+            "%Y-%m-%d %H:%M:%S,%f",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M:%S.%f",
+            "%Y-%m-%dT%H:%M:%S.%f",
+            "%Y-%m-%dT%H:%M:%S",
+        )
+        for fmt in formats:
             try:
                 return datetime.strptime(text, fmt)
             except ValueError:
