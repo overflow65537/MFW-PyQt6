@@ -280,13 +280,16 @@ def _process_option_recursive(
     # 递归处理子选项（只处理可见的）
     if branches:
         for child_key, child_data in branches.items():
-            # 新格式：branches[父分支][子选项名] = payload
+            # 新格式：branches[父分支值][子选项名] = payload
+            # 注意：父分支值（如 "选择人物"）是 case/value，不是 option 名。
+            # 即使它“碰巧”与某个 option key 同名，也必须按分支分组处理，不能当作 option 递归，
+            # 否则会出现 select/switch 期望 str、却拿到 dict 的错误。
             if (
                 isinstance(child_data, dict)
-                and child_key not in options
                 and "value" not in child_data
                 and "hidden" not in child_data
                 and "children" not in child_data
+                and "branches" not in child_data
             ):
                 for nested_key, nested_data in child_data.items():
                     if isinstance(nested_data, dict) and nested_data.get("hidden", False):
@@ -333,6 +336,19 @@ def _extract_option_value_and_children(
     # 检查是否是复杂格式（包含 value 字段）
     if "value" in option_value:
         actual_value = option_value["value"]
+        if isinstance(actual_value, dict):
+            # 常见异常：select/switch 的 value 被错误保存成 dict，后续会触发类型校验报错
+            try:
+                logger.error(
+                    "选项 value 字段类型异常"
+                    f" | actual_type={type(actual_value)}"
+                    f" | keys={list(actual_value.keys())[:20]}"
+                )
+            except Exception:
+                logger.error(
+                    "选项 value 字段类型异常"
+                    f" | actual_type={type(actual_value)}"
+                )
         branches = get_option_branches(option_value)
         return actual_value, branches
 
@@ -367,7 +383,22 @@ def _get_option_pipeline_override(
 
     if option_type in ("select", "switch"):
         if not isinstance(option_value, str):
-            logger.error(f"Select/Switch 选项值必须是字符串，实际类型: {type(option_value)}")
+            preview: Any = option_value
+            try:
+                if isinstance(option_value, dict):
+                    preview = {
+                        "_dict_keys": list(option_value.keys())[:20],
+                        "_value_type": str(type(option_value.get("value"))),
+                    }
+            except Exception:
+                preview = "<unprintable>"
+            logger.error(
+                "Select/Switch 选项值必须是字符串"
+                f" | option_name={option_name}"
+                f" | option_type={option_type}"
+                f" | actual_type={type(option_value)}"
+                f" | value_preview={preview}"
+            )
             return {}
         return _get_select_pipeline_override(option_config, option_value)
     elif option_type == "checkbox":
