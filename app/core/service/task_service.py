@@ -1,3 +1,4 @@
+from collections import defaultdict, deque
 from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
@@ -218,10 +219,12 @@ class TaskService:
         return ok
 
     def apply_preset(self, preset: Dict[str, Any]) -> bool:
-        """在 init_new_config（全量 interface 任务）之后应用预设。
+        """在已有任务列表上按 preset 的 ``task`` 顺序应用勾选与选项。
 
-        会修改已存在任务的勾选与选项；未出现在 preset 中的任务会被取消勾选。
-        若配置仅需 preset 内任务，请使用 ``init_config_from_preset``。
+        对每条非基础任务，按 preset 中**同名任务的出现顺序**依次消费一行预设；
+        preset 中某名多于当前配置里该名的行数时，在「完成后」前**插入**新任务行。
+        既不在 preset 中出现、且已无待消费预设行的任务会被取消勾选。
+        若希望配置中**仅含** preset 列出的任务，请用 ``init_config_from_preset``。
 
         Args:
             preset: 预设配置字典，包含 name, task 等字段。
@@ -247,40 +250,71 @@ class TaskService:
         if not config:
             return False
 
-        # 构建预设任务名 -> 预设任务配置 的映射
-        preset_task_map: Dict[str, Dict[str, Any]] = {}
+        queues: Dict[str, deque] = defaultdict(deque)
         for pt in preset_tasks:
-            if isinstance(pt, dict) and isinstance(pt.get("name"), str):
-                preset_task_map[pt["name"]] = pt
+            if not isinstance(pt, dict):
+                continue
+            raw = pt.get("name")
+            if not isinstance(raw, str) or not raw.strip():
+                continue
+            queues[raw.strip()].append(pt)
 
+        interface_by_name: Dict[str, Dict[str, Any]] = {
+            t["name"]: t
+            for t in self.interface.get("task", [])
+            if isinstance(t, dict) and isinstance(t.get("name"), str)
+        }
         interface_options = self.interface.get("option", {}) if self.interface else {}
 
-        # 遍历当前配置的所有任务，应用预设
-        changed_tasks: List[TaskItem] = []
-        for task in config.tasks:
+        for task in list(config.tasks):
             if task.is_base_task():
                 continue
-
-            if task.name in preset_task_map:
-                pt = preset_task_map[task.name]
-                # 应用勾选状态
-                task.is_checked = pt.get("enabled", True)
-                # 应用选项值
+            q = queues.get(task.name)
+            if q:
+                pt = q.popleft()
+                task.is_checked = bool(pt.get("enabled", True))
                 preset_option = pt.get("option")
                 if isinstance(preset_option, dict) and isinstance(task.task_option, dict):
                     self._apply_preset_option(task, preset_option, interface_options)
-                changed_tasks.append(task)
             else:
-                # 不在预设中的任务，默认不勾选
                 if task.is_checked:
                     task.is_checked = False
-                    changed_tasks.append(task)
 
-        # 批量更新
-        if changed_tasks:
-            self.update_tasks(changed_tasks)
+        for name, q in list(queues.items()):
+            while q:
+                pt = q.popleft()
+                task_def = interface_by_name.get(name)
+                if not task_def:
+                    logger.warning(
+                        "apply_preset: preset 中多余行引用了 interface 中不存在的任务: %s",
+                        name,
+                    )
+                    continue
+                new_task = TaskItem(
+                    name=name,
+                    item_id=TaskItem.generate_id(),
+                    is_checked=bool(pt.get("enabled", True)),
+                    task_option=self.gen_single_task_default_option(task_def),
+                )
+                preset_option = pt.get("option")
+                if isinstance(preset_option, dict) and isinstance(new_task.task_option, dict):
+                    self._apply_preset_option(new_task, preset_option, interface_options)
+                insert_at = next(
+                    (
+                        i
+                        for i, t in enumerate(config.tasks)
+                        if t.is_base_task() and t.item_id == POST_ACTION
+                    ),
+                    len(config.tasks),
+                )
+                config.tasks.insert(insert_at, new_task)
 
-        return True
+        ok = self.config_service.update_config(config_id, config)
+        if ok:
+            self.current_tasks = config.tasks
+            self.refresh_hidden_flags()
+            self.signal_bus.tasks_loaded.emit(self.current_tasks)
+        return bool(ok)
 
     def _apply_preset_option(
         self,
