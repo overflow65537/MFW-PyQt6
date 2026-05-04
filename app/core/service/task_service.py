@@ -141,6 +141,7 @@ class TaskService:
     def init_config_from_preset(self, preset: Dict[str, Any]) -> bool:
         """仅用 preset 中列出的任务初始化当前配置（勾选由 enabled，选项由 option）。
 
+        同一 ``name`` 可出现多次（例如多次「购买物品」且 ``option`` 不同），与 interface 规范一致。
         不物化 interface 中的其它任务；``interface_task_list_materialized`` 置为 True，
         避免后续按 interface 全量自动增补任务。
         """
@@ -171,7 +172,6 @@ class TaskService:
         interface_options = self.interface.get("option", {}) or {}
 
         ordered_names: List[str] = []
-        seen_names: set[str] = set()
 
         for pt in preset_tasks:
             if not isinstance(pt, dict):
@@ -180,13 +180,10 @@ class TaskService:
             if not isinstance(raw_name, str) or not raw_name.strip():
                 continue
             name = raw_name.strip()
-            if name in seen_names:
-                continue
             task_def = interface_by_name.get(name)
             if not task_def:
                 logger.warning("preset 引用 interface 中不存在的任务，已跳过: %s", name)
                 continue
-            seen_names.add(name)
 
             is_checked = bool(pt.get("enabled", True))
             task_default_option = self.gen_single_task_default_option(task_def)
@@ -330,12 +327,16 @@ class TaskService:
                         current_option, preset_value, option_key, option_template, interface_options
                     )
             elif option_type in ("select", "switch"):
-                # select/switch 类型：preset_value 应为 string（case.name）
+                # select/switch：规范为 case.name 字符串；兼容 JSON 中的数字/布尔
+                scalar: str | None = None
                 if isinstance(preset_value, str):
-                    current_option["value"] = preset_value
-                    # 更新 children 的 hidden 状态
+                    scalar = preset_value
+                elif isinstance(preset_value, (int, float, bool)):
+                    scalar = str(preset_value)
+                if scalar is not None:
+                    current_option["value"] = scalar
                     self._update_children_visibility_select(
-                        current_option, preset_value, option_key, option_template, interface_options
+                        current_option, scalar, option_key, option_template, interface_options
                     )
             elif option_type == "input":
                 # input 类型：preset_value 应为 record<string, string>
