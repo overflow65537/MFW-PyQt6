@@ -458,7 +458,6 @@ class ServiceCoordinator:
                     task_option={
                         "controller_type": init_controller,
                     },
-                    is_special=False,
                 ),
                 TaskItem(
                     name="Resource",
@@ -467,14 +466,12 @@ class ServiceCoordinator:
                     task_option={
                         "resource": init_resource,
                     },
-                    is_special=False,
                 ),
                 TaskItem(
                     name="Post-Action",
                     item_id=POST_ACTION,
                     is_checked=True,
                     task_option={},
-                    is_special=False,
                 ),
             ]
             
@@ -866,7 +863,7 @@ class ServiceCoordinator:
         return ok
 
     def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
-        """更新任务选中状态并处理特殊任务互斥"""
+        """更新任务选中状态"""
         tasks = self.task_service.get_tasks()
         target_task = None
         for t in tasks:
@@ -877,14 +874,7 @@ class ServiceCoordinator:
         else:
             return False
 
-        unchecked_tasks = []
-        if target_task.is_special and is_checked:
-            for t in tasks:
-                if t.item_id != task_id and t.is_special and t.is_checked:
-                    t.is_checked = False
-                    unchecked_tasks.append(t)
-
-        changed_tasks = [target_task] + unchecked_tasks
+        changed_tasks = [target_task]
         ok = self.task_service.update_tasks(changed_tasks)
         if ok:
             for task in changed_tasks:

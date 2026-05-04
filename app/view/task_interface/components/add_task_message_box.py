@@ -276,7 +276,6 @@ class AddConfigDialog(BaseAddDialog):
                 task_option={
                     "controller_type": init_controller,
                 },
-                is_special=False,  # 基础任务，不是特殊任务
             ),
             TaskItem(
                 name="Resource",
@@ -285,14 +284,12 @@ class AddConfigDialog(BaseAddDialog):
                 task_option={
                     "resource": init_resource,
                 },
-                is_special=False,  # 基础任务，不是特殊任务
             ),
             TaskItem(
                 name="Post-Action",
                 item_id=POST_ACTION,
                 is_checked=True,
                 task_option={},
-                is_special=False,  # 基础任务，不是特殊任务
             ),
         ]
 
@@ -573,12 +570,11 @@ class AddTaskDialog(BaseAddDialog):
             self.show_error(self.tr("Please select a task"))
             return
 
-        # 检查任务是否为特殊任务
-        is_special = False
+        default_check = True
         if self.interface:
-            for task in self.interface.get("task", []):
-                if task["name"] == self.task_name:
-                    is_special = task.get("spt", False)
+            for task_def in self.interface.get("task", []):
+                if task_def.get("name") == self.task_name:
+                    default_check = bool(task_def.get("default_check", True))
                     break
 
         # 创建 TaskItem 对象，匹配 core.TaskItem 数据结构
@@ -589,10 +585,9 @@ class AddTaskDialog(BaseAddDialog):
         )
         self.item = TaskItem(
             name=self.task_name,
-            item_id=TaskItem.generate_id(is_special=is_special),
-            is_checked=not is_special,  # 特殊任务默认不选中
+            item_id=TaskItem.generate_id(),
+            is_checked=default_check,
             task_option=task_option,
-            is_special=is_special,
         )
 
         # 接受对话框

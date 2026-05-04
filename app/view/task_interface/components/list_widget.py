@@ -20,7 +20,7 @@ from qfluentwidgets import ListWidget, IndeterminateProgressRing, SimpleCardWidg
 
 from app.core.core import  ServiceCoordinator
 from app.core.item import TaskItem, ConfigItem
-from app.view.task_interface.components.list_item import TaskListItem, ConfigListItem, SpecialTaskListItem
+from app.view.task_interface.components.list_item import TaskListItem, ConfigListItem
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 from app.common.constants import _RESOURCE_, _CONTROLLER_
@@ -111,14 +111,9 @@ class TaskDragListWidget(BaseListWidget):
         self,
         service_coordinator: ServiceCoordinator,
         parent=None,
-        filter_mode: str = "all",
     ):
         super().__init__(service_coordinator, parent)
-        # 过滤模式：all(默认)、normal(排除特殊任务)、special(仅特殊任务)
-        self._filter_mode = (
-            filter_mode if filter_mode in ("all", "normal", "special") else "all"
-        )
-        self._persist_changes = True  # 特殊任务也保存状态
+        self._persist_changes = True
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
@@ -189,9 +184,8 @@ class TaskDragListWidget(BaseListWidget):
         """判断任务是否应显示在当前列表。
 
         注意：`task.is_hidden` 是“能力禁用”标记（由配置层/列表层根据 resource/controller 计算）。
-        列表过滤模式（normal/special）只是 UI 展示策略，不应影响 is_hidden 的正确性。
         """
-        # 先根据资源/控制器刷新一次 is_hidden（避免因 normal/special 过滤提前 return 而漏更新）
+        # 先根据资源/控制器刷新一次 is_hidden
         should_show_by_resource = self._should_show_by_resource(task)
         should_show_by_controller = self._should_show_by_controller(task)
         capability_show = should_show_by_resource and should_show_by_controller
@@ -202,12 +196,6 @@ class TaskDragListWidget(BaseListWidget):
         if task.is_hidden:
             return False
 
-        # 再应用 UI 过滤模式（不改变 is_hidden）
-        if self._filter_mode == "special":
-            return bool(task.is_special)
-        if self._filter_mode == "normal":
-            return not bool(task.is_special)
-        
         return True
     
     def _should_show_by_resource(self, task: TaskItem) -> bool:
@@ -429,10 +417,7 @@ class TaskDragListWidget(BaseListWidget):
         self._pending_refresh = True
         self._show_loading_overlay()
         self._fade_out.start()
-        # 普通任务列表：延迟10ms后清除任务选择
-        # 特殊任务列表：保持原样，不做任何修改
-        if self._filter_mode != "special":
-            QTimer.singleShot(10, self.clearSelection)
+        QTimer.singleShot(10, self.clearSelection)
     
     def _on_resource_changed(self, options: dict) -> None:
         """当选项变化时，更新任务列表显示"""
@@ -475,15 +460,6 @@ class TaskDragListWidget(BaseListWidget):
         # 不清除待处理状态，因为任务列表刷新后这些状态仍然有效
         all_tasks = self.service_coordinator.task.get_tasks()
         task_list = [t for t in all_tasks if self._should_include(t)]
-        if self._filter_mode == "special":
-            # 特殊任务仅允许单选，若有多个选中则只保留第一个
-            first_checked = False
-            for t in task_list:
-                if t.is_checked and not first_checked:
-                    first_checked = True
-                    continue
-                if t.is_checked:
-                    t.is_checked = False
         self._pending_tasks = task_list
         self._render_index = 0
         self._loading_tasks = bool(task_list)
@@ -534,15 +510,9 @@ class TaskDragListWidget(BaseListWidget):
         if isinstance(placeholder, TaskSkeletonWidget):
             placeholder.deleteLater()
 
-        # 根据过滤模式选择使用哪个任务项类
-        if self._filter_mode == "special":
-            task_widget = SpecialTaskListItem(
-                task, interface=interface, service_coordinator=self.service_coordinator
-            )
-        else:
-            task_widget = TaskListItem(
-                task, interface=interface, service_coordinator=self.service_coordinator
-            )
+        task_widget = TaskListItem(
+            task, interface=interface, service_coordinator=self.service_coordinator
+        )
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
 
         flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
@@ -601,15 +571,9 @@ class TaskDragListWidget(BaseListWidget):
 
         # 否则按原有逻辑新增项
         list_item = QListWidgetItem()
-        # 根据过滤模式选择使用哪个任务项类
-        if self._filter_mode == "special":
-            task_widget = SpecialTaskListItem(
-                task, interface=interface, service_coordinator=self.service_coordinator
-            )
-        else:
-            task_widget = TaskListItem(
-                task, interface=interface, service_coordinator=self.service_coordinator
-            )
+        task_widget = TaskListItem(
+            task, interface=interface, service_coordinator=self.service_coordinator
+        )
         # 复选框状态变更信号
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
         # 基础任务禁止拖动
@@ -737,11 +701,8 @@ class TaskDragListWidget(BaseListWidget):
     ) -> list[str]:
         """
         根据当前可见任务的顺序生成完整的任务排序。
-        隐藏的任务保持原位置，可见任务按照拖拽后的顺序填充。
+        因资源/控制器不可用的隐藏项不在列表中，需按完整列表穿插保留其位置。
         """
-        if self._filter_mode == "all":
-            return [task.item_id for task in visible_tasks]
-
         visible_ids = iter([task.item_id for task in visible_tasks])
         ordered: list[str] = []
         for task in full_tasks:
@@ -749,7 +710,6 @@ class TaskDragListWidget(BaseListWidget):
                 try:
                     ordered.append(next(visible_ids))
                 except StopIteration:
-                    # 理论上不会发生，兜底保护
                     continue
             else:
                 ordered.append(task.item_id)
@@ -795,16 +755,6 @@ class TaskDragListWidget(BaseListWidget):
         """复选框状态变更信号转发"""
         if task.is_base_task():
             return
-        if self._filter_mode == "special" and task.is_checked:
-            # 单选：取消其它特殊任务的勾选
-            for item_id, widget in list(self._task_widgets.items()):
-                if item_id == task.item_id:
-                    continue
-                if widget.checkbox.isChecked():
-                    widget.checkbox.blockSignals(True)
-                    widget.checkbox.setChecked(False)
-                    widget.checkbox.blockSignals(False)
-                    widget.task.is_checked = False
         self.service_coordinator.update_task_checked(task.item_id, task.is_checked)
 
     def select_all(self) -> None:
@@ -814,12 +764,8 @@ class TaskDragListWidget(BaseListWidget):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
-                if self._filter_mode == "special":
-                    if not widget.task.is_base_task() and widget.task.is_special:
-                        steps.append((widget, True))
-                else:
-                    if not widget.task.is_base_task() and not widget.task.is_special:
-                        steps.append((widget, True))
+                if not widget.task.is_base_task():
+                    steps.append((widget, True))
         self._enqueue_bulk_toggle(steps)
 
     def deselect_all(self) -> None:
@@ -831,11 +777,7 @@ class TaskDragListWidget(BaseListWidget):
             if isinstance(widget, TaskListItem):
                 if widget.task.is_base_task():
                     continue
-                if self._filter_mode == "special":
-                    if widget.task.is_special:
-                        steps.append((widget, False))
-                else:
-                    steps.append((widget, False))
+                steps.append((widget, False))
         self._enqueue_bulk_toggle(steps)
 
     def _enqueue_bulk_toggle(self, steps: list[tuple[TaskListItem, bool]]) -> None:

@@ -255,7 +255,6 @@ class ConfigService:
                     task_option={
                         "controller_type": init_controller,
                     },
-                    is_special=False,  # 基础任务，不是特殊任务
                 ),
                 TaskItem(
                     name="Resource",
@@ -264,14 +263,12 @@ class ConfigService:
                     task_option={
                         "resource": init_resource,
                     },
-                    is_special=False,  # 基础任务，不是特殊任务
                 ),
                 TaskItem(
                     name="Post-Action",
                     item_id=POST_ACTION,
                     is_checked=True,
                     task_option={},
-                    is_special=False,  # 基础任务，不是特殊任务
                 ),
             ]
             config.tasks = default_tasks
@@ -435,7 +432,6 @@ class ConfigService:
                 task_option={
                     "controller_type": controller_type,
                 },
-                is_special=False,
             )
             # 在原来的 Pre-Configuration 位置插入 Controller 任务
             # 由于已经删除了 Pre-Configuration，索引需要减1
@@ -460,7 +456,6 @@ class ConfigService:
                 task_option={
                     "resource": resource_name,
                 },
-                is_special=False,
             )
             # 在 Controller 任务之后插入 Resource 任务
             controller_index = next(

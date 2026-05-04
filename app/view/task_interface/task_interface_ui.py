@@ -77,7 +77,6 @@ class UI_TaskInterface(object):
         # 控制面板总体布局
         self.task_info = TaskListToolBarWidget(
             service_coordinator=self.service_coordinator,
-            task_filter_mode="normal",
         )
         self.task_info.setFixedWidth(344)
         

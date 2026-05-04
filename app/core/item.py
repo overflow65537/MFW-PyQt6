@@ -68,7 +68,6 @@ class TaskItem:
     item_id: str
     is_checked: bool
     task_option: Dict[str, Any]
-    is_special: bool = False  # 标记是否为特殊任务
     is_hidden: bool = False  # 标记任务是否被隐藏（不保存到配置，仅运行时使用）
 
     def is_base_task(self) -> bool:
@@ -82,22 +81,19 @@ class TaskItem:
             "item_id": self.item_id,
             "is_checked": self.is_checked,
             "task_option": self.task_option,
-            "is_special": self.is_special,
         }
 
     @staticmethod
-    def generate_id(is_special: bool = False) -> str:
-        """生成任务ID,特殊任务使用 s_ 前缀,普通任务使用 t_ 前缀"""
-        prefix = "s_" if is_special else "t_"
-        return f"{prefix}{uuid.uuid4().hex}"
+    def generate_id() -> str:
+        """生成任务 ID（t_ 前缀）。"""
+        return f"t_{uuid.uuid4().hex}"
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TaskItem":
         """从字典创建实例，自动生成 item_id"""
         item_id = data.get("item_id", "")
-        is_special = data.get("is_special", False)
         if not item_id:
-            item_id = cls.generate_id(is_special)
+            item_id = cls.generate_id()
         
         task_option = data.get("task_option", {})
         
@@ -107,7 +103,6 @@ class TaskItem:
             item_id=item_id,
             is_checked=data.get("is_checked", False),
             task_option=task_option,
-            is_special=is_special,
         )
         
         if temp_task.is_base_task():
@@ -135,7 +130,6 @@ class TaskItem:
             item_id=item_id,
             is_checked=data.get("is_checked", False),
             task_option=task_option,
-            is_special=is_special,
         )
 
 

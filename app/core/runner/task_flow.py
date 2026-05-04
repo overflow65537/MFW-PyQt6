@@ -890,7 +890,7 @@ class TaskFlowRunner(QObject):
             if task.name in [_CONTROLLER_, _RESOURCE_, POST_ACTION]:
                 continue
 
-            if not task.is_checked or task.is_special:
+            if not task.is_checked:
                 continue
 
             if self._is_task_disabled(task):

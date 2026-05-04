@@ -2146,10 +2146,6 @@ class MainWindow(MSFluentWindow):
             )
             return getattr(log_widget, "generate_log_zip_button", None)
 
-        def get_special_button():
-            task_info = getattr(getattr(self, "TaskInterface", None), "task_info", None)
-            return getattr(task_info, "switch_button", None)
-
         return [
             TutorialStep(
                 target_getter=get_config_area,
@@ -2173,12 +2169,6 @@ class MainWindow(MSFluentWindow):
                 target_getter=get_log_button,
                 message=self.tr(
                     "When you encounter issues while running, click this button and send the resulting debug.zip to the developers."
-                ),
-            ),
-            TutorialStep(
-                target_getter=get_special_button,
-                message=self.tr(
-                    "Click this button to switch to special tasks; only tasks marked as special will execute."
                 ),
             ),
         ]

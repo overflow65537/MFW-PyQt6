@@ -192,10 +192,7 @@ class TaskService:
                     self._apply_preset_option(task, preset_option, interface_options)
                 changed_tasks.append(task)
             else:
-                # 特殊任务（spt: true）无论是否在预设中都保持原状态，不取消勾选
-                if task.is_special:
-                    continue
-                # 不在预设中的普通任务，默认不勾选
+                # 不在预设中的任务，默认不勾选
                 if task.is_checked:
                     task.is_checked = False
                     changed_tasks.append(task)
@@ -498,20 +495,16 @@ class TaskService:
                 self.update_task(task)
         return normalized
 
-    def add_task(self, task_name: str, is_special: bool = False) -> bool:
+    def add_task(self, task_name: str) -> bool:
         """添加任务
 
         Args:
             task_name: 任务名称
-            is_special: 是否为特殊任务,默认为 False
         """
         if not self.interface:
             raise ValueError("Interface not loaded")
         for task in self.interface.get("task", []):
             if task["name"] == task_name:
-                # 检查 interface.json 中是否标记为特殊任务(spt字段)
-                task_is_special = task.get("spt", is_special)
-
                 # 为当前任务动态生成默认选项
                 task_default_option = self.gen_single_task_default_option(task)
 
@@ -524,10 +517,9 @@ class TaskService:
 
                 new_task = TaskItem(
                     name=task["name"],
-                    item_id=TaskItem.generate_id(is_special=task_is_special),
+                    item_id=TaskItem.generate_id(),
                     is_checked=default_check,
                     task_option=task_default_option,
-                    is_special=task_is_special,
                 )
                 self.update_task(new_task)
                 return True
