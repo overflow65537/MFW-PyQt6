@@ -162,6 +162,8 @@ class ServiceCoordinator:
         # 在主要内容初始化完毕后，清理无效的 bundle 索引（不删除配置）
         self._cleanup_invalid_bundles()
 
+        self._finalize_bootstrap_interfaces()
+
         logger.info(f"资源版本: {self._interface.get('version', 'unknown')}")
 
     def _resolve_interface_path(
@@ -791,21 +793,21 @@ class ServiceCoordinator:
 
         Args:
             config_item: 配置项对象
-            preset_name: 可选的预设名称。如果指定，则在初始化任务后应用预设的勾选状态和选项值。
+            preset_name: 可选的预设名称。若指定且能找到预设，则仅物化 preset.task 中的任务（含 enabled/option）；否则按全 interface 物化。
         """
         new_id = self.config_service.create_config(config_item)
         if new_id:
             # Select the new config
             self.config_service.current_config_id = new_id
 
-            # Initialize the new config with tasks from interface
-            self.task_service.init_new_config()
-
-            # Apply preset if specified
             if preset_name:
                 preset = self._find_preset(preset_name)
                 if preset:
-                    self.task_service.apply_preset(preset)
+                    self.task_service.init_config_from_preset(preset)
+                else:
+                    self.task_service.init_new_config()
+            else:
+                self.task_service.init_new_config()
 
             # Notify UI incrementally
             self.fs_signal_bus.fs_config_added.emit(
@@ -827,6 +829,106 @@ class ServiceCoordinator:
             if isinstance(preset, dict) and preset.get("name") == preset_name:
                 return preset
         return None
+
+    def _collect_config_display_names(self) -> set[str]:
+        names: set[str] = set()
+        try:
+            for entry in self.config_service.list_configs():
+                n = entry.get("name")
+                if isinstance(n, str) and n.strip():
+                    names.add(n.strip())
+        except Exception:
+            pass
+        return names
+
+    @staticmethod
+    def _unique_config_display_name(base: str, used: set[str]) -> str:
+        b = base.strip() or "Config"
+        if b not in used:
+            return b
+        i = 2
+        while f"{b} ({i})" in used:
+            i += 1
+        return f"{b} ({i})"
+
+    def _finalize_bootstrap_interfaces(self) -> None:
+        """首次无主配置：有可用 preset 时物化 N 条子配置；否则走「单默认 + 可选追加 preset」逻辑。"""
+        pairs = self.config_service.consume_bootstrap_preset_pairs()
+        if pairs:
+            for cid, preset_key in pairs:
+                if not self.select_config(cid):
+                    logger.warning("bootstrap: select_config failed for %s", cid)
+                    continue
+                preset = self._find_preset(preset_key)
+                if preset:
+                    self.task_service.init_config_from_preset(preset)
+                else:
+                    self.task_service.init_new_config()
+                try:
+                    self.fs_signal_bus.fs_config_added.emit(
+                        self.config_service.get_config(cid)
+                    )
+                except Exception:
+                    pass
+            self.select_config(pairs[0][0])
+            return
+        self._maybe_bootstrap_configs_from_presets()
+
+    def _maybe_bootstrap_configs_from_presets(self) -> None:
+        """首次无主配置仅创建 Default Config 后：若 interface 含 preset，为除 default 外的每项再建子配置并应用预设。"""
+        if not self.config_service.consume_bootstrap_without_curr_config():
+            return
+        presets = self.get_presets()
+        if not presets:
+            return
+        original_id = self.config_service.current_config_id
+        if not original_id:
+            return
+        try:
+            seed = self.config_service.get_config(original_id)
+        except Exception:
+            logger.exception("从预设物化子配置：无法读取种子配置")
+            return
+        if not seed:
+            return
+        bundle_name = seed.bundle or ""
+        used_names = self._collect_config_display_names()
+        for preset in presets:
+            if not isinstance(preset, dict):
+                continue
+            raw_name = preset.get("name")
+            if not isinstance(raw_name, str) or not raw_name.strip():
+                continue
+            preset_key = raw_name.strip()
+            if preset_key.lower() == "default":
+                continue
+            if not self._find_preset(preset_key):
+                continue
+            base_label = str(
+                preset.get("label") or preset.get("name") or preset_key
+            ).strip()
+            if not base_label:
+                base_label = preset_key
+            display_name = self._unique_config_display_name(base_label, used_names)
+            used_names.add(display_name)
+            new_item = ConfigItem(
+                name=display_name,
+                item_id=ConfigItem.generate_id(),
+                tasks=[],
+                know_task=[],
+                bundle=bundle_name,
+                interface_task_list_materialized=False,
+            )
+            try:
+                self.add_config(new_item, preset_name=preset_key)
+            except Exception:
+                logger.exception(
+                    "从预设物化子配置失败: preset name=%s", preset_key
+                )
+        try:
+            self.select_config(original_id)
+        except Exception:
+            logger.exception("从预设物化子配置后恢复当前配置失败")
 
     def delete_config(self, config_id: str) -> bool:
         """删除配置，传入 config id"""

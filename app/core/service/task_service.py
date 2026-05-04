@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from app.utils.logger import logger
 from app.core.service.config_service import ConfigService
 from app.core.item import TaskItem, CoreSignalBus
-from app.common.constants import _RESOURCE_, _CONTROLLER_
+from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.core.utils.option_branches_compat import get_option_branches, set_option_branches
 
 # 速通配置默认值
@@ -138,11 +138,93 @@ class TaskService:
         self.know_task = []
         self._check_know_task()
 
-    def apply_preset(self, preset: Dict[str, Any]) -> bool:
-        """在 init_new_config 之后应用预设配置。
+    def init_config_from_preset(self, preset: Dict[str, Any]) -> bool:
+        """仅用 preset 中列出的任务初始化当前配置（勾选由 enabled，选项由 option）。
 
-        预设会修改已添加任务的勾选状态和选项值，但不会从 know_task 中移除任务。
-        所有 interface 中的任务仍然保留在 know_task 中。
+        不物化 interface 中的其它任务；``interface_task_list_materialized`` 置为 True，
+        避免后续按 interface 全量自动增补任务。
+        """
+        if not self.interface or not preset or not isinstance(preset, dict):
+            return False
+        preset_tasks = preset.get("task", [])
+        if not isinstance(preset_tasks, list):
+            return False
+
+        config_id = self.config_service.current_config_id
+        if not config_id:
+            return False
+        config = self.config_service.get_config(config_id)
+        if not config:
+            return False
+
+        self.default_option = self.gen_default_option()
+
+        base_tasks = [t for t in config.tasks if t.is_base_task()]
+        config.tasks = list(base_tasks)
+        config.interface_task_list_materialized = True
+
+        interface_by_name: Dict[str, Dict[str, Any]] = {
+            t["name"]: t
+            for t in self.interface.get("task", [])
+            if isinstance(t, dict) and isinstance(t.get("name"), str)
+        }
+        interface_options = self.interface.get("option", {}) or {}
+
+        ordered_names: List[str] = []
+        seen_names: set[str] = set()
+
+        for pt in preset_tasks:
+            if not isinstance(pt, dict):
+                continue
+            raw_name = pt.get("name")
+            if not isinstance(raw_name, str) or not raw_name.strip():
+                continue
+            name = raw_name.strip()
+            if name in seen_names:
+                continue
+            task_def = interface_by_name.get(name)
+            if not task_def:
+                logger.warning("preset 引用 interface 中不存在的任务，已跳过: %s", name)
+                continue
+            seen_names.add(name)
+
+            is_checked = bool(pt.get("enabled", True))
+            task_default_option = self.gen_single_task_default_option(task_def)
+            new_task = TaskItem(
+                name=name,
+                item_id=TaskItem.generate_id(),
+                is_checked=is_checked,
+                task_option=task_default_option,
+            )
+            preset_option = pt.get("option")
+            if isinstance(preset_option, dict) and isinstance(new_task.task_option, dict):
+                self._apply_preset_option(new_task, preset_option, interface_options)
+
+            insert_at = next(
+                (
+                    i
+                    for i, t in enumerate(config.tasks)
+                    if t.is_base_task() and t.item_id == POST_ACTION
+                ),
+                len(config.tasks),
+            )
+            config.tasks.insert(insert_at, new_task)
+            ordered_names.append(name)
+
+        config.know_task = list(ordered_names)
+        ok = self.config_service.update_config(config_id, config)
+        if ok:
+            self.current_tasks = config.tasks
+            self.know_task = list(ordered_names)
+            self.refresh_hidden_flags()
+            self.signal_bus.tasks_loaded.emit(self.current_tasks)
+        return ok
+
+    def apply_preset(self, preset: Dict[str, Any]) -> bool:
+        """在 init_new_config（全量 interface 任务）之后应用预设。
+
+        会修改已存在任务的勾选与选项；未出现在 preset 中的任务会被取消勾选。
+        若配置仅需 preset 内任务，请使用 ``init_config_from_preset``。
 
         Args:
             preset: 预设配置字典，包含 name, task 等字段。

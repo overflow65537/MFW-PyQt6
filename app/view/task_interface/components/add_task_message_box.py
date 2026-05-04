@@ -99,7 +99,9 @@ class AddConfigDialog(BaseAddDialog):
         self.name_layout = QVBoxLayout()
         self.name_label = BodyLabel(self.tr("Config Name:"), self)
         self.name_edit = LineEdit(self)
-        self.name_edit.setPlaceholderText(self.tr("Enter the name of the config"))
+        self.name_edit.setPlaceholderText(
+            self.tr("Enter name, or leave empty for auto (preset name + index)")
+        )
         self.name_edit.setClearButtonEnabled(True)
 
         self.name_layout.addWidget(self.name_label)
@@ -183,22 +185,74 @@ class AddConfigDialog(BaseAddDialog):
                     if display_name:
                         self.preset_combo.addItem(display_name)
 
+    def _existing_config_display_names(self) -> set[str]:
+        names: set[str] = set()
+        if not self._service_coordinator:
+            return names
+        try:
+            for entry in self._service_coordinator.config.list_configs():
+                n = entry.get("name")
+                if isinstance(n, str) and n.strip():
+                    names.add(n.strip())
+        except Exception:
+            pass
+        return names
+
+    def _allocate_config_display_name(self, base: str, used: set[str]) -> str | None:
+        """在 base 后接序号，生成不与已有配置重名的显示名（第几份）。"""
+        base = (base or "").strip()
+        if not base:
+            base = self.tr("Config")
+        if base.lower() == "default":
+            base = self.tr("Config")
+        for i in range(1, 10000):
+            candidate = self.tr("{0} {1}").format(base, i)
+            if candidate.lower() == "default":
+                continue
+            if candidate not in used:
+                return candidate
+        return None
+
     def on_confirm(self):
         """确认添加配置"""
         self.config_name = self.name_edit.text().strip()
         self.resource_name = self.resource_combo.currentText()
 
-        # 获取选中的预设
         preset_index = self.preset_combo.currentIndex()
+        selected_preset_dict: dict | None = None
         if preset_index > 0 and preset_index - 1 < len(self._presets):
-            self._selected_preset_name = self._presets[preset_index - 1].get("name")
+            raw = self._presets[preset_index - 1]
+            selected_preset_dict = raw if isinstance(raw, dict) else None
+            raw_nm = selected_preset_dict.get("name")
+            self._selected_preset_name = (
+                raw_nm.strip()
+                if isinstance(raw_nm, str) and raw_nm.strip()
+                else None
+            )
         else:
             self._selected_preset_name = None
 
-        # 验证输入
         if not self.config_name:
-            self.show_error(self.tr("Config name cannot be empty"))
-            return
+            used = self._existing_config_display_names()
+            if selected_preset_dict:
+                base = (
+                    selected_preset_dict.get("label")
+                    or selected_preset_dict.get("name")
+                    or self._selected_preset_name
+                )
+                base = str(base).strip() if base is not None else ""
+                if not base and self._selected_preset_name:
+                    base = str(self._selected_preset_name).strip()
+                if not base:
+                    base = self.tr("Config")
+            else:
+                base = self.tr("New Config")
+            allocated = self._allocate_config_display_name(base, used)
+            if not allocated:
+                self.show_error(self.tr("Could not allocate a unique config name"))
+                return
+            self.config_name = allocated
+            self.name_edit.setText(self.config_name)
 
         if self.config_name.lower() == "default":
             self.show_error(self.tr("Cannot use 'default' as config name"))

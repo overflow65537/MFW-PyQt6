@@ -1,6 +1,6 @@
 import jsonc
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
 from app.utils.logger import logger
@@ -117,11 +117,42 @@ class JsonConfigRepository:
 class ConfigService:
     """配置服务实现"""
 
+    @staticmethod
+    def _usable_presets_from_interface(interface: Dict[str, Any]) -> List[Dict[str, Any]]:
+        raw = interface.get("preset", []) if isinstance(interface, dict) else []
+        if not isinstance(raw, list):
+            return []
+        out: List[Dict[str, Any]] = []
+        for p in raw:
+            if not isinstance(p, dict):
+                continue
+            rk = p.get("name")
+            if not isinstance(rk, str) or not rk.strip():
+                continue
+            if rk.strip().lower() == "default":
+                continue
+            out.append(p)
+        return out
+
+    @staticmethod
+    def _unique_display_name(base: str, used: set[str]) -> str:
+        b = base.strip() or "Config"
+        if b not in used:
+            return b
+        i = 2
+        while f"{b} ({i})" in used:
+            i += 1
+        return f"{b} ({i})"
+
     def __init__(self, config_repo: JsonConfigRepository, signal_bus: CoreSignalBus):
         self.repo = config_repo
         self.signal_bus = signal_bus
         self._main_config: Optional[Dict[str, Any]] = None
         self._config_changed_callback: Optional[Callable[[str], None]] = None
+        # 首次无主配置：仅「Default Config」一条时，供协调器再按 preset 追加子配置
+        self._bootstrap_without_curr_config: bool = False
+        # 首次无主配置：interface 有可物化 preset 时，已创建 N 条子配置，供协调器逐条 init + apply_preset
+        self._bootstrap_preset_pairs: List[Tuple[str, str]] = []
 
         # 加载主配置
         self.load_main_config()
@@ -131,19 +162,64 @@ class ConfigService:
             bundle_dict = self._main_config.get("bundle", {}) or {}
             first_bundle_name = next(iter(bundle_dict.keys()), "Default Bundle")
 
-            # 子配置中仅保存 bundle 名称，由 ConfigService 通过主配置解析详情
-            default_config_item = ConfigItem(
-                name="Default Config",
-                item_id=ConfigItem.generate_id(),
-                tasks=[],
-                know_task=[],
-                bundle=first_bundle_name,
-                interface_task_list_materialized=False,
-            )
+            interface = self.repo.interface if isinstance(self.repo.interface, dict) else {}
+            usable = self._usable_presets_from_interface(interface)
 
-            self._main_config["config_list"].append(default_config_item.item_id)
-            self._main_config["curr_config_id"] = default_config_item.item_id
-            self.current_config_id = self.create_config(default_config_item)
+            if usable:
+                self._main_config.setdefault("config_list", [])
+                first_id: Optional[str] = None
+                used_display: set[str] = set()
+                for preset in usable:
+                    preset_key = str(preset.get("name", "")).strip()
+                    base_label = str(
+                        preset.get("label") or preset.get("name") or preset_key
+                    ).strip() or preset_key
+                    display = self._unique_display_name(base_label, used_display)
+                    used_display.add(display)
+                    cfg = ConfigItem(
+                        name=display,
+                        item_id=ConfigItem.generate_id(),
+                        tasks=[],
+                        know_task=[],
+                        bundle=first_bundle_name,
+                        interface_task_list_materialized=False,
+                    )
+                    self._main_config["config_list"].append(cfg.item_id)
+                    cid = self.create_config(cfg)
+                    if cid:
+                        self._bootstrap_preset_pairs.append((cid, preset_key))
+                        if first_id is None:
+                            first_id = cid
+                if first_id:
+                    self._main_config["curr_config_id"] = first_id
+                    self.save_main_config()
+            else:
+                default_config_item = ConfigItem(
+                    name="Default Config",
+                    item_id=ConfigItem.generate_id(),
+                    tasks=[],
+                    know_task=[],
+                    bundle=first_bundle_name,
+                    interface_task_list_materialized=False,
+                )
+
+                self._main_config["config_list"].append(default_config_item.item_id)
+                self._main_config["curr_config_id"] = default_config_item.item_id
+                self.current_config_id = self.create_config(default_config_item)
+                self._bootstrap_without_curr_config = True
+
+    def consume_bootstrap_preset_pairs(self) -> List[Tuple[str, str]]:
+        """取出并清空「按 preset 已创建的子配置」列表 (config_id, preset_name)。"""
+        pairs = list(self._bootstrap_preset_pairs)
+        self._bootstrap_preset_pairs = []
+        return pairs
+
+    def consume_bootstrap_without_curr_config(self) -> bool:
+        """若本次构造曾因无主配置而创建默认子配置，返回 True 且仅消费一次。"""
+        if self._bootstrap_without_curr_config:
+            self._bootstrap_without_curr_config = False
+            return True
+        return False
 
     def register_on_change(self, callback: Callable[[str], None]) -> None:
         """注册配置变更回调，供服务协调器触发内部同步。"""
