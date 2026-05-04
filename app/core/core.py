@@ -484,6 +484,7 @@ class ServiceCoordinator:
                 tasks=default_tasks,
                 know_task=[],
                 bundle=bundle_name,
+                interface_task_list_materialized=False,
             )
             
             # 将默认配置写入到损坏的配置文件中（覆盖）

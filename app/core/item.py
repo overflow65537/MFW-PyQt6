@@ -151,6 +151,7 @@ class ConfigItem:
         know_task: List[str],
         bundle: str,
         global_options: Dict[str, Any] | None = None,
+        interface_task_list_materialized: bool = False,
     ):
         self.name = name
         self.item_id = item_id
@@ -160,6 +161,8 @@ class ConfigItem:
         # 仅保存 bundle 名称，由 Config_Service 通过主配置解析具体信息
         self.bundle = bundle
         self.global_options = global_options or {}
+        # True：任务列表已与 interface 对齐并冻结，不再因 interface 新增任务而自动插入配置
+        self.interface_task_list_materialized = interface_task_list_materialized
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -170,6 +173,7 @@ class ConfigItem:
             "global_options": self.global_options,
             # 子配置中只保存 bundle 名称（字符串），不重复保存 bundle 详情
             "bundle": self.bundle,
+            "interface_task_list_materialized": self.interface_task_list_materialized,
         }
 
     @staticmethod
@@ -228,4 +232,7 @@ class ConfigItem:
             know_task=data.get("know_task", []),
             bundle=bundle_name,
             global_options=raw_global_options,
+            interface_task_list_materialized=bool(
+                data.get("interface_task_list_materialized", False)
+            ),
         )

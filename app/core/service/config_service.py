@@ -138,6 +138,7 @@ class ConfigService:
                 tasks=[],
                 know_task=[],
                 bundle=first_bundle_name,
+                interface_task_list_materialized=False,
             )
 
             self._main_config["config_list"].append(default_config_item.item_id)

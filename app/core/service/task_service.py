@@ -55,6 +55,17 @@ class TaskService:
                 self._check_know_task()
 
     def _check_know_task(self) -> bool:
+        """将 interface 中的任务同步进当前配置（无 preset 时的替补逻辑）。
+
+        每个子配置在首次物化后设置 ``interface_task_list_materialized``，之后不再因
+        interface 或资源包新增任务而自动插入任务行。
+        """
+        config_id = self.config_service.current_config_id
+        if config_id:
+            gate = self.config_service.get_config(config_id)
+            if gate and getattr(gate, "interface_task_list_materialized", False):
+                return True
+
         unknown_tasks: list[str] = []
         if not self.interface:
             raise ValueError("Interface not loaded")
@@ -94,16 +105,17 @@ class TaskService:
             if self.add_task(unknown_task):
                 existing_task_names.add(unknown_task)
 
-        # 同步到当前配置对象并持久化
+        # 同步到当前配置对象并持久化，并标记任务列表已物化（不再自动跟 interface 增补）
         config = self.config_service.get_config(self.config_service.current_config_id)
         if config:
             config.know_task = self.know_task.copy()
+            config.interface_task_list_materialized = True
             self.config_service.update_config(config.item_id, config)
 
         return True
 
     def init_new_config(self):
-        """初始化新配置的任务"""
+        """初始化新配置的任务：清空非基础任务后，从 interface 物化一整份任务列表并上锁。"""
         if not self.interface:
             raise ValueError("Interface not loaded")
         # Regenerate default options
@@ -118,10 +130,11 @@ class TaskService:
             return
         base_tasks = [t for t in config.tasks if t.is_base_task()]
         config.tasks = base_tasks
+        config.interface_task_list_materialized = False
         self.config_service.update_config(config_id, config)
         self.current_tasks = base_tasks
 
-        # Reset know_task and add all tasks from interface
+        # Reset know_task and add all tasks from interface（一次完整物化）
         self.know_task = []
         self._check_know_task()
 
