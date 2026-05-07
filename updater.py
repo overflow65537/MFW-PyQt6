@@ -115,6 +115,7 @@ class UpdaterRuntimeOptions:
     shutdown_timeout: float = 180.0
     wait_poll_interval: float = 0.25
     mfw_exe_path: str | None = None
+    startup_executable_name: str | None = None
 
 
 RUNTIME_OPTS = UpdaterRuntimeOptions()
@@ -209,15 +210,68 @@ def _get_mfw_instance_key() -> str:
     mfw_exe = RUNTIME_OPTS.mfw_exe_path
     if mfw_exe:
         return os.path.abspath(mfw_exe)
-    
+
+    startup_executable_name = RUNTIME_OPTS.startup_executable_name
+    if startup_executable_name:
+        return os.path.abspath(os.path.join(os.getcwd(), startup_executable_name))
+
     # 由于工作目录相同，直接使用当前目录下的主程序路径
     if sys.platform.startswith("win32"):
         default_exe = os.path.join(os.getcwd(), "MFW.exe")
     else:
         default_exe = os.path.join(os.getcwd(), "MFW")
-    
+
     # 使用绝对路径作为实例键（与 main.py 保持一致）
     return os.path.abspath(default_exe)
+
+
+def _get_default_startup_executable_path() -> str:
+    if sys.platform.startswith("win32"):
+        default_name = "MFW.exe"
+    else:
+        default_name = "MFW"
+    return os.path.abspath(os.path.join(os.getcwd(), default_name))
+
+
+def _get_expected_startup_executable_path() -> str:
+    if RUNTIME_OPTS.mfw_exe_path:
+        return os.path.abspath(RUNTIME_OPTS.mfw_exe_path)
+    if RUNTIME_OPTS.startup_executable_name:
+        return os.path.abspath(
+            os.path.join(os.getcwd(), RUNTIME_OPTS.startup_executable_name)
+        )
+    return _get_default_startup_executable_path()
+
+
+def _restore_startup_executable_name() -> str:
+    default_path = _get_default_startup_executable_path()
+    expected_path = _get_expected_startup_executable_path()
+
+    if _norm_path(default_path) == _norm_path(expected_path):
+        return default_path
+
+    if os.path.exists(expected_path):
+        return expected_path
+
+    if not os.path.exists(default_path):
+        return expected_path
+
+    try:
+        os.replace(default_path, expected_path)
+        update_logger.info(
+            "已将更新后的主程序恢复为原启动名称: %s -> %s",
+            default_path,
+            expected_path,
+        )
+        return expected_path
+    except Exception as exc:
+        update_logger.error(
+            "恢复主程序原启动名称失败: %s -> %s (%s)",
+            default_path,
+            expected_path,
+            exc,
+        )
+        return default_path
 
 
 def is_mfw_running() -> bool:
@@ -458,17 +512,19 @@ def extract_zip_file_with_validation(update_file_path):
 
 def start_mfw_process():
     try:
-        if sys.platform.startswith("win32"):
-            cmd = [".\\MFW.exe"]
-        elif sys.platform.startswith(("darwin", "linux")):
-            cmd = ["./MFW"]
+        executable_path = _restore_startup_executable_name()
+        if sys.platform.startswith(("win32", "darwin", "linux")):
+            cmd = [executable_path]
         else:
             update_logger.error("不支持的操作系统")
+            return
+        if not os.path.exists(executable_path):
+            update_logger.error("未找到可启动的主程序文件: %s", executable_path)
             return
         if DIRECT_RUN_EXTRA_ARGS:
             cmd.extend(DIRECT_RUN_EXTRA_ARGS)
         update_logger.info("重启/启动 MFW 进程: %s", " ".join(cmd))
-        subprocess.Popen(cmd)
+        subprocess.Popen(cmd, cwd=os.path.dirname(executable_path) or None)
     except Exception as exc:
         update_logger.error(f"启动MFW程序失败: {exc}")
 
@@ -1767,6 +1823,12 @@ if __name__ == "__main__":
                     default=None,
                     help="主程序可执行文件路径（更可靠的占用检测）",
                 )
+                parser.add_argument(
+                    "--startup-executable-name",
+                    type=str,
+                    default=None,
+                    help="触发更新时的主程序文件名（用于更新后恢复原名称）",
+                )
                 # 兼容透传给主程序的 direct-run 标志（更新器自身不消费，但不能因未知参数失败）
                 parser.add_argument("-d", "--direct-run", action="store_true")
 
@@ -1776,6 +1838,7 @@ if __name__ == "__main__":
                 RUNTIME_OPTS.shutdown_timeout = float(known.shutdown_timeout)
                 RUNTIME_OPTS.wait_poll_interval = float(known.wait_poll)
                 RUNTIME_OPTS.mfw_exe_path = known.mfw_exe_path
+                RUNTIME_OPTS.startup_executable_name = known.startup_executable_name
 
                 standard_update()
             elif sys.argv[1] == "-generate-metadata":

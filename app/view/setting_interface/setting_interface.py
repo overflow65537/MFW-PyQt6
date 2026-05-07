@@ -190,6 +190,15 @@ def launch_updater_process(*extra_args: str) -> None:
 
         if getattr(sys, "frozen", False):
             parent_args.extend(["--mfw-exe-path", str(Path(sys.executable).resolve())])
+
+        # 透传当前启动入口名称，便于更新完成后恢复用户自定义的启动文件名。
+        current_entry = (
+            Path(sys.executable).resolve()
+            if getattr(sys, "frozen", False)
+            else Path(sys.argv[0]).resolve()
+        )
+        if current_entry.name:
+            parent_args.extend(["--startup-executable-name", current_entry.name])
     except Exception as exc:
         logger.debug("构造更新器父进程参数失败（将继续尝试启动更新器）: %s", exc)
 
