@@ -738,10 +738,21 @@ class MainWindow(MSFluentWindow):
             return
         try:
             self.switchTo(interface)
-        except Exception:
+        except (AttributeError, TypeError) as exc:
+            logger.warning(
+                "switchTo(%r) failed, fallback to stackedWidget.setCurrentWidget: %s",
+                interface,
+                exc,
+            )
             try:
                 self.stackedWidget.setCurrentWidget(interface, popOut=False)
-            except TypeError:
+            except TypeError as fallback_exc:
+                logger.debug(
+                    "stackedWidget.setCurrentWidget(%r, popOut=False) failed, "
+                    "retry without popOut: %s",
+                    interface,
+                    fallback_exc,
+                )
                 self.stackedWidget.setCurrentWidget(interface)
 
     def _start_tasks_from_dashboard(self) -> None:
