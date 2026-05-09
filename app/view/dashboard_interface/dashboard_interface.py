@@ -124,8 +124,7 @@ class LiquidGlassHeroCard(QFrame):
         ):
             self._hover_strength = self._target_hover_strength
             self._glow_pos = QPointF(self._target_glow_pos)
-            if self._hover_strength <= 0:
-                self._timer.stop()
+            self._timer.stop()
         self.update()
 
     def paintEvent(self, event) -> None:  # noqa: N802
@@ -368,8 +367,7 @@ class _ActionCard(SimpleCardWidget):
         self._hover_strength += (self._target_hover_strength - self._hover_strength) * 0.18
         if abs(self._hover_strength - self._target_hover_strength) < 0.01:
             self._hover_strength = self._target_hover_strength
-            if self._hover_strength <= 0:
-                self._timer.stop()
+            self._timer.stop()
         self.update()
 
     def paintEvent(self, e) -> None:  # noqa: N802
