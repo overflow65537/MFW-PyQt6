@@ -652,11 +652,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
     # ==================== 公共方法 ====================
 
-    def reset(self):
+    def reset(self, animate: bool = False):
         """重置选项区域和描述区域"""
         self._clear_options()
         self.description_content.setText("")
-        self._toggle_description(visible=False)
+        self._toggle_description(visible=False, animate=animate)
         self.segmented_switcher.setCurrentItem("options")
         self.segmented_switcher.setVisible(False)
         self.option_stack.setCurrentIndex(0)
