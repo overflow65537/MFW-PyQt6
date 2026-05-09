@@ -677,9 +677,7 @@ class MainWindow(MSFluentWindow):
                     "bundle_interface",
                     FIF.FOLDER,
                     self.tr("Bundle"),
-                    onClick=lambda: self.stackedWidget.setCurrentWidget(
-                        self.BundleInterface
-                    ),
+                    onClick=lambda: self._switch_to_interface(self.BundleInterface),
                     selectable=True,
                     position=NavigationItemPosition.BOTTOM,
                 )
@@ -738,7 +736,24 @@ class MainWindow(MSFluentWindow):
             return
         if self.stackedWidget.indexOf(interface) < 0:
             return
-        self.stackedWidget.setCurrentWidget(interface)
+        try:
+            self.switchTo(interface)
+        except (AttributeError, TypeError) as exc:
+            logger.warning(
+                "switchTo(%r) failed, fallback to stackedWidget.setCurrentWidget: %s",
+                interface,
+                exc,
+            )
+            try:
+                self.stackedWidget.setCurrentWidget(interface, popOut=False)
+            except TypeError as fallback_exc:
+                logger.debug(
+                    "stackedWidget.setCurrentWidget(%r, popOut=False) failed, "
+                    "retry without popOut: %s",
+                    interface,
+                    fallback_exc,
+                )
+                self.stackedWidget.setCurrentWidget(interface)
 
     def _start_tasks_from_dashboard(self) -> None:
         if self.service_coordinator.run_manager.is_running:

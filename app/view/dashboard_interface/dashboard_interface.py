@@ -4,15 +4,23 @@ from pathlib import Path
 import re
 from typing import Callable
 
-from PySide6.QtCore import QEvent, QObject, Qt, Signal
-from PySide6.QtGui import QColor, QImage, QPixmap
+from PySide6.QtCore import QEvent, QObject, QPointF, QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import (
+    QColor,
+    QImage,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPixmap,
+    QRadialGradient,
+)
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsBlurEffect,
     QGridLayout,
     QHBoxLayout,
     QLabel,
- 
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -30,7 +38,7 @@ from qfluentwidgets import (
 from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.common import __version__ as version_meta
-        
+
 from app.core.core import ServiceCoordinator
 from app.utils.markdown_helper import render_markdown
 from app.utils.release_notes import load_release_notes, resolve_project_name
@@ -42,8 +50,159 @@ UI_VERSION = getattr(
     version_meta,
     "__version__",
     "v0.0.1"
-  
 )
+
+
+class LiquidGlassHeroCard(QFrame):
+    """Mouse-reactive liquid glass hero surface."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setMouseTracking(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
+        self._hover_strength = 0.0
+        self._target_hover_strength = 0.0
+        self._glow_pos = QPointF(0.5, 0.45)
+        self._target_glow_pos = QPointF(0.5, 0.45)
+        self._base_colors = (
+            QColor("#47302d"),
+            QColor("#7f5f59"),
+            QColor("#6e544f"),
+        )
+        self._border_color = QColor("#9a7770")
+        self._timer = QTimer(self)
+        self._timer.setInterval(16)
+        self._timer.timeout.connect(self._tick_liquid_motion)
+
+    def set_palette(
+        self,
+        start: QColor,
+        middle: QColor,
+        end: QColor,
+        border: QColor,
+    ) -> None:
+        self._base_colors = (QColor(start), QColor(middle), QColor(end))
+        self._border_color = QColor(border)
+        self.update()
+
+    def mouseMoveEvent(self, event) -> None:  # noqa: N802
+        rect = self.rect()
+        if rect.width() > 0 and rect.height() > 0:
+            self._target_glow_pos = QPointF(
+                event.position().x() / rect.width(),
+                event.position().y() / rect.height(),
+            )
+        self._target_hover_strength = 1.0
+        if not self._timer.isActive():
+            self._timer.start()
+        super().mouseMoveEvent(event)
+
+    def enterEvent(self, event) -> None:  # noqa: N802
+        self._target_hover_strength = 1.0
+        if not self._timer.isActive():
+            self._timer.start()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:  # noqa: N802
+        self._target_hover_strength = 0.0
+        self._target_glow_pos = QPointF(0.62, 0.36)
+        if not self._timer.isActive():
+            self._timer.start()
+        super().leaveEvent(event)
+
+    def _tick_liquid_motion(self) -> None:
+        self._glow_pos = QPointF(
+            self._glow_pos.x() + (self._target_glow_pos.x() - self._glow_pos.x()) * 0.18,
+            self._glow_pos.y() + (self._target_glow_pos.y() - self._glow_pos.y()) * 0.18,
+        )
+        self._hover_strength += (self._target_hover_strength - self._hover_strength) * 0.16
+
+        if (
+            abs(self._hover_strength - self._target_hover_strength) < 0.01
+            and abs(self._glow_pos.x() - self._target_glow_pos.x()) < 0.003
+            and abs(self._glow_pos.y() - self._target_glow_pos.y()) < 0.003
+        ):
+            self._hover_strength = self._target_hover_strength
+            self._glow_pos = QPointF(self._target_glow_pos)
+            if self._hover_strength <= 0:
+                self._timer.stop()
+        self.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        if rect.width() <= 0 or rect.height() <= 0:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        path = QPainterPath()
+        path.addRoundedRect(rect, 18, 18)
+        painter.setClipPath(path)
+
+        start, middle, end = self._base_colors
+        base = QLinearGradient(rect.topLeft(), rect.bottomRight())
+        base.setColorAt(0.0, self._with_alpha(start, 235))
+        base.setColorAt(0.48, self._with_alpha(middle, 220))
+        base.setColorAt(1.0, self._with_alpha(end, 235))
+        painter.fillPath(path, base)
+
+        self._paint_liquid_glow(painter, rect, path)
+        self._paint_glass_sheen(painter, rect, path)
+        self._paint_edge(painter, rect)
+
+        painter.setClipping(False)
+        painter.end()
+
+    def _paint_liquid_glow(self, painter: QPainter, rect: QRectF, path: QPainterPath) -> None:
+        cx = rect.left() + rect.width() * self._glow_pos.x()
+        cy = rect.top() + rect.height() * self._glow_pos.y()
+        radius = max(rect.width(), rect.height()) * (0.34 + self._hover_strength * 0.12)
+
+        glow = QRadialGradient(QPointF(cx, cy), radius)
+        glow.setColorAt(0.0, QColor(255, 255, 255, int(74 + self._hover_strength * 78)))
+        glow.setColorAt(0.28, QColor(255, 210, 220, int(34 + self._hover_strength * 52)))
+        glow.setColorAt(0.58, QColor(126, 164, 255, int(20 + self._hover_strength * 28)))
+        glow.setColorAt(1.0, QColor(255, 255, 255, 0))
+        painter.fillPath(path, glow)
+
+        shadow = QRadialGradient(
+            QPointF(rect.left() + rect.width() * 0.82, rect.top() + rect.height() * 0.98),
+            rect.width() * 0.58,
+        )
+        shadow.setColorAt(0.0, QColor(0, 0, 0, 52))
+        shadow.setColorAt(1.0, QColor(0, 0, 0, 0))
+        painter.fillPath(path, shadow)
+
+    def _paint_glass_sheen(self, painter: QPainter, rect: QRectF, path: QPainterPath) -> None:
+        sheen = QLinearGradient(rect.topLeft(), rect.bottomLeft())
+        sheen.setColorAt(0.0, QColor(255, 255, 255, 34))
+        sheen.setColorAt(0.34, QColor(255, 255, 255, 8))
+        sheen.setColorAt(1.0, QColor(0, 0, 0, 38))
+        painter.fillPath(path, sheen)
+
+        band = QLinearGradient(
+            QPointF(rect.left(), rect.top() + rect.height() * 0.08),
+            QPointF(rect.right(), rect.top() + rect.height() * 0.58),
+        )
+        band.setColorAt(0.0, QColor(255, 255, 255, 0))
+        band.setColorAt(0.48, QColor(255, 255, 255, int(24 + self._hover_strength * 20)))
+        band.setColorAt(1.0, QColor(255, 255, 255, 0))
+        painter.fillPath(path, band)
+
+    def _paint_edge(self, painter: QPainter, rect: QRectF) -> None:
+        border_alpha = int(120 + self._hover_strength * 72)
+        painter.setPen(QPen(self._with_alpha(self._border_color, border_alpha), 1.2))
+        painter.drawRoundedRect(rect.adjusted(0.4, 0.4, -0.4, -0.4), 18, 18)
+
+        highlight = QRectF(rect).adjusted(1.8, 1.8, -1.8, -1.8)
+        painter.setPen(QPen(QColor(255, 255, 255, int(42 + self._hover_strength * 48)), 1))
+        painter.drawRoundedRect(highlight, 16, 16)
+
+    def _with_alpha(self, color: QColor, alpha: int) -> QColor:
+        adjusted = QColor(color)
+        adjusted.setAlpha(max(0, min(255, alpha)))
+        return adjusted
 
 
 def build_dashboard_stylesheet() -> str:
@@ -56,10 +215,6 @@ QWidget#V5DashboardContent {
 QScrollArea#V5DashboardScroll {
     border: none;
     background: transparent;
-}
-
-QFrame#V5HeroCard {
-    border-radius: 16px;
 }
 
 QLabel#V5HeroTitle {
@@ -137,10 +292,17 @@ class _ActionCard(SimpleCardWidget):
         super().__init__(parent)
         self.setObjectName("V5ActionCard")
         self.setClickEnabled(False)
+        self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setFixedHeight(110)
         self._action_button: PrimaryPushButton | None = None
+        self._glow_pos = QPointF(0.5, 0.5)
+        self._hover_strength = 0.0
+        self._target_hover_strength = 0.0
+        self._timer = QTimer(self)
+        self._timer.setInterval(16)
+        self._timer.timeout.connect(self._tick_hover)
 
         root = QHBoxLayout(self)
         root.setContentsMargins(18, 14, 18, 14)
@@ -177,6 +339,68 @@ class _ActionCard(SimpleCardWidget):
 
         if on_click is not None:
             self.clicked.connect(on_click)
+
+    def mouseMoveEvent(self, e) -> None:  # noqa: N802
+        rect = self.rect()
+        if rect.width() > 0 and rect.height() > 0:
+            self._glow_pos = QPointF(
+                e.position().x() / rect.width(),
+                e.position().y() / rect.height(),
+            )
+        self._target_hover_strength = 1.0
+        if not self._timer.isActive():
+            self._timer.start()
+        super().mouseMoveEvent(e)
+
+    def enterEvent(self, e) -> None:  # noqa: N802
+        self._target_hover_strength = 1.0
+        if not self._timer.isActive():
+            self._timer.start()
+        super().enterEvent(e)
+
+    def leaveEvent(self, e) -> None:  # noqa: N802
+        self._target_hover_strength = 0.0
+        if not self._timer.isActive():
+            self._timer.start()
+        super().leaveEvent(e)
+
+    def _tick_hover(self) -> None:
+        self._hover_strength += (self._target_hover_strength - self._hover_strength) * 0.18
+        if abs(self._hover_strength - self._target_hover_strength) < 0.01:
+            self._hover_strength = self._target_hover_strength
+            if self._hover_strength <= 0:
+                self._timer.stop()
+        self.update()
+
+    def paintEvent(self, e) -> None:  # noqa: N802
+        super().paintEvent(e)
+        if self._hover_strength <= 0.01:
+            return
+
+        rect = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        path = QPainterPath()
+        path.addRoundedRect(rect, 12, 12)
+        painter.setClipPath(path)
+
+        glow = QRadialGradient(
+            QPointF(
+                rect.left() + rect.width() * self._glow_pos.x(),
+                rect.top() + rect.height() * self._glow_pos.y(),
+            ),
+            max(rect.width(), rect.height()) * 0.72,
+        )
+        glow.setColorAt(0.0, QColor(255, 255, 255, int(70 * self._hover_strength)))
+        glow.setColorAt(0.46, QColor(128, 178, 255, int(34 * self._hover_strength)))
+        glow.setColorAt(1.0, QColor(255, 255, 255, 0))
+        painter.fillPath(path, glow)
+
+        painter.setClipping(False)
+        painter.setPen(QPen(QColor(255, 255, 255, int(72 * self._hover_strength)), 1))
+        painter.drawRoundedRect(rect, 12, 12)
+        painter.end()
 
     def mousePressEvent(self, e) -> None:  # noqa: N802
         if e.button() == Qt.MouseButton.LeftButton:
@@ -250,7 +474,7 @@ class DashboardInterface(QWidget):
         layout.addStretch(1)
 
     def _build_hero_card(self) -> QWidget:
-        card = QFrame(self)
+        card = LiquidGlassHeroCard(self)
         card.setObjectName("V5HeroCard")
         card.setFixedHeight(210)
         card.installEventFilter(self)
@@ -266,12 +490,14 @@ class DashboardInterface(QWidget):
 
         title = BodyLabel(self._get_hero_title(), card)
         title.setObjectName("V5HeroTitle")
+        title.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         text_col.addWidget(title)
         self._hero_title_label = title
 
         subtitle = BodyLabel(self._get_hero_subtitle(), card)
         subtitle.setObjectName("V5HeroSubtitle")
         subtitle.setWordWrap(True)
+        subtitle.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         text_col.addWidget(subtitle)
         text_col.addStretch(1)
 
@@ -280,6 +506,7 @@ class DashboardInterface(QWidget):
             card,
         )
         version.setObjectName("V5HeroVersion")
+        version.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         text_col.addWidget(version)
         box.addLayout(text_col, 7)
 
@@ -287,12 +514,14 @@ class DashboardInterface(QWidget):
         cover_stage.setObjectName("V5HeroImageStage")
         cover_stage.setFixedSize(300, 150)
         cover_stage.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        cover_stage.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         cover_stage.installEventFilter(self)
         self._hero_cover_stage = cover_stage
 
         backdrop = QLabel(cover_stage)
         backdrop.setObjectName("V5HeroImageBackdrop")
         backdrop.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        backdrop.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         backdrop.hide()
         blur = QGraphicsBlurEffect(backdrop)
         blur.setBlurRadius(28)
@@ -302,6 +531,7 @@ class DashboardInterface(QWidget):
         cover = QLabel(cover_stage)
         cover.setObjectName("V5HeroImage")
         cover.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cover.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         cover.hide()
         self._hero_cover_label = cover
 
@@ -525,6 +755,7 @@ class DashboardInterface(QWidget):
         if path and Path(path).is_file():
             return path
 
+        candidates: list[Path] = []
         interface_path = getattr(self.service_coordinator, "interface_path", None)
         if interface_path:
             interface_dir = Path(interface_path).expanduser().resolve().parent
@@ -534,9 +765,30 @@ class DashboardInterface(QWidget):
                 "dashboard.png",
                 "dashboard.webp",
             ):
-                candidate = interface_dir / candidate_name
-                if candidate.is_file():
-                    return str(candidate)
+                candidates.append(interface_dir / candidate_name)
+
+            icon_path = str(self._get_interface_metadata().get("icon", "") or "").strip()
+            if icon_path:
+                icon_candidate = Path(icon_path)
+                candidates.append(
+                    icon_candidate
+                    if icon_candidate.is_absolute()
+                    else interface_dir / icon_candidate
+                )
+
+        for candidate_name in (
+            "dashboard.jpg",
+            "dashboard.jpeg",
+            "dashboard.png",
+            "dashboard.webp",
+            "logo.png",
+            "app/assets/icons/logo.png",
+        ):
+            candidates.append(Path.cwd() / candidate_name)
+
+        for candidate in candidates:
+            if candidate.is_file():
+                return str(candidate)
         return ""
 
     def _apply_hero_palette(self, image: QImage | None) -> None:
@@ -544,9 +796,9 @@ class DashboardInterface(QWidget):
             return
 
         if image is None or image.isNull():
-            start = QColor("#293e66")
-            middle = QColor("#5965a5")
-            end = QColor("#2a2f5f")
+            start = QColor("#47302d")
+            middle = QColor("#7f5f59")
+            end = QColor("#6e544f")
         else:
             start, middle, end = self._extract_cover_palette(image)
 
@@ -555,23 +807,15 @@ class DashboardInterface(QWidget):
         stage_border = self._mix_colors(end, QColor("#ffffff"), 0.30)
         image_fill = self._mix_colors(start, QColor("#101318"), 0.58)
 
-        self._hero_card.setStyleSheet(
+        if isinstance(self._hero_card, LiquidGlassHeroCard):
+            self._hero_card.set_palette(start, middle, end, border)
+
+        self._hero_cover_stage.setStyleSheet(
             "\n".join(
                 [
-                    "QFrame#V5HeroCard {",
-                    f"    border: 1px solid {self._color_to_rgba(border, 0.88)};",
-                    "    background: qlineargradient(",
-                    "        x1: 0, y1: 0, x2: 1, y2: 1,",
-                    f"        stop: 0 {self._color_to_rgba(start)} ,",
-                    f"        stop: 0.58 {self._color_to_rgba(middle)} ,",
-                    f"        stop: 1 {self._color_to_rgba(end)}",
-                    "    );",
-                    "}",
                     "QFrame#V5HeroImageStage {",
                     f"    border: 1px solid {self._color_to_rgba(stage_border, 0.72)};",
                     f"    background-color: {self._color_to_rgba(stage_fill, 0.24)};",
-                    "}",
-                    "QLabel#V5HeroImageBackdrop {",
                     "}",
                     "QLabel#V5HeroImage {",
                     f"    border: 1px solid {self._color_to_rgba(QColor('#ffffff'), 0.18)};",
