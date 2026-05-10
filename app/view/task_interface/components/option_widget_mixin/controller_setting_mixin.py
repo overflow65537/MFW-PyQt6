@@ -6,6 +6,7 @@ from qfluentwidgets import (
     BodyLabel,
     ComboBox,
     LineEdit,
+    ToolTipPosition,
 )
 from pathlib import Path
 
@@ -831,8 +832,15 @@ class ControllerSettingWidget(QWidget):
         config_key: str,
         options: dict,
         change_callback,
+        *,
+        method_detail_category: str | None = None,
     ):
-        """创建ComboBox组件的通用方法"""
+        """创建ComboBox组件的通用方法
+
+        method_detail_category:
+            非空时为标题标签与下拉框设置相同 Fluent tooltip（随当前选项更新），
+            取值：win32_input | win32_screencap | adb_screencap | adb_input
+        """
         label = BodyLabel(label_text)
         self.parent_layout.addWidget(label)
 
@@ -849,10 +857,389 @@ class ControllerSettingWidget(QWidget):
         self.resource_setting_widgets[f"{config_key}_label"] = label
         self.resource_setting_widgets[config_key] = combo
 
-        # 连接信号
-        combo.currentIndexChanged.connect(
-            lambda index: change_callback(config_key, combo.itemData(index))
+        if method_detail_category:
+
+            def _on_combo_index_changed(index: int) -> None:
+                method_key = self._method_key_for_combo_value(
+                    options, combo.itemData(index)
+                )
+                tip = self._controller_method_detail_text(
+                    method_detail_category, method_key
+                )
+                self._apply_controller_method_tooltips(label, combo, tip)
+                change_callback(config_key, combo.itemData(index))
+
+            combo.currentIndexChanged.connect(_on_combo_index_changed)
+            _on_combo_index_changed(combo.currentIndex())
+        else:
+            combo.currentIndexChanged.connect(
+                lambda index: change_callback(config_key, combo.itemData(index))
+            )
+
+    @staticmethod
+    def _method_key_for_combo_value(options: dict[str, Any], raw_value: Any) -> str:
+        """根据下拉项 userData 反查选项键名（与 options 中枚举名一致）。"""
+        try:
+            int_value = int(raw_value)
+        except (TypeError, ValueError):
+            return ""
+        for name, mapped in options.items():
+            try:
+                if int(mapped) == int_value:
+                    return str(name)
+            except (TypeError, ValueError):
+                continue
+        return ""
+
+    def _apply_controller_method_tooltips(
+        self, label: BodyLabel, combo: ComboBox, tip: str
+    ) -> None:
+        apply_fluent_tooltip(
+            label,
+            tip,
+            delay=300,
+            position=ToolTipPosition.BOTTOM,
         )
+        apply_fluent_tooltip(
+            combo,
+            tip,
+            delay=300,
+            position=ToolTipPosition.BOTTOM,
+        )
+
+    def _controller_method_detail_text(self, category: str, method_key: str) -> str:
+        """Localized help for controller capture/input methods (UI source strings are English)."""
+        if not method_key or method_key == "null":
+            return self.tr(
+                "Description: No specific method (Null).\n"
+                + "Speed: Depends on framework fallback.\n"
+                + "Mouse capture: N/A (desktop).\n"
+                + "Compatibility: Framework-defined.\n"
+                + "Admin rights: Usually not required; elevate if the target process runs elevated."
+            )
+
+        if category == "win32_input":
+            return self._controller_method_detail_text_win32_input(method_key)
+        if category == "win32_screencap":
+            return self._controller_method_detail_text_win32_screencap(method_key)
+        if category == "adb_screencap":
+            return self._controller_method_detail_text_adb_screencap(method_key)
+        if category == "adb_input":
+            return self._controller_method_detail_text_adb_input(method_key)
+        return self.tr("(No description for this category.)")
+
+    def _controller_method_detail_text_win32_input(self, k: str) -> str:
+        if k == "Seize":
+            return self.tr(
+                "Description: Injects input on the target window thread; closest to real mouse/keyboard.\n"
+                + "Speed: Fast.\n"
+                + "Mouse capture: Yes (continuous capture of the window input queue).\n"
+                + "Compatibility: High.\n"
+                + "Admin rights: Usually not required; match elevation if the target runs elevated."
+            )
+        if k == "SendMessage":
+            return self.tr(
+                "Description: Synchronously posts window messages via SendMessage.\n"
+                + "Speed: Medium.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: Medium; some games/anti-cheat ignore synthetic messages.\n"
+                + "Admin rights: Often depends on the target process (elevated targets need an elevated client)."
+            )
+        if k == "PostMessage":
+            return self.tr(
+                "Description: Asynchronously posts window messages via PostMessage.\n"
+                + "Speed: Medium.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: Medium; some games/anti-cheat ignore synthetic messages.\n"
+                + "Admin rights: Often depends on the target process (elevated targets need an elevated client)."
+            )
+        if k == "LegacyEvent":
+            return self.tr(
+                "Description: Legacy event-injection path.\n"
+                + "Speed: Medium.\n"
+                + "Mouse capture: Yes.\n"
+                + "Compatibility: Low.\n"
+                + "Admin rights: Usually not required; depends on the target process."
+            )
+        if k == "PostThreadMessage":
+            return self.tr(
+                "Description: Posts messages to the window's owning thread.\n"
+                + "Speed: Medium.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: Low.\n"
+                + "Admin rights: Often depends on the target process."
+            )
+        if k == "SendMessageWithCursorPos":
+            return self.tr(
+                "Description: Briefly moves the cursor to the target point, sends the message, then restores the cursor.\n"
+                + "Speed: Medium.\n"
+                + "Mouse capture: Brief cursor movement.\n"
+                + "Compatibility: Medium.\n"
+                + "Admin rights: Often depends on the target process."
+            )
+        if k == "PostMessageWithCursorPos":
+            return self.tr(
+                "Description: Briefly moves the cursor to the target point, sends the message, then restores the cursor.\n"
+                + "Speed: Medium.\n"
+                + "Mouse capture: Brief cursor movement.\n"
+                + "Compatibility: Medium.\n"
+                + "Admin rights: Often depends on the target process."
+            )
+        if k == "SendMessageWithWindowPos":
+            return self.tr(
+                "Description: Briefly moves the window so the target aligns with the current cursor, sends the message, then restores the window.\n"
+                + "Speed: Medium.\n"
+                + "Mouse capture: No (the window moves, not the cursor).\n"
+                + "Compatibility: Medium; may fail for fullscreen or locked-layout games.\n"
+                + "Admin rights: Often depends on the target process."
+            )
+        if k == "PostMessageWithWindowPos":
+            return self.tr(
+                "Description: Briefly moves the window so the target aligns with the current cursor, sends the message, then restores the window.\n"
+                + "Speed: Medium.\n"
+                + "Mouse capture: No (the window moves, not the cursor).\n"
+                + "Compatibility: Medium; may fail for fullscreen or locked-layout games.\n"
+                + "Admin rights: Often depends on the target process."
+            )
+        return self.tr("(No description for this method.)")
+
+    def _controller_method_detail_text_win32_screencap(self, k: str) -> str:
+        if k == "GDI":
+            return self.tr(
+                "Description: GDI capture of the window client area.\n"
+                + "Speed: Fast.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: Medium.\n"
+                + "Admin rights: Usually not required.\n"
+                + "Background: Often fails while minimized."
+            )
+        if k == "FramePool":
+            return self.tr(
+                "Description: Windows.Graphics.Capture (Windows 10 1903+).\n"
+                + "Speed: Very fast.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: Medium.\n"
+                + "Admin rights: Usually not required.\n"
+                + "Background: Better for pseudo-minimized / quasi-background capture."
+            )
+        if k == "DXGI_DesktopDup":
+            return self.tr(
+                "Description: DXGI desktop duplication (full screen) then crop.\n"
+                + "Speed: Very fast.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: Lower (drivers / multi-GPU sensitive).\n"
+                + "Admin rights: Usually not required.\n"
+                + "Background: Full-screen duplication; not window-exclusive."
+            )
+        if k == "DXGI_DesktopDup_Window":
+            return self.tr(
+                "Description: Desktop duplication cropped to the window region.\n"
+                + "Speed: Very fast.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: Lower.\n"
+                + "Admin rights: Usually not required."
+            )
+        if k == "PrintWindow":
+            return self.tr(
+                "Description: Capture via PrintWindow and related paths.\n"
+                + "Speed: Medium.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: Medium.\n"
+                + "Admin rights: Usually not required.\n"
+                + "Background: Friendlier to pseudo-minimized scenarios."
+            )
+        if k == "ScreenDC":
+            return self.tr(
+                "Description: Screen DC and other compatible paths.\n"
+                + "Speed: Fast.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: High.\n"
+                + "Admin rights: Usually not required.\n"
+                + "Background: Mostly foreground-oriented."
+            )
+        if k == "Foreground":
+            return self.tr(
+                "Description: Foreground preset (DXGI_DesktopDup_Window | ScreenDC).\n"
+                + "Speed: Fast.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: Medium to low.\n"
+                + "Admin rights: Usually not required."
+            )
+        if k == "Background":
+            return self.tr(
+                "Description: Background preset (FramePool | PrintWindow).\n"
+                + "Speed: Fast.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: Medium.\n"
+                + "Admin rights: Usually not required."
+            )
+        if k == "All":
+            return self.tr(
+                "Description: Bitwise OR of all Win32 capture flags.\n"
+                + "Speed: Framework picks the fastest available method.\n"
+                + "Mouse capture: No.\n"
+                + "Compatibility: Varies by combination.\n"
+                + "Admin rights: Usually not required."
+            )
+        return self.tr("(No description for this method.)")
+
+    def _controller_method_detail_text_adb_screencap(self, k: str) -> str:
+        if k == "EncodeToFileAndPull":
+            return self.tr(
+                "Description: Encodes to a file on the device, then adb pull.\n"
+                + "Speed: Slow.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: High.\n"
+                + "Admin rights: Not required on PC; USB debugging authorization on the device.\n"
+                + "Encoding: Lossless."
+            )
+        if k == "Encode":
+            return self.tr(
+                "Description: Encoded stream pulled over the adb pipe.\n"
+                + "Speed: Slow.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: High.\n"
+                + "Admin rights: Not required.\n"
+                + "Encoding: Lossless."
+            )
+        if k == "RawWithGzip":
+            return self.tr(
+                "Description: Raw frames with gzip compression.\n"
+                + "Speed: Medium.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: High.\n"
+                + "Admin rights: Not required.\n"
+                + "Encoding: Lossless."
+            )
+        if k == "RawByNetcat":
+            return self.tr(
+                "Description: Raw frames over netcat.\n"
+                + "Speed: Fast.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: Low (environment-dependent).\n"
+                + "Admin rights: Not required."
+            )
+        if k == "MinicapDirect":
+            return self.tr(
+                "Description: Minicap direct connection.\n"
+                + "Speed: Fast.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: Low.\n"
+                + "Admin rights: Not required.\n"
+                + "Encoding: Lossy JPEG; may hurt template matching — not recommended."
+            )
+        if k == "MinicapStream":
+            return self.tr(
+                "Description: Minicap streaming.\n"
+                + "Speed: Very fast.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: Low.\n"
+                + "Admin rights: Not required.\n"
+                + "Encoding: Lossy JPEG — not recommended."
+            )
+        if k == "EmulatorExtras":
+            return self.tr(
+                "Description: Emulator-specific fast path (e.g. MuMu 12, LDPlayer 9).\n"
+                + "Speed: Very fast.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: Low (specific emulators).\n"
+                + "Admin rights: Not required.\n"
+                + "Encoding: Lossless."
+            )
+        if k == "All":
+            return self.tr(
+                "Description: All ADB capture flags enabled; framework benchmarks and picks one.\n"
+                + "Speed: Fastest available on the device.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: Device-dependent.\n"
+                + "Admin rights: Not required."
+            )
+        if k == "Default":
+            return self.tr(
+                "Description: Framework default flag set (typically excludes netcat and lossy Minicap).\n"
+                + "Speed: Best within the default set.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: Medium to high.\n"
+                + "Admin rights: Not required."
+            )
+        return self.tr("(No description for this method.)")
+
+    def _controller_method_detail_text_adb_input(self, k: str) -> str:
+        if k == "AdbShell":
+            return self.tr(
+                "Description: Standard adb shell input commands.\n"
+                + "Speed: Slow.\n"
+                + "Mouse capture: N/A (injected on the device).\n"
+                + "Compatibility: High.\n"
+                + "Admin rights: Not required."
+            )
+        if k == "MinitouchAndAdbKey":
+            return self.tr(
+                "Description: Minitouch with adb key fallback.\n"
+                + "Speed: Fast.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: Medium.\n"
+                + "Admin rights: Not required."
+            )
+        if k == "Maatouch":
+            return self.tr(
+                "Description: Maatouch protocol for touch injection.\n"
+                + "Speed: Fast.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: Medium.\n"
+                + "Admin rights: Not required."
+            )
+        if k == "EmulatorExtras":
+            return self.tr(
+                "Description: Emulator extras (e.g. MuMu 12).\n"
+                + "Speed: Fast.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: Low (specific emulators).\n"
+                + "Admin rights: Not required."
+            )
+        if k == "All":
+            return self.tr(
+                "Description: All ADB input flags; order EmulatorExtras > Maatouch > MinitouchAndAdbKey > AdbShell.\n"
+                + "Speed: First available wins.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: Device-dependent.\n"
+                + "Admin rights: Not required."
+            )
+        if k == "Default":
+            return self.tr(
+                "Description: Default set with EmulatorExtras disabled; remaining methods by priority.\n"
+                + "Speed: Device-dependent.\n"
+                + "Mouse capture: N/A (device-side).\n"
+                + "Compatibility: Medium to high.\n"
+                + "Admin rights: Not required."
+            )
+        return self.tr("(No description for this method.)")
+
+    def _sync_controller_method_detail_labels(self) -> None:
+        """在填充配置后刷新各「方式说明」在标签与下拉框上的 tooltip。"""
+        specs: list[tuple[str, str, dict[str, Any]]] = [
+            ("mouse_input_methods", "win32_input", self.WIN32_INPUT_METHOD_ALIAS_VALUES),
+            (
+                "keyboard_input_methods",
+                "win32_input",
+                self.WIN32_INPUT_METHOD_ALIAS_VALUES,
+            ),
+            (
+                "win32_screencap_methods",
+                "win32_screencap",
+                self.WIN32_SCREENCAP_METHOD_ALIAS_VALUES,
+            ),
+            ("screencap_methods", "adb_screencap", self.ADB_SCREENCAP_OPTIONS),
+            ("input_methods", "adb_input", self.ADB_INPUT_OPTIONS),
+        ]
+        for combo_key, category, options in specs:
+            combo = self.resource_setting_widgets.get(combo_key)
+            label = self.resource_setting_widgets.get(f"{combo_key}_label")
+            if not isinstance(combo, ComboBox) or not isinstance(label, BodyLabel):
+                continue
+            mk = self._method_key_for_combo_value(options, combo.itemData(combo.currentIndex()))
+            tip = self._controller_method_detail_text(category, mk)
+            self._apply_controller_method_tooltips(label, combo, tip)
 
     def _create_adb_children_option(self):
         """创建ADB子选项"""
@@ -900,6 +1287,7 @@ class ControllerSettingWidget(QWidget):
             "screencap_methods",
             self.ADB_SCREENCAP_OPTIONS,
             self._on_child_option_changed,
+            method_detail_category="adb_screencap",
         )
 
         # 输入方式
@@ -908,6 +1296,7 @@ class ControllerSettingWidget(QWidget):
             "input_methods",
             self.ADB_INPUT_OPTIONS,
             self._on_child_option_changed,
+            method_detail_category="adb_input",
         )
 
         # 特殊配置
@@ -956,6 +1345,7 @@ class ControllerSettingWidget(QWidget):
             "mouse_input_methods",
             self.WIN32_INPUT_METHOD_ALIAS_VALUES,
             self._on_child_option_changed,
+            method_detail_category="win32_input",
         )
         # 键盘输入方式
         self._create_resource_combobox(
@@ -963,6 +1353,7 @@ class ControllerSettingWidget(QWidget):
             "keyboard_input_methods",
             self.WIN32_INPUT_METHOD_ALIAS_VALUES,
             self._on_child_option_changed,
+            method_detail_category="win32_input",
         )
 
         # 截图方式
@@ -971,6 +1362,7 @@ class ControllerSettingWidget(QWidget):
             "win32_screencap_methods",
             self.WIN32_SCREENCAP_METHOD_ALIAS_VALUES,
             self._on_child_option_changed,
+            method_detail_category="win32_screencap",
         )
 
     def _create_gamepad_children_option(self):
@@ -1465,6 +1857,8 @@ class ControllerSettingWidget(QWidget):
             target_index = combo_box.count() - 1
         combo_box.setCurrentIndex(target_index)
         combo_box.blockSignals(False)
+
+        self._sync_controller_method_detail_labels()
 
     def _on_no_device_found(self, controller_type: str) -> None:
         """当未找到任何设备时，通过信号总线弹出 InfoBar 提示"""
