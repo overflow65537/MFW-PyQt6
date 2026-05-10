@@ -26,8 +26,6 @@ import os
 import sys
 import argparse
 import atexit
-import hashlib
-import tempfile
 import traceback
 
 
@@ -37,82 +35,6 @@ if getattr(sys, "frozen", False):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
 else:
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-
-class _SingleInstanceLock:
-    """跨平台进程互斥（同一二进制/脚本只允许一个主进程运行）。
-
-    - Windows: msvcrt.locking(非阻塞)
-    - macOS/Linux: fcntl.flock(非阻塞)
-
-    只要当前进程不退出且文件句柄不关闭，锁就会一直持有；进程崩溃时 OS 会自动释放锁。
-    """
-
-    def __init__(self, lock_key: str):
-        self.lock_key = str(lock_key)
-        self._fp = None
-        self.lock_path = None
-
-    @staticmethod
-    def _make_lock_path(lock_key: str) -> str:
-        # 只做“同一二进制互斥”：用可执行文件绝对路径做 key，避免不同安装目录互相影响。
-        h = hashlib.sha256(lock_key.encode("utf-8")).hexdigest()[:16]
-        filename = f"mfw_single_instance_{h}.lock"
-        return os.path.join(tempfile.gettempdir(), filename)
-
-    def acquire(self) -> bool:
-        if self._fp is not None:
-            return True
-
-        self.lock_path = self._make_lock_path(self.lock_key)
-        os.makedirs(os.path.dirname(self.lock_path), exist_ok=True)
-
-        # a+：文件不存在时创建；不截断
-        self._fp = open(self.lock_path, "a+", encoding="utf-8")
-        self._fp.seek(0)
-
-        try:
-            if os.name == "nt":
-                import msvcrt
-
-                # 确保文件至少 1 字节，否则某些环境下锁定长度可能有坑
-                self._fp.seek(0, os.SEEK_END)
-                if self._fp.tell() == 0:
-                    self._fp.write("0")
-                    self._fp.flush()
-                self._fp.seek(0)
-                msvcrt.locking(self._fp.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-
-                fcntl.flock(self._fp.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return True
-        except Exception:
-            try:
-                self._fp.close()
-            except Exception:
-                pass
-            self._fp = None
-            return False
-
-    def release(self) -> None:
-        if self._fp is None:
-            return
-        try:
-            if os.name == "nt":
-                import msvcrt
-
-                self._fp.seek(0)
-                msvcrt.locking(self._fp.fileno(), msvcrt.LK_UNLCK, 1)
-            else:
-                import fcntl
-
-                fcntl.flock(self._fp.fileno(), fcntl.LOCK_UN)
-        finally:
-            try:
-                self._fp.close()
-            finally:
-                self._fp = None
 
 
 def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:
@@ -141,13 +63,16 @@ def _run() -> int:
     from app.common.theme_manager import apply_theme_from_config
     from app.utils.crypto import crypto_manager
     from app.utils.logger import logger
+    from app.utils.single_instance import SingleInstanceGuard
 
 
-    _instance_key = os.path.abspath(
+    instance_key = os.path.abspath(
         sys.executable if getattr(sys, "frozen", False) else __file__
     )
-    _single_instance = _SingleInstanceLock(_instance_key)
-    if not _single_instance.acquire():
+    single_instance = SingleInstanceGuard(instance_key)
+    if not single_instance.acquire():
+        if single_instance.notify_existing_instance():
+            return 0
         try:
             # 使用通用弹窗提示
             from app.utils.startup_dialog import show_instance_running_dialog
@@ -156,9 +81,9 @@ def _run() -> int:
         except Exception:
             # 兜底：控制台环境
             print("程序已经在运行中，请先关闭已打开的实例后再启动。", file=sys.stderr)
-            sys.exit(0)
+        return 0
 
-    atexit.register(_single_instance.release)
+    atexit.register(single_instance.release)
 
     logger.info(f"MFW 版本:{__version__}")
     logger.info(f"当前工作目录: {os.getcwd()}")
@@ -217,6 +142,45 @@ def _run() -> int:
     app = QApplication(qt_argv)
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
     apply_theme_from_config()
+
+    if single_instance.start_activation_server(app):
+        atexit.register(single_instance.stop_activation_server)
+    else:
+        logger.warning("单实例激活服务启动失败，重复启动时将无法自动前置已有窗口")
+
+    window_holder = {"window": None}
+
+    def _activate_existing_window() -> bool:
+        window = window_holder["window"]
+        if window is None:
+            return False
+
+        if not window.isVisible():
+            window.show()
+        if window.windowState() & Qt.WindowState.WindowMinimized:
+            window.showNormal()
+
+        window.raise_()
+        window.activateWindow()
+
+        if os.name == "nt":
+            try:
+                import ctypes
+
+                user32 = ctypes.windll.user32
+                hwnd = int(window.winId())
+                if user32.IsIconic(hwnd):
+                    user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                else:
+                    user32.ShowWindow(hwnd, 5)  # SW_SHOW
+                return bool(user32.SetForegroundWindow(hwnd))
+            except Exception:
+                logger.debug("Windows 前置已有实例失败", exc_info=True)
+                return False
+
+        return True
+
+    single_instance.set_activation_callback(_activate_existing_window)
 
     # 国际化配置
     locale = cfg.get(cfg.language)
@@ -311,6 +275,7 @@ def _run() -> int:
         switch_config_id=args.config_id,
         force_enable_test=args.enable_dev,
     )
+    window_holder["window"] = w
     w.show()
 
     # 连接应用退出信号到事件循环停止
