@@ -2579,7 +2579,8 @@ class SettingInterface(QWidget):
         - 仅依赖 update/new_version/update_metadata.json 判断是否存在可用更新
         - 不再区分热更新 / 全量更新，本地包一律视为需重启安装
         - 如果元数据中声明的包文件不存在，则删除元数据
-        - 如果 attempts > 3，则通过 InfoBar 提示并删除更新包与元数据
+        - 如果 attempts >= 2，则通过 InfoBar 提示并删除更新包与元数据（更新器已启动过或失败后
+          元数据仍为 ≥2 时，主界面刷新即清理以强制重新下载）
         """
         target_dir = Path.cwd() / "update" / "new_version"
         metadata_path = target_dir / "update_metadata.json"
@@ -2606,8 +2607,9 @@ class SettingInterface(QWidget):
         package_name = metadata.get("package_name") or "update.zip"
         package_path = target_dir / package_name
 
-        # 如果尝试次数过多，提示并清理
-        if attempts > 3:
+        # 与 updater 一致：进入更新器会先自增 attempts，失败路径会删包；若进程异常退出
+        # 可能残留 attempts>=2，此处刷新即清理。
+        if attempts >= 2:
             logger.warning(
                 "本地更新尝试次数超过限制(%s)，清理更新包与元数据: %s",
                 attempts,

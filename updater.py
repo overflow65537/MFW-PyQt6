@@ -504,7 +504,6 @@ def extract_zip_file_with_validation(update_file_path):
             time.sleep(1)
         update_logger.error(error_msg)
         cleanup_update_artifacts(update_file_path)
-        start_mfw_process()
         return False
     finally:
         shutil.rmtree(extract_dir, ignore_errors=True)
@@ -884,14 +883,6 @@ def _copy_temp_to_root(temp_dir: Path, *, verbose: bool = False):
                 print(f"✓ 已复制: {dest_file}")
 
 
-def _increment_attempts(metadata: dict, metadata_path: str):
-    metadata["attempts"] = metadata.get("attempts", 0) + 1
-    try:
-        save_update_metadata(metadata_path, metadata)
-    except Exception as exc:
-        update_logger.error(f"更新尝试次数记录失败: {exc}")
-
-
 def _handle_full_update_failure(
     package_path: str,
     metadata_path: str,
@@ -901,8 +892,7 @@ def _handle_full_update_failure(
     if backups:
         _cleanup_root_except(FULL_UPDATE_EXCLUDES)
         _restore_from_backup(backups)
-    _increment_attempts(metadata, metadata_path)
-    start_mfw_process()
+    # 不在此启动主程序或改写 attempts；由 standard_update 失败分支统一删包并重启
 
 
 def perform_full_update(package_path: str, metadata_path: str, metadata: dict) -> bool:
@@ -1681,8 +1671,8 @@ def standard_update():
         sys.exit(0)
 
     attempts = metadata.get("attempts", 0) if metadata else 0
-    if metadata and attempts > 3:
-        update_logger.warning("更新尝试次数已大于3次，清理更新包与元数据")
+    if metadata and attempts > 2:
+        update_logger.warning("更新尝试次数已超过限制，清理更新包与元数据")
         if package_path and os.path.exists(package_path):
             os.remove(package_path)
         if os.path.exists(metadata_path):
@@ -1736,7 +1726,21 @@ def standard_update():
         update_logger.error("更新文件处理失败")
         error_message = "更新文件处理失败"
         update_logger.error(error_message)
-        sys.exit(error_message)
+        # 失败后立即删除本地更新包与元数据，主程序下次刷新即可重新下载（无需再次打开更新器）
+        try:
+            if package_path and os.path.isfile(package_path):
+                cleanup_update_artifacts(package_path, metadata_path)
+            elif os.path.exists(metadata_path):
+                try:
+                    os.remove(metadata_path)
+                    update_logger.info("已删除更新元数据: %s", metadata_path)
+                except OSError as exc:
+                    update_logger.error("删除更新元数据失败: %s -> %s", metadata_path, exc)
+        except Exception as exc:
+            update_logger.error("失败后清理更新包异常: %s", exc)
+        print("重启MFW程序...")
+        start_mfw_process()
+        sys.exit(0)
 
     # 重启程序
     print("重启MFW程序...")
@@ -1766,6 +1770,7 @@ def recovery_mode():
         else:
             error_message = "恢复更新失败"
             update_logger.error(error_message)
+            start_mfw_process()
             sys.exit(error_message)
     else:
         print("未找到恢复更新文件")
