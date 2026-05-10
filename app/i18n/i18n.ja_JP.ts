@@ -844,146 +844,599 @@ The following configurations using this bundle will also be deleted:
     <context>
         <name>ControllerSettingWidget</name>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="670" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="671" />
             <source>Controller Type</source>
             <translation>コントローラータイプ</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="671" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="672" />
             <source>this controller requires admin permission to run</source>
             <translation>このコントローラーは管理者権限が必要です</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="727" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="728" />
             <source>Search Device</source>
             <translation>デバイス検索</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="741" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="742" />
             <source>Agent Timeout</source>
             <translation>エージェントタイムアウト</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="745" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="746" />
             <source>-1 means infinite</source>
             <translation>-1は無制限を意味します</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="762" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="763" />
             <source>Custom Module Path</source>
             <translation>カスタムモジュールパス</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="771" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="772" />
             <source>GPU Acceleration</source>
             <translation>GPUアクセラレーション</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="791" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="792" />
             <source>Auto</source>
             <translation>自動</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="792" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="793" />
             <source>CPU</source>
             <translation>CPU</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="861" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="914" />
+            <source>Description: No specific method (Null).
+Speed: Depends on framework fallback.
+Mouse capture: N/A (desktop).
+Compatibility: Framework-defined.
+Admin rights: Usually not required; elevate if the target process runs elevated.</source>
+            <translation>説明: 特定のメソッドなし（Null）。
+速度: フレームワークのフォールバックに依存。
+マウスキャプチャ: なし（デスクトップ）。
+互換性: フレームワーク定義。
+管理者権限: 通常不要。対象プロセスが昇格している場合は昇格が必要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="929" />
+            <source>(No description for this category.)</source>
+            <translation>（このカテゴリの説明はありません。）</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="934" />
+            <source>Description: Injects input on the target window thread; closest to real mouse/keyboard.
+Speed: Fast.
+Mouse capture: Yes (continuous capture of the window input queue).
+Compatibility: High.
+Admin rights: Usually not required; match elevation if the target runs elevated.</source>
+            <translation>説明: 対象ウィンドウのスレッドに入力を注入。実際のマウス/キーボードに最も近い。
+速度: 高速。
+マウスキャプチャ: あり（ウィンドウ入力キューの継続的キャプチャ）。
+互換性: 高。
+管理者権限: 通常不要。対象が昇格している場合は昇格を合わせる。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="942" />
+            <source>Description: Synchronously posts window messages via SendMessage.
+Speed: Medium.
+Mouse capture: No.
+Compatibility: Medium; some games/anti-cheat ignore synthetic messages.
+Admin rights: Often depends on the target process (elevated targets need an elevated client).</source>
+            <translation>説明: SendMessage でウィンドウメッセージを同期的に送信。
+速度: 中。
+マウスキャプチャ: なし。
+互換性: 中。一部のゲーム/アンチチートは合成メッセージを無視。
+管理者権限: 対象プロセスに依存（昇格対象には昇格クライアントが必要）。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="950" />
+            <source>Description: Asynchronously posts window messages via PostMessage.
+Speed: Medium.
+Mouse capture: No.
+Compatibility: Medium; some games/anti-cheat ignore synthetic messages.
+Admin rights: Often depends on the target process (elevated targets need an elevated client).</source>
+            <translation>説明: PostMessage でウィンドウメッセージを非同期的に送信。
+速度: 中。
+マウスキャプチャ: なし。
+互換性: 中。一部のゲーム/アンチチートは合成メッセージを無視。
+管理者権限: 対象プロセスに依存（昇格対象には昇格クライアントが必要）。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="958" />
+            <source>Description: Legacy event-injection path.
+Speed: Medium.
+Mouse capture: Yes.
+Compatibility: Low.
+Admin rights: Usually not required; depends on the target process.</source>
+            <translation>説明: レガシーイベント注入パス。
+速度: 中。
+マウスキャプチャ: あり。
+互換性: 低。
+管理者権限: 通常不要。対象プロセスに依存。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="966" />
+            <source>Description: Posts messages to the window's owning thread.
+Speed: Medium.
+Mouse capture: No.
+Compatibility: Low.
+Admin rights: Often depends on the target process.</source>
+            <translation>説明: ウィンドウを所有するスレッドにメッセージを送信。
+速度: 中。
+マウスキャプチャ: なし。
+互換性: 低。
+管理者権限: 対象プロセスに依存。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="974" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="982" />
+            <source>Description: Briefly moves the cursor to the target point, sends the message, then restores the cursor.
+Speed: Medium.
+Mouse capture: Brief cursor movement.
+Compatibility: Medium.
+Admin rights: Often depends on the target process.</source>
+            <translation>説明: カーソルを対象点に一時移動、メッセージ送信後、カーソルを復元。
+速度: 中。
+マウスキャプチャ: 一時的なカーソル移動。
+互換性: 中。
+管理者権限: 対象プロセスに依存。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="990" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="998" />
+            <source>Description: Briefly moves the window so the target aligns with the current cursor, sends the message, then restores the window.
+Speed: Medium.
+Mouse capture: No (the window moves, not the cursor).
+Compatibility: Medium; may fail for fullscreen or locked-layout games.
+Admin rights: Often depends on the target process.</source>
+            <translation>説明: ウィンドウを一時移動して対象を現在のカーソルに合わせ、メッセージ送信後、ウィンドウを復元。
+速度: 中。
+マウスキャプチャ: なし（カーソルではなくウィンドウが移動）。
+互換性: 中。フルスクリーンやレイアウト固定のゲームでは失敗する可能性あり。
+管理者権限: 対象プロセスに依存。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1004" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1084" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1165" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1216" />
+            <source>(No description for this method.)</source>
+            <translation>（このメソッドの説明はありません。）</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1009" />
+            <source>Description: GDI capture of the window client area.
+Speed: Fast.
+Mouse capture: No.
+Compatibility: Medium.
+Admin rights: Usually not required.
+Background: Often fails while minimized.</source>
+            <translation>説明: GDI によるウィンドウクライアント領域のキャプチャ。
+速度: 高速。
+マウスキャプチャ: なし。
+互換性: 中。
+管理者権限: 通常不要。
+背景: 最小化中は失敗することが多い。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1018" />
+            <source>Description: Windows.Graphics.Capture (Windows 10 1903+).
+Speed: Very fast.
+Mouse capture: No.
+Compatibility: Medium.
+Admin rights: Usually not required.
+Background: Better for pseudo-minimized / quasi-background capture.</source>
+            <translation>説明: Windows.Graphics.Capture（Windows 10 1903+）。
+速度: 非常に高速。
+マウスキャプチャ: なし。
+互換性: 中。
+管理者権限: 通常不要。
+背景: 擬似最小化/準バックグラウンドキャプチャに適している。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1027" />
+            <source>Description: DXGI desktop duplication (full screen) then crop.
+Speed: Very fast.
+Mouse capture: No.
+Compatibility: Lower (drivers / multi-GPU sensitive).
+Admin rights: Usually not required.
+Background: Full-screen duplication; not window-exclusive.</source>
+            <translation>説明: DXGI デスクトップ複製（全画面）をクロップ。
+速度: 非常に高速。
+マウスキャプチャ: なし。
+互換性: 低め（ドライバー/マルチGPUに敏感）。
+管理者権限: 通常不要。
+背景: 全画面複製。ウィンドウ限定ではない。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1036" />
+            <source>Description: Desktop duplication cropped to the window region.
+Speed: Very fast.
+Mouse capture: No.
+Compatibility: Lower.
+Admin rights: Usually not required.</source>
+            <translation>説明: デスクトップ複製をウィンドウ領域にクロップ。
+速度: 非常に高速。
+マウスキャプチャ: なし。
+互換性: 低め。
+管理者権限: 通常不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1044" />
+            <source>Description: Capture via PrintWindow and related paths.
+Speed: Medium.
+Mouse capture: No.
+Compatibility: Medium.
+Admin rights: Usually not required.
+Background: Friendlier to pseudo-minimized scenarios.</source>
+            <translation>説明: PrintWindow および関連パスによるキャプチャ。
+速度: 中。
+マウスキャプチャ: なし。
+互換性: 中。
+管理者権限: 通常不要。
+背景: 擬似最小化シナリオに適している。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1053" />
+            <source>Description: Screen DC and other compatible paths.
+Speed: Fast.
+Mouse capture: No.
+Compatibility: High.
+Admin rights: Usually not required.
+Background: Mostly foreground-oriented.</source>
+            <translation>説明: Screen DC およびその他の互換パス。
+速度: 高速。
+マウスキャプチャ: なし。
+互換性: 高。
+管理者権限: 通常不要。
+背景: 主にフォアグラウンド向け。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1062" />
+            <source>Description: Foreground preset (DXGI_DesktopDup_Window | ScreenDC).
+Speed: Fast.
+Mouse capture: No.
+Compatibility: Medium to low.
+Admin rights: Usually not required.</source>
+            <translation>説明: フォアグラウンドプリセット（DXGI_DesktopDup_Window | ScreenDC）。
+速度: 高速。
+マウスキャプチャ: なし。
+互換性: 中～低。
+管理者権限: 通常不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1070" />
+            <source>Description: Background preset (FramePool | PrintWindow).
+Speed: Fast.
+Mouse capture: No.
+Compatibility: Medium.
+Admin rights: Usually not required.</source>
+            <translation>説明: バックグラウンドプリセット（FramePool | PrintWindow）。
+速度: 高速。
+マウスキャプチャ: なし。
+互換性: 中。
+管理者権限: 通常不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1078" />
+            <source>Description: Bitwise OR of all Win32 capture flags.
+Speed: Framework picks the fastest available method.
+Mouse capture: No.
+Compatibility: Varies by combination.
+Admin rights: Usually not required.</source>
+            <translation>説明: すべての Win32 キャプチャフラグのビット単位 OR。
+速度: フレームワークが利用可能な最速メソッドを選択。
+マウスキャプチャ: なし。
+互換性: 組み合わせにより異なる。
+管理者権限: 通常不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1089" />
+            <source>Description: Encodes to a file on the device, then adb pull.
+Speed: Slow.
+Mouse capture: N/A (device-side).
+Compatibility: High.
+Admin rights: Not required on PC; USB debugging authorization on the device.
+Encoding: Lossless.</source>
+            <translation>説明: デバイス上のファイルにエンコード後、adb pull。
+速度: 低速。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 高。
+管理者権限: PCでは不要。デバイスでUSBデバッグ認証が必要。
+エンコード: ロスレス。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1098" />
+            <source>Description: Encoded stream pulled over the adb pipe.
+Speed: Slow.
+Mouse capture: N/A (device-side).
+Compatibility: High.
+Admin rights: Not required.
+Encoding: Lossless.</source>
+            <translation>説明: adb パイプ経由でエンコードストリームを取得。
+速度: 低速。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 高。
+管理者権限: 不要。
+エンコード: ロスレス。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1107" />
+            <source>Description: Raw frames with gzip compression.
+Speed: Medium.
+Mouse capture: N/A (device-side).
+Compatibility: High.
+Admin rights: Not required.
+Encoding: Lossless.</source>
+            <translation>説明: gzip 圧縮の生フレーム。
+速度: 中。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 高。
+管理者権限: 不要。
+エンコード: ロスレス。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1116" />
+            <source>Description: Raw frames over netcat.
+Speed: Fast.
+Mouse capture: N/A (device-side).
+Compatibility: Low (environment-dependent).
+Admin rights: Not required.</source>
+            <translation>説明: netcat 経由の生フレーム。
+速度: 高速。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 低（環境依存）。
+管理者権限: 不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1124" />
+            <source>Description: Minicap direct connection.
+Speed: Fast.
+Mouse capture: N/A (device-side).
+Compatibility: Low.
+Admin rights: Not required.
+Encoding: Lossy JPEG; may hurt template matching — not recommended.</source>
+            <translation>説明: Minicap 直接接続。
+速度: 高速。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 低。
+管理者権限: 不要。
+エンコード: 非可逆JPEG。テンプレートマッチングに悪影響を与える可能性があるため非推奨。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1133" />
+            <source>Description: Minicap streaming.
+Speed: Very fast.
+Mouse capture: N/A (device-side).
+Compatibility: Low.
+Admin rights: Not required.
+Encoding: Lossy JPEG — not recommended.</source>
+            <translation>説明: Minicap ストリーミング。
+速度: 非常に高速。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 低。
+管理者権限: 不要。
+エンコード: 非可逆JPEG。非推奨。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1142" />
+            <source>Description: Emulator-specific fast path (e.g. MuMu 12, LDPlayer 9).
+Speed: Very fast.
+Mouse capture: N/A (device-side).
+Compatibility: Low (specific emulators).
+Admin rights: Not required.
+Encoding: Lossless.</source>
+            <translation>説明: エミュレータ固有の高速パス（例: MuMu 12、LDPlayer 9）。
+速度: 非常に高速。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 低（特定エミュレータ）。
+管理者権限: 不要。
+エンコード: ロスレス。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1151" />
+            <source>Description: All ADB capture flags enabled; framework benchmarks and picks one.
+Speed: Fastest available on the device.
+Mouse capture: N/A (device-side).
+Compatibility: Device-dependent.
+Admin rights: Not required.</source>
+            <translation>説明: すべての ADB キャプチャフラグを有効化。フレームワークがベンチマークし、一つを選択。
+速度: デバイスで利用可能な最速。
+マウスキャプチャ: なし（デバイス側）。
+互換性: デバイス依存。
+管理者権限: 不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1159" />
+            <source>Description: Framework default flag set (typically excludes netcat and lossy Minicap).
+Speed: Best within the default set.
+Mouse capture: N/A (device-side).
+Compatibility: Medium to high.
+Admin rights: Not required.</source>
+            <translation>説明: フレームワークのデフォルトフラグセット（通常 netcat と非可逆 Minicap を除外）。
+速度: デフォルトセット内で最良。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 中～高。
+管理者権限: 不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1170" />
+            <source>Description: Standard adb shell input commands.
+Speed: Slow.
+Mouse capture: N/A (injected on the device).
+Compatibility: High.
+Admin rights: Not required.</source>
+            <translation>説明: 標準の adb shell input コマンド。
+速度: 低速。
+マウスキャプチャ: なし（デバイスに注入）。
+互換性: 高。
+管理者権限: 不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1178" />
+            <source>Description: Minitouch with adb key fallback.
+Speed: Fast.
+Mouse capture: N/A (device-side).
+Compatibility: Medium.
+Admin rights: Not required.</source>
+            <translation>説明: Minitouch + adb key フォールバック。
+速度: 高速。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 中。
+管理者権限: 不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1186" />
+            <source>Description: Maatouch protocol for touch injection.
+Speed: Fast.
+Mouse capture: N/A (device-side).
+Compatibility: Medium.
+Admin rights: Not required.</source>
+            <translation>説明: タッチ注入用 Maatouch プロトコル。
+速度: 高速。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 中。
+管理者権限: 不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1194" />
+            <source>Description: Emulator extras (e.g. MuMu 12).
+Speed: Fast.
+Mouse capture: N/A (device-side).
+Compatibility: Low (specific emulators).
+Admin rights: Not required.</source>
+            <translation>説明: エミュレータ拡張（例: MuMu 12）。
+速度: 高速。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 低（特定エミュレータ）。
+管理者権限: 不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1202" />
+            <source>Description: All ADB input flags; order EmulatorExtras &gt; Maatouch &gt; MinitouchAndAdbKey &gt; AdbShell.
+Speed: First available wins.
+Mouse capture: N/A (device-side).
+Compatibility: Device-dependent.
+Admin rights: Not required.</source>
+            <translation>説明: すべての ADB 入力フラグ。優先順位: EmulatorExtras &gt; Maatouch &gt; MinitouchAndAdbKey &gt; AdbShell。
+速度: 最初に利用可能なものが使用される。
+マウスキャプチャ: なし（デバイス側）。
+互換性: デバイス依存。
+管理者権限: 不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1210" />
+            <source>Description: Default set with EmulatorExtras disabled; remaining methods by priority.
+Speed: Device-dependent.
+Mouse capture: N/A (device-side).
+Compatibility: Medium to high.
+Admin rights: Not required.</source>
+            <translation>説明: EmulatorExtras を無効にしたデフォルトセット。残りのメソッドを優先順位で使用。
+速度: デバイス依存。
+マウスキャプチャ: なし（デバイス側）。
+互換性: 中～高。
+管理者権限: 不要。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1248" />
             <source>ADB Path</source>
             <translation>ADBパス</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="868" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1255" />
             <source>ADB Address</source>
             <translation>ADBアドレス</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="874" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1261" />
             <source>Emulator Path</source>
             <translation>エミュレーターパス</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="881" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1268" />
             <source>Emulator Params</source>
             <translation>エミュレーターパラメータ</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="887" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1274" />
             <source>Wait for Emulator StartUp Time</source>
             <translation>エミュレーター起動待機時間</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="899" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="970" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1286" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1361" />
             <source>Screencap Method</source>
             <translation>スクリーンキャプチャ方法</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="907" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1295" />
             <source>Input Method</source>
             <translation>入力方法</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="915" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1304" />
             <source>Special Config</source>
             <translation>特別設定</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="930" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="986" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1319" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1378" />
             <source>Program Path</source>
             <translation>プログラムパス</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="937" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="993" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1326" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1385" />
             <source>Program Params</source>
             <translation>プログラムパラメータ</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="943" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="999" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1332" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1391" />
             <source>Wait for Launch Time</source>
             <translation>起動待機時間</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="955" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1344" />
             <source>Mouse Input Method</source>
             <translation>マウス入力方法</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="962" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1352" />
             <source>Keyboard Input Method</source>
             <translation>キーボード入力方法</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1010" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1402" />
             <source>Gamepad Type</source>
             <translation>ゲームパッドタイプ</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1020" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1412" />
             <source>Address</source>
             <translation>アドレス</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1417" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1809" />
             <source>Unknown Device</source>
             <translation>不明なデバイス</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1484" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1878" />
             <source>No ADB devices were found. Please check emulator or device connection.</source>
             <translation>ADBデバイスが見つかりませんでした。エミュレーターまたはデバイスの接続を確認してください。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1488" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1882" />
             <source>No desktop windows were found that match the filter.</source>
             <translation>フィルターに一致するデスクトップウィンドウが見つかりませんでした。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1491" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1885" />
             <source>No devices were found for current controller type.</source>
             <translation>現在のコントローラータイプに対応するデバイスが見つかりませんでした。</translation>
         </message>
@@ -3303,7 +3756,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="2226" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2957" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2959" />
             <source>Cancel</source>
             <translation>キャンセル</translation>
         </message>
@@ -3319,70 +3772,70 @@ Please check for updates first, or visit the GitHub releases page.</source>
             <translation>設定は再起動後に有効になります</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2622" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2624" />
             <source>Update failed too many times, local update package has been cleared.</source>
             <translation>更新失敗が多すぎるため、ローカルの更新パッケージがクリアされました。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2698" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2741" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2791" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2835" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2700" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2743" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2793" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2837" />
             <source>Stop update</source>
             <translation>更新を停止</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2762" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2764" />
             <source>New version available: </source>
             <translation>新しいバージョンが利用可能：</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2823" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2825" />
             <source>Update is already running</source>
             <translation>更新は既に実行中です</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2829" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2831" />
             <source>Service is not ready, cannot reset resource</source>
             <translation>サービスが準備できていないため、リソースをリセットできません</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2838" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2840" />
             <source>Starting Reset Resource</source>
             <translation>リソースリセットを開始中</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2939" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2941" />
             <source>Update package not found, please try updating again.</source>
             <translation>更新パッケージが見つかりません。再度更新をお試しください。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2956" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2958" />
             <source>Update now</source>
             <translation>今すぐ更新</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2960" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2962" />
             <source>Restart required to update</source>
             <translation>更新には再起動が必要です</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2962" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2964" />
             <source>Update package detected</source>
             <translation>更新パッケージを検出しました</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2965" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2967" />
             <source>Hot update is unavailable. A restart update is required. Proceed?</source>
             <translation>ホットアップデートは利用できません。再起動によるアップデートが必要です。実行しますか？</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2968" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2970" />
             <source>Found a downloaded update package. Do you want to launch the updater now?</source>
             <translation>ダウンロード済みのアップデートパッケージが見つかりました。アップデータを今すぐ起動しますか？</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2991" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2993" />
             <source>Auto updating in %1 s</source>
             <translation>%1 秒後に自動アップデート</translation>
         </message>
