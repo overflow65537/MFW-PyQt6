@@ -431,7 +431,9 @@ class MainWindow(MSFluentWindow):
         else:
             logger.info("多资源适配已开启，Announcement 不会显示在导航栏")
 
-        self._switch_to_interface(self.DashboardInterface)
+        self._switch_to_interface(
+            self._resolve_startup_interface() or self.DashboardInterface
+        )
 
         # 添加导航项
         self.splashScreen.finish()
@@ -730,6 +732,41 @@ class MainWindow(MSFluentWindow):
         self.show()
         self._init_background_layer()
         QApplication.processEvents()
+
+    def _startup_page_interface_map(self) -> dict[str, QWidget | None]:
+        """启动页 key 到对应界面的映射（不含 Bundle/Announcement）。"""
+        return {
+            "home": getattr(self, "DashboardInterface", None),
+            "task": getattr(self, "TaskInterface", None),
+            "monitor": getattr(self, "MonitorInterface", None),
+            "schedule": getattr(self, "ScheduleInterface", None),
+            "setting": getattr(self, "SettingInterface", None),
+        }
+
+    def _resolve_startup_interface(self) -> QWidget | None:
+        """根据 cfg.startup_page 选择启动后默认展示的页面。"""
+        page_key = str(cfg.get(cfg.startup_page) or "home")
+        if page_key == "last":
+            page_key = str(cfg.get(cfg.last_active_page) or "home")
+
+        mapping = self._startup_page_interface_map()
+        interface = mapping.get(page_key)
+        if interface is None:
+            return mapping.get("home")
+        return interface
+
+    def _save_last_active_page(self) -> None:
+        """记录当前所在页面，供下次以 startup_page=last 启动时恢复。"""
+        try:
+            current = self.stackedWidget.currentWidget()
+            if current is None:
+                return
+            for key, widget in self._startup_page_interface_map().items():
+                if widget is not None and widget is current:
+                    cfg.set(cfg.last_active_page, key)
+                    return
+        except Exception as exc:
+            logger.debug("保存上次页面失败（已忽略）: %s", exc)
 
     def _switch_to_interface(self, interface: QWidget | None) -> None:
         if interface is None:
@@ -2757,11 +2794,13 @@ class MainWindow(MSFluentWindow):
         if not self._allow_window_close and self._is_task_shutdown_pending():
             e.ignore()
             self._save_window_geometry_if_needed()
+            self._save_last_active_page()
             self._show_shutdown_overlay()
             QTimer.singleShot(50, self._continue_close_after_task_shutdown)
             return
 
         self._save_window_geometry_if_needed()
+        self._save_last_active_page()
 
         # 清理托盘图标，避免 Windows 托盘残影
         self._dispose_tray_icon()

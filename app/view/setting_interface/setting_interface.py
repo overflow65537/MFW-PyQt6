@@ -830,9 +830,25 @@ class SettingInterface(QWidget):
         if not sys.platform.startswith("win32"):
             # Windows 专属功能：其它平台禁用
             self.minimize_to_tray_card.setEnabled(False)
+        self.startup_page_card = ComboBoxSettingCard(
+            cfg.startup_page,
+            FIF.HOME,
+            self.tr("Initial Page"),
+            self.tr("Choose which page to show after launch"),
+            texts=[
+                self.tr("Last visited"),
+                self.tr("Home"),
+                self.tr("Task"),
+                self.tr("Monitor"),
+                self.tr("Schedule"),
+                self.tr("Setting"),
+            ],
+            parent=self.start_Setting,
+        )
         self.start_Setting.addSettingCard(self.run_after_startup)
         self.start_Setting.addSettingCard(self.auto_minimize_card)
         self.start_Setting.addSettingCard(self.minimize_to_tray_card)
+        self.start_Setting.addSettingCard(self.startup_page_card)
         self.add_setting_group(self.start_Setting)
 
     def initialize_personalization_settings(self):

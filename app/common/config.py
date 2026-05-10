@@ -277,6 +277,15 @@ class Config(QConfig):
     )
     last_window_geometry = ConfigItem("MainWindow", "LastWindowGeometry", "")
 
+    # 启动后默认展示的页面：last 表示恢复上次退出时所在页面
+    startup_page = OptionsConfigItem(
+        "MainWindow",
+        "startup_page",
+        "home",
+        OptionsValidator(["last", "home", "task", "monitor", "schedule", "setting"]),
+    )
+    last_active_page = ConfigItem("MainWindow", "last_active_page", "home")
+
     start_task_shortcut = ConfigItem("Shortcuts", "start_task_shortcut", "Ctrl+F1")
     stop_task_shortcut = ConfigItem("Shortcuts", "stop_task_shortcut", "Alt+F1")
 
