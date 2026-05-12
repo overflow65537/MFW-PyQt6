@@ -5,11 +5,14 @@ from typing import Any
 from qfluentwidgets import setTheme, setThemeColor
 
 from app.common.config import cfg
+from app.common.fluent_borderless_patch import install_borderless_fluent_styles
 from app.utils.logger import logger
 
 
 def apply_theme_from_config() -> None:
     """根据当前配置应用 qfluentwidgets 全局主题与主题色。"""
+    install_borderless_fluent_styles()
+
     theme_mode = cfg.get(cfg.themeMode)
     if theme_mode:
         try:
