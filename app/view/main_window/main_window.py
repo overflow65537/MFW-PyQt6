@@ -103,6 +103,7 @@ from app.view.setting_interface.setting_interface import (
 from app.view.test_interface.test_interface import TestInterface
 from app.view.bundle_interface.bundle_interface import BundleInterface
 from app.common.config import cfg
+from app.common.constants import _CONTROLLER_
 from app.common.signal_bus import signalBus
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
@@ -274,6 +275,7 @@ class MainWindow(MSFluentWindow):
         self._background_pixmap_original = None
         self._background_opacity_effect = None
         self._tutorial_overlay = None
+        self._controller_hint_overlay = None
         self._shutdown_overlay = None
         self._shutdown_indicator = None
         self._shutdown_label = None
@@ -1182,6 +1184,9 @@ class MainWindow(MSFluentWindow):
         signalBus.focus_dialog.connect(self._on_focus_dialog)
         signalBus.focus_modal.connect(self._on_focus_modal)
         signalBus.task_flow_finished.connect(self._on_task_flow_finished)
+        signalBus.controller_setup_hint_requested.connect(
+            self._on_controller_setup_hint_requested
+        )
         # 多资源适配启用后，将 BundleInterface 添加到导航栏
         signalBus.multi_resource_adaptation_enabled.connect(
             self._on_multi_resource_adaptation_enabled
@@ -1194,6 +1199,83 @@ class MainWindow(MSFluentWindow):
             return
         self._task_page_auto_switch_handled = True
         self._switch_to_interface(self.TaskInterface)
+
+    def _resolve_controller_task_row_widget(self) -> QWidget | None:
+        """任务列表中「控制器」所在行，用于遮罩框选。"""
+        task_interface = getattr(self, "TaskInterface", None)
+        task_list = getattr(getattr(task_interface, "task_info", None), "task_list", None)
+        if not task_list:
+            return None
+        for i in range(task_list.count()):
+            li = task_list.item(i)
+            widget = task_list.itemWidget(li)
+            row_item = getattr(widget, "item", None)
+            if (
+                widget is not None
+                and row_item is not None
+                and getattr(row_item, "item_id", None) == _CONTROLLER_
+            ):
+                return widget
+        return None
+
+    def _dismiss_controller_hint_overlay(self) -> None:
+        overlay = getattr(self, "_controller_hint_overlay", None)
+        if overlay is None:
+            return
+        try:
+            overlay.closed.disconnect(self._on_controller_hint_overlay_closed)
+        except TypeError:
+            pass
+        overlay.close()
+        self._controller_hint_overlay = None
+
+    def _on_controller_hint_overlay_closed(self) -> None:
+        self._controller_hint_overlay = None
+
+    def _controller_setup_hint_message(self, hint: str) -> str:
+        if hint == "adb_path":
+            return self.tr(
+                "ADB path is not set. Tap Controller here and fill in the ADB executable path (usually next to your emulator)."
+            )
+        if hint == "address":
+            return self.tr(
+                "ADB address is empty. Start the emulator so a device appears, or tap Controller here to pick a connection address."
+            )
+        if hint == "port":
+            return self.tr(
+                "ADB port is missing in the address. Use host:port (for example 127.0.0.1:5555), or tap Controller here to change settings."
+            )
+        return self.tr(
+            "Controller ADB settings are incomplete. Tap here to open the controller and fix path / address / port."
+        )
+
+    def _on_controller_setup_hint_requested(self, hint: str) -> None:
+        """ADB 路径或地址/端口未就绪时，复用首次引导同款遮罩指向控制器。"""
+        self._switch_to_interface(self.TaskInterface)
+
+        def _present_overlay() -> None:
+            task_interface = getattr(self, "TaskInterface", None)
+            task_list = getattr(getattr(task_interface, "task_info", None), "task_list", None)
+            if task_list and hasattr(task_list, "select_item"):
+                task_list.select_item(_CONTROLLER_)
+
+            target = self._resolve_controller_task_row_widget()
+            task_info = getattr(task_interface, "task_info", None)
+            if (not target or not target.isVisible()) and task_info is not None:
+                target = task_info
+
+            if not target or not target.isVisible():
+                logger.warning("控制器引导遮罩：未找到有效目标控件，已跳过")
+                return
+
+            self._dismiss_controller_hint_overlay()
+            overlay = TutorialHighlightOverlay(self, target)
+            overlay.set_message(self._controller_setup_hint_message(hint))
+            overlay.closed.connect(self._on_controller_hint_overlay_closed)
+            overlay.show()
+            self._controller_hint_overlay = overlay
+
+        QTimer.singleShot(120, _present_overlay)
 
     def _on_task_flow_finished(self, _payload: dict) -> None:
         self._task_page_auto_switch_handled = False

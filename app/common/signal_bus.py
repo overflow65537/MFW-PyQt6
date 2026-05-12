@@ -91,5 +91,8 @@ class SignalBus(QObject):
     # payload: dict（包含原因/标志位等，字段可扩展）
     task_flow_finished = Signal(dict)
 
+    # 控制器 ADB 配置不完整时请求主窗口遮罩引导；str: adb_path | address | port
+    controller_setup_hint_requested = Signal(str)
+
 
 signalBus = SignalBus()

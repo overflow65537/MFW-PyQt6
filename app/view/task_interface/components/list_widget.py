@@ -59,6 +59,9 @@ class BaseListWidget(ListWidget):
                 and widget.item.item_id == item_id
             ):
                 self.setCurrentItem(li)
+                self.scrollToItem(
+                    li, QAbstractItemView.ScrollHint.PositionAtCenter
+                )
                 break
 
     def wheelEvent(self, event):

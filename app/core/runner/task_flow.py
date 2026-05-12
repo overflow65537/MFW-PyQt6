@@ -2143,8 +2143,8 @@ class TaskFlowRunner(QObject):
         if has_raw_screen_method:
             controller_config["screencap_methods"] = raw_screen_method
 
-        adb_path = controller_config.get("adb_path", "")
-        address = controller_config.get("address", "")
+        adb_path = (controller_config.get("adb_path", "") or "").strip()
+        raw_address = (controller_config.get("address", "") or "").strip()
 
         if not adb_path:
             error_msg = self.tr(
@@ -2152,15 +2152,32 @@ class TaskFlowRunner(QObject):
             )
             logger.error("ADB 路径为空")
             self.log_output.emit("ERROR", error_msg)
+            self.runner_events.controller_setup_hint_requested.emit("adb_path")
             return False
 
-        if not address:
-            error_msg = self.tr(
-                "ADB connection address is empty, please configure device connection in settings"
-            )
-            logger.error("ADB 连接地址为空")
+        address_missing = not raw_address
+        port_missing = False
+        if not address_missing and ":" in raw_address:
+            _, port_part = raw_address.rsplit(":", 1)
+            port_missing = not port_part.strip()
+
+        if address_missing or port_missing:
+            if address_missing:
+                error_msg = self.tr(
+                    "ADB connection address is empty, please configure device connection in settings"
+                )
+                logger.error("ADB 连接地址为空")
+                self.runner_events.controller_setup_hint_requested.emit("address")
+            else:
+                error_msg = self.tr(
+                    "ADB connection port is empty; use host:port (for example 127.0.0.1:5555) or pick a device after starting the emulator."
+                )
+                logger.error("ADB 连接端口为空")
+                self.runner_events.controller_setup_hint_requested.emit("port")
             self.log_output.emit("ERROR", error_msg)
             return False
+
+        address = raw_address
 
         def normalize_input_method(value: int) -> int:
             mask = (1 << 64) - 1

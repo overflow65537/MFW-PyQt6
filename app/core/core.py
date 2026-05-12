@@ -72,6 +72,10 @@ class _RunnerUiSignalBridge(QObject):
     def forward_focus_modal(self, message: str):
         signalBus.focus_modal.emit(message)
 
+    @Slot(str)
+    def forward_controller_setup_hint_requested(self, hint: str):
+        signalBus.controller_setup_hint_requested.emit(hint)
+
 
 class ServiceCoordinator:
     """服务协调器，整合配置、任务和选项服务"""
@@ -664,6 +668,10 @@ class ServiceCoordinator:
         )
         self.runner_events.focus_modal.connect(
             self._runner_ui_bridge.forward_focus_modal,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.controller_setup_hint_requested.connect(
+            self._runner_ui_bridge.forward_controller_setup_hint_requested,
             Qt.ConnectionType.QueuedConnection,
         )
 

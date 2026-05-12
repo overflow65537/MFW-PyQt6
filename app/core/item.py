@@ -57,6 +57,8 @@ class RunnerEvents(QObject):
     focus_notification = Signal(str)
     focus_dialog = Signal(str)
     focus_modal = Signal(str)
+    # 控制器 ADB 配置不完整时请求主界面遮罩引导；载荷为提示类型：adb_path / address / port
+    controller_setup_hint_requested = Signal(str)
 
 
 # ==================== 数据模型 ====================
