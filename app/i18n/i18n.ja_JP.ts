@@ -1843,123 +1843,143 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <context>
         <name>MainWindow</name>
         <message>
-            <location filename="../view/main_window/main_window.py" line="350" />
+            <location filename="../view/main_window/main_window.py" line="352" />
             <source>Home</source>
             <translation>ホーム</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="354" />
+            <location filename="../view/main_window/main_window.py" line="356" />
             <source>Task</source>
             <translation>タスク</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="365" />
+            <location filename="../view/main_window/main_window.py" line="367" />
             <source>Monitor</source>
             <translation>モニター</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="371" />
+            <location filename="../view/main_window/main_window.py" line="373" />
             <source>Schedule</source>
             <translation>スケジュール</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="379" />
+            <location filename="../view/main_window/main_window.py" line="381" />
             <source>test_interface</source>
             <translation>テストインターフェース</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="408" />
-            <location filename="../view/main_window/main_window.py" line="681" />
-            <location filename="../view/main_window/main_window.py" line="693" />
+            <location filename="../view/main_window/main_window.py" line="410" />
+            <location filename="../view/main_window/main_window.py" line="683" />
+            <location filename="../view/main_window/main_window.py" line="695" />
             <source>Bundle</source>
             <translation>バンドル</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="422" />
+            <location filename="../view/main_window/main_window.py" line="424" />
             <source>Setting</source>
             <translation>設定</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="538" />
+            <location filename="../view/main_window/main_window.py" line="540" />
             <source>Show</source>
             <translation>表示</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="539" />
+            <location filename="../view/main_window/main_window.py" line="541" />
             <source>Hide</source>
             <translation>非表示</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="540" />
+            <location filename="../view/main_window/main_window.py" line="542" />
             <source>Quit</source>
             <translation>終了</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="798" />
+            <location filename="../view/main_window/main_window.py" line="800" />
             <source>Task flow is already running</source>
             <translation>タスクフローは既に実行中です</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="810" />
+            <location filename="../view/main_window/main_window.py" line="812" />
             <source>Failed to start task flow</source>
             <translation>タスクフローの開始に失敗しました</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1134" />
+            <location filename="../view/main_window/main_window.py" line="1136" />
             <source>Config load failed, automatically reset to default. Backup of corrupted config file completed. Error details:</source>
             <translation>設定の読み込みに失敗しました。自動的にデフォルトにリセットされました。破損した設定ファイルのバックアップが完了しました。エラーの詳細:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1138" />
+            <location filename="../view/main_window/main_window.py" line="1140" />
             <source>Config load failed, automatically reset to default. Backup of corrupted config file completed.</source>
             <translation>設定の読み込みに失敗しました。自動的にデフォルトにリセットされました。破損した設定ファイルのバックアップが完了しました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1145" />
+            <location filename="../view/main_window/main_window.py" line="1147" />
             <source>Config load failed, automatically reset to default. Failed to backup corrupted config file. Error details:</source>
             <translation>設定ファイルの読み込みに失敗しました。自動的にデフォルト設定にリセットします。破損した設定ファイルのバックアップに失敗しました。エラーの詳細:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1149" />
+            <location filename="../view/main_window/main_window.py" line="1151" />
             <source>Config load failed, automatically reset to default. Failed to backup corrupted config file.</source>
             <translation>設定ファイルの読み込みに失敗しました。自動的にデフォルト設定にリセットします。破損した設定ファイルのバックアップに失敗しました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1155" />
+            <location filename="../view/main_window/main_window.py" line="1157" />
             <source>Config load failed and error occurred while resetting config:</source>
             <translation>設定ファイルの読み込みに失敗し、設定のリセット中にエラーが発生しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1159" />
+            <location filename="../view/main_window/main_window.py" line="1161" />
             <source>Config load failed and error occurred while resetting config.</source>
             <translation>設定ファイルの読み込みに失敗し、設定のリセット中にエラーが発生しました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1239" />
-            <location filename="../view/main_window/main_window.py" line="1245" />
+            <location filename="../view/main_window/main_window.py" line="1238" />
+            <source>ADB path is not set. Tap Controller here and fill in the ADB executable path (usually next to your emulator).</source>
+            <translation>ADBパスが設定されていません。ここでコントローラーをタップし、ADB実行ファイルのパス（通常はエミュレータの隣）を入力してください。</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="1242" />
+            <source>ADB address is empty. Start the emulator so a device appears, or tap Controller here to pick a connection address.</source>
+            <translation>ADBアドレスが空です。エミュレータを起動してデバイスを表示するか、ここでコントローラーをタップして接続アドレスを選択してください。</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="1246" />
+            <source>ADB port is missing in the address. Use host:port (for example 127.0.0.1:5555), or tap Controller here to change settings.</source>
+            <translation>アドレスにADBポートがありません。host:port（例：127.0.0.1:5555）を使用するか、ここでコントローラーをタップして設定を変更してください。</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="1249" />
+            <source>Controller ADB settings are incomplete. Tap here to open the controller and fix path / address / port.</source>
+            <translation>コントローラーのADB設定が不完全です。ここをタップしてコントローラーを開き、パス/アドレス/ポートを修正してください。</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="1321" />
+            <location filename="../view/main_window/main_window.py" line="1327" />
             <source>hotkey disabled due to permission issue</source>
             <translation>権限の問題によりホットキーが無効化されています</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1264" />
+            <location filename="../view/main_window/main_window.py" line="1346" />
             <source>Log is being packaged, please wait...</source>
             <translation>ログをパッケージ化中です。お待ちください...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1285" />
-            <location filename="../view/main_window/main_window.py" line="1335" />
+            <location filename="../view/main_window/main_window.py" line="1367" />
+            <location filename="../view/main_window/main_window.py" line="1417" />
             <source>Preparing files...</source>
             <translation>ファイルを準備中...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1307" />
-            <location filename="../view/main_window/main_window.py" line="1311" />
+            <location filename="../view/main_window/main_window.py" line="1389" />
+            <location filename="../view/main_window/main_window.py" line="1393" />
             <source>Debug directory not found, cannot package logs.</source>
             <translation>デバッグディレクトリが見つかりません。ログをパッケージ化できません。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1326" />
-            <location filename="../view/main_window/main_window.py" line="1331" />
+            <location filename="../view/main_window/main_window.py" line="1408" />
+            <location filename="../view/main_window/main_window.py" line="1413" />
             <source>No matching files were found for the selected options.</source>
             <translation>選択されたオプションに一致するファイルが見つかりませんでした。</translation>
         </message>
@@ -1972,88 +1992,88 @@ Please check for updates first, or visit the GitHub releases page.</source>
             <translation type="vanished">選択した実行記録に一致するファイルが見つかりませんでした。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1344" />
-            <location filename="../view/main_window/main_window.py" line="1359" />
+            <location filename="../view/main_window/main_window.py" line="1426" />
+            <location filename="../view/main_window/main_window.py" line="1441" />
             <source>Packing:</source>
             <translation>パッケージ化中:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1377" />
-            <location filename="../view/main_window/main_window.py" line="1378" />
+            <location filename="../view/main_window/main_window.py" line="1459" />
+            <location filename="../view/main_window/main_window.py" line="1460" />
             <source>Log packaging cancelled.</source>
             <translation>ログのパッケージ化がキャンセルされました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1382" />
-            <location filename="../view/main_window/main_window.py" line="1386" />
+            <location filename="../view/main_window/main_window.py" line="1464" />
+            <location filename="../view/main_window/main_window.py" line="1468" />
             <source>Log packaging failed:</source>
             <translation>ログのパッケージ化に失敗しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1932" />
+            <location filename="../view/main_window/main_window.py" line="2014" />
             <source>, there are </source>
             <translation>、</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1934" />
+            <location filename="../view/main_window/main_window.py" line="2016" />
             <source> files not added</source>
             <translation> 個のファイルが追加されていません</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1938" />
+            <location filename="../view/main_window/main_window.py" line="2020" />
             <source>Log has been packaged, but some files failed to read:</source>
             <translation>ログはパッケージ化されましたが、一部のファイルの読み込みに失敗しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1945" />
+            <location filename="../view/main_window/main_window.py" line="2027" />
             <source>Log has been packaged:</source>
             <translation>ログはパッケージ化されました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1950" />
+            <location filename="../view/main_window/main_window.py" line="2032" />
             <source>Packaging completed, but some files were skipped.</source>
             <translation>パッケージ化は完了しましたが、一部のファイルはスキップされました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1951" />
+            <location filename="../view/main_window/main_window.py" line="2033" />
             <source>Packaging completed:</source>
             <translation>パッケージ化完了:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1998" />
-            <location filename="../view/main_window/main_window.py" line="2159" />
-            <location filename="../view/main_window/main_window.py" line="2552" />
+            <location filename="../view/main_window/main_window.py" line="2080" />
+            <location filename="../view/main_window/main_window.py" line="2241" />
+            <location filename="../view/main_window/main_window.py" line="2634" />
             <source>Announcement</source>
             <translation>お知らせ</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2001" />
+            <location filename="../view/main_window/main_window.py" line="2083" />
             <source>There is no announcement at the moment.</source>
             <translation>現在、お知らせはありません。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2102" />
-            <location filename="../view/main_window/main_window.py" line="2112" />
+            <location filename="../view/main_window/main_window.py" line="2184" />
+            <location filename="../view/main_window/main_window.py" line="2194" />
             <source>Welcome</source>
             <translation>ようこそ</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2205" />
+            <location filename="../view/main_window/main_window.py" line="2287" />
             <source>This is the configuration area. Each configuration maps to different task sets.</source>
             <translation>ここは設定エリアです。各設定は異なるタスクセットに対応しています。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2211" />
+            <location filename="../view/main_window/main_window.py" line="2293" />
             <source>This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running.</source>
             <translation>ここはタスクエリアです。まずコントローラーとリソース設定を設定してください。それら以外のすべてのタスクは、実行前にドラッグして順序を変更できます。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2217" />
+            <location filename="../view/main_window/main_window.py" line="2299" />
             <source>The monitor area displays live footage once tasks are running.</source>
             <translation>モニターエリアは、タスク実行時にライブ映像を表示します。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2223" />
+            <location filename="../view/main_window/main_window.py" line="2305" />
             <source>When you encounter issues while running, click this button and send the resulting debug.zip to the developers.</source>
             <translation>実行中に問題が発生した場合は、このボタンをクリックして生成されたdebug.zipを開発者に送信してください。</translation>
         </message>
@@ -2062,54 +2082,54 @@ Please check for updates first, or visit the GitHub releases page.</source>
             <translation type="vanished">このボタンをクリックして特殊タスクに切り替えます。特殊とマークされたタスクのみが実行されます。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2533" />
+            <location filename="../view/main_window/main_window.py" line="2615" />
             <source>Close</source>
             <translation>閉じる</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2569" />
+            <location filename="../view/main_window/main_window.py" line="2651" />
             <source>Item </source>
             <translation>項目 </translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2573" />
+            <location filename="../view/main_window/main_window.py" line="2655" />
             <source>Detail</source>
             <translation>詳細</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2584" />
-            <location filename="../view/main_window/main_window.py" line="2587" />
-            <location filename="../view/main_window/main_window.py" line="2643" />
+            <location filename="../view/main_window/main_window.py" line="2666" />
+            <location filename="../view/main_window/main_window.py" line="2669" />
+            <location filename="../view/main_window/main_window.py" line="2725" />
             <source>Info</source>
             <translation>情報</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2585" />
+            <location filename="../view/main_window/main_window.py" line="2667" />
             <source>Warning</source>
             <translation>警告</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2586" />
+            <location filename="../view/main_window/main_window.py" line="2668" />
             <source>Error</source>
             <translation>エラー</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2651" />
+            <location filename="../view/main_window/main_window.py" line="2733" />
             <source>Confirm</source>
             <translation>確認</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2694" />
+            <location filename="../view/main_window/main_window.py" line="2776" />
             <source>admin</source>
             <translation>管理者</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2727" />
+            <location filename="../view/main_window/main_window.py" line="2809" />
             <source>Stopping task...</source>
             <translation>タスクを停止中...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2735" />
+            <location filename="../view/main_window/main_window.py" line="2817" />
             <source>Please wait...</source>
             <translation>お待ちください...</translation>
         </message>
@@ -4173,8 +4193,8 @@ You can copy the detailed stack trace below and report it to the developer.</sou
         </message>
         <message>
             <location filename="../core/runner/task_flow.py" line="611" />
-            <location filename="../core/runner/task_flow.py" line="2383" />
-            <location filename="../core/runner/task_flow.py" line="2395" />
+            <location filename="../core/runner/task_flow.py" line="2400" />
+            <location filename="../core/runner/task_flow.py" line="2412" />
             <source>Device connected successfully</source>
             <translation>デバイスが正常に接続されました</translation>
         </message>
@@ -4387,7 +4407,7 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation>ADB パスが空です。設定で ADB パスを構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2159" />
+            <location filename="../core/runner/task_flow.py" line="2167" />
             <source>ADB connection address is empty, please configure device connection in settings</source>
             <translation>ADB 接続アドレスが空です。設定でデバイス接続を構成してください</translation>
         </message>
@@ -4481,28 +4501,33 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation>PlayCoverへの接続に失敗しました</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2372" />
-            <location filename="../core/runner/task_flow.py" line="2419" />
+            <location filename="../core/runner/task_flow.py" line="2173" />
+            <source>ADB connection port is empty; use host:port (for example 127.0.0.1:5555) or pick a device after starting the emulator.</source>
+            <translation>ADB接続ポートが空です。host:port（例：127.0.0.1:5555）を使用するか、エミュレータ起動後にデバイスを選択してください。</translation>
+        </message>
+        <message>
+            <location filename="../core/runner/task_flow.py" line="2389" />
+            <location filename="../core/runner/task_flow.py" line="2436" />
             <source> seconds</source>
             <translation> 秒</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2763" />
+            <location filename="../core/runner/task_flow.py" line="2780" />
             <source>Notifications are being sent, please wait up to {} seconds</source>
             <translation>通知を送信中です。最大 {} 秒お待ちください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3064" />
+            <location filename="../core/runner/task_flow.py" line="3081" />
             <source>This period's remaining execution count is 0</source>
             <translation>今月の残り実行回数は0です</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3076" />
+            <location filename="../core/runner/task_flow.py" line="3093" />
             <source>Not enough time passed since last run. Minimum interval is </source>
             <translation>前回の実行から十分な時間が経過していません。最小間隔は </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3079" />
+            <location filename="../core/runner/task_flow.py" line="3096" />
             <source> hours.</source>
             <translation> 時間です。</translation>
         </message>
