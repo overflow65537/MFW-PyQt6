@@ -53,13 +53,6 @@ def locate_package(package_name):
     raise FileNotFoundError(f"Can't find {package_name} package")
 
 
-def write_version_file(platform, architecture, version):
-    version_file_path = os.path.join(".", "build", "main.dist", "config", "version.txt")
-    with open(version_file_path, "w") as version_file:
-        version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
-        print(f"[INFO] Version file generated at: {version_file_path}")
-
-
 def generate_file_list(input_dir, output_file=None):
     """
     生成文件夹内所有文件的列表
@@ -113,11 +106,7 @@ def generate_file_list(input_dir, output_file=None):
 # === 构建参数处理 ===
 print("[INFO] Received command line arguments:", sys.argv)
 if len(sys.argv) != 4:
-    error_message = "Argument error. Required format: platform architecture version"
-    with open("ERROR.log", "a") as log_file:
-        log_file.write(error_message + "\n")
-    print(f"[ERROR] {error_message}")
-    sys.exit(1)
+    sys.argv = [sys.argv[0], "win", "x86_64", "v1.0.0"]
 
 platform = sys.argv[1]
 architecture = sys.argv[2]
@@ -180,14 +169,6 @@ shutil.copytree(
     dirs_exist_ok=True,
 )
 
-# 复制 emulator.json
-os.makedirs(os.path.join(main_dist_path, "config"), exist_ok=True)
-shutil.copy(
-    os.path.join(".", "config", "emulator.json"),
-    os.path.join(main_dist_path, "config", "emulator.json"),
-)
-print("[INFO] Configuration file emulator.json copied")
-
 # 重命名main至MFW
 print("[DEBUG] Renaming")
 if platform == "win":
@@ -211,19 +192,6 @@ else:
         os.path.join(main_dist_path, "MFW"),
     )
 print("[SUCCESS] Executable renamed")
-
-# 复制资源文件
-shutil.copytree(
-    os.path.join(".", "MFW_resource"),
-    os.path.join(main_dist_path, "MFW_resource"),
-    dirs_exist_ok=True,
-)
-# 复制dll文件
-shutil.copytree(
-    os.path.join(".", "dll"),
-    main_dist_path,
-    dirs_exist_ok=True,
-)
 
 # 复制README和许可证
 shutil.copy(
@@ -251,8 +219,6 @@ for qm_file in [
             src,
             os.path.join(main_dist_path, "app", "i18n", qm_file),
         )
-
-write_version_file(platform, architecture, version)
 
 shutil.copytree(
     os.path.join(".", "build", "updater.dist"),
