@@ -72,9 +72,9 @@ def apply_startup_workdir(main_file: str) -> Path:
     """将进程 ``cwd`` 设为安装根；仅在打包时设置 ``MAAFW_BINARY_PATH`` 为 ``{cwd}/maafw``。"""
     base = resolve_application_base_dir(main_file)
     os.chdir(base)
-    if is_frozen_bundle():
-        maafw_dir = (Path(base) / "maafw").resolve()
-        os.environ["MAAFW_BINARY_PATH"] = os.fspath(maafw_dir)
+    # if is_frozen_bundle():
+    #    maafw_dir = (Path(base) / "maafw").resolve()
+    #    os.environ["MAAFW_BINARY_PATH"] = os.fspath(maafw_dir)
     return base
 
 
