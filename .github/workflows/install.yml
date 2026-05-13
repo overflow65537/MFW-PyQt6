@@ -65,22 +65,22 @@ jobs:
 
   nuitka:
     needs: meta
-    name: nuitka Build (${{ matrix.platform }})
+    name: nuitka Build (${{ matrix.platform }}-${{ matrix.arch }})
     runs-on: ${{ matrix.runs-on }}
     strategy:
       matrix:
         include:
           - platform: win
             runs-on: windows-latest
-            arch: x86_64 
+            arch: x86_64
           - platform: win
-            runs-on: windows-latest
-            arch: aarch64  
+            runs-on: windows-11-arm
+            arch: aarch64
           - platform: linux
             runs-on: ubuntu-latest
             arch: x86_64
           - platform: linux
-            runs-on: ubuntu-latest
+            runs-on: ubuntu-24.04-arm
             arch: aarch64
           - platform: macos
             runs-on: macos-latest
@@ -98,7 +98,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
@@ -109,6 +109,10 @@ jobs:
           nuitka-version: main
           script-name: updater.py
           mode: standalone
+
+      - name: Install imageio (Nuitka macOS PNG app icon)
+        if: matrix.platform == 'macos'
+        run: python -m pip install imageio
 
       - name: Qt GUI with PySide6
         uses: Nuitka/Nuitka-Action@main
@@ -121,8 +125,8 @@ jobs:
           windows-icon-from-ico: ./app/assets/icons/logo.ico
           linux-icon: ./app/assets/icons/logo.png
           macos-app-icon: ./app/assets/icons/logo.png
-          
-      - name: Install Dependencies
+
+      - name: Assemble distribution (Nuitka post-build)
         run: |
           python tools/build_nuitka.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
 
