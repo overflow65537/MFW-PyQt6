@@ -233,19 +233,46 @@ for qm_file in [
         )
 
 # === 构建updater ===
-_updater_dist = os.path.join("dist", "MFW")
+# macOS：勿直接向 Contents/MacOS 输出；--clean/中间产物可能与主包冲突。
+# 先打到隔离目录再复制到 MFW.app/Contents/MacOS/，与 MFW 主 Mach-O 同级。
 if sys.platform == "darwin":
-    _updater_dist = os.path.join("dist", "MFW", "MFW.app", "Contents", "MacOS")
+    _stage = os.path.join(dist_dir, "_updater_staging")
+    if os.path.isdir(_stage):
+        shutil.rmtree(_stage, ignore_errors=True)
+    os.makedirs(_stage, exist_ok=True)
+    _updater_dist = _stage
+else:
+    _updater_dist = os.path.join("dist", "MFW")
+
 updater_command = [
     "updater.py",
     "--name=MFWUpdater",
     "--onefile",
-    "--clean",
     "--noconfirm",  # 禁用确认提示
     "--distpath",
     _updater_dist,
 ]
+if sys.platform != "darwin":
+    updater_command.insert(3, "--clean")
+
 PyInstaller.__main__.run(updater_command)
+
+if sys.platform == "darwin":
+    _macos_dir = os.path.join(dist_dir, "MFW.app", "Contents", "MacOS")
+    _staged_bin = os.path.join(_stage, "MFWUpdater")
+    _dest_bin = os.path.join(_macos_dir, "MFWUpdater")
+    if os.path.isfile(_staged_bin):
+        shutil.copy2(_staged_bin, _dest_bin)
+        shutil.rmtree(_stage, ignore_errors=True)
+        print(f"[INFO] MFWUpdater -> {_dest_bin}")
+    else:
+        print(
+            f"[ERROR] 未在 staging 找到 MFWUpdater: {_staged_bin}，"
+            "请检查 PyInstaller 输出名与 onefile 配置"
+        )
+    # 可选：列出 MacOS 内文件便于 CI 核对
+    if os.path.isdir(_macos_dir):
+        print("[DEBUG] Contents/MacOS:", os.listdir(_macos_dir))
 
 
 def generate_file_list(input_dir, output_file=None):
@@ -309,7 +336,8 @@ def generate_file_list(input_dir, output_file=None):
         return False
 
 
-# 生成包含文件列表
+# 生成 file_list.txt：路径相对于安装根 dist/MFW（与 updater 的 getcwd() 一致）。
+# 勿仅放在 Contents/MacOS：其中条目形如 ./MFW.app/...，相对安装根才成立。
 generate_file_list(
     os.path.join("dist", "MFW"), os.path.join("dist", "MFW", "file_list.txt")
 )

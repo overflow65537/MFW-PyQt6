@@ -19,10 +19,11 @@
 """
 打包运行环境与安装根目录（与 Win/Linux 单目录布局对齐）。
 
-- 源码：应用根 = main.py 所在目录。
+- 源码：应用根 = main.py 所在目录；**不设置** ``MAAFW_BINARY_PATH``（保持环境原样）。
 - Win/Linux 打包：应用根 = ``dirname(sys.executable)``。
 - macOS ``.app``：主程序 Mach-O 在 ``…/MFW.app/Contents/MacOS/MFW`` 时，应用根为
   **包含 ``MFW.app`` 的目录**（与 .app 同级），便于 ``./interface.json``、``./app`` 等。
+- 打包时 ``MAAFW_BINARY_PATH``：指向 **``{安装根}/maafw``**（外部提供的运行库目录；mac 即 app 同级下的 ``maafw/``）。
 - 更新器（mac）：二进制放在 ``MFW.app/Contents/MacOS/`` 与 ``MFW`` 同级；解析路径时
   **优先**该目录，再回落安装根（与 ``cwd`` 一致）。
 """
@@ -68,11 +69,12 @@ def resolve_application_base_dir(main_file: str) -> Path:
 
 
 def apply_startup_workdir(main_file: str) -> Path:
-    """将进程 ``cwd`` 设为安装根；打包时设置 ``MAAFW_BINARY_PATH``。"""
+    """将进程 ``cwd`` 设为安装根；仅在打包时设置 ``MAAFW_BINARY_PATH`` 为 ``{cwd}/maafw``。"""
     base = resolve_application_base_dir(main_file)
     os.chdir(base)
     if is_frozen_bundle():
-        os.environ["MAAFW_BINARY_PATH"] = os.fspath(base)
+        maafw_dir = (Path(base) / "maafw").resolve()
+        os.environ["MAAFW_BINARY_PATH"] = os.fspath(maafw_dir)
     return base
 
 
