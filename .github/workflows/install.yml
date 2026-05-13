@@ -4,14 +4,13 @@ on:
   push:
     tags:
       - "v*"
-    branches:
-      - main 
   pull_request:  
     branches:    
       - main    
   workflow_dispatch:
 
 jobs:
+
   changelog:
     name: Generate changelog
     runs-on: ubuntu-latest
@@ -41,187 +40,101 @@ jobs:
           fetch-depth: 0
       - id: set_tag
         run: |
-          # 检查标签格式
-          if [[ ${{ github.ref }} =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*)?$ ]]; then
-            is_release=true
-            tag=${GITHUB_REF#refs/tags/}
-            echo "Release tag format is valid: $tag"
-          else
-            is_release=false
-            # 获取最新的发布标签
+          is_release=${{ startsWith(github.ref, 'refs/tags/v') }}
+          tag=$(git describe --tags --match "v*" ${{ github.ref }} || true)
+          if [[ $tag != v* ]]; then
             tag=$(curl -sX GET "https://api.github.com/repos/${{ github.repository }}/releases/latest" --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' | awk '/tag_name/{print $4}' FS='["]')
-            if [[ ! $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
-              echo "No valid release tag found, using v0.0.0"
+            if [[ $tag != v* ]]; then
               tag="v0.0.0"
             fi
             tag=$(date "+$tag-%y%m%d-$(git rev-parse --short HEAD)")
           fi
-
-          if ! $($is_release) ; then
+          if ! $is_release ; then
             prefix=${tag%-*-*}
             suffix=${tag#$prefix-}
             tag="$prefix-ci.$suffix"
           fi
 
-          # 检查是否为预发布版本
-          is_prerelease=false
-          if [[ $tag =~ .*alpha.* || $tag =~ .*beta.* || $tag =~ .*rc.* || $tag =~ .*dev.* || $tag =~ .*-ci.* ]]; then
-            is_prerelease=true
-            echo "This is a pre-release version"
-          fi
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "is_release=$is_release" >> $GITHUB_OUTPUT
+        shell: bash
 
-          echo tag=$tag | tee -a $GITHUB_OUTPUT
-          echo is_release=$is_release | tee -a $GITHUB_OUTPUT
-          echo is_prerelease=$is_prerelease | tee -a $GITHUB_OUTPUT
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-
-      # i18n 生成与 LLM 翻译见 .github/workflows/i18n-sync.yml（提交回仓库，避免此处重复翻译）
-      - name: Install PySide6
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install PySide6
-
-      - name: lrelease i18n
-        run: |
-          python ./tools/lrelease.py
-
-      - name: Upload i18n
-        uses: actions/upload-artifact@v4
-        with:
-          name: i18n
-          path: app/i18n
     outputs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
-      is_prerelease: ${{ steps.set_tag.outputs.is_prerelease }}
 
-  pyinstaller:
+  nuitka:
     needs: meta
-    name: Build (${{ matrix.platform }}-${{ matrix.arch }})
-    runs-on: ${{ matrix.os }}
+    name: nuitka Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       matrix:
         include:
-          - os: macos-15-intel
-            platform: macos
+          - platform: win
+            runs-on: windows-latest
             arch: x86_64 
-            target_arch: x86_64
-            python_arch: x64
-
-          - os: macos-latest
-            platform: macos
+          - platform: win
+            runs-on: windows-latest
             arch: aarch64  
-            target_arch: arm64
-            python_arch: arm64
-
-          - os: ubuntu-latest
-            platform: linux
+          - platform: linux
+            runs-on: ubuntu-latest
             arch: x86_64
-            target_arch: x86_64
-            python_arch: x64
-
-          - os: ubuntu-24.04-arm
-            platform: linux
+          - platform: linux
+            runs-on: ubuntu-latest
             arch: aarch64
-            target_arch: arm64
-            python_arch: arm64
-            
-          - os: windows-latest
-            platform: win
+          - platform: macos
+            runs-on: macos-latest
+            arch: aarch64
+          - platform: macos
+            runs-on: macos-15-intel
             arch: x86_64
-            target_arch: x86_64
-            python_arch: x64
-            
-          - os: windows-11-arm
-            platform: win
-            arch: aarch64
-            target_arch: arm64
-            python_arch: arm64
 
       fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
- 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          architecture: ${{ matrix.python_arch }}
 
-      - name: Install dependencies (Windows ARM64)
-        if: matrix.platform == 'win' && matrix.arch == 'aarch64'
-        run: |
-          # 安装 vcpkg 并获取 OpenSSL（cryptography 依赖）
-          git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}\vcpkg
-          ${{ github.workspace }}\vcpkg\bootstrap-vcpkg.bat
-          ${{ github.workspace }}\vcpkg\vcpkg install openssl:arm64-windows-static-md
-
-          $env:VCPKG_ROOT = "${{ github.workspace }}\vcpkg"
-          $env:OPENSSL_DIR = "${{ github.workspace }}\vcpkg\installed\arm64-windows-static-md"  # 告知 cryptography 依赖位置
-          $env:OPENSSL_LIB_DIR = "$env:OPENSSL_DIR\lib"
-          $env:OPENSSL_INCLUDE_DIR = "$env:OPENSSL_DIR\include"
-
-          # 升级 pip 并安装基础工具
-          python -m pip install --upgrade pip
-          python -m pip install setuptools wheel maturin  # maturin 用于 Rust-Python 混合编译
-
-          # 安装其他依赖
-          python -m pip install pyinstaller
-          python -m pip install -r ./requirements.txt
-        shell: pwsh
-
-      - name: Install dependencies (macos)
-        if: matrix.platform == 'macos'
-        run: |
-          uname -m
-          if [[ ${{ matrix.arch }} == "x86_64" ]]; then
-            arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-          elif [[ ${{ matrix.arch }} == "aarch64" ]]; then
-            arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-          fi
-
-      - name: Install dependencies (other)
-        if: matrix.platform != 'macos' && !(matrix.platform == 'win' && matrix.arch == 'aarch64')
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyinstaller
-          python -m pip install -r ./requirements.txt
+          python -m pip install -r requirements.txt
 
-      - name: Download i18n
-        uses: actions/download-artifact@v4
+      - name: updater build
+        uses: Nuitka/Nuitka-Action@main
         with:
-          name: i18n
-          path: app/i18n
+          nuitka-version: main
+          script-name: updater.py
+          mode: standalone
 
-      - name: Install(macos)
-        if: matrix.platform == 'macos'
+      - name: Qt GUI with Pyqt6
+        uses: Nuitka/Nuitka-Action@main
+        with:
+          nuitka-version: main
+          script-name: main.py
+          mode: standalone
+          enable-plugins: pyqt6
+          windows-console-mode: disable
+          windows-icon-from-ico: ./MFW_resource/icon/logo.ico
+          linux-icon: ./MFW_resource/icon/logo.ico
+          
+      - name: Install Dependencies
         run: |
-          sudo python ./tools/build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          python tools/build_nuitka.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
 
-
-      - name: Install(other)
-        if: matrix.platform != 'macos'
-        run: |
-          python ./tools/build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
-        shell: pwsh  
-
-      - name: Upload artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
-          path: "dist/MFW/"
-
+          path: build/main.dist
+          include-hidden-files: true
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, pyinstaller,changelog]
+    needs: [meta, nuitka, changelog]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -231,21 +144,18 @@ jobs:
       - run: |
           cd assets
           for f in *; do
-            if [ "$f" != "i18n" ]; then
-              (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
-            fi
+            (cd $f && zip -r -9 ../$f-${{ needs.meta.outputs.tag }}.zip .)
           done
 
-      - uses: softprops/action-gh-release@v2.2.2
+      - uses: softprops/action-gh-release@v2
         with:
-          files: assets/*.zip
+          files: assets/*
           tag_name: ${{ needs.meta.outputs.tag }}
           body: ${{ needs.changelog.outputs.release_body }}
           draft: false
-          prerelease: ${{ needs.meta.outputs.is_prerelease }}
+          prerelease: false
 
       - name: Trigger MirrorChyanUploading
-        if: github.repository_owner == 'overflow65537'
         run: |
           gh workflow run --repo $GITHUB_REPOSITORY mirrorchyan
           gh workflow run --repo $GITHUB_REPOSITORY mirrorchyan_release_note
