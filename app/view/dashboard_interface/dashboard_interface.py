@@ -7,6 +7,7 @@ from typing import Callable
 from PySide6.QtCore import QEvent, QObject, QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QColor,
+    QFontMetrics,
     QImage,
     QLinearGradient,
     QPainter,
@@ -40,6 +41,7 @@ from app.common.signal_bus import signalBus
 from app.common import __version__ as version_meta
 
 from app.core.core import ServiceCoordinator
+from app.view.task_interface.components.list_item import OptionLabel
 from app.utils.markdown_helper import render_markdown
 from app.utils.release_notes import load_release_notes, resolve_project_name
 
@@ -441,7 +443,7 @@ class DashboardInterface(QWidget):
         self._hero_cover_backdrop: QLabel | None = None
         self._hero_cover_label: QLabel | None = None
         self._hero_cover_pixmap: QPixmap | None = None
-        self._hero_title_label: BodyLabel | None = None
+        self._hero_title_label: OptionLabel | None = None
         self._hero_cover_needs_refresh = True
 
         self._init_ui()
@@ -486,9 +488,17 @@ class DashboardInterface(QWidget):
         text_col.setContentsMargins(0, 0, 0, 0)
         text_col.setSpacing(6)
 
-        title = BodyLabel(self._get_hero_title(), card)
+        hero_title = self._get_hero_title()
+        title = OptionLabel(hero_title, card)
         title.setObjectName("V5HeroTitle")
+        title.ensurePolished()
+        fm = QFontMetrics(title.font())
+        title.setFixedHeight(min(80, max(48, fm.ascent() + fm.descent() + 10)))
+        title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        title.setWordWrap(False)
+        title.setMarqueeConfig(speed_px_per_sec=32.0, interval_ms=30, pause_ms=1200)
         title.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        title.setToolTip(hero_title)
         text_col.addWidget(title)
         self._hero_title_label = title
 
