@@ -1248,10 +1248,10 @@ class MainWindow(MSFluentWindow):
             ]
         else:
             supported_names = []
-        supported_text = "、".join(supported_names) if supported_names else self.tr("(none)")
+        supported_text = ", ".join(supported_names) if supported_names else self.tr("(none)")
 
         return self.tr(
-            "控制器信息为空,请检查{controller}是否是预期控制器\n当前资源支持控制器:{controllers}"
+            "Controller information is missing. Verify that {controller} is the expected controller.\nSupported controllers in the current resource: {controllers}"
         ).format(
             controller=controller_name,
             controllers=supported_text,

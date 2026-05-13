@@ -1936,50 +1936,63 @@ Please check for updates first, or visit the GitHub releases page.</source>
         </message>
         <message>
             <location filename="../view/main_window/main_window.py" line="1238" />
+            <source>(empty)</source>
+            <translation>(空)</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="1251" />
+            <source>(none)</source>
+            <translation>(なし)</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="1254" />
+            <source>Controller information is missing. Verify that {controller} is the expected controller.
+Supported controllers in the current resource: {controllers}</source>
+            <translation>コントローラー情報がありません。{controller}が期待されるコントローラーであることを確認してください。
+現在のリソースでサポートされているコントローラー: {controllers}</translation>
+        </message>
+        <message>
             <source>ADB path is not set. Tap Controller here and fill in the ADB executable path (usually next to your emulator).</source>
-            <translation>ADBパスが設定されていません。ここでコントローラーをタップし、ADB実行ファイルのパス（通常はエミュレータの隣）を入力してください。</translation>
+            <translation type="vanished">ADBパスが設定されていません。ここでコントローラーをタップし、ADB実行ファイルのパス（通常はエミュレータの隣）を入力してください。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1242" />
             <source>ADB address is empty. Start the emulator so a device appears, or tap Controller here to pick a connection address.</source>
-            <translation>ADBアドレスが空です。エミュレータを起動してデバイスを表示するか、ここでコントローラーをタップして接続アドレスを選択してください。</translation>
+            <translation type="vanished">ADBアドレスが空です。エミュレータを起動してデバイスを表示するか、ここでコントローラーをタップして接続アドレスを選択してください。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1246" />
             <source>ADB port is missing in the address. Use host:port (for example 127.0.0.1:5555), or tap Controller here to change settings.</source>
-            <translation>アドレスにADBポートがありません。host:port（例：127.0.0.1:5555）を使用するか、ここでコントローラーをタップして設定を変更してください。</translation>
+            <translation type="vanished">アドレスにADBポートがありません。host:port（例：127.0.0.1:5555）を使用するか、ここでコントローラーをタップして設定を変更してください。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1249" />
             <source>Controller ADB settings are incomplete. Tap here to open the controller and fix path / address / port.</source>
-            <translation>コントローラーのADB設定が不完全です。ここをタップしてコントローラーを開き、パス/アドレス/ポートを修正してください。</translation>
+            <translation type="vanished">コントローラーのADB設定が不完全です。ここをタップしてコントローラーを開き、パス/アドレス/ポートを修正してください。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1321" />
-            <location filename="../view/main_window/main_window.py" line="1327" />
+            <location filename="../view/main_window/main_window.py" line="1329" />
+            <location filename="../view/main_window/main_window.py" line="1335" />
             <source>hotkey disabled due to permission issue</source>
             <translation>権限の問題によりホットキーが無効化されています</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1346" />
+            <location filename="../view/main_window/main_window.py" line="1354" />
             <source>Log is being packaged, please wait...</source>
             <translation>ログをパッケージ化中です。お待ちください...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1367" />
-            <location filename="../view/main_window/main_window.py" line="1417" />
+            <location filename="../view/main_window/main_window.py" line="1375" />
+            <location filename="../view/main_window/main_window.py" line="1425" />
             <source>Preparing files...</source>
             <translation>ファイルを準備中...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1389" />
-            <location filename="../view/main_window/main_window.py" line="1393" />
+            <location filename="../view/main_window/main_window.py" line="1397" />
+            <location filename="../view/main_window/main_window.py" line="1401" />
             <source>Debug directory not found, cannot package logs.</source>
             <translation>デバッグディレクトリが見つかりません。ログをパッケージ化できません。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1408" />
-            <location filename="../view/main_window/main_window.py" line="1413" />
+            <location filename="../view/main_window/main_window.py" line="1416" />
+            <location filename="../view/main_window/main_window.py" line="1421" />
             <source>No matching files were found for the selected options.</source>
             <translation>選択されたオプションに一致するファイルが見つかりませんでした。</translation>
         </message>
@@ -1992,88 +2005,88 @@ Please check for updates first, or visit the GitHub releases page.</source>
             <translation type="vanished">選択した実行記録に一致するファイルが見つかりませんでした。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1426" />
-            <location filename="../view/main_window/main_window.py" line="1441" />
+            <location filename="../view/main_window/main_window.py" line="1434" />
+            <location filename="../view/main_window/main_window.py" line="1449" />
             <source>Packing:</source>
             <translation>パッケージ化中:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1459" />
-            <location filename="../view/main_window/main_window.py" line="1460" />
+            <location filename="../view/main_window/main_window.py" line="1467" />
+            <location filename="../view/main_window/main_window.py" line="1468" />
             <source>Log packaging cancelled.</source>
             <translation>ログのパッケージ化がキャンセルされました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1464" />
-            <location filename="../view/main_window/main_window.py" line="1468" />
+            <location filename="../view/main_window/main_window.py" line="1472" />
+            <location filename="../view/main_window/main_window.py" line="1476" />
             <source>Log packaging failed:</source>
             <translation>ログのパッケージ化に失敗しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2014" />
+            <location filename="../view/main_window/main_window.py" line="2022" />
             <source>, there are </source>
             <translation>、</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2016" />
+            <location filename="../view/main_window/main_window.py" line="2024" />
             <source> files not added</source>
             <translation> 個のファイルが追加されていません</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2020" />
+            <location filename="../view/main_window/main_window.py" line="2028" />
             <source>Log has been packaged, but some files failed to read:</source>
             <translation>ログはパッケージ化されましたが、一部のファイルの読み込みに失敗しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2027" />
+            <location filename="../view/main_window/main_window.py" line="2035" />
             <source>Log has been packaged:</source>
             <translation>ログはパッケージ化されました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2032" />
+            <location filename="../view/main_window/main_window.py" line="2040" />
             <source>Packaging completed, but some files were skipped.</source>
             <translation>パッケージ化は完了しましたが、一部のファイルはスキップされました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2033" />
+            <location filename="../view/main_window/main_window.py" line="2041" />
             <source>Packaging completed:</source>
             <translation>パッケージ化完了:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2080" />
-            <location filename="../view/main_window/main_window.py" line="2241" />
-            <location filename="../view/main_window/main_window.py" line="2634" />
+            <location filename="../view/main_window/main_window.py" line="2088" />
+            <location filename="../view/main_window/main_window.py" line="2249" />
+            <location filename="../view/main_window/main_window.py" line="2642" />
             <source>Announcement</source>
             <translation>お知らせ</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2083" />
+            <location filename="../view/main_window/main_window.py" line="2091" />
             <source>There is no announcement at the moment.</source>
             <translation>現在、お知らせはありません。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2184" />
-            <location filename="../view/main_window/main_window.py" line="2194" />
+            <location filename="../view/main_window/main_window.py" line="2192" />
+            <location filename="../view/main_window/main_window.py" line="2202" />
             <source>Welcome</source>
             <translation>ようこそ</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2287" />
+            <location filename="../view/main_window/main_window.py" line="2295" />
             <source>This is the configuration area. Each configuration maps to different task sets.</source>
             <translation>ここは設定エリアです。各設定は異なるタスクセットに対応しています。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2293" />
+            <location filename="../view/main_window/main_window.py" line="2301" />
             <source>This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running.</source>
             <translation>ここはタスクエリアです。まずコントローラーとリソース設定を設定してください。それら以外のすべてのタスクは、実行前にドラッグして順序を変更できます。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2299" />
+            <location filename="../view/main_window/main_window.py" line="2307" />
             <source>The monitor area displays live footage once tasks are running.</source>
             <translation>モニターエリアは、タスク実行時にライブ映像を表示します。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2305" />
+            <location filename="../view/main_window/main_window.py" line="2313" />
             <source>When you encounter issues while running, click this button and send the resulting debug.zip to the developers.</source>
             <translation>実行中に問題が発生した場合は、このボタンをクリックして生成されたdebug.zipを開発者に送信してください。</translation>
         </message>
@@ -2082,54 +2095,54 @@ Please check for updates first, or visit the GitHub releases page.</source>
             <translation type="vanished">このボタンをクリックして特殊タスクに切り替えます。特殊とマークされたタスクのみが実行されます。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2615" />
+            <location filename="../view/main_window/main_window.py" line="2623" />
             <source>Close</source>
             <translation>閉じる</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2651" />
+            <location filename="../view/main_window/main_window.py" line="2659" />
             <source>Item </source>
             <translation>項目 </translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2655" />
+            <location filename="../view/main_window/main_window.py" line="2663" />
             <source>Detail</source>
             <translation>詳細</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2666" />
-            <location filename="../view/main_window/main_window.py" line="2669" />
-            <location filename="../view/main_window/main_window.py" line="2725" />
+            <location filename="../view/main_window/main_window.py" line="2674" />
+            <location filename="../view/main_window/main_window.py" line="2677" />
+            <location filename="../view/main_window/main_window.py" line="2733" />
             <source>Info</source>
             <translation>情報</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2667" />
+            <location filename="../view/main_window/main_window.py" line="2675" />
             <source>Warning</source>
             <translation>警告</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2668" />
+            <location filename="../view/main_window/main_window.py" line="2676" />
             <source>Error</source>
             <translation>エラー</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2733" />
+            <location filename="../view/main_window/main_window.py" line="2741" />
             <source>Confirm</source>
             <translation>確認</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2776" />
+            <location filename="../view/main_window/main_window.py" line="2784" />
             <source>admin</source>
             <translation>管理者</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2809" />
+            <location filename="../view/main_window/main_window.py" line="2817" />
             <source>Stopping task...</source>
             <translation>タスクを停止中...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2817" />
+            <location filename="../view/main_window/main_window.py" line="2825" />
             <source>Please wait...</source>
             <translation>お待ちください...</translation>
         </message>
@@ -4171,8 +4184,8 @@ You can copy the detailed stack trace below and report it to the developer.</sou
         </message>
         <message>
             <location filename="../core/runner/task_flow.py" line="585" />
-            <location filename="../core/runner/task_flow.py" line="1301" />
-            <location filename="../core/runner/task_flow.py" line="1332" />
+            <location filename="../core/runner/task_flow.py" line="1393" />
+            <location filename="../core/runner/task_flow.py" line="1424" />
             <source>please try to reset resource in setting</source>
             <translation>設定でリソースをリセットしてください</translation>
         </message>
@@ -4193,8 +4206,8 @@ You can copy the detailed stack trace below and report it to the developer.</sou
         </message>
         <message>
             <location filename="../core/runner/task_flow.py" line="611" />
-            <location filename="../core/runner/task_flow.py" line="2400" />
-            <location filename="../core/runner/task_flow.py" line="2412" />
+            <location filename="../core/runner/task_flow.py" line="2525" />
+            <location filename="../core/runner/task_flow.py" line="2537" />
             <source>Device connected successfully</source>
             <translation>デバイスが正常に接続されました</translation>
         </message>
@@ -4212,7 +4225,7 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <location filename="../core/runner/task_flow.py" line="668" />
             <location filename="../core/runner/task_flow.py" line="691" />
             <location filename="../core/runner/task_flow.py" line="720" />
-            <location filename="../core/runner/task_flow.py" line="1422" />
+            <location filename="../core/runner/task_flow.py" line="1514" />
             <source>Task Failed</source>
             <translation>タスク失敗</translation>
         </message>
@@ -4282,252 +4295,252 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation>基本コントローラー/リソースタスクがありません。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="943" />
+            <location filename="../core/runner/task_flow.py" line="952" />
             <source>Current controller does not exist in interface: {}</source>
             <translation>現在のコントローラーはインターフェースに存在しません: {}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="944" />
-            <location filename="../core/runner/task_flow.py" line="949" />
-            <location filename="../core/runner/task_flow.py" line="960" />
-            <location filename="../core/runner/task_flow.py" line="961" />
+            <location filename="../core/runner/task_flow.py" line="953" />
+            <location filename="../core/runner/task_flow.py" line="958" />
+            <location filename="../core/runner/task_flow.py" line="969" />
+            <location filename="../core/runner/task_flow.py" line="970" />
             <source>(empty)</source>
             <translation>（空）</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="948" />
+            <location filename="../core/runner/task_flow.py" line="957" />
             <source>Current resource does not exist in interface: {}</source>
             <translation>現在のリソースはインターフェースに存在しません: {}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="958" />
+            <location filename="../core/runner/task_flow.py" line="967" />
             <source>Current resource is not enabled for current controller: {} -&gt; {}</source>
             <translation>現在のリソースは現在のコントローラーで有効ではありません: {} -&gt; {}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1079" />
+            <location filename="../core/runner/task_flow.py" line="1166" />
             <source>Controller name is empty, please configure controller in settings</source>
             <translation>コントローラー名が空です。設定でコントローラーを構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1093" />
-            <location filename="../core/runner/task_flow.py" line="1262" />
+            <location filename="../core/runner/task_flow.py" line="1185" />
+            <location filename="../core/runner/task_flow.py" line="1354" />
             <source>Controller '{}' not found, please reset controller in settings</source>
             <translation>コントローラー '{}' が見つかりません。設定でコントローラーをリセットしてください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1173" />
+            <location filename="../core/runner/task_flow.py" line="1265" />
             <source>this Controller requires admin permission to run</source>
             <translation>このコントローラーは管理者権限が必要です</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1188" />
+            <location filename="../core/runner/task_flow.py" line="1280" />
             <source>Controller configuration is invalid, please reset controller in settings</source>
             <translation>コントローラー構成が無効です。設定でコントローラーをリセットしてください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1252" />
+            <location filename="../core/runner/task_flow.py" line="1344" />
             <source>Controller config not found, please configure controller first</source>
             <translation>コントローラー構成が見つかりません。まずコントローラーを構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1278" />
+            <location filename="../core/runner/task_flow.py" line="1370" />
             <source>Resource target is empty, please configure resource in settings</source>
             <translation>リソースターゲットが空です。設定でリソースを構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1296" />
+            <location filename="../core/runner/task_flow.py" line="1388" />
             <source>Resource '{}' not found, please reset resource in settings</source>
             <translation>リソース '{}' が見つかりません。設定でリソースをリセットしてください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1326" />
+            <location filename="../core/runner/task_flow.py" line="1418" />
             <source>Resource </source>
             <translation>リソース </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1328" />
+            <location filename="../core/runner/task_flow.py" line="1420" />
             <source> not found in bundle: </source>
             <translation> はバンドル内に見つかりません: </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1383" />
+            <location filename="../core/runner/task_flow.py" line="1475" />
             <source>Task </source>
             <translation>タスク </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1385" />
+            <location filename="../core/runner/task_flow.py" line="1477" />
             <source> follows speedrun limit, skipping this run: </source>
             <translation> はスピードラン制限に従います。この実行をスキップします: </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1423" />
+            <location filename="../core/runner/task_flow.py" line="1515" />
             <source>Task '{}' execution failed.</source>
             <translation>タスク '{}' の実行に失敗しました。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1448" />
+            <location filename="../core/runner/task_flow.py" line="1540" />
             <source>Stopping task...</source>
             <translation>タスクを停止中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1475" />
-            <location filename="../core/runner/task_flow.py" line="1558" />
+            <location filename="../core/runner/task_flow.py" line="1567" />
+            <location filename="../core/runner/task_flow.py" line="1650" />
             <source>Unknown Task Entry</source>
             <translation>不明なタスクエントリ</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1564" />
+            <location filename="../core/runner/task_flow.py" line="1656" />
             <source>{} hours {} minutes</source>
             <translation>{} 時間 {} 分</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1566" />
+            <location filename="../core/runner/task_flow.py" line="1658" />
             <source>{} minutes</source>
             <translation>{} 分</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1569" />
+            <location filename="../core/runner/task_flow.py" line="1661" />
             <source>Task entry '{}' has been running for {}. This may indicate a problem. Please check the task status.</source>
             <translation>タスクエントリ '{}' は {} 実行中です。問題が発生している可能性があります。タスクステータスを確認してください。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1583" />
+            <location filename="../core/runner/task_flow.py" line="1675" />
             <source>Task running time too long</source>
             <translation>タスクの実行時間が長すぎます</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1637" />
+            <location filename="../core/runner/task_flow.py" line="1729" />
             <source>Auto searching ADB devices...</source>
             <translation>ADB デバイスを自動検索中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2151" />
+            <location filename="../core/runner/task_flow.py" line="2267" />
             <source>ADB path is empty, please configure ADB path in settings</source>
             <translation>ADB パスが空です。設定で ADB パスを構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2167" />
+            <location filename="../core/runner/task_flow.py" line="2286" />
             <source>ADB connection address is empty, please configure device connection in settings</source>
             <translation>ADB 接続アドレスが空です。設定でデバイス接続を構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1653" />
+            <location filename="../core/runner/task_flow.py" line="1745" />
             <source>try to start emulator</source>
             <translation>エミュレータを起動してみる</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1663" />
+            <location filename="../core/runner/task_flow.py" line="1755" />
             <source>waiting for emulator start...</source>
             <translation>エミュレータの起動を待機中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1693" />
-            <location filename="../core/runner/task_flow.py" line="1803" />
-            <location filename="../core/runner/task_flow.py" line="1810" />
-            <location filename="../core/runner/task_flow.py" line="1854" />
-            <location filename="../core/runner/task_flow.py" line="1938" />
-            <location filename="../core/runner/task_flow.py" line="1945" />
-            <location filename="../core/runner/task_flow.py" line="1984" />
+            <location filename="../core/runner/task_flow.py" line="1785" />
+            <location filename="../core/runner/task_flow.py" line="1899" />
+            <location filename="../core/runner/task_flow.py" line="1906" />
+            <location filename="../core/runner/task_flow.py" line="1954" />
+            <location filename="../core/runner/task_flow.py" line="2042" />
+            <location filename="../core/runner/task_flow.py" line="2049" />
+            <location filename="../core/runner/task_flow.py" line="2092" />
             <source>Device connection failed</source>
             <translation>デバイス接続に失敗しました</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1700" />
+            <location filename="../core/runner/task_flow.py" line="1792" />
             <source>Win32 controller is only supported on Windows</source>
             <translation>Win32コントローラーはWindowsでのみサポートされています</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1776" />
+            <location filename="../core/runner/task_flow.py" line="1868" />
             <source>Auto searching Win32 windows...</source>
             <translation>Win32ウィンドウを自動検索中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1789" />
-            <location filename="../core/runner/task_flow.py" line="1928" />
+            <location filename="../core/runner/task_flow.py" line="1881" />
+            <location filename="../core/runner/task_flow.py" line="2028" />
             <source>Window handle (hwnd) is empty, please configure window connection in settings</source>
             <translation>ウィンドウハンドル（hwnd）が空です。設定でウィンドウ接続を構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1814" />
-            <location filename="../core/runner/task_flow.py" line="1948" />
+            <location filename="../core/runner/task_flow.py" line="1914" />
+            <location filename="../core/runner/task_flow.py" line="2056" />
             <source>try to start program</source>
             <translation>プログラムを起動してみる</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1842" />
-            <location filename="../core/runner/task_flow.py" line="1972" />
+            <location filename="../core/runner/task_flow.py" line="1942" />
+            <location filename="../core/runner/task_flow.py" line="2080" />
             <source>waiting for program start...</source>
             <translation>プログラムの起動を待機中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1861" />
+            <location filename="../core/runner/task_flow.py" line="1961" />
             <source>Gamepad controller is only supported on Windows</source>
             <translation>ゲームパッドコントローラーはWindowsでのみサポートされています</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1918" />
+            <location filename="../core/runner/task_flow.py" line="2018" />
             <source>Auto searching desktop windows...</source>
             <translation>デスクトップウィンドウを自動検索中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1991" />
+            <location filename="../core/runner/task_flow.py" line="2099" />
             <source>PlayCover controller is only supported on macOS</source>
             <translation>PlayCoverコントローラーはmacOSでのみサポートされています</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2029" />
+            <location filename="../core/runner/task_flow.py" line="2137" />
             <source>PlayCover UUID is empty, please configure UUID in settings</source>
             <translation>PlayCover UUIDが空です。設定でUUIDを構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2037" />
+            <location filename="../core/runner/task_flow.py" line="2149" />
             <source>PlayCover connection address is empty, please configure address in settings</source>
             <translation>PlayCover接続アドレスが空です。設定でアドレスを構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2046" />
+            <location filename="../core/runner/task_flow.py" line="2162" />
             <source>Connecting to PlayCover: {address} (UUID: {uuid})</source>
             <translation>PlayCoverに接続中: {address} (UUID: {uuid})</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2055" />
+            <location filename="../core/runner/task_flow.py" line="2171" />
             <source>PlayCover connected successfully</source>
             <translation>PlayCoverへの接続に成功しました</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2059" />
+            <location filename="../core/runner/task_flow.py" line="2175" />
             <source>Failed to connect to PlayCover</source>
             <translation>PlayCoverへの接続に失敗しました</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2173" />
+            <location filename="../core/runner/task_flow.py" line="2295" />
             <source>ADB connection port is empty; use host:port (for example 127.0.0.1:5555) or pick a device after starting the emulator.</source>
             <translation>ADB接続ポートが空です。host:port（例：127.0.0.1:5555）を使用するか、エミュレータ起動後にデバイスを選択してください。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2389" />
-            <location filename="../core/runner/task_flow.py" line="2436" />
+            <location filename="../core/runner/task_flow.py" line="2514" />
+            <location filename="../core/runner/task_flow.py" line="2561" />
             <source> seconds</source>
             <translation> 秒</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2780" />
+            <location filename="../core/runner/task_flow.py" line="2905" />
             <source>Notifications are being sent, please wait up to {} seconds</source>
             <translation>通知を送信中です。最大 {} 秒お待ちください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3081" />
+            <location filename="../core/runner/task_flow.py" line="3206" />
             <source>This period's remaining execution count is 0</source>
             <translation>今月の残り実行回数は0です</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3093" />
+            <location filename="../core/runner/task_flow.py" line="3218" />
             <source>Not enough time passed since last run. Minimum interval is </source>
             <translation>前回の実行から十分な時間が経過していません。最小間隔は </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3096" />
+            <location filename="../core/runner/task_flow.py" line="3221" />
             <source> hours.</source>
             <translation> 時間です。</translation>
         </message>
