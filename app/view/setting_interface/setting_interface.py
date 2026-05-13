@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 from PySide6.QtCore import Qt, QSize, QUrl, QTimer, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QDesktopServices, QPixmap, QFont
+from PySide6.QtGui import QDesktopServices, QFont, QFontMetrics, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QSizePolicy,
@@ -62,6 +62,7 @@ from app.utils.release_notes import (
     save_release_note,
 )
 from app.view.setting_interface.widget.slider_setting_card import SliderSettingCard
+from app.view.task_interface.components.list_item import OptionLabel
 import sys
 from app.view.setting_interface.widget.line_edit_card import (
     LineEditCard,
@@ -428,8 +429,22 @@ class SettingInterface(QWidget):
         info_column = QVBoxLayout()
         info_column.setSpacing(6)
 
-        self.resource_name_label = BodyLabel(self.tr("ChainFlow Assistant"), self)
+        title_text = self.tr("ChainFlow Assistant")
+        self.resource_name_label = OptionLabel(title_text, header_card)
         self.resource_name_label.setStyleSheet("font-size: 24px; font-weight: 600;")
+        self.resource_name_label.ensurePolished()
+        _title_fm = QFontMetrics(self.resource_name_label.font())
+        self.resource_name_label.setFixedHeight(
+            min(56, max(30, _title_fm.ascent() + _title_fm.descent() + 6))
+        )
+        self.resource_name_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.resource_name_label.setWordWrap(False)
+        self.resource_name_label.setMarqueeConfig(
+            speed_px_per_sec=28.0, interval_ms=30, pause_ms=1200
+        )
+        self.resource_name_label.setToolTip(title_text)
         default_contact = self.interface_data.get("contact", "")
         self.contact_label = BodyLabel("", self)
         self.contact_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
@@ -440,7 +455,7 @@ class SettingInterface(QWidget):
 
         info_column.addWidget(self.resource_name_label)
         info_column.addWidget(self.contact_label)
-        top_row.addLayout(info_column)
+        top_row.addLayout(info_column, 1)
         header_layout.addLayout(top_row)
 
         # 版本信息统一放到一行里展示：当前版本 / 最新版本 / UI版本 / MaaFW版本
@@ -1673,6 +1688,7 @@ class SettingInterface(QWidget):
         contact = metadata.get("contact", "")
 
         self.resource_name_label.setText(name)
+        self.resource_name_label.setToolTip(name or self.tr("ChainFlow Assistant"))
         # 当前版本 / 最新版本 / UI版本 / MaaFW版本 水平展示
         from maa.library import Library
 
@@ -1728,6 +1744,7 @@ class SettingInterface(QWidget):
         )
 
         self.resource_name_label.setText(name)
+        self.resource_name_label.setToolTip(name)
         # 当前版本 / 最新版本 / UI版本 / MaaFW版本 水平展示
         from maa.library import Library
 
