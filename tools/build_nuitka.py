@@ -124,10 +124,24 @@ except FileNotFoundError as e:
     print(f"[FATAL] Dependency missing: {str(e)}")
     sys.exit(1)
 
-main_dist_path = os.path.join(".", "build", "main.dist")
-if not os.path.isdir(main_dist_path):
-    print(f"[ERROR] Nuitka output not found: {main_dist_path}")
+build_dir = os.path.join(".", "build")
+main_dist_dir = os.path.join(build_dir, "main.dist")
+main_app_bundle = os.path.join(build_dir, "main.app")
+macos_payload = os.path.join(main_app_bundle, "Contents", "MacOS")
+
+if platform == "macos" and os.path.isdir(main_app_bundle) and os.path.isdir(macos_payload):
+    main_dist_path = macos_payload
+    bundle_root = main_app_bundle
+elif os.path.isdir(main_dist_dir):
+    main_dist_path = main_dist_dir
+    bundle_root = main_dist_dir
+else:
+    print(
+        f"[ERROR] Nuitka output not found. Expected {main_dist_dir} or {main_app_bundle}"
+    )
     sys.exit(1)
+
+print(f"[INFO] Bundle payload directory: {main_dist_path}")
 
 # 移动 maa 到 dist 目录
 shutil.copytree(
@@ -182,10 +196,15 @@ elif platform == "linux":
         os.path.join(main_dist_path, "MFW.bin"),
     )
 elif platform == "macos":
-    shutil.move(
-        os.path.join(main_dist_path, "main.bin"),
-        os.path.join(main_dist_path, "MFW"),
-    )
+    _mb = os.path.join(main_dist_path, "main.bin")
+    _mn = os.path.join(main_dist_path, "main")
+    if os.path.isfile(_mb):
+        shutil.move(_mb, os.path.join(main_dist_path, "MFW"))
+    elif os.path.isfile(_mn):
+        shutil.move(_mn, os.path.join(main_dist_path, "MFW"))
+    else:
+        print(f"[ERROR] No main.bin or main under {main_dist_path}")
+        sys.exit(1)
 else:
     shutil.move(
         os.path.join(main_dist_path, "main"),
@@ -226,7 +245,5 @@ shutil.copytree(
     dirs_exist_ok=True,
 )
 
-generate_file_list(
-    os.path.join("build", "main.dist"),
-    os.path.join("build", "main.dist", "file_list.txt"),
-)
+_file_list_path = os.path.join(bundle_root, "file_list.txt")
+generate_file_list(bundle_root, _file_list_path)

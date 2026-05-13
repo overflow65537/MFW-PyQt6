@@ -73,21 +73,39 @@ jobs:
           - platform: win
             runs-on: windows-latest
             arch: x86_64
+            python_arch: x64
+            nuitka_main_mode: standalone
+            nuitka_artifact: build/main.dist
           - platform: win
             runs-on: windows-11-arm
             arch: aarch64
+            python_arch: arm64
+            nuitka_main_mode: standalone
+            nuitka_artifact: build/main.dist
           - platform: linux
             runs-on: ubuntu-latest
             arch: x86_64
+            python_arch: x64
+            nuitka_main_mode: standalone
+            nuitka_artifact: build/main.dist
           - platform: linux
             runs-on: ubuntu-24.04-arm
             arch: aarch64
+            python_arch: arm64
+            nuitka_main_mode: standalone
+            nuitka_artifact: build/main.dist
           - platform: macos
             runs-on: macos-latest
             arch: aarch64
+            python_arch: arm64
+            nuitka_main_mode: app-dist
+            nuitka_artifact: build/main.app
           - platform: macos
             runs-on: macos-15-intel
             arch: x86_64
+            python_arch: x64
+            nuitka_main_mode: app-dist
+            nuitka_artifact: build/main.app
 
       fail-fast: false
 
@@ -97,8 +115,35 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          architecture: ${{ matrix.python_arch }}
+
+      # 与历史提交 1286712 一致：Win ARM64 无 cryptography 预编译轮子时，用 vcpkg 提供 OpenSSL 再构建
+      - name: Install Python dependencies (Windows ARM64)
+        if: matrix.platform == 'win' && matrix.arch == 'aarch64'
+        shell: pwsh
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg"
+          & "$env:GITHUB_WORKSPACE\vcpkg\bootstrap-vcpkg.bat"
+          & "$env:GITHUB_WORKSPACE\vcpkg\vcpkg.exe" install openssl:arm64-windows-static-md
+
+          $opensslRoot = "$env:GITHUB_WORKSPACE\vcpkg\installed\arm64-windows-static-md"
+          $env:VCPKG_ROOT = "$env:GITHUB_WORKSPACE\vcpkg"
+          $env:OPENSSL_DIR = $opensslRoot
+          $env:OPENSSL_LIB_DIR = "$opensslRoot\lib"
+          $env:OPENSSL_INCLUDE_DIR = "$opensslRoot\include"
+
+          # GITHUB_ENV 仅对「后续」步骤生效；同一步内的 pip/maturin 必须依赖上面的 $env:
+          Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$env:VCPKG_ROOT"
+          Add-Content -Path $env:GITHUB_ENV -Value "OPENSSL_DIR=$env:OPENSSL_DIR"
+          Add-Content -Path $env:GITHUB_ENV -Value "OPENSSL_LIB_DIR=$env:OPENSSL_LIB_DIR"
+          Add-Content -Path $env:GITHUB_ENV -Value "OPENSSL_INCLUDE_DIR=$env:OPENSSL_INCLUDE_DIR"
+
+          python -m pip install --upgrade pip
+          python -m pip install setuptools wheel maturin
+          python -m pip install -r requirements.txt
 
       - name: Install Python dependencies
+        if: ${{ !(matrix.platform == 'win' && matrix.arch == 'aarch64') }}
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
@@ -119,7 +164,7 @@ jobs:
         with:
           nuitka-version: main
           script-name: main.py
-          mode: standalone
+          mode: ${{ matrix.nuitka_main_mode }}
           enable-plugins: pyside6
           windows-console-mode: disable
           windows-icon-from-ico: ./app/assets/icons/logo.ico
@@ -134,7 +179,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
-          path: build/main.dist
+          path: ${{ matrix.nuitka_artifact }}
           include-hidden-files: true
 
   release:
