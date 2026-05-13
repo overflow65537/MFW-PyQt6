@@ -99,7 +99,7 @@ jobs:
       is_release: ${{ steps.set_tag.outputs.is_release }}
       is_prerelease: ${{ steps.set_tag.outputs.is_prerelease }}
 
-  pyinstaller:
+  nuitka:
     needs: meta
     name: Build (${{ matrix.platform }}-${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
@@ -173,7 +173,7 @@ jobs:
           python -m pip install setuptools wheel maturin  # maturin 用于 Rust-Python 混合编译
 
           # 安装其他依赖
-          python -m pip install pyinstaller
+          python -m pip install pyinstaller nuitka ordered-set zstandard
           python -m pip install -r ./requirements.txt
         shell: pwsh
 
@@ -182,16 +182,16 @@ jobs:
         run: |
           uname -m
           if [[ ${{ matrix.arch }} == "x86_64" ]]; then
-            arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+            arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller nuitka ordered-set zstandard -r requirements.txt
           elif [[ ${{ matrix.arch }} == "aarch64" ]]; then
-            arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+            arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller nuitka ordered-set zstandard -r requirements.txt
           fi
 
       - name: Install dependencies (other)
         if: matrix.platform != 'macos' && !(matrix.platform == 'win' && matrix.arch == 'aarch64')
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyinstaller
+          python -m pip install pyinstaller nuitka ordered-set zstandard
           python -m pip install -r ./requirements.txt
 
       - name: Download i18n
@@ -200,16 +200,16 @@ jobs:
           name: i18n
           path: app/i18n
 
-      - name: Install(macos)
+      - name: Build (macos)
         if: matrix.platform == 'macos'
         run: |
-          sudo python ./tools/build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          sudo python ./tools/build_nuitka.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
 
 
-      - name: Install(other)
+      - name: Build (other)
         if: matrix.platform != 'macos'
         run: |
-          python ./tools/build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          python ./tools/build_nuitka.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  
 
       - name: Upload artifact
@@ -221,7 +221,7 @@ jobs:
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, pyinstaller,changelog]
+    needs: [meta, nuitka, changelog]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -229,16 +229,25 @@ jobs:
           path: assets
 
       - run: |
+          set -e
           cd assets
+          tag="${{ needs.meta.outputs.tag }}"
           for f in *; do
-            if [ "$f" != "i18n" ]; then
-              (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
+            if [ "$f" = "i18n" ]; then
+              continue
+            fi
+            if [[ "$f" == MFW-PyQt6-linux-* ]] || [[ "$f" == MFW-PyQt6-macos-* ]]; then
+              (cd "$f" && tar -czvf "../${f}-${tag}.tar.gz" .)
+            else
+              (cd "$f" && zip -r "../${f}-${tag}.zip" .)
             fi
           done
 
       - uses: softprops/action-gh-release@v2.2.2
         with:
-          files: assets/*.zip
+          files: |
+            assets/*.zip
+            assets/*.tar.gz
           tag_name: ${{ needs.meta.outputs.tag }}
           body: ${{ needs.changelog.outputs.release_body }}
           draft: false

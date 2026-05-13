@@ -108,11 +108,12 @@ python -m pip install -r requirements.txt
 
 ```powershell
 python tools/build.py win x86_64 v1.2.3
+# 或：python tools/build_nuitka.py win x86_64 v1.2.3
 ```
 
-参数依次为：平台、架构、版本号。详细说明见 `tools/README.md`。
+参数依次为：平台、架构、版本号。发行目录内需自备 **`maafw/`**（官方 MaaFramework `bin` 内容，与 MXU 相同）。详细说明见 `tools/README.md`。
 
-自动构建可参考 `deploy/install.yml` 与 `.github/workflows`。
+自动构建可参考 `deploy/install.yml` 与 `.github/workflows/install.yml`（主构建为 Nuitka）。
 
 ## 7. 开发约定
 

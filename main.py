@@ -27,14 +27,20 @@ import sys
 import argparse
 import atexit
 import traceback
+from pathlib import Path
+
+from app.utils.runtime_maafw import apply_maafw_runtime_layout
 
 
-# 设置工作目录为运行方式位置
+# 设置工作目录为运行方式位置；外置 maafw 必须在 import maa 之前完成
 if getattr(sys, "frozen", False):
-    os.chdir(os.path.dirname(sys.executable))
-    os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
+    _app_root = Path(sys.executable).resolve().parent
+    os.chdir(_app_root)
 else:
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    _app_root = Path(__file__).resolve().parent
+    os.chdir(_app_root)
+
+apply_maafw_runtime_layout(_app_root)
 
 
 def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:
@@ -89,7 +95,6 @@ def _run() -> int:
     logger.info(f"当前工作目录: {os.getcwd()}")
 
     import faulthandler
-    from pathlib import Path
 
     log_dir = Path("debug")
     log_dir.mkdir(exist_ok=True)
