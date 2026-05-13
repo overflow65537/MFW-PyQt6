@@ -1232,25 +1232,33 @@ class MainWindow(MSFluentWindow):
     def _on_controller_hint_overlay_closed(self) -> None:
         self._controller_hint_overlay = None
 
-    def _controller_setup_hint_message(self, hint: str) -> str:
-        if hint == "adb_path":
-            return self.tr(
-                "ADB path is not set. Tap Controller here and fill in the ADB executable path (usually next to your emulator)."
-            )
-        if hint == "address":
-            return self.tr(
-                "ADB address is empty. Start the emulator so a device appears, or tap Controller here to pick a connection address."
-            )
-        if hint == "port":
-            return self.tr(
-                "ADB port is missing in the address. Use host:port (for example 127.0.0.1:5555), or tap Controller here to change settings."
-            )
+    def _controller_setup_hint_message(self, payload: dict) -> str:
+        controller_name = str(payload.get("controller_name", "") or "").strip()
+        if not controller_name:
+            controller_name = self.tr("(empty)")
+
+        supported = payload.get("supported_controllers", [])
+        if isinstance(supported, str):
+            supported_names = [supported.strip()] if supported.strip() else []
+        elif isinstance(supported, list):
+            supported_names = [
+                str(item or "").strip()
+                for item in supported
+                if str(item or "").strip()
+            ]
+        else:
+            supported_names = []
+        supported_text = "、".join(supported_names) if supported_names else self.tr("(none)")
+
         return self.tr(
-            "Controller ADB settings are incomplete. Tap here to open the controller and fix path / address / port."
+            "控制器信息为空,请检查{controller}是否是预期控制器\n当前资源支持控制器:{controllers}"
+        ).format(
+            controller=controller_name,
+            controllers=supported_text,
         )
 
-    def _on_controller_setup_hint_requested(self, hint: str) -> None:
-        """ADB 路径或地址/端口未就绪时，复用首次引导同款遮罩指向控制器。"""
+    def _on_controller_setup_hint_requested(self, payload: dict) -> None:
+        """控制器配置未就绪时，复用首次引导同款遮罩指向控制器。"""
         self._switch_to_interface(self.TaskInterface)
 
         def _present_overlay() -> None:
@@ -1270,7 +1278,7 @@ class MainWindow(MSFluentWindow):
 
             self._dismiss_controller_hint_overlay()
             overlay = TutorialHighlightOverlay(self, target)
-            overlay.set_message(self._controller_setup_hint_message(hint))
+            overlay.set_message(self._controller_setup_hint_message(payload))
             overlay.closed.connect(self._on_controller_hint_overlay_closed)
             overlay.show()
             self._controller_hint_overlay = overlay

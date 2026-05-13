@@ -940,6 +940,15 @@ class TaskFlowRunner(QObject):
         resource_name = str((resource_task.task_option or {}).get("resource", "") or "").strip()
 
         if controller_name not in controller_names:
+            self._emit_controller_setup_hint(
+                reason=(
+                    "controller_name_empty"
+                    if not controller_name
+                    else "controller_not_found"
+                ),
+                controller_name=controller_name,
+                resource_name=resource_name,
+            )
             return self.tr("Current controller does not exist in interface: {}" ).format(
                 controller_name or self.tr("(empty)")
             )
@@ -1050,6 +1059,84 @@ class TaskFlowRunner(QObject):
 
         return current_norm in {name.lower() for name in allowed}
 
+    def _extract_configured_controller_name(
+        self, controller_raw: Dict[str, Any] | None
+    ) -> str:
+        if not isinstance(controller_raw, dict):
+            return ""
+        controller_type_raw = controller_raw.get("controller_type")
+        if isinstance(controller_type_raw, str):
+            return controller_type_raw.strip()
+        if isinstance(controller_type_raw, dict):
+            return str(controller_type_raw.get("value", "") or "").strip()
+        return ""
+
+    def _get_current_resource_name(self) -> str:
+        resource_task = self.task_service.get_task(_RESOURCE_)
+        if not resource_task or not isinstance(resource_task.task_option, dict):
+            return ""
+        return str(resource_task.task_option.get("resource", "") or "").strip()
+
+    def _get_resource_supported_controller_names(self, resource_name: str) -> list[str]:
+        interface = self.task_service.interface or {}
+        all_controller_names = [
+            str(item.get("name", "") or "").strip()
+            for item in interface.get("controller", [])
+            if isinstance(item, dict) and str(item.get("name", "") or "").strip()
+        ]
+
+        resource_def = None
+        for item in interface.get("resource", []):
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("name", "") or "").strip() == resource_name:
+                resource_def = item
+                break
+        if not resource_def:
+            return all_controller_names
+
+        allowed = resource_def.get("controller")
+        if allowed in (None, "", [], {}):
+            return all_controller_names
+        if isinstance(allowed, str):
+            return [allowed.strip()] if allowed.strip() else all_controller_names
+        if isinstance(allowed, list):
+            names = [
+                str(item or "").strip()
+                for item in allowed
+                if str(item or "").strip()
+            ]
+            return names or all_controller_names
+        return all_controller_names
+
+    def _emit_controller_setup_hint(
+        self,
+        reason: str,
+        controller_name: str = "",
+        resource_name: str | None = None,
+    ) -> None:
+        current_resource = (
+            str(resource_name or "").strip()
+            if resource_name is not None
+            else self._get_current_resource_name()
+        )
+        current_controller = (
+            str(controller_name or "").strip()
+            or self._extract_configured_controller_name(
+                getattr(self.task_service.get_task(_CONTROLLER_), "task_option", None)
+            )
+        )
+        self.runner_events.controller_setup_hint_requested.emit(
+            {
+                "reason": reason,
+                "controller_name": current_controller,
+                "resource_name": current_resource,
+                "supported_controllers": self._get_resource_supported_controller_names(
+                    current_resource
+                ),
+            }
+        )
+
     @property
     def is_running(self) -> bool:
         return self._is_running
@@ -1081,6 +1168,11 @@ class TaskFlowRunner(QObject):
             self._connect_error_reason = msg
             logger.error("控制器名称为空，无法连接设备")
             self.log_output.emit("ERROR", msg)
+            self._emit_controller_setup_hint(
+                reason="controller_name_empty",
+                controller_name=controller_name,
+                resource_name=resource_target,
+            )
             try:
                 await self.stop_task()
             except Exception:
@@ -1790,6 +1882,10 @@ class TaskFlowRunner(QObject):
                 )
                 logger.error("Win32 窗口句柄为空")
                 self.log_output.emit("ERROR", error_msg)
+                self._emit_controller_setup_hint(
+                    reason="win32_hwnd_empty",
+                    controller_name=controller_name,
+                )
                 return False
 
             # 需求：如果已搜索到窗口，则直接尝试连接并返回成功/失败（不再启动程序兜底）
@@ -1808,6 +1904,10 @@ class TaskFlowRunner(QObject):
         if not program_path:
             logger.error("Win32 控制器未匹配窗口且未配置启动程序")
             self.log_output.emit("ERROR", self.tr("Device connection failed"))
+            self._emit_controller_setup_hint(
+                reason="win32_program_path_empty",
+                controller_name=controller_name,
+            )
             return False
 
         # 启动程序+参数，轮询搜索窗口并连接
@@ -1929,6 +2029,10 @@ class TaskFlowRunner(QObject):
                 )
                 logger.error("Gamepad 窗口句柄为空")
                 self.log_output.emit("ERROR", error_msg)
+                self._emit_controller_setup_hint(
+                    reason="gamepad_hwnd_empty",
+                    controller_name=controller_name,
+                )
                 return False
 
             connect_success = await self.maafw.connect_gamepad(
@@ -1943,6 +2047,10 @@ class TaskFlowRunner(QObject):
         if not program_path:
             logger.error("Gamepad 控制器未匹配窗口且未配置启动程序")
             self.log_output.emit("ERROR", self.tr("Device connection failed"))
+            self._emit_controller_setup_hint(
+                reason="gamepad_program_path_empty",
+                controller_name=controller_name,
+            )
             return False
 
         self.log_output.emit("INFO", self.tr("try to start program"))
@@ -2030,6 +2138,10 @@ class TaskFlowRunner(QObject):
             )
             logger.error("PlayCover UUID 为空")
             self.log_output.emit("ERROR", error_msg)
+            self._emit_controller_setup_hint(
+                reason="playcover_uuid_empty",
+                controller_name=controller_name,
+            )
             return False
 
         if not address:
@@ -2038,6 +2150,10 @@ class TaskFlowRunner(QObject):
             )
             logger.error("PlayCover 连接地址为空")
             self.log_output.emit("ERROR", error_msg)
+            self._emit_controller_setup_hint(
+                reason="playcover_address_empty",
+                controller_name=controller_name,
+            )
             return False
 
         logger.debug(f"PlayCover 参数: uuid={uuid}, address={address}")
@@ -2152,7 +2268,10 @@ class TaskFlowRunner(QObject):
             )
             logger.error("ADB 路径为空")
             self.log_output.emit("ERROR", error_msg)
-            self.runner_events.controller_setup_hint_requested.emit("adb_path")
+            self._emit_controller_setup_hint(
+                reason="adb_path_empty",
+                controller_name=controller_name,
+            )
             return False
 
         address_missing = not raw_address
@@ -2167,13 +2286,19 @@ class TaskFlowRunner(QObject):
                     "ADB connection address is empty, please configure device connection in settings"
                 )
                 logger.error("ADB 连接地址为空")
-                self.runner_events.controller_setup_hint_requested.emit("address")
+                self._emit_controller_setup_hint(
+                    reason="adb_address_empty",
+                    controller_name=controller_name,
+                )
             else:
                 error_msg = self.tr(
                     "ADB connection port is empty; use host:port (for example 127.0.0.1:5555) or pick a device after starting the emulator."
                 )
                 logger.error("ADB 连接端口为空")
-                self.runner_events.controller_setup_hint_requested.emit("port")
+                self._emit_controller_setup_hint(
+                    reason="adb_port_empty",
+                    controller_name=controller_name,
+                )
             self.log_output.emit("ERROR", error_msg)
             return False
 

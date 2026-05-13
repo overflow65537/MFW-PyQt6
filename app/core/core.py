@@ -72,9 +72,9 @@ class _RunnerUiSignalBridge(QObject):
     def forward_focus_modal(self, message: str):
         signalBus.focus_modal.emit(message)
 
-    @Slot(str)
-    def forward_controller_setup_hint_requested(self, hint: str):
-        signalBus.controller_setup_hint_requested.emit(hint)
+    @Slot(dict)
+    def forward_controller_setup_hint_requested(self, payload: dict):
+        signalBus.controller_setup_hint_requested.emit(payload)
 
 
 class ServiceCoordinator:
