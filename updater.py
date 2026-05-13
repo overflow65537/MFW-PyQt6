@@ -28,6 +28,32 @@ def _collect_direct_run_args(argv: list[str]) -> list[str]:
 DIRECT_RUN_EXTRA_ARGS = _collect_direct_run_args(sys.argv)
 
 
+def _bootstrap_updater_cwd() -> None:
+    """frozen 时 cwd 与主程序对齐：安装根（mac 下为 MFW.app 同级）。"""
+    if not getattr(sys, "frozen", False):
+        return
+    exe = Path(sys.executable).resolve()
+    if sys.platform == "darwin":
+        p = exe.parent
+        if p.name == "MacOS" and p.parent.name == "Contents":
+            bundle = p.parent.parent
+            if bundle.suffix == ".app":
+                os.chdir(str(bundle.parent))
+                return
+    os.chdir(str(exe.parent))
+
+
+_bootstrap_updater_cwd()
+
+
+def _macos_bundled_main_executable() -> str | None:
+    """安装根下存在 MFW.app 时，返回 bundle 内主 Mach-O 路径。"""
+    p = os.path.join(os.getcwd(), "MFW.app", "Contents", "MacOS", "MFW")
+    if os.path.isfile(p):
+        return os.path.abspath(p)
+    return None
+
+
 class _SingleInstanceLock:
     """跨平台进程互斥（同一二进制/脚本只允许一个主进程运行）。
 
@@ -219,7 +245,11 @@ def _get_mfw_instance_key() -> str:
     if sys.platform.startswith("win32"):
         default_exe = os.path.join(os.getcwd(), "MFW.exe")
     else:
-        default_exe = os.path.join(os.getcwd(), "MFW")
+        mac_exe = _macos_bundled_main_executable()
+        if mac_exe is not None:
+            default_exe = mac_exe
+        else:
+            default_exe = os.path.join(os.getcwd(), "MFW")
 
     # 使用绝对路径作为实例键（与 main.py 保持一致）
     return os.path.abspath(default_exe)
@@ -229,6 +259,9 @@ def _get_default_startup_executable_path() -> str:
     if sys.platform.startswith("win32"):
         default_name = "MFW.exe"
     else:
+        mac_exe = _macos_bundled_main_executable()
+        if mac_exe is not None:
+            return mac_exe
         default_name = "MFW"
     return os.path.abspath(os.path.join(os.getcwd(), default_name))
 
@@ -523,7 +556,15 @@ def start_mfw_process():
         if DIRECT_RUN_EXTRA_ARGS:
             cmd.extend(DIRECT_RUN_EXTRA_ARGS)
         update_logger.info("重启/启动 MFW 进程: %s", " ".join(cmd))
-        subprocess.Popen(cmd, cwd=os.path.dirname(executable_path) or None)
+        exe_p = Path(executable_path).resolve()
+        if sys.platform == "darwin":
+            parent = exe_p.parent
+            if parent.name == "MacOS" and parent.parent.name == "Contents":
+                bundle = parent.parent.parent
+                if bundle.suffix == ".app":
+                    subprocess.Popen(cmd, cwd=os.fspath(bundle.parent))
+                    return
+        subprocess.Popen(cmd, cwd=os.fspath(exe_p.parent))
     except Exception as exc:
         update_logger.error(f"启动MFW程序失败: {exc}")
 

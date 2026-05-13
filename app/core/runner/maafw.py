@@ -51,6 +51,7 @@ except ImportError:  # pragma: no cover
 from PySide6.QtCore import QObject, Signal
 
 from app.utils.logger import logger
+from app.common.runtime_env import is_frozen_bundle
 
 
 # 以下代码引用自 MaaDebugger 项目的 ./src/MaaDebugger/maafw/__init__.py 文件，用于生成maafw实例
@@ -720,8 +721,7 @@ class MaaFW(QObject):
         import os
         import sys
 
-        # 使用 sys.frozen 判断是否打包（PyInstaller 标准方式）
-        is_packed = getattr(sys, "frozen", False)
+        is_packed = is_frozen_bundle()
         encoding = "utf-8" if is_packed else "gbk"
 
         # v2.5.0: 构建子进程环境变量，注入 PI_* 变量

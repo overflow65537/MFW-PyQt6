@@ -126,6 +126,8 @@ if sys.platform == "darwin":
     base_command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
         "--noconsole",  # 禁用控制台窗口
+        "--distpath",
+        os.path.join("dist", "MFW"),
     ]
 
 elif sys.platform == "win32":
@@ -165,20 +167,33 @@ print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
 # === 构建后处理 ===
-# 复制TEM_files的内容到 dist/MFW 目录
 dist_dir = os.path.join(os.getcwd(), "dist", "MFW")
-internal_dir = os.path.join(dist_dir, "_internal")
+if sys.platform == "darwin":
+    mac_internal = os.path.join(dist_dir, "MFW.app", "Contents", "MacOS", "_internal")
+    if os.path.isdir(mac_internal):
+        internal_dir = mac_internal
+    else:
+        internal_dir = os.path.join(dist_dir, "_internal")
+    bundle_macos = os.path.join(dist_dir, "MFW.app", "Contents", "MacOS")
+    if os.path.isdir(bundle_macos):
+        bin_layout_dir = bundle_macos
+    else:
+        bin_layout_dir = dist_dir
+else:
+    internal_dir = os.path.join(dist_dir, "_internal")
+    bin_layout_dir = dist_dir
+
 temp_files_dir = os.path.join(internal_dir, "TEM_files")
 if os.path.isdir(temp_files_dir):
-    shutil.copytree(temp_files_dir, dist_dir, dirs_exist_ok=True)
+    shutil.copytree(temp_files_dir, bin_layout_dir, dirs_exist_ok=True)
     shutil.rmtree(temp_files_dir)
 else:
     print(f"[WARN] Temporary files directory not found: {temp_files_dir}")
 
 
 for i in bin_files:
-    src_binary = os.path.join(dist_dir, "_internal", i)
-    dst_binary = os.path.join(dist_dir, i)
+    src_binary = os.path.join(internal_dir, i)
+    dst_binary = os.path.join(bin_layout_dir, i)
     if os.path.exists(src_binary):
         shutil.copy(src_binary, dst_binary)
         os.remove(src_binary)
@@ -218,6 +233,9 @@ for qm_file in [
         )
 
 # === 构建updater ===
+_updater_dist = os.path.join("dist", "MFW")
+if sys.platform == "darwin":
+    _updater_dist = os.path.join("dist", "MFW", "MFW.app", "Contents", "MacOS")
 updater_command = [
     "updater.py",
     "--name=MFWUpdater",
@@ -225,7 +243,7 @@ updater_command = [
     "--clean",
     "--noconfirm",  # 禁用确认提示
     "--distpath",
-    os.path.join("dist", "MFW"),
+    _updater_dist,
 ]
 PyInstaller.__main__.run(updater_command)
 
