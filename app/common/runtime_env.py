@@ -21,10 +21,10 @@
 
 - 源码：应用根 = main.py 所在目录；**不设置** ``MAAFW_BINARY_PATH``（保持环境原样）。
 - Win/Linux 打包：应用根 = ``dirname(sys.executable)``。
-- macOS ``.app``：主程序 Mach-O 在 ``…/MFW.app/Contents/MacOS/MFW`` 时，应用根为
+- macOS ``.app``：主程序 Mach-O 在 ``…/MFW.app/Contents/MacOS/MFW.bin``（或旧版无后缀 ``MFW``）时，应用根为
   **包含 ``MFW.app`` 的目录**（与 .app 同级），便于 ``./interface.json``、``./app`` 等。
 - 打包时 ``MAAFW_BINARY_PATH``：指向 **``{安装根}/maafw``**（外部提供的运行库目录；mac 即 app 同级下的 ``maafw/``）。
-- 更新器（mac）：二进制放在 ``MFW.app/Contents/MacOS/`` 与 ``MFW`` 同级；解析路径时
+- 更新器（mac）：二进制放在 ``MFW.app/Contents/MacOS/`` 与 ``MFW.bin`` / ``MFW`` 同级；解析路径时
   **优先**该目录，再回落安装根（与 ``cwd`` 一致）。
 """
 
@@ -100,7 +100,12 @@ def resolve_sidecar_updater_path() -> Path | None:
     if sys.platform.startswith("win32"):
         names = ("MFWUpdater1.exe", "MFWUpdater.exe")
     elif sys.platform.startswith(("darwin", "linux")):
-        names = ("MFWUpdater1", "MFWUpdater")
+        names = (
+            "MFWUpdater1.bin",
+            "MFWUpdater.bin",
+            "MFWUpdater1",
+            "MFWUpdater",
+        )
     else:
         return None
     for d in _updater_search_dirs():

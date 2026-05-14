@@ -48,9 +48,11 @@ _bootstrap_updater_cwd()
 
 def _macos_bundled_main_executable() -> str | None:
     """安装根下存在 MFW.app 时，返回 bundle 内主 Mach-O 路径。"""
-    p = os.path.join(os.getcwd(), "MFW.app", "Contents", "MacOS", "MFW")
-    if os.path.isfile(p):
-        return os.path.abspath(p)
+    base = os.path.join(os.getcwd(), "MFW.app", "Contents", "MacOS")
+    for name in ("MFW.bin", "MFW"):
+        p = os.path.join(base, name)
+        if os.path.isfile(p):
+            return os.path.abspath(p)
     return None
 
 
@@ -155,7 +157,11 @@ FULL_UPDATE_EXCLUDES = [
     "debug",
     "update",
     "MFWUpdater1.exe",
+    "MFWUpdater.exe",
+    "MFWUpdater1.bin",
+    "MFWUpdater.bin",
     "MFWUpdater1",
+    "MFWUpdater",
 ]
 
 
@@ -249,7 +255,13 @@ def _get_mfw_instance_key() -> str:
         if mac_exe is not None:
             default_exe = mac_exe
         else:
-            default_exe = os.path.join(os.getcwd(), "MFW")
+            for candidate in ("MFW.bin", "MFW"):
+                p = os.path.join(os.getcwd(), candidate)
+                if os.path.isfile(p):
+                    default_exe = p
+                    break
+            else:
+                default_exe = os.path.join(os.getcwd(), "MFW.bin")
 
     # 使用绝对路径作为实例键（与 main.py 保持一致）
     return os.path.abspath(default_exe)
@@ -257,13 +269,15 @@ def _get_mfw_instance_key() -> str:
 
 def _get_default_startup_executable_path() -> str:
     if sys.platform.startswith("win32"):
-        default_name = "MFW.exe"
-    else:
-        mac_exe = _macos_bundled_main_executable()
-        if mac_exe is not None:
-            return mac_exe
-        default_name = "MFW"
-    return os.path.abspath(os.path.join(os.getcwd(), default_name))
+        return os.path.abspath(os.path.join(os.getcwd(), "MFW.exe"))
+    mac_exe = _macos_bundled_main_executable()
+    if mac_exe is not None:
+        return mac_exe
+    for candidate in ("MFW.bin", "MFW"):
+        p = os.path.join(os.getcwd(), candidate)
+        if os.path.isfile(p):
+            return os.path.abspath(p)
+    return os.path.abspath(os.path.join(os.getcwd(), "MFW.bin"))
 
 
 def _get_expected_startup_executable_path() -> str:
@@ -507,7 +521,14 @@ def extract_zip_file_with_validation(update_file_path):
                     extracted_path = extract_dir / file_info
                     if not extracted_path.exists():
                         raise Exception(f"文件解压后不存在: {file_info}")
-                    if sys.platform != "win32" and file_info in {"MFW", "MFWUpdater"}:
+                    if sys.platform != "win32" and os.path.basename(file_info) in {
+                        "MFW",
+                        "MFW.bin",
+                        "MFWUpdater",
+                        "MFWUpdater.bin",
+                        "MFWUpdater1",
+                        "MFWUpdater1.bin",
+                    }:
                         os.chmod(extracted_path, 0o755)
                     extracted_count += 1
                     print(f"[解压] ✓ 已解压 ({extracted_count}/{total_files}): {file_info}")
@@ -917,7 +938,11 @@ def _copy_temp_to_root(temp_dir: Path, *, verbose: bool = False):
             shutil.copy2(src_file, dest_file)
             if sys.platform != "win32" and os.path.basename(dest_file) in {
                 "MFW",
+                "MFW.bin",
                 "MFWUpdater",
+                "MFWUpdater.bin",
+                "MFWUpdater1",
+                "MFWUpdater1.bin",
             }:
                 os.chmod(dest_file, 0o755)
             if verbose:
@@ -1101,7 +1126,14 @@ def extract_interface_folder(zip_path):
                     os.makedirs(os.path.dirname(target_path), exist_ok=True)
                     with zf.open(member) as source, open(target_path, "wb") as target:
                         shutil.copyfileobj(source, target)
-                    if sys.platform != "win32" and relative_path in {"MFW", "MFWUpdater"}:
+                    if sys.platform != "win32" and os.path.basename(relative_path) in {
+                        "MFW",
+                        "MFW.bin",
+                        "MFWUpdater",
+                        "MFWUpdater.bin",
+                        "MFWUpdater1",
+                        "MFWUpdater1.bin",
+                    }:
                         os.chmod(target_path, 0o755)
                     extracted_count += 1
                     if extracted_count % 10 == 0 or extracted_count == total_files:

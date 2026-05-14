@@ -3027,6 +3027,8 @@ class MainWindow(MSFluentWindow):
             UPDATER_NAMES = {
                 "MFWUpdater.exe",
                 "MFWUpdater1.exe",
+                "MFWUpdater.bin",
+                "MFWUpdater1.bin",
                 "MFWUpdater",
                 "MFWUpdater1",
             }

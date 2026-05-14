@@ -206,7 +206,7 @@ def launch_updater_process(*extra_args: str) -> None:
     if resolved_executable is None:
         logger.error(
             "未找到更新程序（已搜索 MFW.app/Contents/MacOS 与安装根；"
-            "期望 MFWUpdater1 / MFWUpdater 或 Windows 下 .exe）"
+            "期望 MFWUpdater1 / MFWUpdater（及 .bin / .exe 变体））"
         )
         raise FileNotFoundError("MFW updater binary not found")
 
@@ -2884,8 +2884,12 @@ class SettingInterface(QWidget):
 
         try:
             if sys.platform.startswith("win32"):
+                rename_updater_binary("updater.exe", "MFWUpdater.exe")
                 self._rename_updater("MFWUpdater.exe", "MFWUpdater1.exe")
             elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+                rename_updater_binary("updater.bin", "MFWUpdater.bin")
+                rename_updater_binary("updater", "MFWUpdater")
+                self._rename_updater("MFWUpdater.bin", "MFWUpdater1.bin")
                 self._rename_updater("MFWUpdater", "MFWUpdater1")
         except Exception as e:
             self._updater_started = False

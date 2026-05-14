@@ -22,6 +22,7 @@ MFW-ChainFlow Assistant Nuitka 构建后处理脚本
 """
 
 import os
+import plistlib
 import shutil
 import site
 import sys
@@ -143,6 +144,46 @@ else:
 
 print(f"[INFO] Bundle payload directory: {main_dist_path}")
 
+
+def _rename_nuitka_entry_preserve_suffix(
+    dist_root: str,
+    build_dir: str,
+    old_stem: str,
+    new_stem: str,
+) -> str | None:
+    """Pick Nuitka output old_stem(.exe|.bin|''); rename to new_stem + same suffix. Search dist then build."""
+    for root in (dist_root, build_dir):
+        for name in (f"{old_stem}.exe", f"{old_stem}.bin", old_stem):
+            src = os.path.join(root, name)
+            if not os.path.isfile(src):
+                continue
+            suffix = Path(name).suffix
+            dst_name = new_stem + suffix
+            dst = os.path.join(dist_root, dst_name)
+            if os.path.normcase(os.path.abspath(src)) != os.path.normcase(
+                os.path.abspath(dst)
+            ):
+                if os.path.isfile(dst):
+                    os.remove(dst)
+                shutil.move(src, dst)
+            return dst_name
+    return None
+
+
+def _patch_macos_cf_bundle_executable(app_bundle_root: str, executable_name: str) -> None:
+    """Keep .app launchable after renaming the Mach-O in Contents/MacOS."""
+    plist_path = os.path.join(app_bundle_root, "Contents", "Info.plist")
+    if not os.path.isfile(plist_path):
+        print(f"[WARN] Info.plist missing, skip CFBundleExecutable patch: {plist_path}")
+        return
+    with open(plist_path, "rb") as fp:
+        data = plistlib.load(fp)
+    data["CFBundleExecutable"] = executable_name
+    with open(plist_path, "wb") as fp:
+        plistlib.dump(data, fp)
+    print(f"[INFO] CFBundleExecutable set to {executable_name}")
+
+
 # 复制完整 maa 包到发行目录（不将 maa/bin 提升到根目录）
 shutil.copytree(
     maa_path,
@@ -169,34 +210,20 @@ shutil.copytree(
     dirs_exist_ok=True,
 )
 
-# 重命名main至MFW
-print("[DEBUG] Renaming")
-if platform == "win":
-    shutil.move(
-        os.path.join(main_dist_path, "main.exe"),
-        os.path.join(main_dist_path, "MFW.exe"),
+# main -> MFW（仅改主文件名，保留 Nuitka 产出尾缀 .exe / .bin / 无后缀）
+print("[DEBUG] Renaming main -> MFW (preserve suffix)")
+_main_out = _rename_nuitka_entry_preserve_suffix(
+    main_dist_path, build_dir, "main", "MFW"
+)
+if _main_out is None:
+    print(
+        f"[ERROR] Nuitka main entry not found under {main_dist_path} or {build_dir} "
+        "(expected main.exe / main.bin / main)"
     )
-elif platform == "linux":
-    shutil.move(
-        os.path.join(main_dist_path, "main.bin"),
-        os.path.join(main_dist_path, "MFW.bin"),
-    )
-elif platform == "macos":
-    _mb = os.path.join(main_dist_path, "main.bin")
-    _mn = os.path.join(main_dist_path, "main")
-    if os.path.isfile(_mb):
-        shutil.move(_mb, os.path.join(main_dist_path, "MFW"))
-    elif os.path.isfile(_mn):
-        shutil.move(_mn, os.path.join(main_dist_path, "MFW"))
-    else:
-        print(f"[ERROR] No main.bin or main under {main_dist_path}")
-        sys.exit(1)
-else:
-    shutil.move(
-        os.path.join(main_dist_path, "main"),
-        os.path.join(main_dist_path, "MFW"),
-    )
-print("[SUCCESS] Executable renamed")
+    sys.exit(1)
+if platform == "macos":
+    _patch_macos_cf_bundle_executable(bundle_root, _main_out)
+print(f"[SUCCESS] Main executable: {_main_out}")
 
 # 复制README和许可证
 shutil.copy(
@@ -225,11 +252,26 @@ for qm_file in [
             os.path.join(main_dist_path, "app", "i18n", qm_file),
         )
 
-shutil.copytree(
-    os.path.join(".", "build", "updater.dist"),
-    main_dist_path,
-    dirs_exist_ok=True,
+_updater_dist = os.path.join(build_dir, "updater.dist")
+if os.path.isdir(_updater_dist):
+    shutil.copytree(_updater_dist, main_dist_path, dirs_exist_ok=True)
+else:
+    print(
+        f"[WARN] {_updater_dist} not found; skip updater.dist merge "
+        "(onefile may place updater only under build/)"
+    )
+
+print("[DEBUG] Renaming updater -> MFWUpdater (preserve suffix)")
+_updater_out = _rename_nuitka_entry_preserve_suffix(
+    main_dist_path, build_dir, "updater", "MFWUpdater"
 )
+if _updater_out is None:
+    print(
+        f"[ERROR] Nuitka updater entry not found under {main_dist_path} or {build_dir} "
+        "(expected updater.exe / updater.bin / updater)"
+    )
+    sys.exit(1)
+print(f"[SUCCESS] Updater executable: {_updater_out}")
 
 _file_list_path = os.path.join(bundle_root, "file_list.txt")
 generate_file_list(bundle_root, _file_list_path)
