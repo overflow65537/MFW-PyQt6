@@ -206,6 +206,36 @@ jobs:
           MFW_VERSION: ${{ needs.meta.outputs.tag }}
         run: python -c "import os; open('app/common/__version__.py','w',encoding='utf-8').write('__version__ = %r\n' % os.environ['MFW_VERSION'])"
 
+      # Nuitka --file-version / --product-version 仅接受至多 4 段无符号整数（如 1.2.3.0），从 tag 推导
+      - name: Compute executable version metadata
+        id: exe_meta
+        shell: python
+        env:
+          TAG: ${{ needs.meta.outputs.tag }}
+        run: |
+          import os
+          import pathlib
+          import re
+
+          tag = os.environ.get("TAG", "v0.0.0").strip()
+          core = tag[1:] if tag.startswith("v") else tag
+          m = re.match(r"^(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?", core)
+          parts: list[str] = []
+          if m:
+              for g in m.groups():
+                  if g is not None:
+                      parts.append(g)
+          if not parts:
+              parts = ["0"]
+          while len(parts) < 4:
+              parts.append("0")
+          win_ver = ".".join(parts[:4])
+
+          out = pathlib.Path(os.environ["GITHUB_OUTPUT"])
+          with out.open("a", encoding="utf-8") as f:
+              f.write(f"win_file_version={win_ver}\n")
+              f.write(f"win_product_version={win_ver}\n")
+
       - name: Qt GUI with PySide6 (Windows)
         if: matrix.platform == 'win'
         uses: Nuitka/Nuitka-Action@main
@@ -219,6 +249,12 @@ jobs:
           enable-plugins: pyside6
           windows-console-mode: disable
           windows-icon-from-ico: ./app/assets/icons/logo.ico
+          company-name: ${{ github.repository_owner }}
+          product-name: MFW-ChainFlow Assistant
+          file-version: ${{ steps.exe_meta.outputs.win_file_version }}
+          product-version: ${{ steps.exe_meta.outputs.win_product_version }}
+          file-description: MaaFramework GUI runner (interface v2)
+          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
           user-package-configuration-file: nuitka-package.config.yml
           include-package: |
             maa
@@ -229,6 +265,7 @@ jobs:
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
+            app/assets/icons/logo.png=logo.png
           include-data-dir: app/i18n=app/i18n
 
       - name: Qt GUI with PySide6 (Linux)
@@ -242,6 +279,12 @@ jobs:
           caching-key: mfw-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
           output-file: MFW
           enable-plugins: pyside6
+          company-name: ${{ github.repository_owner }}
+          product-name: MFW-ChainFlow Assistant
+          file-version: ${{ steps.exe_meta.outputs.win_file_version }}
+          product-version: ${{ steps.exe_meta.outputs.win_product_version }}
+          file-description: MaaFramework GUI runner (interface v2)
+          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
           user-package-configuration-file: nuitka-package.config.yml
           include-package: |
             maa
@@ -252,6 +295,7 @@ jobs:
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
+            app/assets/icons/logo.png=logo.png
           include-data-dir: app/i18n=app/i18n
 
       - name: updater build (Windows)
@@ -265,6 +309,12 @@ jobs:
           caching-key: mfw-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
           output-file: MFWUpdater
           windows-console-mode: force
+          company-name: ${{ github.repository_owner }}
+          product-name: MFW Updater
+          file-version: ${{ steps.exe_meta.outputs.win_file_version }}
+          product-version: ${{ steps.exe_meta.outputs.win_product_version }}
+          file-description: MFW update helper (sidecar)
+          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
 
       - name: updater build (Linux)
         if: matrix.platform == 'linux'
@@ -276,6 +326,12 @@ jobs:
           lto: no
           caching-key: mfw-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
           output-file: MFWUpdater
+          company-name: ${{ github.repository_owner }}
+          product-name: MFW Updater
+          file-version: ${{ steps.exe_meta.outputs.win_file_version }}
+          product-version: ${{ steps.exe_meta.outputs.win_product_version }}
+          file-description: MFW update helper (sidecar)
+          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
 
       # Nuitka standalone 仍会生成 build/updater.dist；合并进 main.dist 形成单一发行目录
       - name: Merge updater.dist into main.dist (Windows)
@@ -293,6 +349,11 @@ jobs:
       - name: Merge updater.dist into main.dist (Linux)
         if: matrix.platform == 'linux'
         shell: bash
+        env:
+          MFW_VERSION: ${{ needs.meta.outputs.tag }}
+          MFW_WIN_VER: ${{ steps.exe_meta.outputs.win_file_version }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
           main="build/main.dist"
@@ -301,6 +362,83 @@ jobs:
           if [[ ! -d "$upd" ]]; then echo "missing $upd"; exit 1; fi
           cp -a "$upd"/. "$main"/
           rm -rf "$upd"
+
+          python3 << 'PY'
+          import datetime as _dt
+          import os
+          import pathlib
+          import xml.sax.saxutils as _xml
+
+          main = pathlib.Path("build/main.dist")
+          tag_plain = os.environ.get("MFW_VERSION", "")
+          tag_xml = _xml.escape(tag_plain)
+          win_ver_plain = os.environ.get("MFW_WIN_VER", "0.0.0.0")
+          win_ver_xml = _xml.escape(win_ver_plain)
+          owner = _xml.escape(os.environ.get("GITHUB_REPOSITORY_OWNER", ""))
+          repo = os.environ.get("GITHUB_REPOSITORY", "")
+          home = _xml.escape(f"https://github.com/{repo}")
+
+          launcher = """#!/usr/bin/env sh
+          HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+          cd "$HERE" || exit 1
+          exec ./MFW "$@"
+          """
+          (main / "run-mfw.sh").write_text(
+              "\n".join(line.lstrip() for line in launcher.strip().splitlines()) + "\n",
+              encoding="utf-8",
+          )
+          (main / "run-mfw.sh").chmod(0o755)
+
+          desktop = f"""[Desktop Entry]
+          Version=1.5
+          Type=Application
+          Terminal=false
+          Categories=Utility;Development;
+          StartupWMClass=MFW
+          Name=MFW-ChainFlow Assistant
+          Name[zh_CN]=链程助手
+          GenericName=MaaFramework GUI
+          Comment=Visual runner for MaaFramework automation (interface v2). Build tag: {tag_plain}
+          Comment[zh_CN]=基于 MaaFramework 的可视化自动化运行器（interface v2）。构建标识：{tag_plain}
+          Keywords=maa;MaaFramework;automation;PySide6;
+          Icon=./logo.png
+          Exec=./run-mfw.sh
+          """
+          (main / "io.github.overflow65537.mfw-pyqt6.desktop").write_text(
+              "\n".join(line.lstrip() for line in desktop.strip().splitlines()) + "\n",
+              encoding="utf-8",
+          )
+
+          today = _dt.datetime.now(_dt.UTC).date().isoformat()
+          metainfo_dir = main / "share" / "metainfo"
+          metainfo_dir.mkdir(parents=True, exist_ok=True)
+          xml_body = f"""<?xml version="1.0" encoding="UTF-8"?>
+          <component type="desktop-application">
+            <id>io.github.overflow65537.mfw-pyqt6</id>
+            <metadata_license>MIT</metadata_license>
+            <project_license>GPL-3.0-or-later</project_license>
+            <name>MFW-ChainFlow Assistant</name>
+            <name xml:lang="zh_CN">链程助手</name>
+            <summary>Visual runner for MaaFramework automation (interface v2)</summary>
+            <summary xml:lang="zh_CN">基于 MaaFramework 的可视化自动化运行器（interface v2）</summary>
+            <developer_name>{owner}</developer_name>
+            <url type="homepage">{home}</url>
+            <url type="bugtracker">{home}/issues</url>
+            <launchable type="desktop-id">io.github.overflow65537.mfw-pyqt6.desktop</launchable>
+            <releases>
+              <release version="{win_ver_xml}" date="{_xml.escape(today)}">
+                <description>
+                  <p>Build tag: {tag_xml}</p>
+                </description>
+              </release>
+            </releases>
+          </component>
+          """
+          (metainfo_dir / "io.github.overflow65537.mfw-pyqt6.metainfo.xml").write_text(
+              "\n".join(line.lstrip() for line in xml_body.strip().splitlines()) + "\n",
+              encoding="utf-8",
+          )
+          PY
 
       - name: Generate distribution file list
         run: python tools/build_nuitka.py --file-list
