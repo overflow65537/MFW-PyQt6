@@ -126,8 +126,6 @@ if sys.platform == "darwin":
     base_command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
         "--noconsole",  # 禁用控制台窗口
-        "--distpath",
-        os.path.join("dist", "MFW"),
     ]
 
 elif sys.platform == "win32":
@@ -163,33 +161,20 @@ print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
 # === 构建后处理 ===
+# 复制TEM_files的内容到 dist/MFW 目录
 dist_dir = os.path.join(os.getcwd(), "dist", "MFW")
-if sys.platform == "darwin":
-    mac_internal = os.path.join(dist_dir, "MFW.app", "Contents", "MacOS", "_internal")
-    if os.path.isdir(mac_internal):
-        internal_dir = mac_internal
-    else:
-        internal_dir = os.path.join(dist_dir, "_internal")
-    bundle_macos = os.path.join(dist_dir, "MFW.app", "Contents", "MacOS")
-    if os.path.isdir(bundle_macos):
-        bin_layout_dir = bundle_macos
-    else:
-        bin_layout_dir = dist_dir
-else:
-    internal_dir = os.path.join(dist_dir, "_internal")
-    bin_layout_dir = dist_dir
-
+internal_dir = os.path.join(dist_dir, "_internal")
 temp_files_dir = os.path.join(internal_dir, "TEM_files")
 if os.path.isdir(temp_files_dir):
-    shutil.copytree(temp_files_dir, bin_layout_dir, dirs_exist_ok=True)
+    shutil.copytree(temp_files_dir, dist_dir, dirs_exist_ok=True)
     shutil.rmtree(temp_files_dir)
 else:
     print(f"[WARN] Temporary files directory not found: {temp_files_dir}")
 
 
 for i in bin_files:
-    src_binary = os.path.join(internal_dir, i)
-    dst_binary = os.path.join(bin_layout_dir, i)
+    src_binary = os.path.join(dist_dir, "_internal", i)
+    dst_binary = os.path.join(dist_dir, i)
     if os.path.exists(src_binary):
         shutil.copy(src_binary, dst_binary)
         os.remove(src_binary)
@@ -229,46 +214,16 @@ for qm_file in [
         )
 
 # === 构建updater ===
-# macOS：勿直接向 Contents/MacOS 输出；--clean/中间产物可能与主包冲突。
-# 先打到隔离目录再复制到 MFW.app/Contents/MacOS/，与 MFW 主 Mach-O 同级。
-if sys.platform == "darwin":
-    _stage = os.path.join(dist_dir, "_updater_staging")
-    if os.path.isdir(_stage):
-        shutil.rmtree(_stage, ignore_errors=True)
-    os.makedirs(_stage, exist_ok=True)
-    _updater_dist = _stage
-else:
-    _updater_dist = os.path.join("dist", "MFW")
-
 updater_command = [
     "updater.py",
     "--name=MFWUpdater",
     "--onefile",
+    "--clean",
     "--noconfirm",  # 禁用确认提示
     "--distpath",
-    _updater_dist,
+    os.path.join("dist", "MFW"),
 ]
-if sys.platform != "darwin":
-    updater_command.insert(3, "--clean")
-
 PyInstaller.__main__.run(updater_command)
-
-if sys.platform == "darwin":
-    _macos_dir = os.path.join(dist_dir, "MFW.app", "Contents", "MacOS")
-    _staged_bin = os.path.join(_stage, "MFWUpdater")
-    _dest_bin = os.path.join(_macos_dir, "MFWUpdater")
-    if os.path.isfile(_staged_bin):
-        shutil.copy2(_staged_bin, _dest_bin)
-        shutil.rmtree(_stage, ignore_errors=True)
-        print(f"[INFO] MFWUpdater -> {_dest_bin}")
-    else:
-        print(
-            f"[ERROR] 未在 staging 找到 MFWUpdater: {_staged_bin}，"
-            "请检查 PyInstaller 输出名与 onefile 配置"
-        )
-    # 可选：列出 MacOS 内文件便于 CI 核对
-    if os.path.isdir(_macos_dir):
-        print("[DEBUG] Contents/MacOS:", os.listdir(_macos_dir))
 
 
 def generate_file_list(input_dir, output_file=None):
@@ -332,8 +287,7 @@ def generate_file_list(input_dir, output_file=None):
         return False
 
 
-# 生成 file_list.txt：路径相对于安装根 dist/MFW（与 updater 的 getcwd() 一致）。
-# 勿仅放在 Contents/MacOS：其中条目形如 ./MFW.app/...，相对安装根才成立。
+# 生成包含文件列表
 generate_file_list(
     os.path.join("dist", "MFW"), os.path.join("dist", "MFW", "file_list.txt")
 )
