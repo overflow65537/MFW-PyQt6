@@ -154,6 +154,8 @@ jobs:
           nuitka-version: main
           script-name: updater.py
           mode: standalone
+          # 更新器为控制台程序（非 GUI），保留控制台以便输出与 Ctrl+C 中断提示
+          windows-console-mode: force
 
       - name: Install imageio (Nuitka macOS PNG app icon)
         if: matrix.platform == 'macos'
@@ -166,7 +168,8 @@ jobs:
           script-name: main.py
           mode: ${{ matrix.nuitka_main_mode }}
           enable-plugins: pyside6
-          windows-console-mode: disable
+          # force: 始终带控制台，便于查看启动/崩溃错误；发布若需无黑框可改回 disable 或 attach
+          windows-console-mode: force
           windows-icon-from-ico: ./app/assets/icons/logo.ico
           linux-icon: ./app/assets/icons/logo.png
           macos-app-icon: ./app/assets/icons/logo.png

@@ -3,6 +3,7 @@ import logging
 import os
 import random
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -684,6 +685,43 @@ if DIRECT_RUN_EXTRA_ARGS:
         "启动参数检测到直接运行标志，即将向 MFW 透传: %s",
         DIRECT_RUN_EXTRA_ARGS,
     )
+
+
+def install_updater_interrupt_handlers() -> None:
+    """控制台更新器（非 GUI）：Ctrl+C / SIGTERM 时输出可读提示并退出。"""
+
+    def _handler(signum, _frame):
+        try:
+            name = signal.Signals(signum).name
+        except (ValueError, AttributeError):
+            name = str(signum)
+        text = (
+            "\n[中断] 已收到中断信号（{}），更新器即将退出（更新可能未完成）。\n"
+            "[Interrupt] Signal {}; exiting (update may be incomplete).\n"
+        ).format(name, name)
+        try:
+            print(text, flush=True)
+        except Exception:
+            pass
+        try:
+            update_logger.warning(
+                "Updater interrupted by signal: %s (%s)", name, signum
+            )
+        except Exception:
+            pass
+        sys.exit(130)
+
+    try:
+        signal.signal(signal.SIGINT, _handler)
+    except (OSError, ValueError):
+        pass
+    if os.name != "nt":
+        sigterm = getattr(signal, "SIGTERM", None)
+        if sigterm is not None:
+            try:
+                signal.signal(sigterm, _handler)
+            except (OSError, ValueError):
+                pass
 
 
 def load_update_metadata(update_dir):
@@ -1864,6 +1902,8 @@ if __name__ == "__main__":
     update_logger.info("\n%s\n[%s] 更新程序启动\n%s", separator, timestamp, separator)
     update_logger.info("更新程序启动, argv=%s", sys.argv)
 
+    install_updater_interrupt_handlers()
+
     try:
         if len(sys.argv) > 1:
             if sys.argv[1] == "-update":
@@ -1944,6 +1984,17 @@ if __name__ == "__main__":
             else:
                 print("无效输入 / Invalid input")
                 input("按回车键继续... / Press Enter to continue...")
+    except KeyboardInterrupt:
+        msg = (
+            "\n[中断] 用户中断（KeyboardInterrupt），更新器退出（更新可能未完成）。\n"
+            "[Interrupt] KeyboardInterrupt; exiting (update may be incomplete).\n"
+        )
+        print(msg, flush=True)
+        try:
+            update_logger.warning("KeyboardInterrupt")
+        except Exception:
+            pass
+        sys.exit(130)
     except Exception as e:
         # 捕获所有未处理的异常并记录
         error_message = f"更新程序发生未捕获的异常: {type(e).__name__}: {e}"
