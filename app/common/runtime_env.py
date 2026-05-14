@@ -24,8 +24,8 @@
 - macOS ``.app``：主程序 Mach-O 在 ``…/MFW.app/Contents/MacOS/MFW.bin``（或旧版无后缀 ``MFW``）时，应用根为
   **包含 ``MFW.app`` 的目录**（与 .app 同级），便于 ``./interface.json``、``./app`` 等。
 - 打包时 ``MAAFW_BINARY_PATH``：指向 **``{安装根}/maafw``**（外部提供的运行库目录；mac 即 app 同级下的 ``maafw/``）。
-- 更新器（mac）：二进制放在 ``MFW.app/Contents/MacOS/`` 与 ``MFW.bin`` / ``MFW`` 同级；解析路径时
-  **优先**该目录，再回落安装根（与 ``cwd`` 一致）。
+- Maa 原生工具链须保留在 **``maa/bin``**（勿平铺到安装根）；Windows/Linux 打包启动时会调整 ``PATH`` / ``LD_LIBRARY_PATH`` 以便加载。
+- 更新器（mac）：在 ``MFW.app/Contents/MacOS/`` 与安装根中解析 ``MFWUpdater*``。
 """
 
 from __future__ import annotations
@@ -68,10 +68,48 @@ def resolve_application_base_dir(main_file: str) -> Path:
     return exe.parent
 
 
+def _bootstrap_linux_frozen_env(base: Path) -> None:
+    """Linux 单目录发行：Qt 插件 + 动态库搜索路径（maa 工具链须留在 maa/bin，勿平铺到安装根）。"""
+    if sys.platform != "linux" or not is_frozen_bundle():
+        return
+    exe_dir = Path(sys.executable).resolve().parent
+    qt_plugins = exe_dir / "PySide6" / "Qt" / "plugins"
+    if qt_plugins.is_dir():
+        os.environ.setdefault("QT_PLUGIN_PATH", str(qt_plugins))
+    maa_bin = exe_dir / "maa" / "bin"
+    prepend: list[str] = []
+    if maa_bin.is_dir():
+        prepend.append(str(maa_bin))
+    prepend.append(str(exe_dir))
+    ld = os.environ.get("LD_LIBRARY_PATH", "")
+    os.environ["LD_LIBRARY_PATH"] = ":".join(prepend + ([ld] if ld else []))
+
+
+def _bootstrap_win_frozen_env(base: Path) -> None:
+    """Windows 打包：将 maa/bin 加入 PATH，便于按包内路径查找 maabinary 等，勿与安装根平铺混用。"""
+    if not sys.platform.startswith("win32") or not is_frozen_bundle():
+        return
+    maa_bin = base.resolve() / "maa" / "bin"
+    if not maa_bin.is_dir():
+        return
+    p = str(maa_bin)
+    path = os.environ.get("PATH", "")
+    if p not in path.split(os.pathsep):
+        os.environ["PATH"] = p + os.pathsep + path
+    add_dll = getattr(os, "add_dll_directory", None)
+    if callable(add_dll):
+        try:
+            add_dll(p)
+        except OSError:
+            pass
+
+
 def apply_startup_workdir(main_file: str) -> Path:
     """将进程 ``cwd`` 设为安装根；仅在打包时设置 ``MAAFW_BINARY_PATH`` 为 ``{cwd}/maafw``。"""
     base = resolve_application_base_dir(main_file)
     os.chdir(base)
+    _bootstrap_linux_frozen_env(base)
+    _bootstrap_win_frozen_env(base)
     # if is_frozen_bundle():
     #    maafw_dir = (Path(base) / "maafw").resolve()
     #    os.environ["MAAFW_BINARY_PATH"] = os.fspath(maafw_dir)
