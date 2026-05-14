@@ -1,0 +1,13 @@
+# maa 运行时从 bin、bin/plugins 动态加载原生库；standalone 编译期需显式收录。
+# 整包由 Nuitka --include-package=maa 与本 dlls 规则纳入产物，不再由 build_nuitka 手动拷贝。
+---
+- module-name: 'maa'
+  dlls:
+    - from_filenames:
+        relative_path: 'bin'
+        prefixes:
+          - '*'
+    - from_filenames:
+        relative_path: 'bin/plugins'
+        prefixes:
+          - '*'

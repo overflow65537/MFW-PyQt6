@@ -117,7 +117,6 @@ with open(os.path.join(os.getcwd(), "app", "common", "__version__.py"), "w") as 
     f.write(f'__version__ = "{version}"')
 
 try:
-    maa_path = locate_package("maa")
     agent_path = locate_package("MaaAgentBinary")
     darkdetect_path = locate_package("darkdetect")
     strenum_path = locate_package("strenum")
@@ -206,13 +205,6 @@ def _finalize_updater_executable(dist_root: str, build_dir: str, platform: str) 
     return None
 
 
-# 复制完整 maa 包到发行目录（不将 maa/bin 提升到根目录）
-shutil.copytree(
-    maa_path,
-    os.path.join(main_dist_path, "maa"),
-    dirs_exist_ok=True,
-)
-
 # 移动 MaaAgentBinary 到 dist 目录
 shutil.copytree(
     agent_path,
@@ -221,16 +213,6 @@ shutil.copytree(
 )
 print("[INFO] Copied MaaAgentBinary to distribution directory")
 
-shutil.copytree(
-    darkdetect_path,
-    os.path.join(main_dist_path, "darkdetect"),
-    dirs_exist_ok=True,
-)
-shutil.copytree(
-    strenum_path,
-    os.path.join(main_dist_path, "strenum"),
-    dirs_exist_ok=True,
-)
 
 # main -> MFW（仅改主文件名，保留 Nuitka 产出尾缀 .exe 或无后缀）
 print("[DEBUG] Renaming main -> MFW (preserve suffix)")

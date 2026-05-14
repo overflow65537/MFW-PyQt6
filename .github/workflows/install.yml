@@ -184,7 +184,10 @@ jobs:
           enable-plugins: pyside6
           windows-console-mode: disable
           windows-icon-from-ico: ./app/assets/icons/logo.ico
-          include-package: maa
+          user-package-configuration-file: nuitka-package.config.yml
+          include-package: |
+            maa
+            PIL
 
       - name: Assemble distribution (Nuitka post-build)
         run: |
