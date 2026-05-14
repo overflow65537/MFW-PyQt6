@@ -184,7 +184,7 @@ def _patch_macos_cf_bundle_executable(app_bundle_root: str, executable_name: str
     print(f"[INFO] CFBundleExecutable set to {executable_name}")
 
 
-# 复制完整 maa 包到发行目录（保持 maa/bin 在包内；勿复制到安装根，否则 Maa 会按错误路径解析 CLI）
+# 复制完整 maa 包到发行目录（不将 maa/bin 提升到根目录）
 shutil.copytree(
     maa_path,
     os.path.join(main_dist_path, "maa"),
