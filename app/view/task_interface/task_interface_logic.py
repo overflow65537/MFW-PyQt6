@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QApplication,
 )
-from PySide6.QtGui import QShowEvent
+from PySide6.QtGui import QHideEvent, QShowEvent
 from qfluentwidgets import (
     FluentIcon as FIF,
 )
@@ -31,6 +31,31 @@ class TaskInterface(UI_TaskInterface, QWidget):
         self.service_coordinator.fs_signals.fs_start_button_status.connect(
             self._on_button_status_changed
         )
+
+        # 进入任务页后的 UI 重置需避开主窗口 StackedWidget 的入场位移动画（约 300ms），否则内外纵向变化叠加会抖动
+        self._show_reset_timer = QTimer(self)
+        self._show_reset_timer.setSingleShot(True)
+        self._show_reset_timer.timeout.connect(self._on_deferred_show_reset)
+
+    def _show_reset_delay_ms(self) -> int:
+        win = self.window()
+        stacked = getattr(win, "stackedWidget", None) if win is not None else None
+        if stacked is not None and stacked.isAnimationEnabled():
+            return 330
+        return 50
+
+    def _on_deferred_show_reset(self) -> None:
+        if not self.isVisible():
+            return
+        self.option_panel.reset()
+        if hasattr(self, "task_info") and hasattr(self.task_info, "task_list"):
+            task_list = self.task_info.task_list
+            if self.service_coordinator and hasattr(self.service_coordinator, "option"):
+                option_service = self.service_coordinator.option
+                if hasattr(option_service, "clear_selection"):
+                    option_service.clear_selection()
+            task_list.setCurrentRow(-1)
+            task_list.update()
 
     def _on_start_button_clicked(self):
         """处理开始按钮点击事件"""
@@ -135,22 +160,11 @@ class TaskInterface(UI_TaskInterface, QWidget):
                     widget.setting_button.setEnabled(enabled)
     
     def showEvent(self, event: QShowEvent):
-        """界面显示时自动选中第0个任务"""
+        """界面显示时延迟重置选项区与任务选中（与主窗口页面切换动画错开）。"""
         super().showEvent(event)
-        # 使用定时器延迟执行，确保任务列表已经加载完成
-        def _reset_ui():
-            # 清除选项面板
-            self.option_panel.reset()
-            if hasattr(self, 'task_info') and hasattr(self.task_info, 'task_list'):
-                task_list = self.task_info.task_list
-                # 先清除选项服务的状态，避免状态不一致
-                if self.service_coordinator and hasattr(self.service_coordinator, 'option'):
-                    option_service = self.service_coordinator.option
-                    if hasattr(option_service, 'clear_selection'):
-                        option_service.clear_selection()
-                # 使用 setCurrentRow(-1) 完全清除选中状态
-                # 这会触发 currentItemChanged 信号（current 为 None），确保状态完全清除
-                task_list.setCurrentRow(-1)
-                # 强制更新UI，确保选中状态完全清除
-                task_list.update()
-        QTimer.singleShot(50, _reset_ui)
+        self._show_reset_timer.stop()
+        self._show_reset_timer.start(self._show_reset_delay_ms())
+
+    def hideEvent(self, event: QHideEvent):
+        self._show_reset_timer.stop()
+        super().hideEvent(event)
