@@ -28,9 +28,13 @@ import argparse
 import atexit
 import traceback
 
-from app.common.runtime_env import apply_startup_workdir, main_entry_abspath
 
-apply_startup_workdir(__file__)
+# 设置工作目录为运行方式位置
+if getattr(sys, "frozen", False):
+    os.chdir(os.path.dirname(sys.executable))
+    os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
+else:
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:
@@ -62,7 +66,9 @@ def _run() -> int:
     from app.utils.single_instance import SingleInstanceGuard
 
 
-    instance_key = main_entry_abspath(__file__)
+    instance_key = os.path.abspath(
+        sys.executable if getattr(sys, "frozen", False) else __file__
+    )
     single_instance = SingleInstanceGuard(instance_key)
     if not single_instance.acquire():
         if single_instance.notify_existing_instance():

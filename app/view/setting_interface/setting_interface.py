@@ -45,11 +45,6 @@ from qfluentwidgets import (
 
 from app.utils.markdown_helper import render_markdown
 from app.common.fluent_tooltip import apply_fluent_tooltip
-from app.common.runtime_env import (
-    is_frozen_bundle,
-    rename_updater_sidecar,
-    resolve_sidecar_updater_path,
-)
 from app.common.theme_manager import apply_theme_from_config, bind_setting_interface_theme
 from app.widget.notice_message import NoticeMessageBox
 from app.common.config import cfg, isWin11, Config
@@ -127,7 +122,12 @@ def start_auto_confirm_countdown(
 
 def rename_updater_binary(old_name: str, new_name: str) -> None:
     """重命名更新器二进制文件，供各界面复用。"""
-    rename_updater_sidecar(old_name, new_name)
+    import os
+
+    if os.path.exists(old_name) and os.path.exists(new_name):
+        os.remove(new_name)
+    if os.path.exists(old_name):
+        os.rename(old_name, new_name)
 
 
 def _is_running_with_admin_privileges() -> bool:
@@ -188,13 +188,13 @@ def launch_updater_process(*extra_args: str) -> None:
         except Exception as exc:
             logger.debug("获取 parent_create_time 失败，降级为仅透传 PID: %s", exc)
 
-        if is_frozen_bundle():
+        if getattr(sys, "frozen", False):
             parent_args.extend(["--mfw-exe-path", str(Path(sys.executable).resolve())])
 
         # 透传当前启动入口名称，便于更新完成后恢复用户自定义的启动文件名。
         current_entry = (
             Path(sys.executable).resolve()
-            if is_frozen_bundle()
+            if getattr(sys, "frozen", False)
             else Path(sys.argv[0]).resolve()
         )
         if current_entry.name:
@@ -202,15 +202,9 @@ def launch_updater_process(*extra_args: str) -> None:
     except Exception as exc:
         logger.debug("构造更新器父进程参数失败（将继续尝试启动更新器）: %s", exc)
 
-    resolved_executable = resolve_sidecar_updater_path()
-    if resolved_executable is None:
-        logger.error(
-            "未找到更新程序（已搜索 MFW.app/Contents/MacOS 与安装根；"
-            "期望 MFWUpdater1 / MFWUpdater（及 .bin / .exe 变体））"
-        )
-        raise FileNotFoundError("MFW updater binary not found")
-
     if sys.platform.startswith("win32"):
+        updater_executable = Path("./MFWUpdater1.exe")
+        resolved_executable = updater_executable.resolve(strict=False)
         args = (
             ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
         )
@@ -229,6 +223,8 @@ def launch_updater_process(*extra_args: str) -> None:
                 )
         logger.info("启动更新程序: %s", command_line)
     elif sys.platform.startswith(("darwin", "linux")):
+        updater_executable = Path("./MFWUpdater1")
+        resolved_executable = updater_executable.resolve(strict=False)
         args = (
             ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
         )
