@@ -143,10 +143,6 @@ elif sys.platform == "linux":
     base_command += [
         "--noconsole",
     ]  # 禁用控制台窗口
-# === 开始构建 ===
-print("[INFO] Starting MFW build")
-print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
-PyInstaller.__main__.run(base_command)
 
 # === 二进制文件处理 ===
 # 收集 MAA 的本地库文件

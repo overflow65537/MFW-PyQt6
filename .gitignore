@@ -450,7 +450,6 @@ build
 # Tools
 tools/ImageCropper/**/*.png
 config/*
-!config/emulator.json
 !config/custom_setting.json
 MFW.spec
 main.spec
