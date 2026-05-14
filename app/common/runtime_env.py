@@ -20,7 +20,7 @@
 打包运行环境与安装根目录（与 Win/Linux 单目录布局对齐）。
 
 - 源码：应用根 = main.py 所在目录；**不设置** ``MAAFW_BINARY_PATH``（保持环境原样）。
-- Win/Linux 打包：应用根 = ``dirname(sys.executable)``。
+- Win/Linux 打包：应用根 = ``dirname(sys.executable)``；打包运行时会尽量将 **stdout/stderr 设为行缓冲**，否则 Linux 终端里可能长时间看不到 ``print`` / 日志。
 - macOS ``.app``：主程序 Mach-O 在 ``…/MFW.app/Contents/MacOS/MFW.bin``（或旧版无后缀 ``MFW``）时，应用根为
   **包含 ``MFW.app`` 的目录**（与 .app 同级），便于 ``./interface.json``、``./app`` 等。
 - 打包时 ``MAAFW_BINARY_PATH``：指向 **``{安装根}/maafw``**（外部提供的运行库目录；mac 即 app 同级下的 ``maafw/``）。
@@ -68,10 +68,24 @@ def resolve_application_base_dir(main_file: str) -> Path:
     return exe.parent
 
 
+def _configure_frozen_stdio() -> None:
+    """打包运行时避免 stdout/stderr 全缓冲，终端里看不到 print / logging 早期输出（Linux 常见）。"""
+    if not is_frozen_bundle():
+        return
+    os.environ.setdefault("PYTHONUNBUFFERED", "1")
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(line_buffering=True)
+        except (OSError, ValueError, AttributeError):
+            pass
+
+
 def apply_startup_workdir(main_file: str) -> Path:
     """将进程 ``cwd`` 设为安装根；仅在打包时设置 ``MAAFW_BINARY_PATH`` 为 ``{cwd}/maafw``。"""
     base = resolve_application_base_dir(main_file)
     os.chdir(base)
+    _configure_frozen_stdio()
     # if is_frozen_bundle():
     #    maafw_dir = (Path(base) / "maafw").resolve()
     #    os.environ["MAAFW_BINARY_PATH"] = os.fspath(maafw_dir)
