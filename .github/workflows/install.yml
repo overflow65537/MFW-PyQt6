@@ -4,9 +4,9 @@ on:
   push:
     tags:
       - "v*"
-  pull_request:  
-    branches:    
-      - main    
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -59,13 +59,34 @@ jobs:
           echo "is_release=$is_release" >> $GITHUB_OUTPUT
         shell: bash
 
+      # 与 main 一致：供 Linux/macOS PyInstaller 步骤下载 app/i18n
+      - name: Set up Python (meta i18n)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PySide6
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PySide6
+
+      - name: lrelease i18n
+        run: python ./tools/lrelease.py
+
+      - name: Upload i18n
+        uses: actions/upload-artifact@v4
+        with:
+          name: i18n
+          path: app/i18n
+
     outputs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
 
+  # Windows：保持 Nuitka（与此前 ci-nuitka 一致）
   nuitka:
     needs: meta
-    name: nuitka Build (${{ matrix.platform }}-${{ matrix.arch }})
+    name: nuitka Build (win-${{ matrix.arch }})
     runs-on: ${{ matrix.runs-on }}
     strategy:
       matrix:
@@ -82,30 +103,6 @@ jobs:
             python_arch: arm64
             nuitka_main_mode: standalone
             nuitka_artifact: build/main.dist
-          - platform: linux
-            runs-on: ubuntu-latest
-            arch: x86_64
-            python_arch: x64
-            nuitka_main_mode: standalone
-            nuitka_artifact: build/main.dist
-          - platform: linux
-            runs-on: ubuntu-24.04-arm
-            arch: aarch64
-            python_arch: arm64
-            nuitka_main_mode: standalone
-            nuitka_artifact: build/main.dist
-          - platform: macos
-            runs-on: macos-latest
-            arch: aarch64
-            python_arch: arm64
-            nuitka_main_mode: app-dist
-            nuitka_artifact: build/main.app
-          - platform: macos
-            runs-on: macos-15-intel
-            arch: x86_64
-            python_arch: x64
-            nuitka_main_mode: app-dist
-            nuitka_artifact: build/main.app
 
       fail-fast: false
 
@@ -117,7 +114,6 @@ jobs:
           python-version: '3.12'
           architecture: ${{ matrix.python_arch }}
 
-      # 与历史提交 1286712 一致：Win ARM64 无 cryptography 预编译轮子时，用 vcpkg 提供 OpenSSL 再构建
       - name: Install Python dependencies (Windows ARM64)
         if: matrix.platform == 'win' && matrix.arch == 'aarch64'
         shell: pwsh
@@ -132,7 +128,6 @@ jobs:
           $env:OPENSSL_LIB_DIR = "$opensslRoot\lib"
           $env:OPENSSL_INCLUDE_DIR = "$opensslRoot\include"
 
-          # GITHUB_ENV 仅对「后续」步骤生效；同一步内的 pip/maturin 必须依赖上面的 $env:
           Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$env:VCPKG_ROOT"
           Add-Content -Path $env:GITHUB_ENV -Value "OPENSSL_DIR=$env:OPENSSL_DIR"
           Add-Content -Path $env:GITHUB_ENV -Value "OPENSSL_LIB_DIR=$env:OPENSSL_LIB_DIR"
@@ -148,18 +143,19 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
+      - name: Download i18n
+        uses: actions/download-artifact@v4
+        with:
+          name: i18n
+          path: app/i18n
+
       - name: updater build
         uses: Nuitka/Nuitka-Action@main
         with:
           nuitka-version: main
           script-name: updater.py
           mode: standalone
-          # 更新器为控制台程序（非 GUI），保留控制台以便输出与 Ctrl+C 中断提示
           windows-console-mode: force
-
-      - name: Install imageio (Nuitka macOS PNG app icon)
-        if: matrix.platform == 'macos'
-        run: python -m pip install imageio
 
       - name: Qt GUI with PySide6
         uses: Nuitka/Nuitka-Action@main
@@ -168,11 +164,8 @@ jobs:
           script-name: main.py
           mode: ${{ matrix.nuitka_main_mode }}
           enable-plugins: pyside6
-          # force: 始终带控制台，便于查看启动/崩溃错误；发布若需无黑框可改回 disable 或 attach
           windows-console-mode: force
           windows-icon-from-ico: ./app/assets/icons/logo.ico
-          linux-icon: ./app/assets/icons/logo.png
-          macos-app-icon: ./app/assets/icons/logo.png
 
       - name: Assemble distribution (Nuitka post-build)
         run: |
@@ -185,9 +178,87 @@ jobs:
           path: ${{ matrix.nuitka_artifact }}
           include-hidden-files: true
 
+  # Linux / macOS：与 main 分支一致，使用 PyInstaller + tools/build.py
+  pyinstaller_linux_macos:
+    needs: meta
+    name: PyInstaller (${{ matrix.platform }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-15-intel
+            platform: macos
+            arch: x86_64
+            python_arch: x64
+
+          - os: macos-latest
+            platform: macos
+            arch: aarch64
+            python_arch: arm64
+
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+            python_arch: x64
+
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: aarch64
+            python_arch: arm64
+
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: ${{ matrix.python_arch }}
+
+      - name: Install dependencies (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          uname -m
+          if [[ ${{ matrix.arch }} == "x86_64" ]]; then
+            arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+          elif [[ ${{ matrix.arch }} == "aarch64" ]]; then
+            arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+          fi
+
+      - name: Install dependencies (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller
+          python -m pip install -r requirements.txt
+
+      - name: Download i18n
+        uses: actions/download-artifact@v4
+        with:
+          name: i18n
+          path: app/i18n
+
+      - name: Build (macOS)
+        if: matrix.platform == 'macos'
+        run: sudo python ./tools/build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+
+      - name: Build (Linux)
+        if: matrix.platform == 'linux'
+        run: python ./tools/build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
+          path: "dist/MFW/"
+          include-hidden-files: true
+
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, nuitka, changelog]
+    needs: [meta, nuitka, pyinstaller_linux_macos, changelog]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -197,7 +268,9 @@ jobs:
       - run: |
           cd assets
           for f in *; do
-            (cd $f && zip -r -9 ../$f-${{ needs.meta.outputs.tag }}.zip .)
+            if [ "$f" != "i18n" ]; then
+              (cd $f && zip -r -9 ../$f-${{ needs.meta.outputs.tag }}.zip .)
+            fi
           done
 
       - uses: softprops/action-gh-release@v2
