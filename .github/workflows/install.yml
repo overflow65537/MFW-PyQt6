@@ -167,14 +167,11 @@ jobs:
           name: i18n
           path: app/i18n
 
-      - name: updater build
-        uses: Nuitka/Nuitka-Action@main
-        with:
-          nuitka-version: main
-          script-name: updater.py
-          mode: standalone
-          output-file: MFWUpdater
-          windows-console-mode: force
+      # 在两次 Nuitka 之前写入版本，主程序与 updater 编译时均能读到 __version__
+      - name: Set __version__ for Nuitka compile
+        env:
+          MFW_VERSION: ${{ needs.meta.outputs.tag }}
+        run: python -c "import os; open('app/common/__version__.py','w',encoding='utf-8').write('__version__ = %r\n' % os.environ['MFW_VERSION'])"
 
       - name: Qt GUI with PySide6
         uses: Nuitka/Nuitka-Action@main
@@ -190,15 +187,36 @@ jobs:
           include-package: |
             maa
             PIL
+            MaaAgentBinary
+          include-package-data: MaaAgentBinary
           include-data-files: |
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
           include-data-dir: app/i18n=app/i18n
 
-      - name: Assemble distribution (Nuitka post-build)
+      - name: updater build
+        uses: Nuitka/Nuitka-Action@main
+        with:
+          nuitka-version: main
+          script-name: updater.py
+          mode: standalone
+          output-file: MFWUpdater
+          windows-console-mode: force
+
+      # Nuitka standalone 仍会生成 build/updater.dist；合并进 main.dist 形成单一发行目录
+      - name: Merge updater.dist into main.dist
+        shell: pwsh
         run: |
-          python tools/build_nuitka.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          $main = Join-Path "build" "main.dist"
+          $upd = Join-Path "build" "updater.dist"
+          if (-not (Test-Path -LiteralPath $main -PathType Container)) { Write-Error "missing $main"; exit 1 }
+          if (-not (Test-Path -LiteralPath $upd -PathType Container)) { Write-Error "missing $upd"; exit 1 }
+          Copy-Item -LiteralPath (Join-Path $upd '*') -Destination $main -Recurse -Force
+          Remove-Item -LiteralPath $upd -Recurse -Force
+
+      - name: Generate distribution file list
+        run: python tools/build_nuitka.py --file-list
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
