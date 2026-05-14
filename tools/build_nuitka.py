@@ -151,9 +151,9 @@ def _rename_nuitka_entry_preserve_suffix(
     old_stem: str,
     new_stem: str,
 ) -> str | None:
-    """Pick Nuitka output old_stem(.exe|.bin|''); rename to new_stem + same suffix. Search dist then build."""
+    """在 dist / build 中查找 Nuitka 产出 old_stem（.exe 或无后缀），重命名为 new_stem + 相同尾缀。"""
     for root in (dist_root, build_dir):
-        for name in (f"{old_stem}.exe", f"{old_stem}.bin", old_stem):
+        for name in (f"{old_stem}.exe", old_stem):
             src = os.path.join(root, name)
             if not os.path.isfile(src):
                 continue
@@ -184,6 +184,28 @@ def _patch_macos_cf_bundle_executable(app_bundle_root: str, executable_name: str
     print(f"[INFO] CFBundleExecutable set to {executable_name}")
 
 
+def _finalize_updater_executable(dist_root: str, build_dir: str, platform: str) -> str | None:
+    """将 Nuitka 产出的 updater 重命名为 MFWUpdater（Windows 仅 .exe；POSIX 无后缀）。"""
+    if platform == "win":
+        renames = [("updater.exe", "MFWUpdater.exe")]
+    else:
+        renames = [("updater", "MFWUpdater")]
+    for old_name, new_name in renames:
+        for root in (dist_root, build_dir):
+            src = os.path.join(root, old_name)
+            if not os.path.isfile(src):
+                continue
+            dst = os.path.join(dist_root, new_name)
+            if os.path.normcase(os.path.abspath(src)) != os.path.normcase(
+                os.path.abspath(dst)
+            ):
+                if os.path.isfile(dst):
+                    os.remove(dst)
+                shutil.move(src, dst)
+            return new_name
+    return None
+
+
 # 复制完整 maa 包到发行目录（不将 maa/bin 提升到根目录）
 shutil.copytree(
     maa_path,
@@ -210,7 +232,7 @@ shutil.copytree(
     dirs_exist_ok=True,
 )
 
-# main -> MFW（仅改主文件名，保留 Nuitka 产出尾缀 .exe / .bin / 无后缀）
+# main -> MFW（仅改主文件名，保留 Nuitka 产出尾缀 .exe 或无后缀）
 print("[DEBUG] Renaming main -> MFW (preserve suffix)")
 _main_out = _rename_nuitka_entry_preserve_suffix(
     main_dist_path, build_dir, "main", "MFW"
@@ -218,7 +240,7 @@ _main_out = _rename_nuitka_entry_preserve_suffix(
 if _main_out is None:
     print(
         f"[ERROR] Nuitka main entry not found under {main_dist_path} or {build_dir} "
-        "(expected main.exe / main.bin / main)"
+        "(expected main.exe or main without extension)"
     )
     sys.exit(1)
 if platform == "macos":
@@ -261,14 +283,12 @@ else:
         "(onefile may place updater only under build/)"
     )
 
-print("[DEBUG] Renaming updater -> MFWUpdater (preserve suffix)")
-_updater_out = _rename_nuitka_entry_preserve_suffix(
-    main_dist_path, build_dir, "updater", "MFWUpdater"
-)
+print("[DEBUG] Renaming Nuitka updater output -> MFWUpdater")
+_updater_out = _finalize_updater_executable(main_dist_path, build_dir, platform)
 if _updater_out is None:
     print(
         f"[ERROR] Nuitka updater entry not found under {main_dist_path} or {build_dir} "
-        "(expected updater.exe / updater.bin / updater)"
+        "(expected updater.exe on Windows, or updater on POSIX, renamed to MFWUpdater)"
     )
     sys.exit(1)
 print(f"[SUCCESS] Updater executable: {_updater_out}")

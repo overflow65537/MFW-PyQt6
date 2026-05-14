@@ -2880,12 +2880,8 @@ class SettingInterface(QWidget):
 
         try:
             if sys.platform.startswith("win32"):
-                rename_updater_binary("updater.exe", "MFWUpdater.exe")
                 self._rename_updater("MFWUpdater.exe", "MFWUpdater1.exe")
             elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-                rename_updater_binary("updater.bin", "MFWUpdater.bin")
-                rename_updater_binary("updater", "MFWUpdater")
-                self._rename_updater("MFWUpdater.bin", "MFWUpdater1.bin")
                 self._rename_updater("MFWUpdater", "MFWUpdater1")
         except Exception as e:
             self._updater_started = False
