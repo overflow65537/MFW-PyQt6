@@ -3,7 +3,6 @@ import logging
 import os
 import random
 import shutil
-import signal
 import subprocess
 import sys
 import tempfile
@@ -27,33 +26,6 @@ def _collect_direct_run_args(argv: list[str]) -> list[str]:
 
 
 DIRECT_RUN_EXTRA_ARGS = _collect_direct_run_args(sys.argv)
-
-
-def _bootstrap_updater_cwd() -> None:
-    """frozen 时 cwd 与主程序对齐：安装根（mac 下为 MFW.app 同级）。"""
-    if not getattr(sys, "frozen", False):
-        return
-    exe = Path(sys.executable).resolve()
-    if sys.platform == "darwin":
-        p = exe.parent
-        if p.name == "MacOS" and p.parent.name == "Contents":
-            bundle = p.parent.parent
-            if bundle.suffix == ".app":
-                os.chdir(str(bundle.parent))
-                return
-    os.chdir(str(exe.parent))
-
-
-_bootstrap_updater_cwd()
-
-
-def _macos_bundled_main_executable() -> str | None:
-    """安装根下存在 MFW.app 时，返回 bundle 内主 Mach-O 路径。"""
-    base = os.path.join(os.getcwd(), "MFW.app", "Contents", "MacOS")
-    p = os.path.join(base, "MFW")
-    if os.path.isfile(p):
-        return os.path.abspath(p)
-    return None
 
 
 class _SingleInstanceLock:
@@ -156,8 +128,8 @@ FULL_UPDATE_EXCLUDES = [
     "release_notes",
     "debug",
     "update",
-    "MFWUpdater.exe",
-    "MFWUpdater",
+    "MFWUpdater1.exe",
+    "MFWUpdater1",
 ]
 
 
@@ -247,11 +219,7 @@ def _get_mfw_instance_key() -> str:
     if sys.platform.startswith("win32"):
         default_exe = os.path.join(os.getcwd(), "MFW.exe")
     else:
-        mac_exe = _macos_bundled_main_executable()
-        if mac_exe is not None:
-            default_exe = mac_exe
-        else:
-            default_exe = os.path.join(os.getcwd(), "MFW")
+        default_exe = os.path.join(os.getcwd(), "MFW")
 
     # 使用绝对路径作为实例键（与 main.py 保持一致）
     return os.path.abspath(default_exe)
@@ -259,14 +227,10 @@ def _get_mfw_instance_key() -> str:
 
 def _get_default_startup_executable_path() -> str:
     if sys.platform.startswith("win32"):
-        return os.path.abspath(os.path.join(os.getcwd(), "MFW.exe"))
-    mac_exe = _macos_bundled_main_executable()
-    if mac_exe is not None:
-        return mac_exe
-    p = os.path.join(os.getcwd(), "MFW")
-    if os.path.isfile(p):
-        return os.path.abspath(p)
-    return os.path.abspath(os.path.join(os.getcwd(), "MFW"))
+        default_name = "MFW.exe"
+    else:
+        default_name = "MFW"
+    return os.path.abspath(os.path.join(os.getcwd(), default_name))
 
 
 def _get_expected_startup_executable_path() -> str:
@@ -510,10 +474,7 @@ def extract_zip_file_with_validation(update_file_path):
                     extracted_path = extract_dir / file_info
                     if not extracted_path.exists():
                         raise Exception(f"文件解压后不存在: {file_info}")
-                    if sys.platform != "win32" and os.path.basename(file_info) in {
-                        "MFW",
-                        "MFWUpdater",
-                    }:
+                    if sys.platform != "win32" and file_info in {"MFW", "MFWUpdater"}:
                         os.chmod(extracted_path, 0o755)
                     extracted_count += 1
                     print(f"[解压] ✓ 已解压 ({extracted_count}/{total_files}): {file_info}")
@@ -562,15 +523,7 @@ def start_mfw_process():
         if DIRECT_RUN_EXTRA_ARGS:
             cmd.extend(DIRECT_RUN_EXTRA_ARGS)
         update_logger.info("重启/启动 MFW 进程: %s", " ".join(cmd))
-        exe_p = Path(executable_path).resolve()
-        if sys.platform == "darwin":
-            parent = exe_p.parent
-            if parent.name == "MacOS" and parent.parent.name == "Contents":
-                bundle = parent.parent.parent
-                if bundle.suffix == ".app":
-                    subprocess.Popen(cmd, cwd=os.fspath(bundle.parent))
-                    return
-        subprocess.Popen(cmd, cwd=os.fspath(exe_p.parent))
+        subprocess.Popen(cmd, cwd=os.path.dirname(executable_path) or None)
     except Exception as exc:
         update_logger.error(f"启动MFW程序失败: {exc}")
 
@@ -669,43 +622,6 @@ if DIRECT_RUN_EXTRA_ARGS:
         "启动参数检测到直接运行标志，即将向 MFW 透传: %s",
         DIRECT_RUN_EXTRA_ARGS,
     )
-
-
-def install_updater_interrupt_handlers() -> None:
-    """控制台更新器（非 GUI）：Ctrl+C / SIGTERM 时输出可读提示并退出。"""
-
-    def _handler(signum, _frame):
-        try:
-            name = signal.Signals(signum).name
-        except (ValueError, AttributeError):
-            name = str(signum)
-        text = (
-            "\n[中断] 已收到中断信号（{}），更新器即将退出（更新可能未完成）。\n"
-            "[Interrupt] Signal {}; exiting (update may be incomplete).\n"
-        ).format(name, name)
-        try:
-            print(text, flush=True)
-        except Exception:
-            pass
-        try:
-            update_logger.warning(
-                "Updater interrupted by signal: %s (%s)", name, signum
-            )
-        except Exception:
-            pass
-        sys.exit(130)
-
-    try:
-        signal.signal(signal.SIGINT, _handler)
-    except (OSError, ValueError):
-        pass
-    if os.name != "nt":
-        sigterm = getattr(signal, "SIGTERM", None)
-        if sigterm is not None:
-            try:
-                signal.signal(sigterm, _handler)
-            except (OSError, ValueError):
-                pass
 
 
 def load_update_metadata(update_dir):
@@ -1144,10 +1060,7 @@ def extract_interface_folder(zip_path):
                     os.makedirs(os.path.dirname(target_path), exist_ok=True)
                     with zf.open(member) as source, open(target_path, "wb") as target:
                         shutil.copyfileobj(source, target)
-                    if sys.platform != "win32" and os.path.basename(relative_path) in {
-                        "MFW",
-                        "MFWUpdater",
-                    }:
+                    if sys.platform != "win32" and relative_path in {"MFW", "MFWUpdater"}:
                         os.chmod(target_path, 0o755)
                     extracted_count += 1
                     if extracted_count % 10 == 0 or extracted_count == total_files:
@@ -1878,8 +1791,6 @@ if __name__ == "__main__":
     update_logger.info("\n%s\n[%s] 更新程序启动\n%s", separator, timestamp, separator)
     update_logger.info("更新程序启动, argv=%s", sys.argv)
 
-    install_updater_interrupt_handlers()
-
     try:
         if len(sys.argv) > 1:
             if sys.argv[1] == "-update":
@@ -1960,17 +1871,6 @@ if __name__ == "__main__":
             else:
                 print("无效输入 / Invalid input")
                 input("按回车键继续... / Press Enter to continue...")
-    except KeyboardInterrupt:
-        msg = (
-            "\n[中断] 用户中断（KeyboardInterrupt），更新器退出（更新可能未完成）。\n"
-            "[Interrupt] KeyboardInterrupt; exiting (update may be incomplete).\n"
-        )
-        print(msg, flush=True)
-        try:
-            update_logger.warning("KeyboardInterrupt")
-        except Exception:
-            pass
-        sys.exit(130)
     except Exception as e:
         # 捕获所有未处理的异常并记录
         error_message = f"更新程序发生未捕获的异常: {type(e).__name__}: {e}"
