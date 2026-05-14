@@ -191,33 +191,6 @@ if platform == "macos":
     _patch_macos_cf_bundle_executable(bundle_root, _main_out)
 print(f"[SUCCESS] Main executable: {_main_out}")
 
-# 复制README和许可证
-shutil.copy(
-    os.path.join(os.getcwd(), "README.md"),
-    os.path.join(main_dist_path, "MFW_README.md"),
-)
-shutil.copy(
-    os.path.join(os.getcwd(), "README-en.md"),
-    os.path.join(main_dist_path, "MFW_README-en.md"),
-)
-shutil.copy(
-    os.path.join(os.getcwd(), "LICENSE"),
-    os.path.join(main_dist_path, "MFW_LICENSE"),
-)
-
-os.makedirs(os.path.join(main_dist_path, "app", "i18n"), exist_ok=True)
-for qm_file in [
-    "i18n.zh_CN.qm",
-    "i18n.zh_TW.qm",
-    "i18n.ja_JP.qm",
-]:
-    src = os.path.join(os.getcwd(), "app", "i18n", qm_file)
-    if os.path.isfile(src):
-        shutil.copy(
-            src,
-            os.path.join(main_dist_path, "app", "i18n", qm_file),
-        )
-
 _updater_dist = os.path.join(build_dir, "updater.dist")
 if os.path.isdir(_updater_dist):
     shutil.copytree(_updater_dist, main_dist_path, dirs_exist_ok=True)
