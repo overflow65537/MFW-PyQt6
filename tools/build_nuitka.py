@@ -143,26 +143,12 @@ else:
 
 print(f"[INFO] Bundle payload directory: {main_dist_path}")
 
-# 移动 maa 到 dist 目录
+# 复制完整 maa 包到发行目录（不将 maa/bin 提升到根目录）
 shutil.copytree(
     maa_path,
     os.path.join(main_dist_path, "maa"),
     dirs_exist_ok=True,
 )
-# 移动maa/bin至根目录
-src_bin = os.path.join(main_dist_path, "maa", "bin")
-dst_root = main_dist_path
-if os.path.exists(src_bin):
-    for item in os.listdir(src_bin):
-        src = os.path.join(src_bin, item)
-        dst = os.path.join(dst_root, item)
-        if os.path.exists(dst):
-            if os.path.isdir(dst):
-                shutil.rmtree(dst)
-            else:
-                os.remove(dst)
-        shutil.move(src, dst)
-    os.rmdir(src_bin)
 
 # 移动 MaaAgentBinary 到 dist 目录
 shutil.copytree(
