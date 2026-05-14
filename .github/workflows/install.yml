@@ -182,8 +182,9 @@ jobs:
           script-name: main.py
           mode: ${{ matrix.nuitka_main_mode }}
           enable-plugins: pyside6
-          windows-console-mode: force
+          windows-console-mode: disable
           windows-icon-from-ico: ./app/assets/icons/logo.ico
+          include-package: maa
 
       - name: Assemble distribution (Nuitka post-build)
         run: |
