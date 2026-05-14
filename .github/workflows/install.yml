@@ -173,6 +173,7 @@ jobs:
           nuitka-version: main
           script-name: updater.py
           mode: standalone
+          output-file: MFWUpdater
           windows-console-mode: force
 
       - name: Qt GUI with PySide6
@@ -181,6 +182,7 @@ jobs:
           nuitka-version: main
           script-name: main.py
           mode: ${{ matrix.nuitka_main_mode }}
+          output-file: MFW
           enable-plugins: pyside6
           windows-console-mode: disable
           windows-icon-from-ico: ./app/assets/icons/logo.ico
@@ -188,6 +190,11 @@ jobs:
           include-package: |
             maa
             PIL
+          include-data-files: |
+            README.md=MFW_README.md
+            README-en.md=MFW_README-en.md
+            LICENSE=MFW_LICENSE
+          include-data-dir: app/i18n=app/i18n
 
       - name: Assemble distribution (Nuitka post-build)
         run: |

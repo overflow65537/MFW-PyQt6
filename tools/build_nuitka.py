@@ -144,33 +144,19 @@ else:
 print(f"[INFO] Bundle payload directory: {main_dist_path}")
 
 
-def _rename_nuitka_entry_preserve_suffix(
-    dist_root: str,
-    build_dir: str,
-    old_stem: str,
-    new_stem: str,
+def _find_nuitka_output_executable(
+    dist_root: str, build_dir: str, stem: str
 ) -> str | None:
-    """在 dist / build 中查找 Nuitka 产出 old_stem（.exe 或无后缀），重命名为 new_stem + 相同尾缀。"""
+    """查找 Nuitka --output-filename 产出的可执行文件名（Windows 为 stem.exe，POSIX 常为无后缀 stem）。"""
     for root in (dist_root, build_dir):
-        for name in (f"{old_stem}.exe", old_stem):
-            src = os.path.join(root, name)
-            if not os.path.isfile(src):
-                continue
-            suffix = Path(name).suffix
-            dst_name = new_stem + suffix
-            dst = os.path.join(dist_root, dst_name)
-            if os.path.normcase(os.path.abspath(src)) != os.path.normcase(
-                os.path.abspath(dst)
-            ):
-                if os.path.isfile(dst):
-                    os.remove(dst)
-                shutil.move(src, dst)
-            return dst_name
+        for name in (f"{stem}.exe", stem):
+            if os.path.isfile(os.path.join(root, name)):
+                return name
     return None
 
 
 def _patch_macos_cf_bundle_executable(app_bundle_root: str, executable_name: str) -> None:
-    """Keep .app launchable after renaming the Mach-O in Contents/MacOS."""
+    """将 Info.plist 的 CFBundleExecutable 设为 Nuitka 产出的主程序名（与 --output-filename 一致）。"""
     plist_path = os.path.join(app_bundle_root, "Contents", "Info.plist")
     if not os.path.isfile(plist_path):
         print(f"[WARN] Info.plist missing, skip CFBundleExecutable patch: {plist_path}")
@@ -183,28 +169,6 @@ def _patch_macos_cf_bundle_executable(app_bundle_root: str, executable_name: str
     print(f"[INFO] CFBundleExecutable set to {executable_name}")
 
 
-def _finalize_updater_executable(dist_root: str, build_dir: str, platform: str) -> str | None:
-    """将 Nuitka 产出的 updater 重命名为 MFWUpdater（Windows 仅 .exe；POSIX 无后缀）。"""
-    if platform == "win":
-        renames = [("updater.exe", "MFWUpdater.exe")]
-    else:
-        renames = [("updater", "MFWUpdater")]
-    for old_name, new_name in renames:
-        for root in (dist_root, build_dir):
-            src = os.path.join(root, old_name)
-            if not os.path.isfile(src):
-                continue
-            dst = os.path.join(dist_root, new_name)
-            if os.path.normcase(os.path.abspath(src)) != os.path.normcase(
-                os.path.abspath(dst)
-            ):
-                if os.path.isfile(dst):
-                    os.remove(dst)
-                shutil.move(src, dst)
-            return new_name
-    return None
-
-
 # 移动 MaaAgentBinary 到 dist 目录
 shutil.copytree(
     agent_path,
@@ -214,15 +178,13 @@ shutil.copytree(
 print("[INFO] Copied MaaAgentBinary to distribution directory")
 
 
-# main -> MFW（仅改主文件名，保留 Nuitka 产出尾缀 .exe 或无后缀）
-print("[DEBUG] Renaming main -> MFW (preserve suffix)")
-_main_out = _rename_nuitka_entry_preserve_suffix(
-    main_dist_path, build_dir, "main", "MFW"
-)
+# 主程序：CI/本地应使用 Nuitka --output-filename=MFW（Nuitka-Action: output-file: MFW）
+print("[DEBUG] Expecting Nuitka main binary as MFW (see --output-filename)")
+_main_out = _find_nuitka_output_executable(main_dist_path, build_dir, "MFW")
 if _main_out is None:
     print(
-        f"[ERROR] Nuitka main entry not found under {main_dist_path} or {build_dir} "
-        "(expected main.exe or main without extension)"
+        f"[ERROR] Nuitka main entry MFW not found under {main_dist_path} or {build_dir} "
+        "(expected MFW.exe on Windows, or MFW on POSIX; set output-file: MFW in Nuitka-Action)"
     )
     sys.exit(1)
 if platform == "macos":
@@ -265,12 +227,12 @@ else:
         "(onefile may place updater only under build/)"
     )
 
-print("[DEBUG] Renaming Nuitka updater output -> MFWUpdater")
-_updater_out = _finalize_updater_executable(main_dist_path, build_dir, platform)
+print("[DEBUG] Expecting Nuitka updater binary as MFWUpdater (see --output-filename)")
+_updater_out = _find_nuitka_output_executable(main_dist_path, build_dir, "MFWUpdater")
 if _updater_out is None:
     print(
-        f"[ERROR] Nuitka updater entry not found under {main_dist_path} or {build_dir} "
-        "(expected updater.exe on Windows, or updater on POSIX, renamed to MFWUpdater)"
+        f"[ERROR] Nuitka updater MFWUpdater not found under {main_dist_path} or {build_dir} "
+        "(expected MFWUpdater.exe on Windows, or MFWUpdater on POSIX; set output-file: MFWUpdater)"
     )
     sys.exit(1)
 print(f"[SUCCESS] Updater executable: {_updater_out}")
