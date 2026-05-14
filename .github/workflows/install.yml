@@ -106,6 +106,9 @@ jobs:
     needs: meta
     name: nuitka Build (win-${{ matrix.arch }})
     runs-on: ${{ matrix.runs-on }}
+    # Nuitka git 标签（与 Nuitka-Action 的 pip git+https 安装一致）；升级时改此处即可
+    env:
+      NUITKA_GIT_REF: "4.0.8"
     strategy:
       matrix:
         include:
@@ -131,13 +134,32 @@ jobs:
         with:
           python-version: '3.12'
           architecture: ${{ matrix.python_arch }}
+          cache: pip
+          cache-dependency-path: requirements.txt
 
-      - name: Install Python dependencies (Windows ARM64)
+      - name: vcpkg clone & bootstrap (Windows ARM64)
         if: matrix.platform == 'win' && matrix.arch == 'aarch64'
         shell: pwsh
         run: |
           git clone --depth 1 https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg"
           & "$env:GITHUB_WORKSPACE\vcpkg\bootstrap-vcpkg.bat"
+
+      # 缓存 OpenSSL 等二进制与源码包，避免 ARM64 runner 上每次全量编译
+      - name: Cache vcpkg downloads & installed (Windows ARM64)
+        if: matrix.platform == 'win' && matrix.arch == 'aarch64'
+        uses: actions/cache@v4
+        with:
+          path: |
+            vcpkg/downloads
+            vcpkg/installed
+          key: vcpkg-arm64-openssl-static-md-${{ hashFiles('.github/workflows/install.yml') }}
+          restore-keys: |
+            vcpkg-arm64-openssl-static-md-
+
+      - name: vcpkg OpenSSL + pip deps (Windows ARM64)
+        if: matrix.platform == 'win' && matrix.arch == 'aarch64'
+        shell: pwsh
+        run: |
           & "$env:GITHUB_WORKSPACE\vcpkg\vcpkg.exe" install openssl:arm64-windows-static-md
 
           $opensslRoot = "$env:GITHUB_WORKSPACE\vcpkg\installed\arm64-windows-static-md"
@@ -176,9 +198,11 @@ jobs:
       - name: Qt GUI with PySide6
         uses: Nuitka/Nuitka-Action@main
         with:
-          nuitka-version: main
+          nuitka-version: ${{ env.NUITKA_GIT_REF }}
           script-name: main.py
           mode: ${{ matrix.nuitka_main_mode }}
+          lto: no
+          caching-key: mfw-${{ matrix.arch }}-${{ matrix.python_arch }}
           output-file: MFW
           enable-plugins: pyside6
           windows-console-mode: disable
@@ -198,9 +222,11 @@ jobs:
       - name: updater build
         uses: Nuitka/Nuitka-Action@main
         with:
-          nuitka-version: main
+          nuitka-version: ${{ env.NUITKA_GIT_REF }}
           script-name: updater.py
           mode: standalone
+          lto: no
+          caching-key: mfw-${{ matrix.arch }}-${{ matrix.python_arch }}
           output-file: MFWUpdater
           windows-console-mode: force
 
@@ -212,7 +238,8 @@ jobs:
           $upd = Join-Path "build" "updater.dist"
           if (-not (Test-Path -LiteralPath $main -PathType Container)) { Write-Error "missing $main"; exit 1 }
           if (-not (Test-Path -LiteralPath $upd -PathType Container)) { Write-Error "missing $upd"; exit 1 }
-          Copy-Item -LiteralPath (Join-Path $upd '*') -Destination $main -Recurse -Force
+          # 勿用 -LiteralPath 配 *（* 会被当作字面量）；逐项复制子项
+          Get-ChildItem -LiteralPath $upd -Force | Copy-Item -Destination $main -Recurse -Force
           Remove-Item -LiteralPath $upd -Recurse -Force
 
       - name: Generate distribution file list
