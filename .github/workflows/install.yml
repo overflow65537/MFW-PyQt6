@@ -254,7 +254,6 @@ jobs:
         with:
           name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
           path: "dist/MFW/"
-          include-hidden-files: true
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
