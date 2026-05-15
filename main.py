@@ -27,6 +27,7 @@ import sys
 import argparse
 import atexit
 import traceback
+from pathlib import Path
 
 
 def _install_anchor_path() -> str:
@@ -47,9 +48,14 @@ def _install_anchor_path() -> str:
 
 
 # 设置工作目录为可执行文件 / main.py 所在目录（避免 Nuitka onefile 留在 Temp 解压目录）
-os.chdir(os.path.dirname(os.path.abspath(_install_anchor_path())))
-if getattr(sys, "frozen", False) or globals().get("__compiled__") is not None:
-    os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
+_install_root = Path(_install_anchor_path()).resolve().parent
+os.chdir(_install_root)
+if getattr(sys, "frozen", False):
+    # PyInstaller：build 脚本将 maa 原生库复制到发行根目录
+    os.environ["MAAFW_BINARY_PATH"] = str(_install_root)
+elif globals().get("__compiled__") is not None:
+    # Nuitka standalone：原生库位于 maa/bin（见 nuitka-package.config.yml）
+    os.environ["MAAFW_BINARY_PATH"] = str((_install_root / "maa" / "bin").resolve())
 
 
 def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:
