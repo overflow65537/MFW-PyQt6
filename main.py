@@ -115,7 +115,6 @@ def _run() -> int:
     logger.info(f"当前工作目录: {os.getcwd()}")
 
     import faulthandler
-    from pathlib import Path
 
     log_dir = Path("debug")
     log_dir.mkdir(exist_ok=True)
