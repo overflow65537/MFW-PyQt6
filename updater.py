@@ -438,6 +438,25 @@ def restore_files_from_backup(backup_dir):
         print(f"恢复文件时出错: {e}")
 
 
+def _path_is_zip_backed_update_archive(path: str) -> bool:
+    """
+    是否为 zipfile 可直接打开的更新包路径：.zip，或尾部为 ZIP 结构的 .exe（自解压）。
+    """
+    import zipfile
+
+    pl = path.lower()
+    if pl.endswith(".zip"):
+        return True
+    if pl.endswith(".exe"):
+        try:
+            with zipfile.ZipFile(path, "r", metadata_encoding="utf-8") as zf:
+                zf.namelist()
+            return True
+        except Exception:
+            return False
+    return False
+
+
 def extract_zip_file_with_validation(update_file_path):
     """
     解压指定的压缩文件，使用循环逐个文件解压并验证
@@ -454,13 +473,13 @@ def extract_zip_file_with_validation(update_file_path):
     if not ensure_mfw_not_running():
         return False
 
-    if not update_file_path.lower().endswith(".zip"):
-        update_logger.error(f"不支持的文件格式: {update_file_path}")
+    if not _path_is_zip_backed_update_archive(update_file_path):
+        update_logger.error(f"不支持的文件格式（需为 zip 或 ZIP 型自解压 exe）: {update_file_path}")
         return False
 
     extract_dir = Path(tempfile.mkdtemp(prefix="mfw_unpack_"))
     try:
-        with zipfile.ZipFile(update_file_path, "r") as archive:
+        with zipfile.ZipFile(update_file_path, "r", metadata_encoding="utf-8") as archive:
             file_list = archive.namelist()
             total_files = len(file_list)
             print(f"[解压] 找到 {total_files} 个文件需要解压")
@@ -1574,15 +1593,14 @@ def apply_mirror_hotfix(package_path):
 
 def find_latest_zip_file(directory):
     """
-    查找目录中最新的 zip 包
+    查找目录中最新的更新包（.zip 或可被 zipfile 打开的 .exe 自解压包）。
     """
     try:
-        candidates = [
-            os.path.join(directory, file_name)
-            for file_name in os.listdir(directory)
-            if os.path.isfile(os.path.join(directory, file_name))
-            and file_name.lower().endswith(".zip")
-        ]
+        candidates = []
+        for file_name in os.listdir(directory):
+            full = os.path.join(directory, file_name)
+            if os.path.isfile(full) and _path_is_zip_backed_update_archive(full):
+                candidates.append(full)
         if not candidates:
             return None
         return max(candidates, key=os.path.getmtime)

@@ -53,7 +53,7 @@ from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
-from app.utils.update import Update
+from app.utils.update import Update, path_is_zip_backed_archive
 from app.view.setting_interface.widget.proxy_setting_card import ProxySettingCard
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.release_notes import (
@@ -2571,6 +2571,9 @@ class SettingInterface(QWidget):
         lower_name = candidate.name.lower()
         if lower_name.endswith(".zip") or lower_name.endswith(".tar.gz"):
             logger.info("发现本地更新包: %s", candidate)
+            return candidate
+        if lower_name.endswith(".exe") and path_is_zip_backed_archive(candidate):
+            logger.info("发现本地自解压更新包: %s", candidate)
             return candidate
         return None
 

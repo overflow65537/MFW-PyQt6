@@ -52,6 +52,26 @@ from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 
 
+def path_is_zip_backed_archive(path: Path | str) -> bool:
+    """
+    判断路径是否为可直接用 zipfile 打开的归档：
+    - .zip 视为是；
+    - .exe 则尝试打开（ZIP 尾结构的自解压包，如常见 Inno/部分打包器产物）。
+    """
+    p = Path(path)
+    name_lower = p.name.lower()
+    if name_lower.endswith(".zip"):
+        return True
+    if name_lower.endswith(".exe"):
+        try:
+            with zipfile.ZipFile(p, "r", metadata_encoding="utf-8") as zf:
+                zf.namelist()
+            return True
+        except (zipfile.BadZipFile, OSError):
+            return False
+    return False
+
+
 # region 更新
 class BaseUpdate(QThread):
     service_coordinator: Optional[ServiceCoordinator]
@@ -184,6 +204,14 @@ class BaseUpdate(QThread):
         if normalized_name.endswith(".tar.gz") or normalized_name.endswith(".tgz"):
             archive_type = "tar"
         elif normalized_name.endswith(".zip"):
+            archive_type = "zip"
+        elif normalized_name.endswith(".exe"):
+            if not path_is_zip_backed_archive(target_path):
+                logger.warning(
+                    "exe 无法作为 ZIP 容器读取（非 ZIP 型自解压）: %s",
+                    target_path.name,
+                )
+                return None
             archive_type = "zip"
         else:
             logger.warning(
@@ -1707,30 +1735,201 @@ class Update(BaseUpdate):
             result_data["release_note"] = self.release_note
         return result_data
 
+    def _github_release_asset_suffix_kind(self, name_lower: str) -> str | None:
+        """返回发布包类型标识，用于后缀权重；未知则返回 None。"""
+        for suf in (
+            ".tar.gz",
+            ".tgz",
+            ".appimage",
+            ".exe",
+            ".msi",
+            ".dmg",
+            ".pkg",
+            ".deb",
+            ".rpm",
+            ".zip",
+        ):
+            if name_lower.endswith(suf):
+                return suf[1:].replace(".", "_", 1) if suf == ".tar.gz" else suf[1:]
+        # tar.gz 上面已覆盖；.tgz 等
+        return None
+
+    def _github_release_asset_accepted(
+        self, name_lower: str, prefer_installer_assets: bool
+    ) -> bool:
+        """
+        是否参与候选。
+        Windows UI 自更新同时允许 zip 与 exe 等；与 zip 并存时通过格式加分优先 exe。
+        资源/热更新在 Windows 上额外允许自解压 exe。
+        """
+        os_type = self.current_os_type
+
+        if any(name_lower.endswith(s) for s in (".tar.gz", ".tgz", ".zip")):
+            return True
+
+        if os_type == "win" and name_lower.endswith(".exe"):
+            return True
+
+        if not prefer_installer_assets:
+            return False
+
+        installer_suffixes = (
+            ".msi",
+            ".dmg",
+            ".pkg",
+            ".deb",
+            ".rpm",
+            ".appimage",
+        )
+        return any(name_lower.endswith(s) for s in installer_suffixes)
+
+    def _github_release_asset_format_bonus(
+        self, name_lower: str, prefer_installer_assets: bool
+    ) -> int:
+        """
+        按平台为后缀加分：zip 始终为较低分（备选）。
+        Windows 安装包模式下 .exe 显著优先；Linux/macOS 在压缩包场景下优先 tar.gz/tgz 于 zip。
+        """
+        kind = self._github_release_asset_suffix_kind(name_lower)
+        if kind is None:
+            return 0
+
+        os_type = self.current_os_type
+
+        if prefer_installer_assets:
+            if os_type == "win":
+                if kind == "exe":
+                    return 12
+                if kind == "msi":
+                    return 9
+                if kind in ("tar_gz", "tgz"):
+                    return 2
+                if kind == "zip":
+                    return 1
+                return 0
+            if os_type == "linux":
+                if kind == "appimage":
+                    return 12
+                if kind == "deb":
+                    return 10
+                if kind == "rpm":
+                    return 9
+                if kind in ("tar_gz", "tgz"):
+                    return 8
+                if kind == "zip":
+                    return 1
+                if kind == "dmg":
+                    return 0
+                if kind in ("exe", "msi"):
+                    return 0
+                return 0
+            if os_type == "macos":
+                if kind == "dmg":
+                    return 12
+                if kind == "pkg":
+                    return 9
+                if kind in ("tar_gz", "tgz"):
+                    return 8
+                if kind == "zip":
+                    return 1
+                if kind in ("exe", "msi", "deb", "rpm", "appimage"):
+                    return 0
+                return 0
+            return 0
+
+        # 资源 / 热更新：仅压缩包；Linux 与 macOS 上 tar 系优先于 zip（zip 为备选）
+        if os_type == "win":
+            if kind == "exe":
+                return 8
+            if kind == "zip":
+                return 6
+            if kind in ("tar_gz", "tgz"):
+                return 2
+            return 0
+        if os_type in ("linux", "macos"):
+            if kind in ("tar_gz", "tgz"):
+                return 8
+            if kind == "zip":
+                return 1
+            return 0
+        return 0
+
+    def _score_github_release_asset(
+        self,
+        normalized_name: str,
+        target_version: str,
+        primary_name: str | None,
+        prefer_installer_assets: bool,
+    ) -> int:
+        """
+        加权：版本、系统、架构分值较高；项目名次之；MFW_CFA 额外加分；再加格式后缀分。
+        """
+        score = 0
+
+        proj = (primary_name or self.project_name or "").strip().lower()
+        if proj and proj in normalized_name:
+            score += 2
+
+        version = str(target_version or "").strip()
+        if version:
+            vl = version.lower()
+            ssl = version.lstrip("vV").lower()
+            if vl and vl in normalized_name:
+                score += 8
+            elif ssl and ssl in normalized_name:
+                score += 8
+
+        os_type = self.current_os_type
+        if os_type == "win" and (
+            "windows" in normalized_name
+            or "_win" in normalized_name
+            or "-win" in normalized_name
+            or "win64" in normalized_name
+            or "win32" in normalized_name
+        ):
+            score += 5
+        elif os_type == "linux" and "linux" in normalized_name:
+            score += 5
+        elif os_type == "macos" and (
+            "macos" in normalized_name or "darwin" in normalized_name
+        ):
+            score += 5
+
+        arch = self.current_arch
+        if arch == "x86_64" and (
+            "x86_64" in normalized_name or "amd64" in normalized_name
+        ):
+            score += 5
+        elif arch == "aarch64" and (
+            "aarch64" in normalized_name or "arm64" in normalized_name
+        ):
+            score += 5
+
+        if "mfw_cfa" in normalized_name:
+            score += 6
+
+        score += self._github_release_asset_format_bonus(
+            normalized_name, prefer_installer_assets
+        )
+        return score
+
     def _select_github_asset_by_keywords(
         self,
         assets: Any,
         target_version: str,
         primary_name: str | None = None,
+        *,
+        prefer_installer_assets: bool = False,
     ) -> dict | None:
         """
-        在 GitHub release 资产中使用项目名、版本、OS、架构和压缩后缀组合匹配命中率最高的文件。
+        在 GitHub release 资产中按加权规则选择最匹配的下载文件。
+
+        - 关键词：项目名、版本（含去 v 号）、当前 OS、架构；版本/OS/架构权重高于项目名。
+        - 文件名含 MFW_CFA 时额外加分。
+        - 后缀：zip 为备选（低分）；Linux/macOS 在压缩包场景下优先 tar.gz/tgz 于 zip。
+        - Windows UI 自更新（prefer_installer_assets=True）在 zip 与 exe 同时存在时优先 .exe。
+        - 资源热更新在 Windows 上允许 zip / tar.gz / tgz 与自解压 exe；其它平台仍仅压缩包。
         """
-        normalized_tokens = []
-        for part in (
-            primary_name or self.project_name,
-            target_version,
-            self.current_os_type,
-            self.current_arch,
-        ):
-            if isinstance(part, str) and part:
-                normalized_tokens.append(part.lower())
-
-        version = str(target_version or "")
-        stripped_version = version.lstrip("vV")
-        if stripped_version and stripped_version != version:
-            normalized_tokens.append(stripped_version.lower())
-
         normalized_assets = assets if isinstance(assets, list) else []
         best_asset = None
         best_score = -1
@@ -1741,14 +1940,17 @@ class Update(BaseUpdate):
             if not isinstance(asset_name, str):
                 continue
             normalized_name = asset_name.lower()
-            if normalized_name.endswith(".tar.gz"):
-                pass
-            elif normalized_name.endswith(".zip"):
-                pass
-            else:
+            if not self._github_release_asset_accepted(
+                normalized_name, prefer_installer_assets
+            ):
                 continue
 
-            score = sum(1 for token in normalized_tokens if token in normalized_name)
+            score = self._score_github_release_asset(
+                normalized_name,
+                target_version,
+                primary_name,
+                prefer_installer_assets,
+            )
             if (
                 best_asset is None
                 or score > best_score
@@ -1952,6 +2154,7 @@ class Update(BaseUpdate):
             github_result.get("assets", []) or [],
             target_version,
             primary_name=ui_name,
+            prefer_installer_assets=True,
         )
         if not download_asset:
             logger.warning("  [检查更新] GitHub: 未找到下载地址")
