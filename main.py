@@ -50,6 +50,19 @@ def _install_anchor_path() -> str:
 # 设置工作目录为可执行文件 / main.py 所在目录（避免 Nuitka onefile 留在 Temp 解压目录）
 _install_root = Path(_install_anchor_path()).resolve().parent
 os.chdir(_install_root)
+# Windows / Linux 打包版：Maa 原生库与 MFW 同目录，MAAFW_BINARY_PATH 指向该目录（见 CI copy_maa_runtime_into_release）
+_is_packaged = getattr(sys, "frozen", False) or globals().get("__compiled__") is not None
+if _is_packaged and sys.platform in ("win32", "linux"):
+    _maa_fw_root = _install_root.resolve()
+    os.environ["MAAFW_BINARY_PATH"] = str(_maa_fw_root)
+    if sys.platform == "win32":
+        try:
+            os.add_dll_directory(str(_maa_fw_root))
+            _plugins = _maa_fw_root / "plugins"
+            if _plugins.is_dir():
+                os.add_dll_directory(str(_plugins))
+        except (AttributeError, OSError, ValueError):
+            pass
 
 
 def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:

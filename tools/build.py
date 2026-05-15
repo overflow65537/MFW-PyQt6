@@ -179,21 +179,18 @@ else:
     print(f"[WARN] Temporary files directory not found: {temp_files_dir}")
 
 
-# 将 add-binary 落在 _internal 根下的 Maa 原生库移入 _internal/maa/bin，与 maa 包默认加载路径一致（不设 MAAFW_BINARY_PATH）
-maa_bin_pkg = os.path.join(internal_dir, "maa", "bin")
-os.makedirs(maa_bin_pkg, exist_ok=True)
 for i in bin_files:
     src_binary = os.path.join(dist_dir, "_internal", i)
-    dst_binary = os.path.join(maa_bin_pkg, i)
+    dst_binary = os.path.join(dist_dir, i)
     if os.path.exists(src_binary):
-        shutil.move(src_binary, dst_binary)
+        shutil.copy(src_binary, dst_binary)
+        os.remove(src_binary)
     else:
         print(f"[WARN] Expected binary missing: {src_binary}")
 
-plugins_src = os.path.join(maa_path, "bin", "plugins")
-plugins_dst = os.path.join(maa_bin_pkg, "plugins")
-if os.path.isdir(plugins_src):
-    shutil.copytree(plugins_src, plugins_dst, dirs_exist_ok=True)
+maa_bin_internal = os.path.join(internal_dir, "maa", "bin")
+if os.path.isdir(maa_bin_internal):
+    shutil.rmtree(maa_bin_internal)
 
 # 复制README和许可证
 shutil.copy(
