@@ -63,6 +63,13 @@ platform = sys.argv[1]
 architecture = sys.argv[2]
 version = sys.argv[3]
 
+
+def _version_requests_windows_console(ver: str) -> bool:
+    """预发布 / CI 构建保留控制台，便于排错。"""
+    v = (ver or "").lower()
+    return "ci" in v or "alpha" in v
+
+
 # 写入版本号
 with open(os.path.join(os.getcwd(), "app", "common", "__version__.py"), "w") as f:
     f.write(f'__version__ = "{version}"')
@@ -134,7 +141,7 @@ elif sys.platform == "win32":
         "--distpath",
         os.path.join("dist"),
     ]
-    if "ci" not in version:
+    if not _version_requests_windows_console(version):
         base_command += [
             "--noconsole",  # 禁用控制台窗口
         ]

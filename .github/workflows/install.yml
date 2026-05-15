@@ -231,10 +231,16 @@ jobs:
               parts.append("0")
           win_ver = ".".join(parts[:4])
 
+          tl = tag.lower()
+          win_console_mode = (
+              "force" if ("ci" in tl or "alpha" in tl) else "disable"
+          )
+
           out = pathlib.Path(os.environ["GITHUB_OUTPUT"])
           with out.open("a", encoding="utf-8") as f:
               f.write(f"win_file_version={win_ver}\n")
               f.write(f"win_product_version={win_ver}\n")
+              f.write(f"win_console_mode={win_console_mode}\n")
 
       - name: Qt GUI with PySide6 (Windows)
         if: matrix.platform == 'win'
@@ -247,7 +253,7 @@ jobs:
           caching-key: mfw-onefile-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
           output-file: MFW
           enable-plugins: pyside6
-          windows-console-mode: disable
+          windows-console-mode: ${{ steps.exe_meta.outputs.win_console_mode }}
           windows-icon-from-ico: ./app/assets/icons/logo.ico
           company-name: ${{ github.repository_owner }}
           product-name: MFW-ChainFlow Assistant
