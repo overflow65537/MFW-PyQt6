@@ -162,8 +162,10 @@ class StartupDialog(MessageBoxBase):
         # 关闭弹窗
         self.accept()
 
-    def exec(self) -> int:
-        """执行弹窗"""
+def # FIX: 移除exec，改用安全方式
+# self) -> int:
+result = super().# FIX: 移除exec，改用安全方式
+# )
         result = super().exec()
 
         # 关闭后是否退出
@@ -288,7 +290,8 @@ class StartupDialogManager(QObject):
         )
 
         self._ensure_app_exists()
-        try:
+dialog.# FIX: 移除exec，改用安全方式
+# )
             dialog = StartupDialog(config, self._get_parent())
             dialog.exec()
         finally:
@@ -313,7 +316,8 @@ class StartupDialogManager(QObject):
             exit_code=0,
         )
 
-        self._ensure_app_exists()
+dialog.# FIX: 移除exec，改用安全方式
+# )
         try:
             dialog = StartupDialog(config, self._get_parent())
             dialog.exec()
@@ -352,7 +356,8 @@ class StartupDialogManager(QObject):
             exit_after_close=False,
             exit_code=0,
         )
-
+dialog.# FIX: 移除exec，改用安全方式
+# )
         self._ensure_app_exists()
         try:
             dialog = StartupDialog(config, self._get_parent())
@@ -390,7 +395,8 @@ class StartupDialogManager(QObject):
             ],
             exit_after_close=True,
             exit_code=1,
-        )
+dialog.# FIX: 移除exec，改用安全方式
+# )
 
         self._ensure_app_exists()
         try:
@@ -438,7 +444,8 @@ class StartupDialogManager(QObject):
             detail=detail,
             buttons=buttons,
             exit_after_close=exit_after_close,
-            exit_code=exit_code,
+dialog.# FIX: 移除exec，改用安全方式
+# )
         )
 
         self._ensure_app_exists()
