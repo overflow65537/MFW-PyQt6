@@ -218,10 +218,26 @@ class BaseUpdate(QThread):
                 response.close()
 
     def extract_archive(
-        self, archive_path, extract_to, flatten_assets=False
+        self,
+        archive_path,
+        extract_to,
+        flatten_assets=False,
+        *,
+        classic_archives_only: bool = False,
     ) -> Path | None:
         target_path = Path(archive_path)
         normalized_name = target_path.name.lower()
+
+        if classic_archives_only and not (
+            normalized_name.endswith(".zip")
+            or normalized_name.endswith(".tar.gz")
+            or normalized_name.endswith(".tgz")
+        ):
+            logger.warning(
+                "热更新路径仅支持 zip 与 tar.gz/tgz: %s",
+                target_path.name,
+            )
+            return None
 
         if normalized_name.endswith(".tar.gz") or normalized_name.endswith(".tgz"):
             archive_type = "tar"
@@ -254,8 +270,20 @@ class BaseUpdate(QThread):
             target_path, extract_to, flatten_assets, archive_type
         )
 
-    def extract_zip(self, zip_file_path, extract_to, flatten_assets=False):
-        return self.extract_archive(zip_file_path, extract_to, flatten_assets)
+    def extract_zip(
+        self,
+        zip_file_path,
+        extract_to,
+        flatten_assets=False,
+        *,
+        classic_archives_only: bool = False,
+    ):
+        return self.extract_archive(
+            zip_file_path,
+            extract_to,
+            flatten_assets,
+            classic_archives_only=classic_archives_only,
+        )
 
     def _perform_archive_extraction(
         self,
@@ -1408,7 +1436,9 @@ class Update(BaseUpdate):
 
             logger.debug("[步骤4] 解压更新包到 hotfix 目录")
             hotfix_dir = Path.cwd() / "hotfix"
-            hotfix_root = self.extract_zip(zip_file_path, hotfix_dir)
+            hotfix_root = self.extract_zip(
+                zip_file_path, hotfix_dir, classic_archives_only=True
+            )
             if not hotfix_root:
                 logger.error("[步骤4] 解压更新包失败")
                 return self._stop_with_notice(2)
@@ -1801,13 +1831,22 @@ class Update(BaseUpdate):
         return None
 
     def _github_release_asset_accepted(
-        self, name_lower: str, prefer_installer_assets: bool
+        self,
+        name_lower: str,
+        prefer_installer_assets: bool,
+        *,
+        zip_tar_github_assets_only: bool = False,
     ) -> bool:
         """
         是否参与候选。
-        Windows UI 自更新同时允许 zip、7z 与 exe 等；与 zip 并存时通过格式加分优先 exe、其次 7z。
-        资源/热更新在 Windows 上额外允许自解压 exe；归档类含 .7z（解压需 py7zr）。
+        zip_tar_github_assets_only=True（仅 UI 自更新 GitHub 选包）：只接受 .zip / .tar.gz / .tgz。
+        否则保持全量等资源场景：含 .7z、Windows 下 exe 及安装包后缀等。
         """
+        if zip_tar_github_assets_only:
+            return any(
+                name_lower.endswith(s) for s in (".tar.gz", ".tgz", ".zip")
+            )
+
         os_type = self.current_os_type
 
         if any(
@@ -1832,14 +1871,25 @@ class Update(BaseUpdate):
         return any(name_lower.endswith(s) for s in installer_suffixes)
 
     def _github_release_asset_format_bonus(
-        self, name_lower: str, prefer_installer_assets: bool
+        self,
+        name_lower: str,
+        prefer_installer_assets: bool,
+        *,
+        zip_tar_github_assets_only: bool = False,
     ) -> int:
         """
-        按平台为后缀加分：zip 为较低分（备选）；Windows UI 下 .7z 介于 zip 与 exe 之间。
-        Linux/macOS 在压缩包场景下优先 tar.gz/tgz，其次 7z，再 zip。
+        按平台为后缀加分。
+        zip_tar_github_assets_only 时仅 zip/tar 参与评分（用于 UI 自更新 GitHub 选包）。
         """
         kind = self._github_release_asset_suffix_kind(name_lower)
         if kind is None:
+            return 0
+
+        if zip_tar_github_assets_only:
+            if kind in ("tar_gz", "tgz"):
+                return 8
+            if kind == "zip":
+                return 6
             return 0
 
         os_type = self.current_os_type
@@ -1918,6 +1968,8 @@ class Update(BaseUpdate):
         target_version: str,
         primary_name: str | None,
         prefer_installer_assets: bool,
+        *,
+        zip_tar_github_assets_only: bool = False,
     ) -> int:
         """
         加权：版本、系统、架构分值较高；项目名次之；MFW_CFA 额外加分；再加格式后缀分。
@@ -1967,7 +2019,9 @@ class Update(BaseUpdate):
             score += 6
 
         score += self._github_release_asset_format_bonus(
-            normalized_name, prefer_installer_assets
+            normalized_name,
+            prefer_installer_assets,
+            zip_tar_github_assets_only=zip_tar_github_assets_only,
         )
         return score
 
@@ -1978,16 +2032,15 @@ class Update(BaseUpdate):
         primary_name: str | None = None,
         *,
         prefer_installer_assets: bool = False,
+        zip_tar_github_assets_only: bool = False,
     ) -> dict | None:
         """
         在 GitHub release 资产中按加权规则选择最匹配的下载文件。
 
         - 关键词：项目名、版本（含去 v 号）、当前 OS、架构；版本/OS/架构权重高于项目名。
         - 文件名含 MFW_CFA 时额外加分。
-        - 后缀：含 .7z（Windows UI 下分高于 zip、低于 exe）、zip 为备选（低分）；
-          Linux/macOS 在压缩包场景下优先 tar.gz/tgz 于 7z 与 zip。
-        - Windows UI 自更新（prefer_installer_assets=True）在 zip / 7z / exe 并存时通过分数优先 exe，其次 7z。
-        - 资源热更新允许 zip / tar.gz / tgz / .7z 与 Windows 下自解压 exe；解压依赖 py7zr（7z 与 7z SFX）。
+        - zip_tar_github_assets_only=True：仅 .zip / .tar.gz / .tgz（用于 UI 自更新）。
+        - 否则：全量等资源场景可含 .7z、Windows 自解压 exe 及安装包后缀等（见 _github_release_asset_accepted）。
         """
         normalized_assets = assets if isinstance(assets, list) else []
         best_asset = None
@@ -2000,7 +2053,9 @@ class Update(BaseUpdate):
                 continue
             normalized_name = asset_name.lower()
             if not self._github_release_asset_accepted(
-                normalized_name, prefer_installer_assets
+                normalized_name,
+                prefer_installer_assets,
+                zip_tar_github_assets_only=zip_tar_github_assets_only,
             ):
                 continue
 
@@ -2009,6 +2064,7 @@ class Update(BaseUpdate):
                 target_version,
                 primary_name,
                 prefer_installer_assets,
+                zip_tar_github_assets_only=zip_tar_github_assets_only,
             )
             if (
                 best_asset is None
@@ -2213,7 +2269,8 @@ class Update(BaseUpdate):
             github_result.get("assets", []) or [],
             target_version,
             primary_name=ui_name,
-            prefer_installer_assets=True,
+            prefer_installer_assets=False,
+            zip_tar_github_assets_only=True,
         )
         if not download_asset:
             logger.warning("  [检查更新] GitHub: 未找到下载地址")
@@ -2460,7 +2517,9 @@ class MultiResourceUpdate(Update):
 
             logger.debug("[步骤4] 解压更新包到 hotfix 目录")
             hotfix_dir = Path.cwd() / "hotfix"
-            hotfix_root = self.extract_zip(zip_file_path, hotfix_dir)
+            hotfix_root = self.extract_zip(
+                zip_file_path, hotfix_dir, classic_archives_only=True
+            )
             if not hotfix_root:
                 logger.error("[步骤4] 解压更新包失败")
                 return self._stop_with_notice(2)

@@ -1252,11 +1252,12 @@ def _read_config_file(config_path: str) -> dict:
 
 def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
     """
-    解压更新包到指定目录（zip 或 7z / 7z SFX），自动查找 interface.json 并返回解压后的根目录。
+    解压 zip 热更新包到指定目录，自动查找 interface.json 并返回解压后的根目录。
+    热更新仅处理 zip（全量更新仍可由 extract_zip_file_with_validation 处理 7z 等）。
     基于 app/utils/update.py 中的 extract_zip 实现。
 
     Args:
-        zip_path: zip 文件路径
+        zip_path: 更新包路径
         extract_to: 解压目标目录
 
     Returns:
@@ -1270,30 +1271,6 @@ def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
     update_logger.debug(f"[步骤3] 创建/确认解压目标目录: {extract_to_path}")
 
     interface_names = {"interface.json", "interface.jsonc"}
-
-    try:
-        is_zip_bundle = zipfile.is_zipfile(zip_path)
-    except Exception:
-        is_zip_bundle = False
-
-    if not is_zip_bundle:
-        try:
-            from app.utils.archive_seven import extract_7z_hotfix_flat
-        except ImportError:
-            update_logger.error("[步骤3] 解压 7z / 7z SFX 需要 py7zr，未安装")
-            return None
-        if extract_7z_hotfix_flat(
-            Path(zip_path),
-            extract_to_path,
-            interface_names=interface_names,
-        ):
-            update_logger.info("[步骤3] 7z / 7z SFX 解压完成")
-            print("[解压] 7z / 7z SFX 解压完成")
-            return str(extract_to_path)
-        error_msg = f"解压 7z 失败 {zip_path} -> {extract_to}"
-        print(f"[解压] ✗ 严重错误: {error_msg}")
-        update_logger.error(f"[步骤3] {error_msg}")
-        return None
 
     try:
         with zipfile.ZipFile(zip_path, "r", metadata_encoding="utf-8") as archive:
