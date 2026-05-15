@@ -431,7 +431,11 @@ class InterfaceManager:
             logger.exception("转换嵌入式 agent 失败: %s", exc)
             return False
 
-        custom_relative = (custom_dir.relative_to(self._interface_dir) / "custom.json").as_posix()
+        # Windows 上 cwd/argv 可能为 8.3 短路径，而 child_args 常为完整路径；
+        # pathlib 的 relative_to 按字符串前缀比较，必须先 resolve 再算相对路径。
+        interface_root = self._interface_dir.resolve()
+        custom_root = custom_dir.resolve()
+        custom_relative = (custom_root.relative_to(interface_root) / "custom.json").as_posix()
         interface["custom"] = custom_relative
         interface["__embedded_generated_custom"] = True
         return True
@@ -451,6 +455,8 @@ class InterfaceManager:
             candidate_path = Path(candidate)
             if not candidate_path.is_absolute():
                 candidate_path = (self._interface_dir / candidate_path).resolve()
+            elif candidate_path.exists():
+                candidate_path = candidate_path.resolve()
             if candidate_path.exists():
                 return candidate_path
         return None
