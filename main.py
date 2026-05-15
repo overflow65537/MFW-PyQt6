@@ -29,12 +29,27 @@ import atexit
 import traceback
 
 
-# 设置工作目录为运行方式位置
-if getattr(sys, "frozen", False):
-    os.chdir(os.path.dirname(sys.executable))
+def _install_anchor_path() -> str:
+    """
+    用于定位发行根目录（interface、config 等）及单实例锁的路径。
+
+    - PyInstaller: sys.frozen 为真，锚点为 sys.executable（旁路布局）。
+    - Nuitka onefile: 无 sys.frozen，__file__ 在临时解压目录；优先 __compiled__.onefile_argv0，
+      否则为启动时 sys.argv[0]（指向用户启动的 .exe）。
+    - 源码运行: 锚点为 main.py 所在目录。
+    """
+    if getattr(sys, "frozen", False):
+        return sys.executable
+    compiled = globals().get("__compiled__")
+    if compiled is not None:
+        return getattr(compiled, "onefile_argv0", None) or sys.argv[0]
+    return __file__
+
+
+# 设置工作目录为可执行文件 / main.py 所在目录（避免 Nuitka onefile 留在 Temp 解压目录）
+os.chdir(os.path.dirname(os.path.abspath(_install_anchor_path())))
+if getattr(sys, "frozen", False) or globals().get("__compiled__") is not None:
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
-else:
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:
@@ -66,9 +81,7 @@ def _run() -> int:
     from app.utils.single_instance import SingleInstanceGuard
 
 
-    instance_key = os.path.abspath(
-        sys.executable if getattr(sys, "frozen", False) else __file__
-    )
+    instance_key = os.path.abspath(_install_anchor_path())
     single_instance = SingleInstanceGuard(instance_key)
     if not single_instance.acquire():
         if single_instance.notify_existing_instance():
