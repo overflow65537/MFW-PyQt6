@@ -11,6 +11,7 @@ from qfluentwidgets import BodyLabel, ScrollArea, SimpleCardWidget
 
 from app.utils.logger import logger
 from app.utils.markdown_helper import render_markdown
+from app.utils.rich_text_helper import apply_rich_text_html
 from app.view.task_interface.components.image_preview_dialog import ImagePreviewDialog
 
 
@@ -45,12 +46,11 @@ class DescriptionWidget(QWidget):
         # 描述内容
         self.description_content = BodyLabel()
         self.description_content.setWordWrap(True)
-        self.description_content.setTextFormat(Qt.TextFormat.RichText)
-        self.description_content.setTextInteractionFlags(
-            Qt.TextInteractionFlag.LinksAccessibleByMouse
+        apply_rich_text_html(
+            self.description_content,
+            "",
+            on_image_link=self._on_image_link,
         )
-        self.description_content.setOpenExternalLinks(False)
-        self.description_content.linkActivated.connect(self._on_link_activated)
         self.description_content.setContextMenuPolicy(
             Qt.ContextMenuPolicy.NoContextMenu
         )
@@ -93,7 +93,11 @@ class DescriptionWidget(QWidget):
         
         html = render_markdown(description)
         html = self._process_remote_images(html)
-        self.description_content.setText(html)
+        apply_rich_text_html(
+            self.description_content,
+            html,
+            on_image_link=self._on_image_link,
+        )
     
     def _process_remote_images(self, html: str) -> str:
         """下载公告中的网络图片到本地缓存，并替换为本地路径以保证可显示/预览。"""
@@ -145,13 +149,10 @@ class DescriptionWidget(QWidget):
         """清除说明内容"""
         self.description_content.setText("")
     
-    def _on_link_activated(self, link: str):
-        """处理链接点击事件（用于图片预览）"""
-        if link.startswith("image:"):
-            # 提取图片路径
-            image_path = link[6:]  # 移除 "image:" 前缀
-            # 打开图片预览对话框
-            dialog = ImagePreviewDialog(image_path, self)
-            dialog.exec()
+    def _on_image_link(self, link: str):
+        """处理图片链接点击（image: 协议）。"""
+        image_path = link[6:]  # 移除 "image:" 前缀
+        dialog = ImagePreviewDialog(image_path, self)
+        dialog.exec()
 
 

@@ -17,6 +17,7 @@ from PySide6.QtCore import QRunnable, QThreadPool, Qt, Signal, QObject
 from PySide6.QtGui import QImage
 
 from app.utils.logger import logger
+from app.utils.rich_text_helper import normalize_html_for_qt
 
 _IMG_PATTERN = re.compile(
     r'<img\s+([^>]*?)src=["\']([^"\']+)["\']([^>]*)>',
@@ -290,7 +291,7 @@ def render_markdown(
             _create_image_wrapper(base_path, remote_image_cache), html
         )
 
-        return html
+        return normalize_html_for_qt(html)
     except Exception as exc:
         # 防御性处理：Markdown 渲染出错时不影响主流程，记录错误并回退到原始文本
         logger.error("Markdown 渲染失败，将返回原始文本: %s", exc, exc_info=True)

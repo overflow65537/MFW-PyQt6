@@ -44,6 +44,7 @@ from qfluentwidgets import (
 )
 
 from app.utils.markdown_helper import render_markdown
+from app.utils.rich_text_helper import apply_rich_text_html, configure_rich_text_label
 from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.common.theme_manager import apply_theme_from_config, bind_setting_interface_theme
 from app.widget.notice_message import NoticeMessageBox
@@ -81,6 +82,8 @@ from app.view.setting_interface.widget.notice_type import (
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
 # 检测已经是 Markdown 链接格式的文本： [text](url)
 _MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+# 已是 HTML 超链接（避免误处理 href 内的 URL）
+_HTML_ANCHOR_PATTERN = re.compile(r"<a\s+[^>]*href\s*=", re.IGNORECASE)
 UI_VERSION = getattr(version_meta, "__version__", "v0.0.1")
 
 
@@ -378,19 +381,20 @@ class SettingInterface(QWidget):
 
     def _apply_markdown_to_label(self, label: QLabel, content: str | None) -> None:
         """把 Markdown 文本渲染到标签并开启链接交互。"""
-        label.setTextFormat(Qt.TextFormat.RichText)
-        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
-        label.setOpenExternalLinks(True)
-        label.setText(render_markdown(content))
+        apply_rich_text_html(label, render_markdown(content))
 
     def _linkify_contact_urls(self, contact: str) -> str:
         """
         把联系方式中的网址转换成 Markdown 超链接。
 
-        如果文本中已经包含 Markdown 链接格式（如 [text](url)），则跳过这些部分，
-        只对剩余的裸 URL 进行自动转换。
+        如果文本中已经包含 Markdown 链接格式（如 [text](url)）或 HTML <a href>，
+        则不再处理，避免破坏 href 属性内的 URL。
         """
         if not contact:
+            return contact
+
+        stripped = contact.strip()
+        if stripped.startswith("<") or _HTML_ANCHOR_PATTERN.search(contact):
             return contact
 
         # 如果文本中已经包含 Markdown 链接格式，直接返回（避免重复处理）
@@ -599,9 +603,7 @@ class SettingInterface(QWidget):
 
         content_label = BodyLabel(self._license_content, dialog)
         content_label.setWordWrap(True)
-        content_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.LinksAccessibleByMouse
-        )
+        configure_rich_text_label(content_label)
 
         scroll_area = ScrollArea(dialog)
         scroll_area.setWidgetResizable(True)

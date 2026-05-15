@@ -43,6 +43,7 @@ from app.common import __version__ as version_meta
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.list_item import OptionLabel
 from app.utils.markdown_helper import render_markdown
+from app.utils.rich_text_helper import apply_rich_text_html
 from app.utils.release_notes import load_release_notes, resolve_project_name
 
 from maa.library import Library
@@ -585,12 +586,7 @@ class DashboardInterface(QWidget):
         content_label = BodyLabel(card)
         content_label.setObjectName("V5InfoKey")
         content_label.setWordWrap(True)
-        content_label.setTextFormat(Qt.TextFormat.RichText)
-        content_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextBrowserInteraction
-        )
-        content_label.setOpenExternalLinks(True)
-        content_label.setText(render_markdown(content))
+        apply_rich_text_html(content_label, render_markdown(content))
         box.addWidget(content_label)
 
         hint = BodyLabel(

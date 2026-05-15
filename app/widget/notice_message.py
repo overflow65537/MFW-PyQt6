@@ -51,6 +51,7 @@ from pathlib import Path
 from typing import List, Dict
 
 from app.utils.markdown_helper import render_markdown, remote_image_cache
+from app.utils.rich_text_helper import apply_rich_text_html
 
 # 以下代码引用自 AUTO_MAA 项目的 ./app/ui/Widget.py 文件，用于创建公告对话框
 ANNOUNCEMENT_BASE_DIR = Path.cwd() / "resource" / "announcement"
@@ -66,7 +67,6 @@ class NoticeMessageBox(MessageBoxBase):
 
         # 原 BodyLabel 初始化（保持不变）
         self.text = BodyLabel(self)
-        self.text.setOpenExternalLinks(True)
         self.text.setWordWrap(True)
         self.text.setAlignment(Qt.AlignmentFlag.AlignTop)
 
@@ -125,7 +125,7 @@ class NoticeMessageBox(MessageBoxBase):
         html = re.sub(r"<li><p>(.*?)</p></li>", r"<p><strong>◆ </strong>\1</p>", html)
         html = re.sub(r"<ul>(.*?)</ul>", r"\1", html)
 
-        self.text.setText(f"<body>{html}</body>")
+        apply_rich_text_html(self.text, f"<body>{html}</body>")
 
     def _on_remote_image_cached(self, _url: str):
         if self._last_rendered_text:

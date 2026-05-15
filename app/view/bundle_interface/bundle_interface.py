@@ -45,6 +45,7 @@ from app.utils.logger import logger
 from app.utils.update import Update, MultiResourceUpdate
 from app.common.signal_bus import signalBus
 from app.utils.markdown_helper import render_markdown
+from app.utils.rich_text_helper import apply_rich_text_html, configure_rich_text_label
 from app.widget.notice_message import NoticeMessageBox
 import os
 
@@ -206,14 +207,7 @@ class BundleDetailWidget(QWidget):
         )
         description_label = BodyLabel(self)
         description_label.setWordWrap(True)
-        # 支持 Markdown 格式
-        description_label.setTextFormat(Qt.TextFormat.RichText)
-        description_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.LinksAccessibleByMouse
-        )
-        description_label.setOpenExternalLinks(True)
-        html_content = render_markdown(description_text)
-        description_label.setText(html_content)
+        apply_rich_text_html(description_label, render_markdown(description_text))
         section_layout.addWidget(description_label)
 
         parent_layout.addLayout(section_layout)
@@ -232,14 +226,7 @@ class BundleDetailWidget(QWidget):
         )
         contact_label = BodyLabel(self)
         contact_label.setWordWrap(True)
-        # 支持 Markdown 格式
-        contact_label.setTextFormat(Qt.TextFormat.RichText)
-        contact_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.LinksAccessibleByMouse
-        )
-        contact_label.setOpenExternalLinks(True)
-        html_content = render_markdown(contact_text)
-        contact_label.setText(html_content)
+        apply_rich_text_html(contact_label, render_markdown(contact_text))
         section_layout.addWidget(contact_label)
 
         parent_layout.addLayout(section_layout)
@@ -741,9 +728,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         content_label = BodyLabel(license_text, dialog)
         content_label.setWordWrap(True)
-        content_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.LinksAccessibleByMouse
-        )
+        configure_rich_text_label(content_label)
 
         scroll_area = ScrollArea(dialog)
         scroll_area.setWidgetResizable(True)
@@ -790,14 +775,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         content_label = BodyLabel(dialog)
         content_label.setWordWrap(True)
-        # 支持 Markdown
-        content_label.setTextFormat(Qt.TextFormat.RichText)
-        content_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.LinksAccessibleByMouse
-        )
-        content_label.setOpenExternalLinks(True)
-        html_content = render_markdown(welcome_text)
-        content_label.setText(html_content)
+        apply_rich_text_html(content_label, render_markdown(welcome_text))
 
         scroll_area = ScrollArea(dialog)
         scroll_area.setWidgetResizable(True)

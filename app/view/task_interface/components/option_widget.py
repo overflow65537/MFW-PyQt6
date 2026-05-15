@@ -19,6 +19,7 @@ from qfluentwidgets import (
 
 from app.utils.logger import logger
 from app.utils.markdown_helper import render_markdown
+from app.utils.rich_text_helper import apply_rich_text_html
 from app.view.task_interface.animations.optionwidget import (
     DescriptionTransitionAnimator,
     OptionTransitionAnimator,
@@ -348,13 +349,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 描述内容区域
         self.description_content = BodyLabel()
         self.description_content.setWordWrap(True)
-        self.description_content.setTextFormat(Qt.TextFormat.RichText)
-        # 启用链接点击交互（用于图片点击）
-        self.description_content.setTextInteractionFlags(
-            Qt.TextInteractionFlag.LinksAccessibleByMouse
+        apply_rich_text_html(
+            self.description_content,
+            "",
+            on_image_link=self._on_image_link,
         )
-        self.description_content.setOpenExternalLinks(False)  # 不自动打开外部链接
-        self.description_content.linkActivated.connect(self._on_link_activated)
         self.description_content.setContextMenuPolicy(
             Qt.ContextMenuPolicy.NoContextMenu
         )
@@ -525,8 +524,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 检查公告是否已经展开
         was_expanded = self._description_animator.is_expanded()
         
-        # 设置内容
-        self.description_content.setText(html)
+        apply_rich_text_html(
+            self.description_content,
+            html,
+            on_image_link=self._on_image_link,
+        )
         
         if was_expanded:
             # 如果已经展开，直接平滑过渡到新高度（不收回再展开）
@@ -641,14 +643,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             else:
                 self._description_animator.set_visible_immediate(False)
     
-    def _on_link_activated(self, link: str):
-        """处理链接点击事件"""
-        if link.startswith("image:"):
-            # 提取图片路径
-            image_path = link[6:]  # 移除 "image:" 前缀
-            # 打开图片预览对话框
-            dialog = ImagePreviewDialog(image_path, self)
-            dialog.exec()
+    def _on_image_link(self, link: str):
+        """处理图片链接点击（image: 协议）。"""
+        image_path = link[6:]
+        dialog = ImagePreviewDialog(image_path, self)
+        dialog.exec()
 
     # ==================== 公共方法 ====================
 
