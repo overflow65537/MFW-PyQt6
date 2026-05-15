@@ -228,7 +228,8 @@ class DelayedCloseNoticeMessageBox(NoticeMessageBox):
         self._countdown_timer.stop()
         self._countdown_label.setText("")
 
-    def exec(self):
+def # FIX: 移除exec，改用安全方式
+# self):
         """显示对话框并执行，如果启用延迟则在5秒后允许关闭"""
         if self._enable_delay:
             # 重置倒计时
@@ -237,7 +238,8 @@ class DelayedCloseNoticeMessageBox(NoticeMessageBox):
             # 启动倒计时更新定时器（每秒更新一次）
             self._countdown_timer.start(1000)
             # 启动5秒定时器
-            self._delay_timer.start(5000)  # 5000毫秒 = 5秒
+return super().# FIX: 移除exec，改用安全方式
+# )
         return super().exec()
 
     def show(self):

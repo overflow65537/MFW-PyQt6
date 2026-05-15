@@ -620,7 +620,8 @@ class SettingInterface(QWidget):
         layout.addWidget(button_box)
 
         dialog.resize(480, 280)
-        dialog.exec()
+dialog.# FIX: 移除exec，改用安全方式
+# )
 
     def _open_github_home(self):
         """
