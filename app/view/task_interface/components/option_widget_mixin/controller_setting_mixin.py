@@ -503,6 +503,30 @@ class ControllerSettingWidget(QWidget):
 
         # 初始化interface相关数据
         self._rebuild_interface_data()
+        cfg.show_advanced_startup_options.valueChanged.connect(
+            self._on_advanced_startup_options_changed
+        )
+
+    def _on_advanced_startup_options_changed(self, value: bool) -> None:
+        """高级设置开关变化时，刷新预配置区中依赖该开关的控件可见性。"""
+        self.show_hide_option = bool(value)
+        self._refresh_advanced_options_visibility()
+
+    def _refresh_advanced_options_visibility(self) -> None:
+        """根据 show_hide_option 刷新 GPU/Agent/自定义路径及控制器输入截图方式等控件。"""
+        self._toggle_children_visible(["agent_timeout"], self.show_hide_option)
+        self._toggle_children_visible(["custom"], self.show_hide_option)
+        self._toggle_children_visible(["gpu_combo"], self.show_hide_option)
+
+        ctrl_type = (self.current_controller_type or "").lower()
+        if ctrl_type == "adb":
+            self._toggle_adb_children_option(True)
+        elif ctrl_type == "win32":
+            self._toggle_win32_children_option(True)
+        elif ctrl_type == "gamepad":
+            self._toggle_gamepad_children_option(True)
+        elif ctrl_type == "playcover":
+            self._toggle_playcover_children_option(True)
 
     def _rebuild_interface_data(self):
         """重新构建基于interface的数据结构（用于多配置模式下interface更新时）"""
@@ -2006,7 +2030,9 @@ class ControllerSettingWidget(QWidget):
             "win32_screencap_methods",
         ]
         self._toggle_children_visible(win32_widgets, visible)
-        self._toggle_children_visible(win32_hide_widgets, visible)
+        self._toggle_children_visible(
+            win32_hide_widgets, (visible and self.show_hide_option)
+        )
 
     def _toggle_gamepad_children_option(self, visible: bool):
         """控制Gamepad子选项的隐藏和显示"""
