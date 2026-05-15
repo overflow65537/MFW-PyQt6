@@ -16,7 +16,7 @@
 #   Contact: err.overflow@gmail.com
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
-"""Nuitka 发行后处理：为发行根（CI 组装的 build/mfw-release）生成 file_list.txt。"""
+"""Nuitka 发行后处理：为发行根（onefile 组装目录 build/mfw-release）生成 file_list.txt。"""
 
 import os
 import sys

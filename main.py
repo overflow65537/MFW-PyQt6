@@ -53,9 +53,11 @@ os.chdir(_install_root)
 if getattr(sys, "frozen", False):
     # PyInstaller：build 脚本将 maa 原生库复制到发行根目录
     os.environ["MAAFW_BINARY_PATH"] = str(_install_root)
-elif globals().get("__compiled__") is not None:
-    # Nuitka standalone：原生库位于 maa/bin（见 nuitka-package.config.yml）
-    os.environ["MAAFW_BINARY_PATH"] = str((_install_root / "maa" / "bin").resolve())
+else:
+    _compiled = globals().get("__compiled__")
+    # Nuitka standalone：原生库在发行目录 maa/bin；onefile 在解压目录内，由 maa 包默认路径加载
+    if _compiled is not None and getattr(_compiled, "onefile_argv0", None) is None:
+        os.environ["MAAFW_BINARY_PATH"] = str((_install_root / "maa" / "bin").resolve())
 
 
 def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:

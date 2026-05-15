@@ -115,25 +115,25 @@ jobs:
             runs-on: windows-latest
             arch: x86_64
             python_arch: x64
-            nuitka_main_mode: standalone
+            nuitka_main_mode: onefile
             nuitka_artifact: build/mfw-release
           - platform: win
             runs-on: windows-11-arm
             arch: aarch64
             python_arch: arm64
-            nuitka_main_mode: standalone
+            nuitka_main_mode: onefile
             nuitka_artifact: build/mfw-release
           - platform: linux
             runs-on: ubuntu-latest
             arch: x86_64
             python_arch: x64
-            nuitka_main_mode: standalone
+            nuitka_main_mode: onefile
             nuitka_artifact: build/mfw-release
           - platform: linux
             runs-on: ubuntu-24.04-arm
             arch: aarch64
             python_arch: arm64
-            nuitka_main_mode: standalone
+            nuitka_main_mode: onefile
             nuitka_artifact: build/mfw-release
 
       fail-fast: false
@@ -250,7 +250,8 @@ jobs:
           script-name: main.py
           mode: ${{ matrix.nuitka_main_mode }}
           lto: no
-          caching-key: mfw-standalone-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
+          caching-key: mfw-onefile-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
+          output-file: MFW
           enable-plugins: pyside6
           windows-console-mode: ${{ steps.exe_meta.outputs.win_console_mode }}
           windows-icon-from-ico: ./app/assets/icons/logo.ico
@@ -281,7 +282,8 @@ jobs:
           script-name: main.py
           mode: ${{ matrix.nuitka_main_mode }}
           lto: no
-          caching-key: mfw-standalone-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
+          caching-key: mfw-onefile-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
+          output-file: MFW
           enable-plugins: pyside6
           linux-icon: ./app/assets/icons/logo.png
           company-name: ${{ github.repository_owner }}
@@ -338,21 +340,18 @@ jobs:
           file-description: MFW update helper (sidecar)
           copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
 
-      # standalone 在 build/main.dist 生成主程序及依赖；与 onefile 的 updater 一并迁入 build/mfw-release
+      # onefile 在 build/ 下生成独立可执行文件；与 updater 一并迁入 build/mfw-release 供下载与热更新查找
       - name: Assemble mfw-release (Windows)
         if: matrix.platform == 'win'
         shell: pwsh
         run: |
           $rel = Join-Path "build" "mfw-release"
-          $srcDist = Join-Path "build" "main.dist"
+          $mainExe = Join-Path "build" "MFW.exe"
           $updExe = Join-Path "build" "MFWUpdater.exe"
-          $mainBuilt = Join-Path $srcDist "main.exe"
-          if (-not (Test-Path -LiteralPath $srcDist -PathType Container)) { Write-Error "missing $srcDist"; Get-ChildItem -LiteralPath build; exit 1 }
-          if (-not (Test-Path -LiteralPath $mainBuilt -PathType Leaf)) { Write-Error "missing $mainBuilt"; Get-ChildItem -LiteralPath $srcDist; exit 1 }
+          if (-not (Test-Path -LiteralPath $mainExe -PathType Leaf)) { Write-Error "missing $mainExe"; Get-ChildItem -LiteralPath build; exit 1 }
           if (-not (Test-Path -LiteralPath $updExe -PathType Leaf)) { Write-Error "missing $updExe"; Get-ChildItem -LiteralPath build; exit 1 }
           New-Item -ItemType Directory -Force $rel | Out-Null
-          Copy-Item -Path (Join-Path $srcDist '*') -Destination $rel -Recurse -Force
-          Rename-Item -LiteralPath (Join-Path $rel "main.exe") -NewName "MFW.exe" -Force
+          Move-Item -LiteralPath $mainExe -Destination (Join-Path $rel "MFW.exe") -Force
           Move-Item -LiteralPath $updExe -Destination (Join-Path $rel "MFWUpdater.exe") -Force
 
       - name: Assemble mfw-release (Linux)
@@ -366,19 +365,12 @@ jobs:
         run: |
           set -euo pipefail
           rel="build/mfw-release"
-          src_dist="build/main.dist"
+          main_bin="build/MFW"
           upd_bin="build/MFWUpdater"
-          if [[ ! -d "$src_dist" ]]; then echo "missing $src_dist"; ls -la build; exit 1; fi
+          if [[ ! -f "$main_bin" ]]; then echo "missing $main_bin"; ls -la build; exit 1; fi
           if [[ ! -f "$upd_bin" ]]; then echo "missing $upd_bin"; ls -la build; exit 1; fi
           mkdir -p "$rel"
-          cp -a "$src_dist"/. "$rel"/
-          if [[ -f "$rel/main" ]]; then
-            mv -f "$rel/main" "$rel/MFW"
-          elif [[ -f "$rel/main.bin" ]]; then
-            mv -f "$rel/main.bin" "$rel/MFW"
-          else
-            echo "missing main or main.bin in $rel"; ls -la "$rel"; exit 1
-          fi
+          mv "$main_bin" "$rel/MFW"
           mv "$upd_bin" "$rel/MFWUpdater"
           chmod +x "$rel/MFW" "$rel/MFWUpdater"
           cp -f app/assets/icons/logo.png "$rel/logo.png"
