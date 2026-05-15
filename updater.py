@@ -438,21 +438,35 @@ def restore_files_from_backup(backup_dir):
         print(f"恢复文件时出错: {e}")
 
 
-def _path_is_zip_backed_update_archive(path: str) -> bool:
+def _path_is_supported_update_package(path: str) -> bool:
     """
-    是否为 zipfile 可直接打开的更新包路径：.zip，或尾部为 ZIP 结构的 .exe（自解压）。
+    更新器可处理的包：.zip、.7z、ZIP 型自解压 .exe、7z SFX .exe。
     """
     import zipfile
 
     pl = path.lower()
     if pl.endswith(".zip"):
         return True
+    if pl.endswith(".7z"):
+        try:
+            from app.utils.archive_seven import path_readable_by_py7zr
+
+            return path_readable_by_py7zr(path)
+        except ImportError:
+            return False
     if pl.endswith(".exe"):
         try:
-            with zipfile.ZipFile(path, "r", metadata_encoding="utf-8") as zf:
-                zf.namelist()
-            return True
+            if zipfile.is_zipfile(path):
+                with zipfile.ZipFile(path, "r", metadata_encoding="utf-8") as zf:
+                    zf.namelist()
+                return True
         except Exception:
+            pass
+        try:
+            from app.utils.archive_seven import path_readable_by_py7zr
+
+            return path_readable_by_py7zr(path)
+        except ImportError:
             return False
     return False
 
@@ -473,43 +487,68 @@ def extract_zip_file_with_validation(update_file_path):
     if not ensure_mfw_not_running():
         return False
 
-    if not _path_is_zip_backed_update_archive(update_file_path):
-        update_logger.error(f"不支持的文件格式（需为 zip 或 ZIP 型自解压 exe）: {update_file_path}")
+    if not _path_is_supported_update_package(update_file_path):
+        update_logger.error(
+            f"不支持的文件格式（需为 zip、7z、ZIP 自解压 exe 或 7z SFX exe）: {update_file_path}"
+        )
         return False
 
     extract_dir = Path(tempfile.mkdtemp(prefix="mfw_unpack_"))
     try:
-        with zipfile.ZipFile(update_file_path, "r", metadata_encoding="utf-8") as archive:
-            file_list = archive.namelist()
-            total_files = len(file_list)
-            print(f"[解压] 找到 {total_files} 个文件需要解压")
-            update_logger.info(f"[解压] 找到 {total_files} 个文件需要解压")
-            
-            extracted_count = 0
-            for idx, file_info in enumerate(file_list, 1):
-                try:
-                    print(f"[解压] [{idx}/{total_files}] 正在解压: {file_info}")
-                    archive.extract(file_info, extract_dir)
-                    extracted_path = extract_dir / file_info
-                    if not extracted_path.exists():
-                        raise Exception(f"文件解压后不存在: {file_info}")
-                    if sys.platform != "win32" and file_info in {"MFW", "MFWUpdater"}:
-                        os.chmod(extracted_path, 0o755)
-                    extracted_count += 1
-                    print(f"[解压] ✓ 已解压 ({extracted_count}/{total_files}): {file_info}")
-                except Exception as exc:
-                    error_msg = f"提取 {file_info} 失败: {exc}"
-                    print(f"[解压] ✗ 错误: {error_msg}")
-                    print(f"[解压] 等待5秒后继续...")
-                    for sec in range(5, 0, -1):
-                        print(f"  {sec}秒后继续...")
-                        time.sleep(1)
-                    # 继续处理下一个文件
-                    continue
-            
-            print(f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件")
-            update_logger.info(f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件")
-        
+        pl = update_file_path.lower()
+        use_zipfile = pl.endswith(".zip") or (
+            pl.endswith(".exe") and zipfile.is_zipfile(update_file_path)
+        )
+        if use_zipfile:
+            with zipfile.ZipFile(
+                update_file_path, "r", metadata_encoding="utf-8"
+            ) as archive:
+                file_list = archive.namelist()
+                total_files = len(file_list)
+                print(f"[解压] 找到 {total_files} 个文件需要解压")
+                update_logger.info(f"[解压] 找到 {total_files} 个文件需要解压")
+
+                extracted_count = 0
+                for idx, file_info in enumerate(file_list, 1):
+                    try:
+                        print(f"[解压] [{idx}/{total_files}] 正在解压: {file_info}")
+                        archive.extract(file_info, extract_dir)
+                        extracted_path = extract_dir / file_info
+                        if not extracted_path.exists():
+                            raise Exception(f"文件解压后不存在: {file_info}")
+                        if sys.platform != "win32" and file_info in {
+                            "MFW",
+                            "MFWUpdater",
+                        }:
+                            os.chmod(extracted_path, 0o755)
+                        extracted_count += 1
+                        print(
+                            f"[解压] ✓ 已解压 ({extracted_count}/{total_files}): {file_info}"
+                        )
+                    except Exception as exc:
+                        error_msg = f"提取 {file_info} 失败: {exc}"
+                        print(f"[解压] ✗ 错误: {error_msg}")
+                        print(f"[解压] 等待5秒后继续...")
+                        for sec in range(5, 0, -1):
+                            print(f"  {sec}秒后继续...")
+                            time.sleep(1)
+                        continue
+
+                print(
+                    f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件"
+                )
+                update_logger.info(
+                    f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件"
+                )
+        else:
+            from app.utils.archive_seven import extract_all_7z_to_directory
+
+            if not extract_all_7z_to_directory(update_file_path, extract_dir):
+                update_logger.error("[解压] 7z / 7z SFX 解压失败")
+                return False
+            print("[解压] 7z / 7z SFX 已解压到临时目录")
+            update_logger.info("[解压] 7z / 7z SFX 已解压")
+
         print("[解压] 开始复制文件到目标目录...")
         _copy_temp_to_root(extract_dir, verbose=True)
         print("[解压] 文件复制完成")
@@ -1213,7 +1252,7 @@ def _read_config_file(config_path: str) -> dict:
 
 def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
     """
-    解压 zip 文件到指定目录，自动查找 interface.json 并返回解压后的根目录。
+    解压更新包到指定目录（zip 或 7z / 7z SFX），自动查找 interface.json 并返回解压后的根目录。
     基于 app/utils/update.py 中的 extract_zip 实现。
 
     Args:
@@ -1231,6 +1270,30 @@ def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
     update_logger.debug(f"[步骤3] 创建/确认解压目标目录: {extract_to_path}")
 
     interface_names = {"interface.json", "interface.jsonc"}
+
+    try:
+        is_zip_bundle = zipfile.is_zipfile(zip_path)
+    except Exception:
+        is_zip_bundle = False
+
+    if not is_zip_bundle:
+        try:
+            from app.utils.archive_seven import extract_7z_hotfix_flat
+        except ImportError:
+            update_logger.error("[步骤3] 解压 7z / 7z SFX 需要 py7zr，未安装")
+            return None
+        if extract_7z_hotfix_flat(
+            Path(zip_path),
+            extract_to_path,
+            interface_names=interface_names,
+        ):
+            update_logger.info("[步骤3] 7z / 7z SFX 解压完成")
+            print("[解压] 7z / 7z SFX 解压完成")
+            return str(extract_to_path)
+        error_msg = f"解压 7z 失败 {zip_path} -> {extract_to}"
+        print(f"[解压] ✗ 严重错误: {error_msg}")
+        update_logger.error(f"[步骤3] {error_msg}")
+        return None
 
     try:
         with zipfile.ZipFile(zip_path, "r", metadata_encoding="utf-8") as archive:
@@ -1593,13 +1656,13 @@ def apply_mirror_hotfix(package_path):
 
 def find_latest_zip_file(directory):
     """
-    查找目录中最新的更新包（.zip 或可被 zipfile 打开的 .exe 自解压包）。
+    查找目录中最新的更新包（zip、7z、ZIP 自解压 exe、7z SFX exe）。
     """
     try:
         candidates = []
         for file_name in os.listdir(directory):
             full = os.path.join(directory, file_name)
-            if os.path.isfile(full) and _path_is_zip_backed_update_archive(full):
+            if os.path.isfile(full) and _path_is_supported_update_package(full):
                 candidates.append(full)
         if not candidates:
             return None

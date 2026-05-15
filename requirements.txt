@@ -12,3 +12,4 @@ markdown
 pyperclip
 pillow
 json-with-comments
+py7zr

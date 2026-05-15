@@ -50,6 +50,11 @@ from app.common.config import cfg, Config
 from app.utils.crypto import crypto_manager
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
+from app.utils.archive_seven import (
+    extract_7z_filtered_tree,
+    import_py7zr,
+    path_readable_by_py7zr,
+)
 
 
 def path_is_zip_backed_archive(path: Path | str) -> bool:
@@ -69,6 +74,23 @@ def path_is_zip_backed_archive(path: Path | str) -> bool:
             return True
         except (zipfile.BadZipFile, OSError):
             return False
+    return False
+
+
+def path_is_update_archive_readable(path: Path | str) -> bool:
+    """本地/更新器可识别的更新包：zip、tar.gz/tgz、.7z、ZIP 型 exe、7z SFX exe。"""
+    p = Path(path)
+    nl = p.name.lower()
+    if nl.endswith(".zip"):
+        return True
+    if nl.endswith((".tar.gz", ".tgz")):
+        return True
+    if nl.endswith(".7z"):
+        return path_readable_by_py7zr(p)
+    if nl.endswith(".exe"):
+        if path_is_zip_backed_archive(p):
+            return True
+        return path_readable_by_py7zr(p)
     return False
 
 
@@ -205,14 +227,22 @@ class BaseUpdate(QThread):
             archive_type = "tar"
         elif normalized_name.endswith(".zip"):
             archive_type = "zip"
+        elif normalized_name.endswith(".7z"):
+            if not path_readable_by_py7zr(target_path):
+                logger.warning("7z 无法打开: %s", target_path.name)
+                return None
+            archive_type = "seven_zip"
         elif normalized_name.endswith(".exe"):
-            if not path_is_zip_backed_archive(target_path):
+            if path_is_zip_backed_archive(target_path):
+                archive_type = "zip"
+            elif path_readable_by_py7zr(target_path):
+                archive_type = "seven_zip"
+            else:
                 logger.warning(
-                    "exe 无法作为 ZIP 容器读取（非 ZIP 型自解压）: %s",
+                    "exe 既不是 ZIP 容器也不是 7z SFX，无法解压: %s",
                     target_path.name,
                 )
                 return None
-            archive_type = "zip"
         else:
             logger.warning(
                 "未知压缩格式: %s，默认按照 zip 处理",
@@ -232,7 +262,7 @@ class BaseUpdate(QThread):
         archive_path: Path,
         extract_to: Path | str,
         flatten_assets: bool,
-        archive_type: Literal["zip", "tar"],
+        archive_type: Literal["zip", "tar", "seven_zip"],
     ) -> Path | None:
         extract_to_path = Path(extract_to)
         extract_to_path.mkdir(parents=True, exist_ok=True)
@@ -262,7 +292,7 @@ class BaseUpdate(QThread):
                     final_root = self._resolve_final_root(
                         extract_to_path, interface_dir_parts
                     )
-            else:
+            elif archive_type == "tar":
                 with tarfile.open(archive_path, "r:*") as archive:
                     members = archive.getmembers()
                     member_names = [member.name for member in members]
@@ -279,6 +309,21 @@ class BaseUpdate(QThread):
                     final_root = self._resolve_final_root(
                         extract_to_path, interface_dir_parts
                     )
+            elif archive_type == "seven_zip":
+                if import_py7zr() is None:
+                    logger.error("未安装 py7zr，无法解压 7z / 7z SFX 更新包")
+                    return None
+                final_root = extract_7z_filtered_tree(
+                    archive_path,
+                    extract_to_path,
+                    interface_names=interface_names,
+                    normalize_parts=_normalize_parts,
+                )
+                if not final_root:
+                    return None
+            else:
+                logger.error("不支持的 archive_type: %s", archive_type)
+                return None
 
             if flatten_assets and final_root:
                 self._normalize_assets_package(final_root)
@@ -1741,6 +1786,7 @@ class Update(BaseUpdate):
             ".tar.gz",
             ".tgz",
             ".appimage",
+            ".7z",
             ".exe",
             ".msi",
             ".dmg",
@@ -1759,12 +1805,14 @@ class Update(BaseUpdate):
     ) -> bool:
         """
         是否参与候选。
-        Windows UI 自更新同时允许 zip 与 exe 等；与 zip 并存时通过格式加分优先 exe。
-        资源/热更新在 Windows 上额外允许自解压 exe。
+        Windows UI 自更新同时允许 zip、7z 与 exe 等；与 zip 并存时通过格式加分优先 exe、其次 7z。
+        资源/热更新在 Windows 上额外允许自解压 exe；归档类含 .7z（解压需 py7zr）。
         """
         os_type = self.current_os_type
 
-        if any(name_lower.endswith(s) for s in (".tar.gz", ".tgz", ".zip")):
+        if any(
+            name_lower.endswith(s) for s in (".tar.gz", ".tgz", ".zip", ".7z")
+        ):
             return True
 
         if os_type == "win" and name_lower.endswith(".exe"):
@@ -1787,8 +1835,8 @@ class Update(BaseUpdate):
         self, name_lower: str, prefer_installer_assets: bool
     ) -> int:
         """
-        按平台为后缀加分：zip 始终为较低分（备选）。
-        Windows 安装包模式下 .exe 显著优先；Linux/macOS 在压缩包场景下优先 tar.gz/tgz 于 zip。
+        按平台为后缀加分：zip 为较低分（备选）；Windows UI 下 .7z 介于 zip 与 exe 之间。
+        Linux/macOS 在压缩包场景下优先 tar.gz/tgz，其次 7z，再 zip。
         """
         kind = self._github_release_asset_suffix_kind(name_lower)
         if kind is None:
@@ -1802,6 +1850,8 @@ class Update(BaseUpdate):
                     return 12
                 if kind == "msi":
                     return 9
+                if kind == "7z":
+                    return 6
                 if kind in ("tar_gz", "tgz"):
                     return 2
                 if kind == "zip":
@@ -1816,6 +1866,8 @@ class Update(BaseUpdate):
                     return 9
                 if kind in ("tar_gz", "tgz"):
                     return 8
+                if kind == "7z":
+                    return 5
                 if kind == "zip":
                     return 1
                 if kind == "dmg":
@@ -1830,6 +1882,8 @@ class Update(BaseUpdate):
                     return 9
                 if kind in ("tar_gz", "tgz"):
                     return 8
+                if kind == "7z":
+                    return 5
                 if kind == "zip":
                     return 1
                 if kind in ("exe", "msi", "deb", "rpm", "appimage"):
@@ -1841,6 +1895,8 @@ class Update(BaseUpdate):
         if os_type == "win":
             if kind == "exe":
                 return 8
+            if kind == "7z":
+                return 7
             if kind == "zip":
                 return 6
             if kind in ("tar_gz", "tgz"):
@@ -1849,6 +1905,8 @@ class Update(BaseUpdate):
         if os_type in ("linux", "macos"):
             if kind in ("tar_gz", "tgz"):
                 return 8
+            if kind == "7z":
+                return 5
             if kind == "zip":
                 return 1
             return 0
@@ -1926,9 +1984,10 @@ class Update(BaseUpdate):
 
         - 关键词：项目名、版本（含去 v 号）、当前 OS、架构；版本/OS/架构权重高于项目名。
         - 文件名含 MFW_CFA 时额外加分。
-        - 后缀：zip 为备选（低分）；Linux/macOS 在压缩包场景下优先 tar.gz/tgz 于 zip。
-        - Windows UI 自更新（prefer_installer_assets=True）在 zip 与 exe 同时存在时优先 .exe。
-        - 资源热更新在 Windows 上允许 zip / tar.gz / tgz 与自解压 exe；其它平台仍仅压缩包。
+        - 后缀：含 .7z（Windows UI 下分高于 zip、低于 exe）、zip 为备选（低分）；
+          Linux/macOS 在压缩包场景下优先 tar.gz/tgz 于 7z 与 zip。
+        - Windows UI 自更新（prefer_installer_assets=True）在 zip / 7z / exe 并存时通过分数优先 exe，其次 7z。
+        - 资源热更新允许 zip / tar.gz / tgz / .7z 与 Windows 下自解压 exe；解压依赖 py7zr（7z 与 7z SFX）。
         """
         normalized_assets = assets if isinstance(assets, list) else []
         best_asset = None
