@@ -16,7 +16,7 @@
 #   Contact: err.overflow@gmail.com
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
-"""Windows Nuitka 后处理：仅为发行根生成 file_list.txt（合并由 CI 完成）。"""
+"""Nuitka 发行后处理：为发行根（onefile 组装目录 build/mfw-release）生成 file_list.txt。"""
 
 import os
 import sys
@@ -67,7 +67,7 @@ def generate_file_list(input_dir: str, output_file: str | None = None) -> bool:
 
 def main() -> int:
     if len(sys.argv) >= 2 and sys.argv[1] == "--file-list":
-        dist_root = os.path.join("build", "main.dist")
+        dist_root = os.path.join("build", "mfw-release")
         if not os.path.isdir(dist_root):
             print(f"[ERROR] Nuitka output not found: {dist_root}", file=sys.stderr)
             return 1

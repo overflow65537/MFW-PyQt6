@@ -115,26 +115,26 @@ jobs:
             runs-on: windows-latest
             arch: x86_64
             python_arch: x64
-            nuitka_main_mode: standalone
-            nuitka_artifact: build/main.dist
+            nuitka_main_mode: onefile
+            nuitka_artifact: build/mfw-release
           - platform: win
             runs-on: windows-11-arm
             arch: aarch64
             python_arch: arm64
-            nuitka_main_mode: standalone
-            nuitka_artifact: build/main.dist
+            nuitka_main_mode: onefile
+            nuitka_artifact: build/mfw-release
           - platform: linux
             runs-on: ubuntu-latest
             arch: x86_64
             python_arch: x64
-            nuitka_main_mode: standalone
-            nuitka_artifact: build/main.dist
+            nuitka_main_mode: onefile
+            nuitka_artifact: build/mfw-release
           - platform: linux
             runs-on: ubuntu-24.04-arm
             arch: aarch64
             python_arch: arm64
-            nuitka_main_mode: standalone
-            nuitka_artifact: build/main.dist
+            nuitka_main_mode: onefile
+            nuitka_artifact: build/mfw-release
 
       fail-fast: false
 
@@ -244,7 +244,7 @@ jobs:
           script-name: main.py
           mode: ${{ matrix.nuitka_main_mode }}
           lto: no
-          caching-key: mfw-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
+          caching-key: mfw-onefile-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
           output-file: MFW
           enable-plugins: pyside6
           windows-console-mode: disable
@@ -276,9 +276,10 @@ jobs:
           script-name: main.py
           mode: ${{ matrix.nuitka_main_mode }}
           lto: no
-          caching-key: mfw-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
+          caching-key: mfw-onefile-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
           output-file: MFW
           enable-plugins: pyside6
+          linux-icon: ./app/assets/icons/logo.png
           company-name: ${{ github.repository_owner }}
           product-name: MFW-ChainFlow Assistant
           file-version: ${{ steps.exe_meta.outputs.win_file_version }}
@@ -304,9 +305,9 @@ jobs:
         with:
           nuitka-version: ${{ env.NUITKA_GIT_REF }}
           script-name: updater.py
-          mode: standalone
+          mode: onefile
           lto: no
-          caching-key: mfw-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
+          caching-key: mfw-onefile-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
           output-file: MFWUpdater
           windows-console-mode: force
           company-name: ${{ github.repository_owner }}
@@ -322,9 +323,9 @@ jobs:
         with:
           nuitka-version: ${{ env.NUITKA_GIT_REF }}
           script-name: updater.py
-          mode: standalone
+          mode: onefile
           lto: no
-          caching-key: mfw-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
+          caching-key: mfw-onefile-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
           output-file: MFWUpdater
           company-name: ${{ github.repository_owner }}
           product-name: MFW Updater
@@ -333,20 +334,21 @@ jobs:
           file-description: MFW update helper (sidecar)
           copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
 
-      # Nuitka standalone 仍会生成 build/updater.dist；合并进 main.dist 形成单一发行目录
-      - name: Merge updater.dist into main.dist (Windows)
+      # onefile 在 build/ 下生成独立可执行文件；与 updater 一并迁入 build/mfw-release 供下载与热更新查找
+      - name: Assemble mfw-release (Windows)
         if: matrix.platform == 'win'
         shell: pwsh
         run: |
-          $main = Join-Path "build" "main.dist"
-          $upd = Join-Path "build" "updater.dist"
-          if (-not (Test-Path -LiteralPath $main -PathType Container)) { Write-Error "missing $main"; exit 1 }
-          if (-not (Test-Path -LiteralPath $upd -PathType Container)) { Write-Error "missing $upd"; exit 1 }
-          # 勿用 -LiteralPath 配 *（* 会被当作字面量）；逐项复制子项
-          Get-ChildItem -LiteralPath $upd -Force | Copy-Item -Destination $main -Recurse -Force
-          Remove-Item -LiteralPath $upd -Recurse -Force
+          $rel = Join-Path "build" "mfw-release"
+          $mainExe = Join-Path "build" "MFW.exe"
+          $updExe = Join-Path "build" "MFWUpdater.exe"
+          if (-not (Test-Path -LiteralPath $mainExe -PathType Leaf)) { Write-Error "missing $mainExe"; Get-ChildItem -LiteralPath build; exit 1 }
+          if (-not (Test-Path -LiteralPath $updExe -PathType Leaf)) { Write-Error "missing $updExe"; Get-ChildItem -LiteralPath build; exit 1 }
+          New-Item -ItemType Directory -Force $rel | Out-Null
+          Move-Item -LiteralPath $mainExe -Destination (Join-Path $rel "MFW.exe") -Force
+          Move-Item -LiteralPath $updExe -Destination (Join-Path $rel "MFWUpdater.exe") -Force
 
-      - name: Merge updater.dist into main.dist (Linux)
+      - name: Assemble mfw-release (Linux)
         if: matrix.platform == 'linux'
         shell: bash
         env:
@@ -356,12 +358,16 @@ jobs:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
-          main="build/main.dist"
-          upd="build/updater.dist"
-          if [[ ! -d "$main" ]]; then echo "missing $main"; exit 1; fi
-          if [[ ! -d "$upd" ]]; then echo "missing $upd"; exit 1; fi
-          cp -a "$upd"/. "$main"/
-          rm -rf "$upd"
+          rel="build/mfw-release"
+          main_bin="build/MFW"
+          upd_bin="build/MFWUpdater"
+          if [[ ! -f "$main_bin" ]]; then echo "missing $main_bin"; ls -la build; exit 1; fi
+          if [[ ! -f "$upd_bin" ]]; then echo "missing $upd_bin"; ls -la build; exit 1; fi
+          mkdir -p "$rel"
+          mv "$main_bin" "$rel/MFW"
+          mv "$upd_bin" "$rel/MFWUpdater"
+          chmod +x "$rel/MFW" "$rel/MFWUpdater"
+          cp -f app/assets/icons/logo.png "$rel/logo.png"
 
           python3 << 'PY'
           import datetime as _dt
@@ -369,7 +375,7 @@ jobs:
           import pathlib
           import xml.sax.saxutils as _xml
 
-          main = pathlib.Path("build/main.dist")
+          main = pathlib.Path("build/mfw-release")
           tag_plain = os.environ.get("MFW_VERSION", "")
           tag_xml = _xml.escape(tag_plain)
           win_ver_plain = os.environ.get("MFW_WIN_VER", "0.0.0.0")
