@@ -50,19 +50,14 @@ def _install_anchor_path() -> str:
 # 设置工作目录为可执行文件 / main.py 所在目录（避免 Nuitka onefile 留在 Temp 解压目录）
 _install_root = Path(_install_anchor_path()).resolve().parent
 os.chdir(_install_root)
-# Windows / Linux 打包版：Maa 原生库与 MFW 同目录，MAAFW_BINARY_PATH 指向该目录（见 CI copy_maa_runtime_into_release）
-_is_packaged = getattr(sys, "frozen", False) or globals().get("__compiled__") is not None
-if _is_packaged and sys.platform in ("win32", "linux"):
-    _maa_fw_root = _install_root.resolve()
-    os.environ["MAAFW_BINARY_PATH"] = str(_maa_fw_root)
-    if sys.platform == "win32":
-        try:
-            os.add_dll_directory(str(_maa_fw_root))
-            _plugins = _maa_fw_root / "plugins"
-            if _plugins.is_dir():
-                os.add_dll_directory(str(_plugins))
-        except (AttributeError, OSError, ValueError):
-            pass
+if getattr(sys, "frozen", False):
+    # PyInstaller：build 脚本将 maa 原生库复制到发行根目录
+    os.environ["MAAFW_BINARY_PATH"] = str(_install_root)
+else:
+    _compiled = globals().get("__compiled__")
+    # Nuitka standalone：原生库在发行目录 maa/bin；onefile 在解压目录内，由 maa 包默认路径加载
+    if _compiled is not None and getattr(_compiled, "onefile_argv0", None) is None:
+        os.environ["MAAFW_BINARY_PATH"] = str((_install_root / "maa" / "bin").resolve())
 
 
 def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:
@@ -94,7 +89,7 @@ def _run() -> int:
     from app.utils.single_instance import SingleInstanceGuard
 
 
-    instance_key = str(Path(_install_anchor_path()).resolve())
+    instance_key = os.path.abspath(_install_anchor_path())
     single_instance = SingleInstanceGuard(instance_key)
     if not single_instance.acquire():
         if single_instance.notify_existing_instance():

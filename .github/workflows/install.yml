@@ -353,7 +353,6 @@ jobs:
           New-Item -ItemType Directory -Force $rel | Out-Null
           Move-Item -LiteralPath $mainExe -Destination (Join-Path $rel "MFW.exe") -Force
           Move-Item -LiteralPath $updExe -Destination (Join-Path $rel "MFWUpdater.exe") -Force
-          python tools/copy_maa_runtime_into_release.py $rel
 
       - name: Assemble mfw-release (Linux)
         if: matrix.platform == 'linux'
@@ -374,7 +373,6 @@ jobs:
           mv "$main_bin" "$rel/MFW"
           mv "$upd_bin" "$rel/MFWUpdater"
           chmod +x "$rel/MFW" "$rel/MFWUpdater"
-          python3 tools/copy_maa_runtime_into_release.py "$rel"
           cp -f app/assets/icons/logo.png "$rel/logo.png"
 
           python3 << 'PY'
