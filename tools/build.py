@@ -179,14 +179,21 @@ else:
     print(f"[WARN] Temporary files directory not found: {temp_files_dir}")
 
 
+maa_fw_dir = os.path.join(dist_dir, "maafw")
+os.makedirs(maa_fw_dir, exist_ok=True)
 for i in bin_files:
     src_binary = os.path.join(dist_dir, "_internal", i)
-    dst_binary = os.path.join(dist_dir, i)
+    dst_binary = os.path.join(maa_fw_dir, i)
     if os.path.exists(src_binary):
         shutil.copy(src_binary, dst_binary)
         os.remove(src_binary)
     else:
         print(f"[WARN] Expected binary missing: {src_binary}")
+
+plugins_src = os.path.join(maa_path, "bin", "plugins")
+plugins_dst = os.path.join(maa_fw_dir, "plugins")
+if os.path.isdir(plugins_src):
+    shutil.copytree(plugins_src, plugins_dst, dirs_exist_ok=True)
 
 maa_bin_internal = os.path.join(internal_dir, "maa", "bin")
 if os.path.isdir(maa_bin_internal):

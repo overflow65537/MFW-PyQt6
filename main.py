@@ -27,6 +27,7 @@ import sys
 import argparse
 import atexit
 import traceback
+from pathlib import Path
 
 
 def _install_anchor_path() -> str:
@@ -47,9 +48,20 @@ def _install_anchor_path() -> str:
 
 
 # 设置工作目录为可执行文件 / main.py 所在目录（避免 Nuitka onefile 留在 Temp 解压目录）
-os.chdir(os.path.dirname(os.path.abspath(_install_anchor_path())))
+_install_root = Path(_install_anchor_path()).resolve().parent
+os.chdir(_install_root)
+# 打包版：MaaFramework 等原生库放在发行根下的 maafw/（见 CI move_maa_bin_to_maafw、PyInstaller build.py）
 if getattr(sys, "frozen", False) or globals().get("__compiled__") is not None:
-    os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
+    _maafw = (_install_root / "maafw").resolve()
+    os.environ["MAAFW_BINARY_PATH"] = str(_maafw)
+    if sys.platform == "win32":
+        try:
+            os.add_dll_directory(str(_maafw))
+            _pl = _maafw / "plugins"
+            if _pl.is_dir():
+                os.add_dll_directory(str(_pl))
+        except (AttributeError, OSError, ValueError):
+            pass
 
 
 def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:
@@ -81,7 +93,7 @@ def _run() -> int:
     from app.utils.single_instance import SingleInstanceGuard
 
 
-    instance_key = os.path.abspath(_install_anchor_path())
+    instance_key = str(Path(_install_anchor_path()).resolve())
     single_instance = SingleInstanceGuard(instance_key)
     if not single_instance.acquire():
         if single_instance.notify_existing_instance():
@@ -102,7 +114,6 @@ def _run() -> int:
     logger.info(f"当前工作目录: {os.getcwd()}")
 
     import faulthandler
-    from pathlib import Path
 
     log_dir = Path("debug")
     log_dir.mkdir(exist_ok=True)

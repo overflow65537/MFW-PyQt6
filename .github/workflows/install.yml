@@ -338,7 +338,7 @@ jobs:
           file-description: MFW update helper (sidecar)
           copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
 
-      # standalone 在 build/main.dist 生成主程序及依赖；与 onefile 的 updater 一并迁入 build/mfw-release
+      # standalone：main.dist 内为 maa/bin；迁入 mfw-release 后执行 move_maa_bin_to_maafw，与 MAAFW_BINARY_PATH=maafw 一致
       - name: Assemble mfw-release (Windows)
         if: matrix.platform == 'win'
         shell: pwsh
@@ -354,6 +354,7 @@ jobs:
           Copy-Item -Path (Join-Path $srcDist '*') -Destination $rel -Recurse -Force
           Rename-Item -LiteralPath (Join-Path $rel "main.exe") -NewName "MFW.exe" -Force
           Move-Item -LiteralPath $updExe -Destination (Join-Path $rel "MFWUpdater.exe") -Force
+          python tools/move_maa_bin_to_maafw.py $rel
 
       - name: Assemble mfw-release (Linux)
         if: matrix.platform == 'linux'
@@ -381,6 +382,7 @@ jobs:
           fi
           mv "$upd_bin" "$rel/MFWUpdater"
           chmod +x "$rel/MFW" "$rel/MFWUpdater"
+          python3 tools/move_maa_bin_to_maafw.py "$rel"
           cp -f app/assets/icons/logo.png "$rel/logo.png"
 
           python3 << 'PY'
