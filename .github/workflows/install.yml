@@ -270,8 +270,9 @@ jobs:
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
-            app/assets/icons/logo.png=logo.png
-          include-data-dir: app/i18n=app/i18n
+          include-data-dir: |
+            app/i18n=app/i18n
+            app/assets/icons=app/assets/icons
 
       - name: Qt GUI with PySide6 (Linux)
         if: matrix.platform == 'linux'
@@ -300,8 +301,9 @@ jobs:
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
-            app/assets/icons/logo.png=logo.png
-          include-data-dir: app/i18n=app/i18n
+          include-data-dir: |
+            app/i18n=app/i18n
+            app/assets/icons=app/assets/icons
 
       - name: updater build (Windows)
         if: matrix.platform == 'win'
@@ -383,7 +385,6 @@ jobs:
           mv "$upd_bin" "$rel/MFWUpdater"
           chmod +x "$rel/MFW" "$rel/MFWUpdater"
           python3 tools/move_maa_bin_to_maafw.py "$rel"
-          cp -f app/assets/icons/logo.png "$rel/logo.png"
 
           python3 << 'PY'
           import datetime as _dt
@@ -423,7 +424,7 @@ jobs:
           Comment=Visual runner for MaaFramework automation (interface v2). Build tag: {tag_plain}
           Comment[zh_CN]=基于 MaaFramework 的可视化自动化运行器（interface v2）。构建标识：{tag_plain}
           Keywords=maa;MaaFramework;automation;PySide6;
-          Icon=./logo.png
+          Icon=app/assets/icons/logo.png
           Exec=./run-mfw.sh
           """
           (main / "io.github.overflow65537.mfw-pyqt6.desktop").write_text(
