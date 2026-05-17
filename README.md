@@ -63,6 +63,7 @@ MFW-ChainFlow Assistant 旨在为 MaaFramework 用户提供开箱即用的可视
 
 - `-c <config_id>`：使用指定配置 ID 启动（可用于 `python main.py` 或打包后的 `MFW.exe`）
 - `-d`：启动后直接运行任务（同样适用于 `MFW.exe`）
+- `-f`：强制启动,会关闭其他同目录正在运行的MFW,即使他们仍然在运行任务（同样适用于 `MFW.exe`）
 - `-dev` ：启用调试模式
 
 ## 外部通知
