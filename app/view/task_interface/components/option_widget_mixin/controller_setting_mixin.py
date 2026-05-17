@@ -33,22 +33,18 @@ from maa.define import (
 def _build_method_options_from_enum(
     enum_cls: Type[Any],
     *,
-    include_null: bool,
     include_default: bool,
 ) -> Dict[str, int]:
     """
     从 maa.define 枚举自动构建下拉框选项字典。
 
     约定：
-    - `null`、`default` 采用兼容旧配置的展示键名；
-    - 仅当枚举真实存在 `Default` 成员时才生成 `default`；
+    - 不生成 `Null` 选项；旧配置中的 0 / "null" 在 UI 层映射为框架默认方法；
+    - `default` 采用兼容旧配置的展示键名，仅当枚举存在 `Default` 成员时生成；
     - 其余成员按枚举定义顺序自动加入，避免硬编码维护。
     """
     members = getattr(enum_cls, "__members__", {})
     options: Dict[str, int] = {}
-
-    if include_null and "Null" in members:
-        options["null"] = int(members["Null"].value)
 
     if include_default and "Default" in members:
         options["default"] = int(members["Default"].value)
@@ -76,24 +72,20 @@ class ControllerSettingWidget(QWidget):
     # 映射表定义
     WIN32_INPUT_METHOD_ALIAS_VALUES: Dict[str, int] = _build_method_options_from_enum(
         MaaWin32InputMethodEnum,
-        include_null=True,
         include_default=False,
     )
     WIN32_SCREENCAP_METHOD_ALIAS_VALUES: Dict[
         str, int
     ] = _build_method_options_from_enum(
         MaaWin32ScreencapMethodEnum,
-        include_null=True,
         include_default=False,
     )
     ADB_SCREENCAP_OPTIONS: Dict[str, int] = _build_method_options_from_enum(
         MaaAdbScreencapMethodEnum,
-        include_null=False,
         include_default=True,
     )
     ADB_INPUT_OPTIONS: Dict[str, int] = _build_method_options_from_enum(
         MaaAdbInputMethodEnum,
-        include_null=False,
         include_default=True,
     )
     GAMEPAD_TYPE_OPTIONS: Dict[str, int] = {
@@ -226,6 +218,33 @@ class ControllerSettingWidget(QWidget):
         """将方法名标准化以便查找别名"""
         return "".join(ch.lower() for ch in value if ch.isalnum())
 
+    def _is_win32_null_method_value(self, value: Any) -> bool:
+        """Win32 方法值为 Null(0) 或旧配置字符串 null。"""
+        int_value = self._coerce_int(value)
+        if int_value == 0:
+            return True
+        if isinstance(value, str) and self._normalize_method_name(value) == "null":
+            return True
+        return False
+
+    @staticmethod
+    def _win32_method_default_value(method_type: str) -> int:
+        """Win32 Null 在 UI/连接层对齐的默认方法。"""
+        if method_type.lower() == "screencap":
+            return int(MaaWin32ScreencapMethodEnum.DXGI_DesktopDup.value)
+        return int(MaaWin32InputMethodEnum.Seize.value)
+
+    def _coerce_win32_method_display_value(
+        self, config_key: str, value: Any
+    ) -> Any:
+        """将 Win32 控制方式配置值转为下拉框可匹配的有效值（跳过 Null）。"""
+        method_type = "screencap"
+        if config_key in {"mouse_input_methods", "keyboard_input_methods"}:
+            method_type = "input"
+        if self._is_win32_null_method_value(value):
+            return self._win32_method_default_value(method_type)
+        return value
+
     def _normalize_alias_map(self, alias_map: Dict[str, int]) -> Dict[str, int]:
         """用标准化的键创建别名映射"""
         normalized_map: Dict[str, int] = {}
@@ -252,6 +271,9 @@ class ControllerSettingWidget(QWidget):
         self, value: Any, method_type: str | None = None
     ) -> int | None:
         """尝试解析 controller 配置中的输入/截图方法值"""
+        if method_type is not None and self._is_win32_null_method_value(value):
+            return self._win32_method_default_value(method_type)
+
         int_value = self._coerce_int(value)
         if int_value is not None:
             return int_value
@@ -358,9 +380,13 @@ class ControllerSettingWidget(QWidget):
                 keyboard_value = general_input
 
             defaults: dict[str, int] = {}
-            if mouse_value is not None:
+            if mouse_value is not None and not self._is_win32_null_method_value(
+                mouse_value
+            ):
                 defaults["mouse_input_methods"] = mouse_value
-            if keyboard_value is not None:
+            if keyboard_value is not None and not self._is_win32_null_method_value(
+                keyboard_value
+            ):
                 defaults["keyboard_input_methods"] = keyboard_value
 
             screencap_value = self._find_win32_candidate_value(
@@ -374,7 +400,9 @@ class ControllerSettingWidget(QWidget):
                 ],
                 "screencap",
             )
-            if screencap_value is not None:
+            if screencap_value is not None and not self._is_win32_null_method_value(
+                screencap_value
+            ):
                 defaults["win32_screencap_methods"] = screencap_value
 
             mapping_entry: dict[str, Any] = {"defaults": defaults}
@@ -933,14 +961,8 @@ class ControllerSettingWidget(QWidget):
 
     def _controller_method_detail_text(self, category: str, method_key: str) -> str:
         """Localized help for controller capture/input methods (UI source strings are English)."""
-        if not method_key or method_key == "null":
-            return self.tr(
-                "Description: No specific method (Null).\n"
-                + "Speed: Depends on framework fallback.\n"
-                + "Mouse capture: N/A (desktop).\n"
-                + "Compatibility: Framework-defined.\n"
-                + "Admin rights: Usually not required; elevate if the target process runs elevated."
-            )
+        if not method_key:
+            return self.tr("(No description for this method.)")
 
         if category == "win32_input":
             return self._controller_method_detail_text_win32_input(method_key)
@@ -1485,9 +1507,11 @@ class ControllerSettingWidget(QWidget):
                     "program_path": "",
                     "program_params": "",
                     "wait_time": 30,  # 默认等待程序启动 30s
-                    "mouse_input_methods": 0,
-                    "keyboard_input_methods": 0,
-                    "win32_screencap_methods": 0,
+                    "mouse_input_methods": int(MaaWin32InputMethodEnum.Seize.value),
+                    "keyboard_input_methods": int(MaaWin32InputMethodEnum.Seize.value),
+                    "win32_screencap_methods": int(
+                        MaaWin32ScreencapMethodEnum.DXGI_DesktopDup.value
+                    ),
                 },
             )
         elif current_controller_type == "gamepad":
@@ -1819,6 +1843,12 @@ class ControllerSettingWidget(QWidget):
                 and name in self.current_config[controller_name]
             ):
                 target = self.current_config[controller_name][name]
+                if name in (
+                    "mouse_input_methods",
+                    "keyboard_input_methods",
+                    "win32_screencap_methods",
+                ):
+                    target = self._coerce_win32_method_display_value(name, target)
                 widget.setCurrentIndex(self._value_to_index_any(widget, target))
             elif name == "playcover_address" and controller_type == "playcover":
                 # 对于 playcover，将 address 的值填充到 playcover_address 输入框
