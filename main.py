@@ -90,22 +90,52 @@ def _run() -> int:
     from app.common.theme_manager import apply_theme_from_config
     from app.utils.crypto import crypto_manager
     from app.utils.logger import logger
-    from app.utils.single_instance import SingleInstanceGuard
+    from app.utils.single_instance import SingleInstanceGuard, is_instance_running
 
+    # 启动参数解析（单实例检查前处理 -f，通过套接字请求旧实例优雅退出）
+    parser = argparse.ArgumentParser(
+        description="MFW-ChainFlow Assistant", add_help=True
+    )
+    parser.add_argument(
+        "-d", "--direct-run", action="store_true", help="启动后直接运行任务流"
+    )
+    parser.add_argument(
+        "-c", "--config", dest="config_id", help="启动后切换到指定配置ID"
+    )
+    parser.add_argument(
+        "-dev", "--dev", dest="enable_dev", action="store_true", help="显示测试页面"
+    )
+    parser.add_argument(
+        "-f",
+        "--force-restart",
+        action="store_true",
+        help="请求同安装目录下正在运行的 MFW 停止任务并退出后启动本进程",
+    )
+    args, qt_extra = parser.parse_known_args(sys.argv[1:])
+    qt_argv = [sys.argv[0]] + qt_extra
 
     instance_key = str(Path(_install_anchor_path()).resolve())
+
+    # DPI缩放配置（-f 等待弹窗也需要）
+    if cfg.get(cfg.dpiScale) != "Auto":
+        os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
+        os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
+
+    init_language_on_first_run()
+
+    if args.force_restart and is_instance_running(instance_key):
+        from app.utils.startup_dialog import run_force_restart_shutdown_flow
+
+        early_app = QApplication(qt_argv)
+        early_app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
+        apply_theme_from_config()
+        if not run_force_restart_shutdown_flow(instance_key):
+            return 1
+
     single_instance = SingleInstanceGuard(instance_key)
     if not single_instance.acquire():
-        if single_instance.notify_existing_instance():
-            return 0
-        try:
-            # 使用通用弹窗提示
-            from app.utils.startup_dialog import show_instance_running_dialog
-
-            show_instance_running_dialog()
-        except Exception:
-            # 兜底：控制台环境
-            print("程序已经在运行中，请先关闭已打开的实例后再启动。", file=sys.stderr)
+        # 已有实例：仅尝试前置已有窗口，不弹窗
+        single_instance.notify_existing_instance()
         return 0
 
     atexit.register(single_instance.release)
@@ -121,22 +151,6 @@ def _run() -> int:
     faulthandler.enable(file=crash_log, all_threads=True)
     # 检查并加载密钥
     crypto_manager.ensure_key_exists()
-
-    # 启动参数解析
-    parser = argparse.ArgumentParser(
-        description="MFW-ChainFlow Assistant", add_help=True
-    )
-    parser.add_argument(
-        "-d", "--direct-run", action="store_true", help="启动后直接运行任务流"
-    )
-    parser.add_argument(
-        "-c", "--config", dest="config_id", help="启动后切换到指定配置ID"
-    )
-    parser.add_argument(
-        "-dev", "--dev", dest="enable_dev", action="store_true", help="显示测试页面"
-    )
-    args, qt_extra = parser.parse_known_args(sys.argv[1:])
-    qt_argv = [sys.argv[0]] + qt_extra
 
     # 全局异常钩子
     def global_except_hook(exc_type, exc_value, exc_traceback):
@@ -154,18 +168,12 @@ def _run() -> int:
 
     sys.excepthook = global_except_hook
 
-    # DPI缩放配置
-    if cfg.get(cfg.dpiScale) != "Auto":
-        os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
-        os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
-
-    # 首次启动时自动检测系统语言
-    init_language_on_first_run()
-
-    # 创建Qt应用实例
-    app = QApplication(qt_argv)
-    app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
-    apply_theme_from_config()
+    # 创建Qt应用实例（-f 等待阶段可能已创建）
+    app = QApplication.instance()
+    if app is None or not isinstance(app, QApplication):
+        app = QApplication(qt_argv)
+        app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
+        apply_theme_from_config()
 
     if single_instance.start_activation_server(app):
         atexit.register(single_instance.stop_activation_server)
@@ -173,11 +181,14 @@ def _run() -> int:
         logger.warning("单实例激活服务启动失败，重复启动时将无法自动前置已有窗口")
 
     window_holder = {"window": None}
+    pending_force_shutdown = {"requested": False}
+    pending_activation = {"requested": False}
 
     def _activate_existing_window() -> bool:
         window = window_holder["window"]
         if window is None:
-            return False
+            pending_activation["requested"] = True
+            return True
 
         if not window.isVisible():
             window.show()
@@ -197,16 +208,16 @@ def _run() -> int:
                     user32.ShowWindow(hwnd, 9)  # SW_RESTORE
                 else:
                     user32.ShowWindow(hwnd, 5)  # SW_SHOW
-                return bool(user32.SetForegroundWindow(hwnd))
+                # SetForegroundWindow 常因系统前台策略失败，但窗口已恢复/显示即视为成功
+                user32.SetForegroundWindow(hwnd)
             except Exception:
                 logger.debug("Windows 前置已有实例失败", exc_info=True)
-                return False
 
         return True
 
     single_instance.set_activation_callback(_activate_existing_window)
 
-    # 国际化配置
+    # 国际化配置（须在 -f 等待弹窗之后安装，以便弹窗也能翻译）
     locale = cfg.get(cfg.language)
     translator = FluentTranslator(locale.value)
     galleryTranslator = QTranslator()
@@ -282,6 +293,36 @@ def _run() -> int:
 
     asyncio.set_event_loop(loop)
 
+    def _schedule_graceful_shutdown(window) -> None:
+        async def _stop_and_close() -> None:
+            try:
+                task_runner = window.service_coordinator.task_runner
+                if task_runner.is_running or task_runner.maafw.has_active_runtime():
+                    await window.service_coordinator.stop_task(manual=True)
+            except Exception:
+                logger.exception("收到 -f 关闭请求后停止任务失败")
+            window._allow_window_close = True
+            from PySide6.QtCore import QTimer
+
+            QTimer.singleShot(0, window.close)
+
+        try:
+            asyncio.ensure_future(_stop_and_close(), loop=loop)
+        except Exception:
+            logger.exception("调度优雅关闭失败")
+            window._allow_window_close = True
+            window.close()
+
+    def _handle_force_shutdown_request() -> bool:
+        window = window_holder["window"]
+        if window is None:
+            pending_force_shutdown["requested"] = True
+            return True
+        _schedule_graceful_shutdown(window)
+        return True
+
+    single_instance.set_shutdown_callback(_handle_force_shutdown_request)
+
     # 初始化 GPU 信息缓存
     try:
         from app.utils.gpu_cache import gpu_cache
@@ -300,6 +341,12 @@ def _run() -> int:
         force_enable_test=args.enable_dev,
     )
     window_holder["window"] = w
+    if pending_force_shutdown["requested"]:
+        _schedule_graceful_shutdown(w)
+    elif pending_activation["requested"]:
+        from PySide6.QtCore import QTimer
+
+        QTimer.singleShot(0, _activate_existing_window)
     w.show()
 
     # 连接应用退出信号到事件循环停止

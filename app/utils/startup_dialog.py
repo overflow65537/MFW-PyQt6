@@ -23,13 +23,14 @@ MFW-ChainFlow Assistant
 """
 
 import sys
+import time
 import traceback
 from enum import Enum, auto
 from typing import Optional, Callable, List, Tuple
 from dataclasses import dataclass, field
 
 from PySide6.QtWidgets import QApplication, QVBoxLayout, QHBoxLayout, QWidget
-from PySide6.QtCore import Qt, QObject, QUrl
+from PySide6.QtCore import Qt, QObject, QUrl, QEventLoop, QTimer
 from PySide6.QtGui import QDesktopServices
 from qfluentwidgets import (
     MessageBoxBase,
@@ -320,6 +321,85 @@ class StartupDialogManager(QObject):
         finally:
             self._cleanup_dummy_parent()
 
+    def show_force_restart_failed(self) -> None:
+        """显示 -f 强制重启时无法在时限内关闭旧实例的弹窗。"""
+        config = StartupDialogConfig(
+            dialog_type=StartupDialogType.WARNING,
+            title=self.tr("关闭失败"),
+            content=self.tr(
+                "无法在 30 秒内关闭正在运行的实例，请手动关闭后重试。"
+            ),
+            buttons=[
+                DialogButton(
+                    text=self.tr("OK"),
+                    is_primary=True,
+                ),
+            ],
+            exit_after_close=True,
+            exit_code=1,
+        )
+
+        self._ensure_app_exists()
+        try:
+            dialog = StartupDialog(config, self._get_parent())
+            dialog.exec()
+        finally:
+            self._cleanup_dummy_parent()
+
+    def wait_for_force_restart_shutdown(
+        self, instance_key: str, *, timeout: float = 30.0
+    ) -> bool:
+        """显示等待弹窗，请求旧实例关闭并轮询单实例锁直至超时。"""
+        from app.utils.single_instance import (
+            _ActivationServer,
+            _SingleInstanceLock,
+            request_instance_shutdown,
+        )
+
+        config = StartupDialogConfig(
+            dialog_type=StartupDialogType.INFO,
+            title=self.tr("正在关闭"),
+            content=self.tr("检测到其他任务正在运行，正在关闭中..."),
+            buttons=[],
+        )
+
+        self._ensure_app_exists()
+        dialog = None
+        try:
+            dialog = StartupDialog(config, self._get_parent())
+            dialog.show()
+            QApplication.processEvents()
+
+            server_name = _ActivationServer.make_server_name(str(instance_key))
+            request_instance_shutdown(server_name)
+
+            success = False
+            loop = QEventLoop()
+            deadline = time.monotonic() + max(0.0, timeout)
+
+            def _poll() -> None:
+                nonlocal success
+                probe = _SingleInstanceLock(str(instance_key))
+                if probe.acquire():
+                    probe.release()
+                    success = True
+                    loop.quit()
+                    return
+                if time.monotonic() >= deadline:
+                    loop.quit()
+
+            timer = QTimer()
+            timer.timeout.connect(_poll)
+            timer.start(250)
+            _poll()
+            loop.exec()
+            timer.stop()
+            return success
+        finally:
+            if dialog is not None:
+                dialog.close()
+            self._cleanup_dummy_parent()
+
     def show_uncaught_exception(
         self, exc_type, exc_value, exc_traceback
     ) -> None:
@@ -463,6 +543,17 @@ def show_instance_running_dialog(parent=None) -> None:
     """显示程序已运行的弹窗"""
     manager = StartupDialogManager(parent)
     manager.show_instance_running()
+
+
+def run_force_restart_shutdown_flow(
+    instance_key: str, *, timeout: float = 30.0, parent=None
+) -> bool:
+    """-f 启动：请求旧实例优雅退出并等待；失败时弹窗且返回 False。"""
+    manager = StartupDialogManager(parent)
+    if manager.wait_for_force_restart_shutdown(instance_key, timeout=timeout):
+        return True
+    manager.show_force_restart_failed()
+    return False
 
 
 def show_uncaught_exception_dialog(
