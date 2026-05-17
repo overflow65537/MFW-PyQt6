@@ -11,10 +11,12 @@ from PySide6.QtCore import (
     Qt,
     Signal,
     QPropertyAnimation,
+    QParallelAnimationGroup,
     QEasingCurve,
     QTimer,
     QSize,
     QEvent,
+    QPoint,
 )
 from qfluentwidgets import ListWidget, IndeterminateProgressRing, SimpleCardWidget
 
@@ -109,6 +111,11 @@ class TaskDragListWidget(BaseListWidget):
     """任务拖拽列表组件：支持拖动排序、添加、修改、删除任务（基础任务禁止删除/拖动）"""
 
     _TASK_ITEM_HEIGHT = 44
+    _DRAG_SCROLL_MARGIN = 40
+    _DRAG_SCROLL_TIMER_INTERVAL_MS = 16
+    _DRAG_SCROLL_MIN_STEP = 6
+    _DRAG_SCROLL_MAX_STEP = 18
+    _REORDER_ANIMATION_DURATION_MS = 180
 
     def __init__(
         self,
@@ -176,7 +183,9 @@ class TaskDragListWidget(BaseListWidget):
         self._drag_scroll_timer = QTimer(self)
         self._drag_scroll_timer.timeout.connect(self._on_drag_scroll_timer)
         self._drag_scroll_direction = 0  # -1: 向上, 1: 向下, 0: 不滚动
+        self._drag_scroll_step = self._DRAG_SCROLL_MIN_STEP
         self._is_dragging = False
+        self._reorder_animation_group: QParallelAnimationGroup | None = None
         
         self.update_list()
 
@@ -319,46 +328,71 @@ class TaskDragListWidget(BaseListWidget):
         """拖拽移动事件：检测鼠标位置并触发自动滚动，同时允许滚轮滚动"""
         self._is_dragging = True
         super().dragMoveEvent(event)
-        
-        # 检测鼠标位置，如果接近列表边缘则自动滚动
-        pos = event.pos()
-        viewport_height = self.viewport().height()
-        scroll_margin = 40  # 距离边缘多少像素时开始自动滚动
-        
-        # 计算滚动方向
-        scroll_direction = 0
-        if pos.y() < scroll_margin:
-            # 接近顶部，向上滚动
-            scroll_direction = -1
-        elif pos.y() > viewport_height - scroll_margin:
-            # 接近底部，向下滚动
-            scroll_direction = 1
-        
-        # 更新滚动方向并启动/停止定时器
-        self._drag_scroll_direction = scroll_direction
-        if scroll_direction != 0:
-            if not self._drag_scroll_timer.isActive():
-                self._drag_scroll_timer.start(16)  # 约60fps
-        else:
-            self._drag_scroll_timer.stop()
+        self._update_drag_scroll_state(event.pos())
     
     def _on_drag_scroll_timer(self):
         """拖拽自动滚动定时器回调"""
-        if self._drag_scroll_direction == 0:
-            self._drag_scroll_timer.stop()
+        if not self._is_dragging or self._drag_scroll_direction == 0:
+            self._stop_drag_scroll()
             return
-        
+
         scroll_bar = self.verticalScrollBar()
         if not scroll_bar:
             return
-        
-        # 计算滚动步长（根据方向）
-        scroll_step = 8 * self._drag_scroll_direction
-        new_value = scroll_bar.value() - scroll_step
-        
-        # 限制在有效范围内
+
+        new_value = scroll_bar.value() + (
+            self._drag_scroll_step * self._drag_scroll_direction
+        )
         new_value = max(scroll_bar.minimum(), min(scroll_bar.maximum(), new_value))
+        if new_value == scroll_bar.value():
+            self._stop_drag_scroll()
+            return
         scroll_bar.setValue(new_value)
+
+    def _update_drag_scroll_state(self, pos: QPoint) -> None:
+        """根据拖拽位置更新自动滚动状态。"""
+        if not self._is_dragging:
+            self._stop_drag_scroll()
+            return
+
+        viewport_rect = self.viewport().rect()
+        if not viewport_rect.contains(pos):
+            self._stop_drag_scroll()
+            return
+
+        scroll_direction = 0
+        step = self._DRAG_SCROLL_MIN_STEP
+        pos_y = pos.y()
+        viewport_height = viewport_rect.height()
+        margin = max(1, min(self._DRAG_SCROLL_MARGIN, viewport_height // 2))
+
+        if pos_y < margin:
+            scroll_direction = -1
+            strength = (margin - pos_y) / margin
+            step = self._drag_scroll_step_for_strength(strength)
+        elif pos_y > viewport_height - margin:
+            scroll_direction = 1
+            strength = (pos_y - (viewport_height - margin)) / margin
+            step = self._drag_scroll_step_for_strength(strength)
+
+        if scroll_direction == 0:
+            self._stop_drag_scroll()
+            return
+
+        self._drag_scroll_direction = scroll_direction
+        self._drag_scroll_step = step
+        if not self._drag_scroll_timer.isActive():
+            self._drag_scroll_timer.start(self._DRAG_SCROLL_TIMER_INTERVAL_MS)
+
+    def _drag_scroll_step_for_strength(self, strength: float) -> int:
+        strength = max(0.0, min(1.0, strength))
+        scroll_range = self._DRAG_SCROLL_MAX_STEP - self._DRAG_SCROLL_MIN_STEP
+        return self._DRAG_SCROLL_MIN_STEP + int(scroll_range * strength)
+
+    def _stop_drag_scroll(self) -> None:
+        self._drag_scroll_timer.stop()
+        self._drag_scroll_direction = 0
+        self._drag_scroll_step = self._DRAG_SCROLL_MIN_STEP
     
     def wheelEvent(self, event):
         """重写滚轮事件，确保在拖拽期间也能使用滚轮滚动"""
@@ -371,44 +405,88 @@ class TaskDragListWidget(BaseListWidget):
             self.verticalScrollBar().setValue(
                 self.verticalScrollBar().value() - step
             )
+            if self._is_dragging:
+                self._update_drag_scroll_state(event.position().toPoint())
             event.accept()
             return
         super().wheelEvent(event)
     
     def dragLeaveEvent(self, event):
         """拖拽离开事件：停止自动滚动"""
-        self._drag_scroll_timer.stop()
-        self._drag_scroll_direction = 0
+        self._stop_drag_scroll()
         self._is_dragging = False
         super().dragLeaveEvent(event)
     
     def dropEvent(self, event):
-        # 停止自动滚动
-        self._drag_scroll_timer.stop()
-        self._drag_scroll_direction = 0
-        self._is_dragging = False
-        
-        # 拖动前收集任务和保护位置
         previous_tasks = self._collect_task_items()
+        previous_order = [task.item_id for task in previous_tasks]
+        previous_positions = self._capture_task_widget_positions()
         protected = self._protected_positions(previous_tasks)
 
-        # 获取拖动目标位置
-        pos = event.pos()
-        target_row = self.indexAt(pos).row()
-        # 如果拖动目标是基础任务位置（如0/1/最后），直接放弃操作
-        if target_row in protected:
+        self._stop_drag_scroll()
+        self._is_dragging = False
+
+        if self._is_drop_target_protected(event.pos(), protected):
             event.ignore()
             return
 
         super().dropEvent(event)
+        self._handle_drop_result(previous_tasks, previous_order, protected, previous_positions, event)
+
+    def _handle_drop_result(
+        self,
+        previous_tasks: list[TaskItem],
+        previous_order: list[str],
+        protected: dict[int, str],
+        previous_positions: dict[str, QPoint],
+        event,
+    ) -> None:
+        """统一处理 drop 后的校验、回滚、持久化与动画。"""
         current_tasks = self._collect_task_items()
-        if not self._base_positions_intact(current_tasks, protected):
-            self._restore_order([task.item_id for task in previous_tasks])
+        if not current_tasks:
+            self._restore_order(previous_order)
             event.ignore()
             return
+
+        current_order = [task.item_id for task in current_tasks]
+        if current_order == previous_order:
+            return
+
+        if not self._is_valid_drop_result(current_tasks, protected):
+            self._restore_order(previous_order)
+            event.ignore()
+            return
+
         full_tasks = self.service_coordinator.task.get_tasks()
         reorder_seq = self._build_reorder_sequence(full_tasks, current_tasks)
-        self.service_coordinator.reorder_tasks(reorder_seq)
+        if reorder_seq == [task.item_id for task in full_tasks]:
+            self._animate_reorder(previous_positions)
+            return
+
+        if not self.service_coordinator.reorder_tasks(reorder_seq):
+            self._restore_order(previous_order)
+            event.ignore()
+            return
+
+        self._animate_reorder(previous_positions)
+
+    def _is_valid_drop_result(
+        self, current_tasks: list[TaskItem], protected: dict[int, str]
+    ) -> bool:
+        """校验拖拽结果是否合法。"""
+        return self._base_positions_intact(current_tasks, protected)
+
+    def _is_drop_target_protected(
+        self, pos: QPoint, protected: dict[int, str]
+    ) -> bool:
+        """在 drop 前快速判断目标行是否命中受保护槽位。"""
+        if not protected:
+            return False
+
+        target_row = self.indexAt(pos).row()
+        if target_row == -1:
+            target_row = self.count() - 1
+        return target_row in protected
 
     def _on_config_changed(self, config_id: str) -> None:
         """Reload tasks when user switches configuration."""
@@ -456,6 +534,8 @@ class TaskDragListWidget(BaseListWidget):
 
     def update_list(self):
         """刷新任务列表UI（先显示骨架占位，再逐项渲染）"""
+        self._stop_drag_scroll()
+        self._stop_reorder_animation()
         self.clear()
         self.setCurrentRow(-1)
         self._task_widgets.clear()
@@ -488,6 +568,7 @@ class TaskDragListWidget(BaseListWidget):
         if self._render_index >= len(self._pending_tasks):
             self._loading_tasks = False
             self._pending_tasks = []
+            self._skeleton_items.clear()
             return
 
         task = self._pending_tasks[self._render_index]
@@ -535,6 +616,7 @@ class TaskDragListWidget(BaseListWidget):
 
     def modify_task(self, task: TaskItem):
         """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。"""
+        self._stop_reorder_animation()
         # 先尝试查找是否已有同 id 的项
         existing_widget = self._task_widgets.get(task.item_id)
         
@@ -627,6 +709,7 @@ class TaskDragListWidget(BaseListWidget):
 
     def remove_task(self, task_id: str):
         """移除任务项，基础任务不可移除"""
+        self._stop_reorder_animation()
         # 检查是否为基础任务
         for i in range(self.count()):
             item = self.item(i)
@@ -679,6 +762,7 @@ class TaskDragListWidget(BaseListWidget):
 
     def _restore_order(self, order: list[str]) -> None:
         """Restore original order if a drop violates base task constraints."""
+        self._stop_reorder_animation()
         for target_index, task_id in enumerate(order):
             current_index = self._find_row_by_task_id(task_id)
             if current_index == -1 or current_index == target_index:
@@ -719,6 +803,62 @@ class TaskDragListWidget(BaseListWidget):
 
         ordered.extend(list(visible_ids))
         return ordered
+
+    def _capture_task_widget_positions(self) -> dict[str, QPoint]:
+        """记录当前可见任务项的位置，用于 drop 后平滑过渡。"""
+        positions: dict[str, QPoint] = {}
+        for row in range(self.count()):
+            item = self.item(row)
+            widget = self.itemWidget(item)
+            if isinstance(widget, TaskListItem):
+                positions[widget.task.item_id] = widget.pos()
+        return positions
+
+    def _animate_reorder(self, previous_positions: dict[str, QPoint]) -> None:
+        """对发生位移的可见任务项执行平滑移动动画。"""
+        self._stop_reorder_animation()
+
+        group = QParallelAnimationGroup(self)
+        for row in range(self.count()):
+            item = self.item(row)
+            widget = self.itemWidget(item)
+            if not isinstance(widget, TaskListItem):
+                continue
+
+            start_pos = previous_positions.get(widget.task.item_id)
+            end_pos = widget.pos()
+            if start_pos is None or start_pos == end_pos:
+                continue
+
+            animation = QPropertyAnimation(widget, b"pos", group)
+            animation.setDuration(self._REORDER_ANIMATION_DURATION_MS)
+            animation.setStartValue(start_pos)
+            animation.setEndValue(end_pos)
+            animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+            group.addAnimation(animation)
+
+        if group.animationCount() == 0:
+            group.deleteLater()
+            return
+
+        self._reorder_animation_group = group
+
+        def _cleanup() -> None:
+            if self._reorder_animation_group is group:
+                self._reorder_animation_group = None
+            group.deleteLater()
+
+        group.finished.connect(_cleanup)
+        group.start()
+
+    def _stop_reorder_animation(self) -> None:
+        """停止仍在进行的重排动画，避免刷新与拖拽互相覆盖。"""
+        if self._reorder_animation_group is None:
+            return
+        group = self._reorder_animation_group
+        self._reorder_animation_group = None
+        group.stop()
+        group.deleteLater()
 
     def _init_loading_overlay(self) -> None:
         self._loading_overlay = QWidget(self)
