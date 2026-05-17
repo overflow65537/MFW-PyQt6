@@ -2102,10 +2102,16 @@ class MainWindow(MSFluentWindow):
 
         self._refresh_announcement_sections()
         # 启动时根据“总公告签名”比对（welcome + resource/announcement/*.md）决定是否自动弹出
-        if self._announcement_content and self._is_announcement_mismatch():
+        if (
+            self._announcement_content
+            and self._is_announcement_mismatch()
+            and self._is_welcome_announcement_auto_show_permitted()
+        ):
             # 公告内容不一致，在界面准备好后弹出对话框
             # 注意：此时不更新配置，只有在用户关闭对话框时才更新
             self._announcement_pending_show = True
+        elif self._announcement_content and not self._is_welcome_announcement_auto_show_permitted():
+            logger.info("CI 资源版本，跳过 welcome 公告自动弹窗")
 
     def _compute_text_md5(self, text: str) -> str:
         """计算文本的 MD5（用于 welcome 公告变更判断），为空返回空字符串。"""
@@ -2252,10 +2258,20 @@ class MainWindow(MSFluentWindow):
             position=NavigationItemPosition.BOTTOM,
         )
 
+    def _is_welcome_announcement_auto_show_permitted(self) -> bool:
+        from app.utils.version_policy import is_welcome_announcement_auto_show_permitted
+
+        interface = getattr(self.service_coordinator.task, "interface", None)
+        return is_welcome_announcement_auto_show_permitted(interface=interface)
+
     def _maybe_show_pending_announcement(self):
         """在主界面完成初始化后延迟展示公告对话框。"""
         # 公告功能被禁用时（多资源适配开启），彻底跳过自动弹窗与“无公告教程”分支
         if not getattr(self, "_announcement_enabled", True):
+            return
+        if not self._is_welcome_announcement_auto_show_permitted():
+            self._announcement_pending_show = False
+            QTimer.singleShot(0, self._maybe_start_tutorial_for_no_announcement)
             return
         if self._announcement_pending_show:
             self._announcement_pending_show = False
@@ -2359,10 +2375,22 @@ class MainWindow(MSFluentWindow):
         self._pending_auto_run = bool(
             self._cli_auto_run or cfg.get(cfg.run_after_startup)
         )
-        if cfg.get(cfg.auto_update):
+        from app.utils.version_policy import is_auto_update_permitted
+
+        auto_update_allowed = is_auto_update_permitted(
+            config_enabled=bool(cfg.get(cfg.auto_update)),
+            interface=getattr(
+                getattr(self.service_coordinator, "task", None), "interface", None
+            ),
+        )
+        if auto_update_allowed:
             logger.info("自动更新已开启，准备启动自动更新线程")
             self._start_auto_update_thread()
             return
+        if cfg.get(cfg.auto_update):
+            logger.info(
+                "配置已开启自动更新，但当前资源版本为 CI/Alpha，跳过自动更新"
+            )
         # 未开启 UI 自动更新时，直接进入下一步：检查是否需要执行 bundle 自动更新
         logger.info("自动更新未开启，改为检查并执行 bundle 自动更新")
         self._check_and_start_bundle_update()
@@ -2482,7 +2510,7 @@ class MainWindow(MSFluentWindow):
                 )
                 if setting_interface:
                     setting_interface.trigger_instant_update_prompt(
-                        auto_accept=cfg.get(cfg.auto_update)
+                        auto_accept=setting_interface._is_auto_update_enabled()
                     )
                 else:
                     logger.warning("SettingInterface 不存在，无法触发立即更新提示")
@@ -2520,7 +2548,7 @@ class MainWindow(MSFluentWindow):
             )
             if setting_interface:
                 setting_interface.trigger_instant_update_prompt(
-                    auto_accept=cfg.get(cfg.auto_update)
+                    auto_accept=setting_interface._is_auto_update_enabled()
                 )
             else:
                 logger.warning("SettingInterface 不存在，无法触发立即更新提示")
@@ -2531,8 +2559,18 @@ class MainWindow(MSFluentWindow):
 
     def _check_and_start_bundle_update(self):
         """检查并启动 bundle 更新"""
-        # 检查 bundle 自动更新是否开启
-        bundle_auto_update_enabled = cfg.get(cfg.bundle_auto_update)
+        from app.utils.version_policy import is_auto_update_permitted
+
+        bundle_auto_update_enabled = is_auto_update_permitted(
+            config_enabled=bool(cfg.get(cfg.bundle_auto_update)),
+            interface=getattr(
+                getattr(self.service_coordinator, "task", None), "interface", None
+            ),
+        )
+        if cfg.get(cfg.bundle_auto_update) and not bundle_auto_update_enabled:
+            logger.info(
+                "Bundle 自动更新已配置开启，但当前资源版本为 CI/Alpha，跳过自动更新"
+            )
 
         if not bundle_auto_update_enabled:
             logger.info("Bundle 自动更新未开启，直接发送所有更新完成信号")
@@ -2591,6 +2629,10 @@ class MainWindow(MSFluentWindow):
         """
         # 如果公告功能被禁用，直接返回
         if not getattr(self, "_announcement_enabled", True):
+            return
+        if auto_show and not self._is_welcome_announcement_auto_show_permitted():
+            logger.info("CI 资源版本，跳过 welcome 公告自动弹窗")
+            QTimer.singleShot(0, self._maybe_start_tutorial_for_no_announcement)
             return
 
         self._refresh_announcement_sections()

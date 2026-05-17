@@ -1456,6 +1456,7 @@ class SettingInterface(QWidget):
 
         self.updateGroup.addSettingCard(self.MirrorCard)
         self.updateGroup.addSettingCard(self.auto_update)
+        self._apply_resource_auto_update_policy()
         self.updateGroup.addSettingCard(self.channel_selector)
         self.updateGroup.addSettingCard(self.force_github)
         self.updateGroup.addSettingCard(self.reset_resource_card)
@@ -2554,11 +2555,33 @@ class SettingInterface(QWidget):
         return False, ""
 
     def _is_auto_update_enabled(self) -> bool:
-        """读取配置判断是否开启自动更新。"""
+        """读取配置与资源版本判断是否允许自动更新。"""
+        from app.utils.version_policy import is_auto_update_permitted
+
         try:
-            return bool(cfg.get(cfg.auto_update))
+            config_enabled = bool(cfg.get(cfg.auto_update))
         except Exception:
             return False
+        return is_auto_update_permitted(
+            config_enabled=config_enabled,
+            interface=self._get_interface_metadata(),
+        )
+
+    def _apply_resource_auto_update_policy(self) -> None:
+        """ci/alpha 资源版本禁用自动更新开关，仅保留手动更新。"""
+        from app.utils.version_policy import version_disallows_auto_update
+
+        version = str(self._get_interface_metadata().get("version", "") or "")
+        if not version_disallows_auto_update(version):
+            return
+        self.auto_update.setEnabled(False)
+        self.auto_update.switchButton.setEnabled(False)
+        self.auto_update.setContent(
+            self.tr(
+                "Auto update is disabled for CI/Alpha resource versions. "
+                "Please update manually."
+            )
+        )
 
     def _detect_local_update_package(self) -> Path | None:
         """检查 update/new_version 是否已有更新包。"""

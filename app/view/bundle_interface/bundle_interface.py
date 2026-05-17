@@ -424,6 +424,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         self.auto_update_switch.setText(self.tr("Auto Update"))
         self.auto_update_switch.setToolTip(self.tr("Auto Update"))
+        self._apply_bundle_auto_update_policy()
 
         # 连接信号
         self.list_widget.currentItemChanged.connect(self._on_bundle_selected)
@@ -947,12 +948,22 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 return
 
             # 过滤出有更新的bundle
+            from app.utils.version_policy import version_disallows_auto_update
+
             bundles_to_update = []
             for bundle_name in bundle_names:
                 latest_version = self._latest_versions.get(bundle_name)
                 bundle_data = self._bundle_data.get(bundle_name, {})
                 interface_data = bundle_data.get("interface", {})
                 current_version = interface_data.get("version", "")
+
+                if version_disallows_auto_update(str(current_version or "")):
+                    logger.info(
+                        "Bundle '%s' 为 CI/Alpha 版本 (%s)，跳过自动更新",
+                        bundle_name,
+                        current_version,
+                    )
+                    continue
 
                 # 如果还没有检查过更新（latest_version 为 None），直接加入更新队列
                 # 这样新添加的 bundle 也能被更新
@@ -1179,9 +1190,35 @@ class BundleInterface(UI_BundleInterface, QWidget):
         # 继续下一个更新（所有更新完成后再重新加载）
         self._start_next_update()
 
+    def _apply_bundle_auto_update_policy(self) -> None:
+        """ci/alpha 资源版本禁用 Bundle 自动更新开关。"""
+        from app.utils.version_policy import version_disallows_auto_update
+
+        interface = getattr(self.service_coordinator.task, "interface", None) or {}
+        version = str(interface.get("version", "") or "")
+        if not version_disallows_auto_update(version):
+            return
+        self.auto_update_switch.setEnabled(False)
+        self.auto_update_switch.setToolTip(
+            self.tr(
+                "Auto update is disabled for CI/Alpha resource versions. "
+                "Please update manually."
+            )
+        )
+
     def _on_auto_update_changed(self, checked: bool):
         """自动更新开关状态改变事件"""
         from app.common.config import cfg
+        from app.utils.version_policy import is_auto_update_permitted
+
+        if checked and not is_auto_update_permitted(
+            config_enabled=True,
+            interface=getattr(self.service_coordinator.task, "interface", None),
+        ):
+            self.auto_update_switch.blockSignals(True)
+            self.auto_update_switch.setChecked(False)
+            self.auto_update_switch.blockSignals(False)
+            return
 
         try:
             cfg.set(cfg.bundle_auto_update, checked)

@@ -42,18 +42,27 @@ from qfluentwidgets import (
 )
 
 from app.common.__version__ import __version__
+from app.utils.version_policy import (
+    read_resource_version_from_cwd,
+    version_disallows_auto_update,
+)
 
 
 def _detect_auto_update_default() -> bool:
     """
     根据版本号决定自动更新默认值：
-    - 若版本包含 ci/alpha/beta（不区分大小写），则默认关闭自动更新
+    - 资源版本或 UI 版本含 ci/alpha 时默认关闭（仅可手动更新）
+    - UI 版本另含 beta 时也默认关闭
     - 否则默认开启
     """
-    version = (__version__ or "").lower()
-    for keyword in ("ci", "alpha", "beta"):
-        if keyword in version:
-            return False
+    resource_version = read_resource_version_from_cwd()
+    if version_disallows_auto_update(resource_version):
+        return False
+    ui_version = __version__ or ""
+    if version_disallows_auto_update(ui_version):
+        return False
+    if "beta" in ui_version.lower():
+        return False
     return True
 
 
