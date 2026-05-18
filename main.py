@@ -180,7 +180,9 @@ def _run() -> int:
     else:
         logger.warning("单实例激活服务启动失败，重复启动时将无法自动前置已有窗口")
 
-    window_holder = {"window": None}
+    from app.view.main_window.main_window import MainWindow
+
+    window_holder: dict[str, MainWindow | None] = {"window": None}
     pending_force_shutdown = {"requested": False}
     pending_activation = {"requested": False}
 
@@ -332,8 +334,6 @@ def _run() -> int:
         logger.warning(f"GPU 信息缓存初始化失败，忽略: {e}")
 
     # 创建主窗口
-    from app.view.main_window.main_window import MainWindow
-
     w = MainWindow(
         loop=loop,
         auto_run=args.direct_run,
