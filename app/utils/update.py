@@ -55,6 +55,7 @@ from app.utils.archive_seven import (
     import_py7zr,
     path_readable_by_py7zr,
 )
+from hotfix_extract import extract_agent_folder_from_archive
 
 
 def path_is_zip_backed_archive(path: Path | str) -> bool:
@@ -1503,6 +1504,10 @@ class Update(BaseUpdate):
             # 这样在 bundle 目录本身已存在时不会因 WinError 183 直接失败
             shutil.copytree(hotfix_root, project_path, dirs_exist_ok=True)
 
+            if not extract_agent_folder_from_archive(zip_file_path, project_path):
+                logger.error("[步骤5] 提取 agent 目录失败")
+                raise RuntimeError("failed to extract agent folder")
+
             interface_path = [
                 bundle_path_obj / "interface.jsonc",
                 bundle_path_obj / "interface.json",
@@ -2586,6 +2591,10 @@ class MultiResourceUpdate(Update):
             # 允许目标目录已存在（Python 3.8+ 支持 dirs_exist_ok）
             # 这样在 bundle 目录本身已存在时不会因 WinError 183 直接失败
             shutil.copytree(hotfix_root, project_path, dirs_exist_ok=True)
+
+            if not extract_agent_folder_from_archive(zip_file_path, project_path):
+                logger.error("[步骤5] 提取 agent 目录失败")
+                raise RuntimeError("failed to extract agent folder")
 
             interface_path = [
                 bundle_path_obj / "interface.jsonc",

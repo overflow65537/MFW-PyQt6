@@ -1347,6 +1347,12 @@ def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
             update_logger.info(f"[步骤3] 文件解压完成，共解压 {extracted_count} 个文件")
             print(f"[解压] 文件解压完成，共解压 {extracted_count} 个文件")
 
+            from hotfix_extract import extract_agent_folder_from_archive
+
+            if not extract_agent_folder_from_archive(zip_path, extract_to_path):
+                update_logger.error("[步骤3] 提取 agent 目录失败")
+                return None
+
             # 返回解压后的根目录
             return str(extract_to_path)
     except Exception as exc:
