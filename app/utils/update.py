@@ -48,6 +48,13 @@ if TYPE_CHECKING:
 from app.utils.logger import logger
 from app.common.config import cfg, Config
 from app.utils.crypto import crypto_manager
+from app.utils.network_error_helper import (
+    NetworkErrorInfo,
+    normalize_download_error,
+    normalize_github_http_error,
+    normalize_mirror_business_error,
+    normalize_network_error,
+)
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.archive_seven import (
@@ -111,7 +118,13 @@ class BaseUpdate(QThread):
         return proxies
 
     def download_file(
-        self, url, file_path, progress_signal: SignalInstance, use_proxies
+        self,
+        url,
+        file_path,
+        progress_signal: SignalInstance,
+        use_proxies,
+        *,
+        download_source: Literal["github", "mirror"] = "github",
     ) -> tuple[Path | None, str | None]:
         logger.info("  [下载] 开始下载文件...")
         logger.debug("  [下载] URL: %s", url[:100] if url else "N/A")
@@ -209,8 +222,11 @@ class BaseUpdate(QThread):
                 final_path.unlink()
             return None, error_message
         except Exception as e:
-            logger.exception(f"下载文件时出错{url} -> {file_path}\n{e}")
-            error_message = f"{type(e).__name__}: {e}"
+            info = normalize_download_error(
+                e, source=download_source, tr=self.tr
+            )
+            logger.error("%s", info.log_message, exc_info=True)
+            error_message = info.user_message
             if final_path and final_path.exists():
                 final_path.unlink()
             return None, error_message
@@ -613,19 +629,22 @@ class BaseUpdate(QThread):
             return False
         return True
 
+    def _error_dict_from_info(self, info: NetworkErrorInfo) -> Dict:
+        return {"status": info.status, "msg": info.user_message}
+
     def _request_with_error_handling(
         self,
         url: str,
         *,
+        source: Literal["github", "mirror"],
         context_label: str,
-        ssl_result: Dict,
-        conn_result: Callable[[Exception], Dict],
         expect_status: bool = False,
         http_error_handler: Optional[
             Callable[[requests.exceptions.HTTPError], Dict]
         ] = None,
         proxies: Optional[dict] = None,
         headers: Optional[dict] = None,
+        fallback_to_github: bool = False,
     ):
         verify = self._ssl_verify()
         kwargs = {"timeout": 10, "verify": verify}
@@ -638,41 +657,39 @@ class BaseUpdate(QThread):
             response = requests.get(url, **kwargs)
             if expect_status:
                 response.raise_for_status()
-        except requests.exceptions.SSLError as e:
-            logger.error(f"{context_label}更新检查失败（SSL错误）: {e}")
-            return ssl_result
         except requests.exceptions.HTTPError as e:
             if http_error_handler:
                 return http_error_handler(e)
-            logger.error(f"{context_label}更新检查失败（HTTP错误）: {e}")
-            return {
-                "status": "failed",
-                "msg": self.tr("Update check failed HTTP error,code: ") + str(e),
-            }
-        except (
-            requests.ConnectionError,
-            requests.Timeout,
-            requests.RequestException,
-        ) as e:
-            logger.error(f"{context_label}更新检查失败（连接错误）: {e}")
-            return conn_result(e)
+            info = normalize_network_error(
+                e,
+                source=source,
+                tr=self.tr,
+                response=e.response,
+                context_label=context_label,
+                fallback_to_github=fallback_to_github,
+            )
+            logger.error(info.log_message)
+            return self._error_dict_from_info(info)
+        except requests.exceptions.RequestException as e:
+            info = normalize_network_error(
+                e,
+                source=source,
+                tr=self.tr,
+                context_label=context_label,
+                fallback_to_github=fallback_to_github,
+            )
+            logger.error(info.log_message)
+            return self._error_dict_from_info(info)
 
         return response
 
     def _github_http_error_handler(self, error: requests.exceptions.HTTPError) -> Dict:
         if error.response and error.response.status_code == 403:
             logger.warning("GitHub API请求被限制")
-            return {
-                "status": "failed",
-                "msg": self.tr(
-                    "GitHub API request limit exceeded,please try again later"
-                ),
-            }
-        logger.error(f"GitHub更新检查失败（HTTP错误）: {error}")
-        return {
-            "status": "failed",
-            "msg": self.tr("Github Update check failed HTTP error,code: ") + str(error),
-        }
+        else:
+            logger.error("GitHub更新检查失败（HTTP错误）: %s", error)
+        info = normalize_github_http_error(error, tr=self.tr)
+        return self._error_dict_from_info(info)
 
     def _github_request_headers(self) -> dict[str, str] | None:
         """根据配置构建 GitHub API 请求头以使用授权令牌。"""
@@ -700,19 +717,9 @@ class BaseUpdate(QThread):
         """
         return self._request_with_error_handling(
             url,
+            source="mirror",
             context_label="镜像源",
-            ssl_result={
-                "status": "failed_info",
-                "msg": self.tr("MirrorChyan Update check failed SSL error"),
-            },
-            conn_result=lambda e: {
-                "status": "failed_info",
-                "msg": "Mirror ERROR"
-                + "\n"
-                + str(e)
-                + "\n"
-                + self.tr("switching to Github download"),
-            },
+            fallback_to_github=True,
         )
 
     def _github_response(self, url):
@@ -721,19 +728,12 @@ class BaseUpdate(QThread):
         """
         return self._request_with_error_handling(
             url,
+            source="github",
             context_label="GitHub",
             expect_status=True,
             proxies=self.get_proxy_data(),
-            ssl_result={
-                "status": "failed",
-                "msg": self.tr("Github Update check failed SSL error"),
-            },
             http_error_handler=self._github_http_error_handler,
             headers=self._github_request_headers(),
-            conn_result=lambda e: {
-                "status": "failed",
-                "msg": "Github ERROR" + "\n" + str(e),
-            },
         )
 
     def mirror_check(
@@ -759,32 +759,22 @@ class BaseUpdate(QThread):
         mirror_data: Dict[str, Any] = response.json()
         code = mirror_data.get("code")
         mirror_msg = str(mirror_data.get("msg", ""))
-        switch_msg = self.tr("switching to Github download")
-        error_translations = {
-            1001: self.tr("INVALID_PARAMS"),
-            7001: self.tr("KEY_EXPIRED"),
-            7002: self.tr("KEY_INVALID"),
-            7003: self.tr("RESOURCE_QUOTA_EXHAUSTED"),
-            7004: self.tr("KEY_MISMATCHED"),
-            8001: self.tr("RESOURCE_NOT_FOUND"),
-            8002: self.tr("INVALID_OS"),
-            8003: self.tr("INVALID_ARCH"),
-            8004: self.tr("INVALID_CHANNEL"),
-        }
         if isinstance(code, int) and code not in [None, 0]:
-            msg_value = error_translations.get(code, self.tr("Unknown error"))
-            logger.warning(f"更新检查失败: {mirror_msg}")
-            if code in [7001, 7002, 7003, 7004]:  # 这些错误不会影响更新检查
+            info = normalize_mirror_business_error(
+                code, tr=self.tr, fallback_to_github=True
+            )
+            logger.warning("更新检查失败: %s (%s)", mirror_msg, info.log_message)
+            if code in (7001, 7002, 7003, 7004):
                 mirror_data.update(
                     {
-                        "status": "failed_info",
-                        "msg": error_translations[code] + "\n" + switch_msg,
+                        "status": info.status,
+                        "msg": info.user_message,
                     }
                 )
             else:
                 return {
-                    "status": "failed_info",
-                    "msg": msg_value + "\n" + switch_msg,
+                    "status": info.status,
+                    "msg": info.user_message,
                 }
 
         data: dict[str, Any] = mirror_data.get("data", {})
@@ -811,7 +801,11 @@ class BaseUpdate(QThread):
             logger.debug(f"GitHub响应数据: {jsonc.dumps(update_dict, indent=2)}")
 
             if "message" in update_dict and isinstance(update_dict["message"], str):
-                error_msg = self.tr("GitHub API ERROR: ") + update_dict["message"]
+                api_message = str(update_dict["message"])
+                error_msg = self.tr(
+                    "GitHub API returned an error: {message}"
+                ).format(message=api_message)
+                error_msg = f"{error_msg} (API)"
                 logger.error(error_msg)
                 return {"status": "failed", "msg": error_msg}
 
@@ -828,10 +822,18 @@ class BaseUpdate(QThread):
                 logger.exception(f"GitHub响应解析失败: {response.text[:200]}\n{e}")
             else:
                 logger.exception(f"GitHub响应解析失败: 未收到响应\n{e}")
-            return {"status": "failed", "msg": "Invalid GitHub response"}
+            return {
+                "status": "failed",
+                "msg": self.tr(
+                    "GitHub returned an invalid response. Please try again later. (Response)"
+                ),
+            }
         except Exception as e:
-            logger.exception(f"GitHub检查过程中发生未预期错误{e}")
-            return {"status": "failed", "msg": str(e)}
+            info = normalize_network_error(
+                e, source="github", tr=self.tr, context_label="GitHub"
+            )
+            logger.exception(info.log_message)
+            return {"status": "failed", "msg": info.user_message}
 
     def clear_change(self, target_path):
         # 清理旧文件
@@ -1271,15 +1273,15 @@ class Update(BaseUpdate):
             download_dir,
             self.progress_signal,
             use_proxies=self.get_proxy_data(),
+            download_source=cast(
+                Literal["github", "mirror"],
+                download_source if download_source in ("github", "mirror") else "github",
+            ),
         )
         if not downloaded_zip_path:
             if download_error:
                 logger.error("[步骤3] 下载失败: %s", download_error)
-                return self._stop_with_notice(
-                    0,
-                    "error",
-                    f"{self.tr('Download failed')}: {download_error}",
-                )
+                return self._stop_with_notice(0, "error", download_error)
             logger.error("[步骤3] 下载失败")
             return self._stop_with_notice(0, "error", self.tr("Download failed"))
         zip_file_path = downloaded_zip_path
@@ -1393,15 +1395,17 @@ class Update(BaseUpdate):
                 download_dir,
                 self.progress_signal,
                 use_proxies=self.get_proxy_data(),
+                download_source=cast(
+                    Literal["github", "mirror"],
+                    download_source
+                    if download_source in ("github", "mirror")
+                    else "github",
+                ),
             )
             if not downloaded_zip_path:
                 if download_error:
                     logger.error("[步骤3] 下载失败: %s", download_error)
-                    return self._stop_with_notice(
-                        0,
-                        "error",
-                        f"{self.tr('Download failed')}: {download_error}",
-                    )
+                    return self._stop_with_notice(0, "error", download_error)
                 logger.error("[步骤3] 下载失败")
                 return self._stop_with_notice(0, "error", self.tr("Download failed"))
             zip_file_path = downloaded_zip_path
@@ -2497,15 +2501,17 @@ class MultiResourceUpdate(Update):
                 download_dir,
                 self.progress_signal,
                 use_proxies=self.get_proxy_data(),
+                download_source=cast(
+                    Literal["github", "mirror"],
+                    download_source
+                    if download_source in ("github", "mirror")
+                    else "github",
+                ),
             )
             if not downloaded_zip_path:
                 if download_error:
                     logger.error("[步骤3] 下载失败: %s", download_error)
-                    return self._stop_with_notice(
-                        0,
-                        "error",
-                        f"{self.tr('Download failed')}: {download_error}",
-                    )
+                    return self._stop_with_notice(0, "error", download_error)
                 logger.error("[步骤3] 下载失败")
                 return self._stop_with_notice(0, "error", self.tr("Download failed"))
             zip_file_path = downloaded_zip_path

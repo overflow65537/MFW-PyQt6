@@ -38,12 +38,21 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from queue import Queue
-from PySide6.QtCore import QThread
+from PySide6.QtCore import QCoreApplication, QThread
 
 from app.common.signal_bus import signalBus
 from app.common.config import cfg
 from app.utils.logger import logger
 from app.utils.crypto import crypto_manager
+from app.utils.network_error_helper import (
+    format_notice_result_message,
+    normalize_network_error,
+    set_notice_error_context,
+)
+
+
+def _notice_tr(text: str) -> str:
+    return QCoreApplication.translate("NoticeSendThread", text)
 
 
 # 解码密钥
@@ -248,7 +257,9 @@ class SMTP:
                 )
             smtp.login(cfg.get(cfg.Notice_SMTP_user_name), decode_key("smtp"))
         except Exception as e:
-            logger.error(f"SMTP 连接失败: {e}")
+            info = normalize_network_error(e, source="smtp", tr=_notice_tr)
+            set_notice_error_context("smtp", info)
+            logger.error(info.log_message)
             return NoticeErrorCode.SMTP_CONNECT_FAILED
 
         try:
@@ -259,7 +270,9 @@ class SMTP:
             )
             return NoticeErrorCode.SUCCESS
         except Exception as e:
-            logger.error(f"SMTP 发送邮件失败: {e}")
+            info = normalize_network_error(e, source="smtp", tr=_notice_tr)
+            set_notice_error_context("smtp", info)
+            logger.error(info.log_message)
             return NoticeErrorCode.NETWORK_ERROR
         finally:
             smtp.quit()
@@ -286,7 +299,9 @@ class WxPusher:
             response = requests.post(url=url, json=msg)
             status_code = response.json()["code"]
         except Exception as e:
-            logger.error(f"WxPusher 发送失败 {e}")
+            info = normalize_network_error(e, source="wxpusher", tr=_notice_tr)
+            set_notice_error_context("wxpusher", info)
+            logger.error(info.log_message)
             return False
 
         if status_code != 1000:
@@ -312,7 +327,9 @@ class QYWX:
             response = requests.post(url=url, json=msg)
             status_code = response.json()["errcode"]
         except Exception as e:
-            logger.error(f"企业微信机器人消息 发送失败 {e}")
+            info = normalize_network_error(e, source="qywx", tr=_notice_tr)
+            set_notice_error_context("qywx", info)
+            logger.error(info.log_message)
             return NoticeErrorCode.NETWORK_ERROR
 
         if status_code != 0:
@@ -358,7 +375,9 @@ class Gotify:
                 logger.error(f"Gotify 发送失败，状态码: {response.status_code}，响应: {response.text}")
                 return NoticeErrorCode.RESPONSE_ERROR
         except Exception as e:
-            logger.error(f"Gotify 发送失败 {e}")
+            info = normalize_network_error(e, source="gotify", tr=_notice_tr)
+            set_notice_error_context("gotify", info)
+            logger.error(info.log_message)
             return NoticeErrorCode.NETWORK_ERROR
 
 
@@ -410,68 +429,11 @@ class NoticeSendThread(QThread):
                 try:
                     result = send_func(msg_dict, status)
                     signalBus.notice_finished.emit(int(result), send_func.__name__)
-                    # 根据枚举类型显示不同的提示
-                    match result:
-                        case NoticeErrorCode.SUCCESS:
-                            signalBus.info_bar_requested.emit(
-                                "success",
-                                send_func.__name__
-                                + self.tr(" sent successfully."),
-                            )
-                        case NoticeErrorCode.DISABLED:
-                            signalBus.info_bar_requested.emit(
-                                "warning",
-                                send_func.__name__
-                                + self.tr(" disabled."),
-                            )
-                        case NoticeErrorCode.PARAM_EMPTY:
-                            signalBus.info_bar_requested.emit(
-                                "warning",
-                                send_func.__name__
-                                + self.tr(" param empty."),
-                            )
-                        case NoticeErrorCode.PARAM_INVALID:
-                            signalBus.info_bar_requested.emit(
-                                "warning",
-                                send_func.__name__
-                                + self.tr(" param invalid."),
-                            )
-                        case NoticeErrorCode.NETWORK_ERROR:
-                            signalBus.info_bar_requested.emit(
-                                "warning",
-                                send_func.__name__
-                                + self.tr(" network error."),
-                            )
-                        case NoticeErrorCode.RESPONSE_ERROR:
-                            signalBus.info_bar_requested.emit(
-                                "warning",
-                                send_func.__name__
-                                + self.tr(" response error."),
-                            )
-                        case NoticeErrorCode.UNKNOWN_ERROR:
-                            signalBus.info_bar_requested.emit(
-                                "warning",
-                                send_func.__name__
-                                + self.tr(" unknown error."),
-                            )
-                        case NoticeErrorCode.SMTP_PORT_INVALID:
-                            signalBus.info_bar_requested.emit(
-                                "warning",
-                                send_func.__name__
-                                + self.tr(" smtp port invalid."),
-                            )
-                        case NoticeErrorCode.SMTP_CONNECT_FAILED:
-                            signalBus.info_bar_requested.emit(
-                                "warning",
-                                send_func.__name__
-                                + self.tr(" smtp connect failed."),
-                            )
-                        case _:
-                            signalBus.info_bar_requested.emit(
-                                "warning",
-                                send_func.__name__
-                                + self.tr(" unknown error."),
-                            )
+                    message = format_notice_result_message(
+                        send_func.__name__, int(result), self.tr
+                    )
+                    level = "success" if result == NoticeErrorCode.SUCCESS else "warning"
+                    signalBus.info_bar_requested.emit(level, message)
                 except Exception as e:
                     logger.error(f"通知线程 {send_func.__name__} 执行异常: {str(e)}")
                     signalBus.notice_finished.emit(
@@ -565,7 +527,13 @@ def dingtalk_send(
         response = requests.post(url=url, headers=headers, json=msg)
         status_code = response.json()[APP.codename]
     except Exception as e:
-        logger.error(f"DingTalk 发送失败: {e}{response.json() if response else ''}")
+        info = normalize_network_error(e, source="dingtalk", tr=_notice_tr)
+        set_notice_error_context("dingtalk", info)
+        logger.error(
+            "%s%s",
+            info.log_message,
+            response.json() if response is not None else "",
+        )
         return NoticeErrorCode.NETWORK_ERROR
 
     if status_code != APP.code:
@@ -600,7 +568,13 @@ def lark_send(
         response = requests.post(url=url, headers=headers, json=msg)
         status_code = response.json()[APP.codename]
     except Exception as e:
-        logger.error(f"Lark 发送失败: {e}{response.json() if response else ''}")
+        info = normalize_network_error(e, source="lark", tr=_notice_tr)
+        set_notice_error_context("lark", info)
+        logger.error(
+            "%s%s",
+            info.log_message,
+            response.json() if response is not None else "",
+        )
         return NoticeErrorCode.NETWORK_ERROR
 
     if status_code != APP.code:
@@ -644,7 +618,9 @@ def WxPusher_send(
         )
         status_code = response.json()["code"]
     except Exception as e:
-        logger.error(f"WxPusher 发送失败: {e}")
+        info = normalize_network_error(e, source="wxpusher", tr=_notice_tr)
+        set_notice_error_context("wxpusher", info)
+        logger.error(info.log_message)
         return NoticeErrorCode.NETWORK_ERROR
 
     if status_code != 1000:
