@@ -7,9 +7,9 @@ from qfluentwidgets.common.auto_wrap import TextWrap
 from qfluentwidgets.common.style_sheet import setCustomStyleSheet
 
 # 过长 tooltip 在此宽度内自动换行，避免单行横跨整屏
-_MAX_TOOLTIP_WIDTH_PX = 420
+_MAX_TOOLTIP_WIDTH_PX = 300
 # TextWrap 字符宽度上限（中文等按 2 计），与上面像素宽度大致对应
-_MAX_TOOLTIP_WRAP_CHARS = 52
+_MAX_TOOLTIP_WRAP_CHARS = 32
 
 
 def _prepare_tooltip_text(text: str) -> str:
