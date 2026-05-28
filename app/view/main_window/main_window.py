@@ -70,7 +70,6 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
-    QLabel,
     QMenu,
     QWidget,
     QGraphicsOpacityEffect,
@@ -81,6 +80,7 @@ from PySide6.QtWidgets import (
 )
 
 from qfluentwidgets import (
+    BodyLabel,
     NavigationItemPosition,
     SplashScreen,
     SystemThemeListener,
@@ -146,7 +146,7 @@ class TutorialHighlightOverlay(QWidget):
         super().__init__(parent)
         self._target_widget = target_widget
         self._highlight_rect = QRect()
-        self._instruction_label = QLabel(self)
+        self._instruction_label = BodyLabel(self)
         self._instruction_label.setWordWrap(True)
         self._instruction_label.setStyleSheet(
             "color: white; background: transparent; font-size: 12px;"
@@ -1020,7 +1020,7 @@ class MainWindow(MSFluentWindow):
         if self._background_label is not None:
             return
 
-        self._background_label = QLabel(self)
+        self._background_label = BodyLabel(self)
         self._background_label.setObjectName("appBackgroundLabel")
         self._background_label.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
@@ -2856,14 +2856,14 @@ class MainWindow(MSFluentWindow):
             self._shutdown_indicator, 0, Qt.AlignmentFlag.AlignHCenter
         )
 
-        self._shutdown_label = QLabel(self.tr("Stopping task..."), self._shutdown_overlay)
+        self._shutdown_label = BodyLabel(self.tr("Stopping task..."), self._shutdown_overlay)
         self._shutdown_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._shutdown_label.setStyleSheet(
             "color: white; font-size: 18px; font-weight: 600; background: transparent;"
         )
         layout.addWidget(self._shutdown_label)
 
-        self._shutdown_sub_label = QLabel(
+        self._shutdown_sub_label = BodyLabel(
             self.tr("Please wait..."), self._shutdown_overlay
         )
         self._shutdown_sub_label.setAlignment(Qt.AlignmentFlag.AlignCenter)

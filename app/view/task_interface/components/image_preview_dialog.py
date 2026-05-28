@@ -8,12 +8,11 @@ from PySide6.QtGui import QPixmap, QImage
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
-    QLabel,
     QScrollArea,
     QWidget,
     QApplication,
 )
-from qfluentwidgets import PrimaryPushButton
+from qfluentwidgets import BodyLabel, PrimaryPushButton
 
 
 class ImagePreviewDialog(QDialog):
@@ -74,7 +73,7 @@ class ImagePreviewDialog(QDialog):
         self.container_layout.setContentsMargins(20, 20, 20, 20)
 
         # 图片标签
-        self.image_label = QLabel()
+        self.image_label = BodyLabel()
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_label.setStyleSheet(
             """

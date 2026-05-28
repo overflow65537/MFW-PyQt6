@@ -4,15 +4,16 @@ import re
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QColor, QPainter, QPalette
-from PySide6.QtWidgets import QLabel
+from qfluentwidgets import BodyLabel
 
 
-class OptionLabel(QLabel):
+class OptionLabel(BodyLabel):
     """支持跑马灯滚动的文本标签。"""
 
     def __init__(self, text: str = "", parent=None):
-        # 不把 text 交给 QLabel.setText，避免 sizeHint 随滚动变化导致布局抖动
-        super().__init__("", parent)
+        # 只传 parent，走 BodyLabel 的单参数 __init__；不可 super().__init__("", parent)，
+        # 否则会命中 (text, parent) 重载并再次调用 self.__init__(parent) 导致递归。
+        BodyLabel.__init__(self, parent)
         self._marquee_text: str = ""
         self._text_width: int = 0
         self._offset_px: float = 0.0

@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QFrame,
     QHBoxLayout,
-    QLabel,
     QLayout,
     QSizePolicy,
     QStyledItemDelegate,
@@ -374,7 +373,7 @@ class OptionItemBase(QWidget):
 
     def _add_icon_to_layout(
         self, layout: QHBoxLayout, icon_source: Any
-    ) -> Optional[QLabel]:
+    ) -> Optional[BodyLabel]:
         """在横向布局前端插入图标标签"""
         icon = self._resolve_icon(icon_source)
         if not icon:
@@ -384,7 +383,7 @@ class OptionItemBase(QWidget):
         if pixmap.isNull():
             return None
 
-        icon_label = QLabel()
+        icon_label = BodyLabel()
         icon_label.setPixmap(pixmap)
         icon_label.setFixedSize(self.ICON_SIZE, self.ICON_SIZE)
         icon_label.setScaledContents(True)

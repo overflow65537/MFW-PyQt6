@@ -20,7 +20,6 @@ from PySide6.QtWidgets import (
     QWidget,
     QHBoxLayout,
     QProgressBar,
-    QLabel,
     QDialog,
     QDialogButtonBox,
     QStackedLayout,
@@ -379,7 +378,7 @@ class SettingInterface(QWidget):
         self._apply_interface_font()
         self.micaCard.setEnabled(isWin11())
 
-    def _apply_markdown_to_label(self, label: QLabel, content: str | None) -> None:
+    def _apply_markdown_to_label(self, label: BodyLabel, content: str | None) -> None:
         """把 Markdown 文本渲染到标签并开启链接交互。"""
         apply_rich_text_html(label, render_markdown(content))
 
@@ -424,7 +423,7 @@ class SettingInterface(QWidget):
         top_row = QHBoxLayout()
         top_row.setSpacing(16)
 
-        self.icon_label = QLabel(self)
+        self.icon_label = BodyLabel(self)
         self.icon_label.setFixedSize(72, 72)
         self._apply_header_icon("app/assets/icons/logo.png")
         # 图标整体在该行内顶部对齐

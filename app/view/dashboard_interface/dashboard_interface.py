@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (
     QGraphicsBlurEffect,
     QGridLayout,
     QHBoxLayout,
-    QLabel,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -441,8 +440,8 @@ class DashboardInterface(QWidget):
         self._open_setting = open_setting
         self._hero_card: QFrame | None = None
         self._hero_cover_stage: QFrame | None = None
-        self._hero_cover_backdrop: QLabel | None = None
-        self._hero_cover_label: QLabel | None = None
+        self._hero_cover_backdrop: BodyLabel | None = None
+        self._hero_cover_label: BodyLabel | None = None
         self._hero_cover_pixmap: QPixmap | None = None
         self._hero_title_label: OptionLabel | None = None
         self._hero_cover_needs_refresh = True
@@ -527,7 +526,7 @@ class DashboardInterface(QWidget):
         cover_stage.installEventFilter(self)
         self._hero_cover_stage = cover_stage
 
-        backdrop = QLabel(cover_stage)
+        backdrop = BodyLabel(cover_stage)
         backdrop.setObjectName("V5HeroImageBackdrop")
         backdrop.setAlignment(Qt.AlignmentFlag.AlignCenter)
         backdrop.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
@@ -537,7 +536,7 @@ class DashboardInterface(QWidget):
         backdrop.setGraphicsEffect(blur)
         self._hero_cover_backdrop = backdrop
 
-        cover = QLabel(cover_stage)
+        cover = BodyLabel(cover_stage)
         cover.setObjectName("V5HeroImage")
         cover.setAlignment(Qt.AlignmentFlag.AlignCenter)
         cover.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)

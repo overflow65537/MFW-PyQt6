@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
     QListWidgetItem,
-    QLabel,
     QSizePolicy,
     QFileDialog,
 )
@@ -73,7 +72,7 @@ class BundleListItem(QWidget):
         self.setFixedHeight(64)
 
         # 图标
-        self.icon_label = QLabel(self)
+        self.icon_label = BodyLabel(self)
         self.icon_label.setFixedSize(32, 32)
         self.icon_label.setScaledContents(True)
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -99,20 +98,20 @@ class BundleListItem(QWidget):
         text_layout.setSpacing(2)  # 从 4 调整为 2
         text_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.name_label = QLabel(bundle_name, self)
+        self.name_label = BodyLabel(bundle_name, self)
         self.name_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         # 设置固定高度，确保不超过边界
         self.name_label.setFixedHeight(18)  # 14px 字体 + 4px 行高
 
         # 当前版本
-        self.version_label = QLabel(bundle_version, self)
+        self.version_label = BodyLabel(bundle_version, self)
         self.version_label.setStyleSheet("font-size: 12px; color: gray;")
         self.version_label.setWordWrap(True)
         # 设置最大高度，防止超出边界
         self.version_label.setMaximumHeight(16)  # 12px 字体 + 4px 行高
 
         # 最新版本
-        self.latest_version_label = QLabel("", self)
+        self.latest_version_label = BodyLabel("", self)
         self.latest_version_label.setStyleSheet("font-size: 12px; color: #0078d4;")
         self.latest_version_label.setWordWrap(True)
         self.latest_version_label.setMaximumHeight(16)  # 12px 字体 + 4px 行高
