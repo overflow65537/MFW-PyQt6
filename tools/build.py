@@ -182,13 +182,19 @@ else:
 maa_fw_dir = os.path.join(dist_dir, "maafw")
 os.makedirs(maa_fw_dir, exist_ok=True)
 for i in bin_files:
-    src_binary = os.path.join(dist_dir, "_internal", i)
+    src_binary = None
+    for search_dir in (internal_dir, dist_dir):
+        candidate = os.path.join(search_dir, i)
+        if os.path.exists(candidate):
+            src_binary = candidate
+            break
     dst_binary = os.path.join(maa_fw_dir, i)
-    if os.path.exists(src_binary):
+    if src_binary:
         shutil.copy(src_binary, dst_binary)
-        os.remove(src_binary)
+        if os.path.dirname(src_binary) != maa_fw_dir:
+            os.remove(src_binary)
     else:
-        print(f"[WARN] Expected binary missing: {src_binary}")
+        print(f"[WARN] Expected binary missing: {i} (searched _internal and dist root)")
 
 plugins_src = os.path.join(maa_path, "bin", "plugins")
 plugins_dst = os.path.join(maa_fw_dir, "plugins")

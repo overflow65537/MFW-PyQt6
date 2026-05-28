@@ -47,12 +47,40 @@ def _install_anchor_path() -> str:
     return __file__
 
 
-# 设置工作目录为可执行文件 / main.py 所在目录（避免 Nuitka onefile 留在 Temp 解压目录）
-_install_root = Path(_install_anchor_path()).resolve().parent
+def _is_packed_runtime() -> bool:
+    return getattr(sys, "frozen", False) or globals().get("__compiled__") is not None
+
+
+def _resolve_install_root() -> Path:
+    """发行根目录：与 interface、maafw 同级，而非 PyInstaller 的 _internal 子目录。"""
+    anchor = Path(_install_anchor_path()).resolve()
+    root = anchor.parent
+    if not _is_packed_runtime():
+        return root
+
+    # PyInstaller onedir：sys._MEIPASS 指向 _internal，发行根为其父目录
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        internal = Path(meipass).resolve()
+        if internal.name == "_internal":
+            return internal.parent
+
+    if root.name == "_internal":
+        return root.parent
+    return root
+
+
+def _resolve_maafw_dir(install_root: Path) -> Path:
+    """MaaFW 原生库目录：固定在发行根下的 ./maafw，而非 ./_internal/maafw。"""
+    return (install_root / "maafw").resolve()
+
+
+# 设置工作目录为发行根（避免 Nuitka onefile 留在 Temp 解压目录）
+_install_root = _resolve_install_root()
 os.chdir(_install_root)
 # 打包版：MaaFramework 等原生库放在发行根下的 maafw/（见 CI move_maa_bin_to_maafw、PyInstaller build.py）
-if getattr(sys, "frozen", False) or globals().get("__compiled__") is not None:
-    _maafw = (_install_root / "maafw").resolve()
+if _is_packed_runtime():
+    _maafw = _resolve_maafw_dir(_install_root)
     os.environ["MAAFW_BINARY_PATH"] = str(_maafw)
     if sys.platform == "win32":
         try:
