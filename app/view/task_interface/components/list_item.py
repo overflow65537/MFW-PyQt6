@@ -1,5 +1,4 @@
 import asyncio
-import re
 from pathlib import Path
 
 import shiboken6
@@ -10,11 +9,10 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QFrame,
-    QLabel,
 )
 
 from PySide6.QtCore import Signal, Qt, QTimer
-from PySide6.QtGui import QPalette, QGuiApplication, QPixmap, QColor, QPainter
+from PySide6.QtGui import QPalette, QGuiApplication, QPixmap, QColor
 
 from qfluentwidgets import (
     CheckBox,
@@ -35,6 +33,7 @@ from qfluentwidgets import (
     IconWidget,
 )
 from app.common.fluent_tooltip import apply_fluent_tooltip
+from app.view.task_interface.components.marquee_label import OptionLabel
 from app.core.item import TaskItem, ConfigItem
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.core.core import ServiceCoordinator
@@ -48,219 +47,6 @@ class ClickableLabel(BodyLabel):
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
-
-
-class OptionLabel(QLabel):
-    """选项标签：不拦截事件，让所有动作作用于父组件（ListItem）"""
-
-    def __init__(self, text: str = "", parent=None):
-        # 这里不把 text 交给 QLabel/BodyLabel 的 setText（会影响 sizeHint，导致布局抖动）
-        super().__init__("", parent)
-        self._marquee_text: str = ""
-        self._text_width: int = 0
-        self._offset_px: float = 0.0  # 0 -> max_offset
-        self._direction: int = 1  # 1: 向左滚(偏移增大), -1: 向右滚(偏移减小)
-        self._paused: bool = False
-        self._text_color: QColor | None = None
-
-        # 速度与节奏配置
-        self._interval_ms: int = 30
-        self._pause_ms: int = 1000
-        self._speed_px_per_sec: float = 25.0  # 默认更慢一些
-        self._step_px: float = self._speed_px_per_sec * (self._interval_ms / 1000.0)
-
-        self._tick_timer = QTimer(self)
-        self._tick_timer.timeout.connect(self._on_tick)
-
-        self._pause_timer = QTimer(self)
-        self._pause_timer.setSingleShot(True)
-        self._pause_timer.timeout.connect(self._on_pause_finished)
-        self._pause_next_direction: int | None = None
-
-        if text:
-            self.setText(text)
-
-    def setStyleSheet(self, styleSheet: str) -> None:  # type: ignore[override]
-        # QLabel 的 stylesheet 不一定会改变 palette()，但我们是自绘，需要自己解析 color
-        super().setStyleSheet(styleSheet)
-        self._text_color = self._parse_color_from_stylesheet(styleSheet)
-        self.update()
-
-    @staticmethod
-    def _parse_color_from_stylesheet(styleSheet: str) -> QColor | None:
-        if not styleSheet:
-            return None
-        # 避免误匹配 background-color / border-color 等
-        m = re.search(
-            r"(?<![-\w])color\s*:\s*([^;]+)", styleSheet, flags=re.IGNORECASE
-        )
-        if not m:
-            return None
-        color_str = (m.group(1) or "").strip()
-        if not color_str:
-            return None
-        c = QColor(color_str)
-        return c if c.isValid() else None
-
-    def setMarqueeConfig(
-        self,
-        *,
-        speed_px_per_sec: float | None = None,
-        interval_ms: int | None = None,
-        pause_ms: int | None = None,
-    ) -> None:
-        """配置跑马灯滚动参数。"""
-        if interval_ms is not None and interval_ms > 0:
-            self._interval_ms = int(interval_ms)
-        if pause_ms is not None and pause_ms >= 0:
-            self._pause_ms = int(pause_ms)
-        if speed_px_per_sec is not None and speed_px_per_sec >= 0:
-            self._speed_px_per_sec = float(speed_px_per_sec)
-        self._step_px = self._speed_px_per_sec * (self._interval_ms / 1000.0)
-        self.refresh_scroll(reset_offset=False)
-
-    def text(self) -> str:  # type: ignore[override]
-        return self._marquee_text
-
-    def setText(self, text: str) -> None:  # type: ignore[override]
-        # 只更新内部文本，不交给父类，避免 sizeHint 跟随每次更新变化
-        self._marquee_text = text or ""
-        super().setText("")  # 保持 QLabel 的真实文本为空，稳定布局
-        self._offset_px = 0.0
-        self._direction = 1
-        self._paused = False
-        self._pause_next_direction = None
-        self._pause_timer.stop()
-        self._recalc_metrics()
-        self._update_timer_state()
-        # 初次/重置后：起点也停顿 1 秒，再开始向后滚动
-        if self._needs_scroll():
-            self._start_pause(next_direction=1)
-        self.update()
-
-    def refresh_scroll(self, reset_offset: bool = True) -> None:
-        """外部在 resize/布局变化后调用，用于重新计算是否需要滚动。"""
-        if reset_offset:
-            self._offset_px = 0.0
-            self._direction = 1
-            self._paused = False
-            self._pause_next_direction = None
-            self._pause_timer.stop()
-        self._recalc_metrics()
-        self._clamp_offset()
-        self._update_timer_state()
-        self.update()
-
-    def resizeEvent(self, event) -> None:
-        super().resizeEvent(event)
-        # 宽度变化会影响可滚动范围
-        self.refresh_scroll(reset_offset=False)
-
-    def showEvent(self, event) -> None:
-        super().showEvent(event)
-        self._update_timer_state()
-
-    def hideEvent(self, event) -> None:
-        super().hideEvent(event)
-        self._tick_timer.stop()
-        self._pause_timer.stop()
-
-    def _recalc_metrics(self) -> None:
-        fm = self.fontMetrics()
-        # horizontalAdvance 对中英文混排更稳定
-        self._text_width = fm.horizontalAdvance(self._marquee_text) if self._marquee_text else 0
-
-    def _available_width(self) -> int:
-        rect = self.contentsRect()
-        return max(0, rect.width())
-
-    def _max_offset(self) -> int:
-        return max(0, self._text_width - self._available_width())
-
-    def _needs_scroll(self) -> bool:
-        return bool(self._marquee_text) and self._max_offset() > 0 and self._step_px > 0
-
-    def _clamp_offset(self) -> None:
-        max_off = float(self._max_offset())
-        if self._offset_px < 0:
-            self._offset_px = 0.0
-        elif self._offset_px > max_off:
-            self._offset_px = max_off
-
-    def _update_timer_state(self) -> None:
-        if not self.isVisible():
-            self._tick_timer.stop()
-            return
-        if self._needs_scroll():
-            if not self._tick_timer.isActive():
-                self._tick_timer.start(self._interval_ms)
-        else:
-            self._tick_timer.stop()
-            self._paused = False
-            self._pause_timer.stop()
-            self._offset_px = 0.0
-            self._direction = 1
-
-    def _start_pause(self, next_direction: int) -> None:
-        if self._pause_timer.isActive():
-            return
-        self._paused = True
-        self._pause_next_direction = next_direction
-        self._pause_timer.start(self._pause_ms)
-
-    def _on_pause_finished(self) -> None:
-        if self._pause_next_direction is not None:
-            self._direction = self._pause_next_direction
-        self._pause_next_direction = None
-        self._paused = False
-
-    def _on_tick(self) -> None:
-        if not self._needs_scroll():
-            self._update_timer_state()
-            return
-        if self._paused:
-            return
-
-        max_off = float(self._max_offset())
-        if max_off <= 0:
-            self._offset_px = 0.0
-            self._direction = 1
-            self.update()
-            return
-
-        self._offset_px += self._direction * self._step_px
-
-        # 到头后：停 1 秒 -> 反向滚动；到起点：停 1 秒 -> 正向滚动
-        if self._offset_px >= max_off:
-            self._offset_px = max_off
-            self._start_pause(next_direction=-1)
-        elif self._offset_px <= 0.0:
-            self._offset_px = 0.0
-            self._start_pause(next_direction=1)
-
-        self.update()
-
-    def paintEvent(self, event) -> None:
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
-
-        rect = self.contentsRect()
-        painter.setClipRect(rect)
-
-        # 颜色优先取 stylesheet 里的 color，其次用 palette
-        painter.setPen(
-            self._text_color
-            if self._text_color is not None
-            else self.palette().color(QPalette.ColorRole.WindowText)
-        )
-
-        if not self._marquee_text:
-            return
-
-        fm = self.fontMetrics()
-        baseline_y = rect.y() + (rect.height() + fm.ascent() - fm.descent()) // 2
-        x = rect.x() - int(self._offset_px)
-        painter.drawText(x, baseline_y, self._marquee_text)
 
 
 # 列表项基类

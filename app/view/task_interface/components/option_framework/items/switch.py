@@ -5,7 +5,7 @@ Switch 选项项
 from typing import Any, Dict, Optional
 
 from PySide6.QtWidgets import QHBoxLayout, QWidget
-from qfluentwidgets import BodyLabel, SwitchButton
+from qfluentwidgets import SwitchButton
 
 from app.core.utils.option_branches_compat import set_option_branches
 from app.utils.logger import logger
@@ -38,8 +38,8 @@ class SwitchOptionItem(OptionItemBase):
         # 创建标签（标题）
         label_text = self.config.get("label", self.key)
         self._add_icon_to_layout(switch_layout, self.config.get("icon"))
-        self.label = BodyLabel(label_text)
-        switch_layout.addWidget(self.label)
+        self.label = self._create_scrolling_label(label_text)
+        switch_layout.addWidget(self.label, 1)
 
         description = self.config.get("description")
         if description:

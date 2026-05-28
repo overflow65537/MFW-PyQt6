@@ -21,10 +21,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from qfluentwidgets import BodyLabel, ComboBox, isDarkTheme, qconfig
+from qfluentwidgets.common.font import getFont
 from qfluentwidgets.components.widgets.combo_box import ComboBoxMenu
 
 from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.utils.logger import logger
+from app.view.task_interface.components.marquee_label import OptionLabel
 from app.view.task_interface.components.option_framework.animations import HeightAnimator
 
 if TYPE_CHECKING:
@@ -418,28 +420,41 @@ class OptionItemBase(QWidget):
         apply_fluent_tooltip(indicator, tooltip_text)
         return indicator
 
+    def _create_scrolling_label(self, text: str) -> OptionLabel:
+        """创建支持跑马灯滚动的选项标题标签。"""
+        label = OptionLabel(text)
+        label.setFont(getFont(14))
+        label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        label.setFixedHeight(22)
+        label.setWordWrap(False)
+        label.setMarqueeConfig(speed_px_per_sec=25.0, interval_ms=30, pause_ms=1000)
+        apply_fluent_tooltip(label, text)
+        return label
+
     def _create_label_with_optional_icon(
         self,
         text: str,
         icon_source: Any,
         parent_layout: QLayout,
         description: Optional[str] = None,
-    ) -> BodyLabel:
-        """创建带图标和可选描述标记的横向布局，并返回 BodyLabel"""
+    ) -> OptionLabel:
+        """创建带图标和可选描述标记的横向布局，并返回跑马灯标签"""
         container = QWidget()
+        container.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         container_layout = QHBoxLayout(container)
         container_layout.setContentsMargins(0, 0, 0, 0)
         container_layout.setSpacing(6)
         self._add_icon_to_layout(container_layout, icon_source)
 
-        label = BodyLabel(text)
-        container_layout.addWidget(label)
+        label = self._create_scrolling_label(text)
+        container_layout.addWidget(label, 1)
 
         if description:
             indicator = self._create_description_indicator(description)
             container_layout.addWidget(indicator)
 
-        container_layout.addStretch()
         parent_layout.addWidget(container)
         return label
 
