@@ -1071,12 +1071,22 @@ class ServiceCoordinator:
 
         :param task_id: 指定只运行某个任务（可选）
         """
+        restore_checked = False
+        if task_id:
+            task = self.task_service.get_task(task_id)
+            if task and not task.is_checked:
+                restore_checked = self.update_task_checked(task_id, True)
+
         # 任务流执行前刷新一次 is_hidden，确保 runner 只需读取 is_checked/is_hidden
         try:
             self.task_service.refresh_hidden_flags()
         except Exception:
             pass
-        return await self.task_runner.run_tasks_flow(task_id)
+        try:
+            return await self.task_runner.run_tasks_flow(task_id)
+        finally:
+            if restore_checked:
+                self.update_task_checked(task_id, False)
 
     async def stop_task_flow(self):
         """停止当前任务流（UI/外部调用，视为手动停止）。"""
