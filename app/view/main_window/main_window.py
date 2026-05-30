@@ -107,6 +107,8 @@ from app.common.constants import _CONTROLLER_
 from app.common.signal_bus import signalBus
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
+from app.utils.release_notes import _safe_path_segment, _safe_version_file_stem
+from app.utils.version_policy import resolve_resource_version
 from app.core.core import ServiceCoordinator
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
 from app.view.main_window.log_zip_dialog import (
@@ -1498,7 +1500,7 @@ class MainWindow(MSFluentWindow):
             file_entries.append(
                 LogZipFileEntry(
                     path=path,
-                    arcname=f"{debug_dir.name}/{rel_path}",
+                    arcname=rel_path,
                     locked=path.name in self._LOCKED_LOG_NAMES,
                     category=category,
                 )
@@ -1604,7 +1606,7 @@ class MainWindow(MSFluentWindow):
             output.append(
                 LogZipFileEntry(
                     path=path,
-                    arcname=f"{debug_dir.name}/{path.relative_to(debug_dir).as_posix()}",
+                    arcname=path.relative_to(debug_dir).as_posix(),
                     locked=False,
                     category=category,
                 )
@@ -1639,7 +1641,7 @@ class MainWindow(MSFluentWindow):
             output.append(
                 LogZipFileEntry(
                     path=path,
-                    arcname=f"{debug_dir.name}/{path.relative_to(debug_dir).as_posix()}",
+                    arcname=path.relative_to(debug_dir).as_posix(),
                     locked=False,
                     category=category,
                 )
@@ -1654,7 +1656,7 @@ class MainWindow(MSFluentWindow):
         for path in sorted(debug_dir.rglob("*"), key=lambda item: str(item).lower()):
             if not path.is_file():
                 continue
-            if path.name.lower() == "debug.zip":
+            if path.suffix.lower() == ".zip" and path.parent.resolve() == debug_dir.resolve():
                 continue
             if path.suffix.lower() in self._IMAGE_SUFFIXES:
                 continue
@@ -1665,7 +1667,7 @@ class MainWindow(MSFluentWindow):
             output.append(
                 LogZipFileEntry(
                     path=path,
-                    arcname=f"{debug_dir.name}/{path.relative_to(debug_dir).as_posix()}",
+                    arcname=path.relative_to(debug_dir).as_posix(),
                     locked=path.name in self._LOCKED_LOG_NAMES,
                     category="other_files",
                 )
@@ -1718,7 +1720,7 @@ class MainWindow(MSFluentWindow):
                     )
                 entries.append(
                     LogZipLiveEntry(
-                        arcname=f"debug/live/{filename}",
+                        arcname=f"live/{filename}",
                         image_bytes=image_bytes.data(),
                     )
                 )
@@ -1984,7 +1986,7 @@ class MainWindow(MSFluentWindow):
                     # 多条日志共享：最小序号+[最小序号-最大序号]+任务名+时间
                     filename = f"{min_idx:04d}_[{min_idx:04d}-{max_idx:04d}]_{safe_task_name}_{timestamp_str}.jpg"
 
-                arcname = f"{Path('debug').name}/live/{filename}"
+                arcname = f"live/{filename}"
 
                 # 写入压缩包
                 try:
@@ -2000,15 +2002,27 @@ class MainWindow(MSFluentWindow):
             logger.exception("保存日志图片到压缩包时出错")
             errors.append(f"live/图片保存失败 ({exc})")
 
+    def _build_log_zip_filename(self) -> str:
+        """生成日志压缩包文件名：资源名-资源版本-时间.zip"""
+        interface = self.service_coordinator.interface or {}
+        resource_name = _safe_path_segment(str(interface.get("name", "") or ""), "MFW_CFA")
+        resource_version = _safe_version_file_stem(
+            resolve_resource_version(interface=interface),
+            "unknown",
+        )
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return f"{resource_name}-{resource_version}-{timestamp}.zip"
+
     def _build_log_zip_path(self) -> Path:
         """生成日志压缩包路径（放在 debug 目录内），如已存在则删除后重建。"""
         debug_dir = Path.cwd() / "debug"
-        zip_path = debug_dir / "debug.zip"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        zip_path = debug_dir / self._build_log_zip_filename()
         try:
             if zip_path.exists():
                 zip_path.unlink()
         except Exception as exc:
-            logger.warning(" 删除已有 debug.zip 失败：%s", exc)
+            logger.warning("删除已有日志压缩包失败：%s (%s)", zip_path.name, exc)
         return zip_path
 
     def _notify_log_zip_result(self, zip_path: Path, errors: list[str]) -> None:
@@ -2326,7 +2340,7 @@ class MainWindow(MSFluentWindow):
             TutorialStep(
                 target_getter=get_log_button,
                 message=self.tr(
-                    "When you encounter issues while running, click this button and send the resulting debug.zip to the developers."
+                    "When you encounter issues while running, click this button and send the generated log zip file in the debug folder to the developers."
                 ),
             ),
         ]
