@@ -13,6 +13,9 @@ from app.utils.logger import logger
 from app.core.service.i18n_service import I18nService
 from app.utils.custom_builder import build_custom_bundle
 
+# child_args 无法解析时，相对 interface 目录回退的 agent 入口
+DEFAULT_AGENT_ENTRY_RELATIVE = "agent/main.py"
+
 
 class InterfaceManager:
     """Interface 管理器（单例模式）"""
@@ -451,7 +454,24 @@ class InterfaceManager:
     def _resolve_agent_entry(self, child_args: Sequence[Any]) -> Path | None:
         """
         解析 agent.child_args 的入口脚本路径（优先前两个参数）。
+        配置路径无效时回退到 interface 目录下的 agent/main.py。
         """
+        entry = self._resolve_agent_entry_from_child_args(child_args)
+        if entry is not None:
+            return entry
+
+        fallback = (self._interface_dir / DEFAULT_AGENT_ENTRY_RELATIVE).resolve()
+        if fallback.is_file():
+            logger.warning(
+                "agent.child_args 未解析到有效启动脚本，回退使用: %s",
+                fallback,
+            )
+            return fallback
+        return None
+
+    def _resolve_agent_entry_from_child_args(
+        self, child_args: Sequence[Any]
+    ) -> Path | None:
         for idx in range(min(2, len(child_args))):
             arg = child_args[idx]
             if not isinstance(arg, str):
@@ -465,7 +485,7 @@ class InterfaceManager:
                 candidate_path = (self._interface_dir / candidate_path).resolve()
             elif candidate_path.exists():
                 candidate_path = candidate_path.resolve()
-            if candidate_path.exists():
+            if candidate_path.is_file():
                 return candidate_path
         return None
 

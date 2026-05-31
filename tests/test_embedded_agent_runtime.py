@@ -159,6 +159,48 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
             self.assertIn("agent", json.loads(interface_path.read_text(encoding="utf-8")))
             self.assertNotIn("custom", json.loads(interface_path.read_text(encoding="utf-8")))
 
+    def test_resolve_agent_entry_falls_back_to_default_main_py(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            interface_path = root / "interface.json"
+            bad_interface = {
+                **INTERFACE_TEMPLATE,
+                "agent": {
+                    "embedded": True,
+                    "child_args": ["../agent/main.py"],
+                },
+            }
+            interface_path.write_text(
+                json.dumps(bad_interface, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            _write_agent_source(
+                root,
+                '\n'.join(
+                    [
+                        'class AgentServer:',
+                        '    @staticmethod',
+                        '    def custom_action(name):',
+                        '        def decorator(cls):',
+                        '            return cls',
+                        '        return decorator',
+                        '',
+                        '@AgentServer.custom_action("alpha")',
+                        'class AlphaAction:',
+                        '    pass',
+                        '',
+                    ]
+                ),
+            )
+
+            manager = InterfaceManager()
+            manager.reload(interface_path=interface_path, language="zh_cn")
+
+            self.assertTrue(manager.apply_agent_customization())
+            translated = manager.get_interface()
+            self.assertEqual("agent_custom/custom.json", translated.get("custom"))
+            self.assertNotIn("__embedded_agent_error", translated)
+
 
 if __name__ == "__main__":
     unittest.main()
