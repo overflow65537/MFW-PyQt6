@@ -1576,7 +1576,7 @@ class TaskFlowRunner(QObject):
             ),
             start_process=self._builtin_start_process,
             play_system_sound=self._builtin_play_system_sound,
-            tr=lambda text: self.tr(str(text)),
+            tr=lambda text: QCoreApplication.translate("context", str(text)),
         )
 
     async def _builtin_sleep(self, seconds: float) -> bool:

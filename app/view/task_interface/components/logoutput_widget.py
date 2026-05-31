@@ -813,10 +813,37 @@ class LogoutputWidget(QWidget):
             tasks = task_service.get_tasks() if task_service else []
             for t in tasks or []:
                 if getattr(t, "item_id", None) == task_id:
-                    return str(getattr(t, "name", "")) or self.tr("System")
+                    return self._display_name_for_task(t, task_service) or self.tr("System")
         except Exception:
             return self.tr("System")
         return self.tr("System")
+
+    def _display_name_for_task(self, task, task_service) -> str:
+        """返回日志中显示的任务名，内置任务显示翻译后的 label。"""
+        try:
+            if getattr(task, "is_builtin_task", lambda: False)():
+                definition = task_service.get_builtin_task_definition(task)
+                if definition:
+                    return self._tr_builtin_task_name(definition.label)
+            interface = getattr(task_service, "interface", {}) or {}
+            for task_def in interface.get("task", []):
+                if task_def.get("name") == getattr(task, "name", ""):
+                    label = task_def.get("label") or task_def.get("name")
+                    if label:
+                        return self.tr(str(label))
+        except Exception:
+            pass
+        return str(getattr(task, "name", "") or "")
+
+    def _tr_builtin_task_name(self, text: str) -> str:
+        builtin_names = {
+            "Launch Program": self.tr("Launch Program"),
+            "Wait": self.tr("Wait"),
+            "Wait Until": self.tr("Wait Until"),
+            "System Notification": self.tr("System Notification"),
+            "External Notification": self.tr("External Notification"),
+        }
+        return builtin_names.get(text, self.tr(text))
 
     def _load_placeholder_icon(self) -> QIcon:
         """加载日志条目的占位图标：优先 interface.log，其次 interface.icon，最后应用 window icon。
