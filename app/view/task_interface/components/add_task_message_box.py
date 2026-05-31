@@ -371,6 +371,36 @@ class AddConfigDialog(BaseAddDialog):
 class AddTaskDialog(BaseAddDialog):
     _DEFAULT_GROUP_KEY = "__default_group__"
 
+    def _tr_builtin_text(self, text: str) -> str:
+        """Translate builtin task metadata with explicit literals for pylupdate."""
+        builtin_texts = {
+            "Framework Built-in Tasks": self.tr("Framework Built-in Tasks"),
+            "Builtin tasks loaded by the framework.": self.tr(
+                "Builtin tasks loaded by the framework."
+            ),
+            "Launch Program": self.tr("Launch Program"),
+            "Launch an external program and optionally wait for it to exit.": self.tr(
+                "Launch an external program and optionally wait for it to exit."
+            ),
+            "Wait": self.tr("Wait"),
+            "Wait for the specified number of seconds before continuing.": self.tr(
+                "Wait for the specified number of seconds before continuing."
+            ),
+            "Wait Until": self.tr("Wait Until"),
+            "Wait until the specified time. Supports HH:MM or YYYY-MM-DD HH:MM.": self.tr(
+                "Wait until the specified time. Supports HH:MM or YYYY-MM-DD HH:MM."
+            ),
+            "System Notification": self.tr("System Notification"),
+            "Send a system notification and optionally play the system sound.": self.tr(
+                "Send a system notification and optionally play the system sound."
+            ),
+            "External Notification": self.tr("External Notification"),
+            "Send a message to all currently enabled external notification channels.": self.tr(
+                "Send a message to all currently enabled external notification channels."
+            ),
+        }
+        return builtin_texts.get(text, self.tr(text))
+
     def __init__(
         self,
         task_map: dict[str, dict[str, dict]],
@@ -553,8 +583,14 @@ class AddTaskDialog(BaseAddDialog):
 
         group_def = self._group_meta.get(group_name, {"name": group_name})
         group_label = group_def.get("label") or group_def.get("name") or group_name
-        group_title = StrongBodyLabel(str(group_label), group_widget)
-        apply_fluent_tooltip(group_title, group_def.get("description"))
+        group_title = StrongBodyLabel(
+            self._tr_builtin_text(str(group_label)), group_widget
+        )
+        description = group_def.get("description")
+        apply_fluent_tooltip(
+            group_title,
+            self._tr_builtin_text(str(description)) if description else None,
+        )
 
         group_hint = CaptionLabel(
             self.tr("{} tasks").format(len(task_names)), group_widget
@@ -587,7 +623,7 @@ class AddTaskDialog(BaseAddDialog):
         task_label = task_def.get("label") or task_name
         task_button = TogglePushButton(self.task_scroll_content)
         task_button.setCheckable(True)
-        task_button.setText(str(task_label))
+        task_button.setText(self._tr_builtin_text(str(task_label)))
         task_button.setMinimumHeight(38)
         task_button.setMinimumWidth(116)
         task_button.setProperty("taskName", task_name)
@@ -596,7 +632,11 @@ class AddTaskDialog(BaseAddDialog):
         if task_icon:
             task_button.setIcon(task_icon)
 
-        apply_fluent_tooltip(task_button, task_def.get("description"))
+        description = task_def.get("description")
+        apply_fluent_tooltip(
+            task_button,
+            self._tr_builtin_text(str(description)) if description else None,
+        )
         self._task_button_group.addButton(task_button)
         return task_button
 
@@ -637,11 +677,16 @@ class AddTaskDialog(BaseAddDialog):
             if isinstance(self.task_map, dict)
             else {}
         )
+        task_def = self._task_meta.get(self.task_name, {})
+        task_source = "builtin" if task_def.get("builtin") else "resource"
+        builtin_key = str(task_def.get("builtin_key", "") or "")
         self.item = TaskItem(
             name=self.task_name,
             item_id=TaskItem.generate_id(),
             is_checked=default_check,
             task_option=task_option,
+            task_source=task_source,
+            builtin_key=builtin_key,
         )
 
         # 接受对话框

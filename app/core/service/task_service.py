@@ -5,6 +5,11 @@ from typing import Any, Dict, List, Optional
 from app.utils.logger import logger
 from app.core.service.config_service import ConfigService
 from app.core.item import TaskItem, CoreSignalBus
+from app.core.builtin_task_loader import (
+    TASK_SOURCE_BUILTIN,
+    BuiltinTaskDefinition,
+    BuiltinTaskLoader,
+)
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.core.utils.option_branches_compat import get_option_branches, set_option_branches
 
@@ -35,10 +40,65 @@ class TaskService:
         self.signal_bus = signal_bus
         self.current_tasks = []
         self.know_task = []
-        self.interface = interface or {}
+        self.resource_interface = interface or {}
+        self.builtin_task_loader = BuiltinTaskLoader()
+        self.interface = self._build_effective_interface(self.resource_interface)
         self.default_option = {}
         self.on_config_changed(self.config_service.current_config_id)
         # UI 的任务勾选切换事件现在通过 ServiceCoordinator.modify_task 路径处理
+
+    def _build_effective_interface(self, interface: Dict[str, Any]) -> Dict[str, Any]:
+        """合并资源 interface 与 Core 外部加载的内置任务描述。"""
+        merged = deepcopy(interface) if isinstance(interface, dict) else {}
+        builtin_extension = self.builtin_task_loader.build_interface_extension()
+
+        merged_groups = list(merged.get("group", []) or [])
+        builtin_group_names = {
+            group.get("name")
+            for group in builtin_extension.get("group", [])
+            if isinstance(group, dict)
+        }
+        merged_groups = [
+            group
+            for group in merged_groups
+            if not (isinstance(group, dict) and group.get("name") in builtin_group_names)
+        ]
+        merged_groups.extend(builtin_extension.get("group", []))
+        merged["group"] = merged_groups
+
+        existing_task_names = {
+            task.get("name")
+            for task in merged.get("task", [])
+            if isinstance(task, dict) and task.get("name")
+        }
+        builtin_tasks = [
+            task
+            for task in builtin_extension.get("task", [])
+            if isinstance(task, dict) and task.get("name") not in existing_task_names
+        ]
+        if len(builtin_tasks) != len(builtin_extension.get("task", [])):
+            logger.warning("部分内置任务名称与资源任务重复，已跳过重复项")
+        merged["task"] = list(merged.get("task", []) or []) + builtin_tasks
+
+        merged_options = dict(merged.get("option", {}) or {})
+        for option_name, option_def in (builtin_extension.get("option", {}) or {}).items():
+            if option_name in merged_options:
+                logger.warning("内置任务选项与资源选项重复，已跳过: %s", option_name)
+                continue
+            merged_options[option_name] = option_def
+        merged["option"] = merged_options
+        return merged
+
+    def get_builtin_task_definition(self, task: TaskItem) -> BuiltinTaskDefinition | None:
+        if not task or not task.is_builtin_task():
+            return None
+        return self.builtin_task_loader.get_by_key(task.builtin_key)
+
+    def update_runtime_interface(self, interface: Dict[str, Any]) -> None:
+        """更新运行期 interface，同时保留 Core 外部加载的内置任务描述。"""
+        self.resource_interface = interface or {}
+        self.interface = self._build_effective_interface(self.resource_interface)
+        self.default_option = self.gen_default_option()
 
     def on_config_changed(self, config_id: str):
         """当配置变化时加载对应任务（由协调器直接调用）"""
@@ -71,7 +131,11 @@ class TaskService:
         if not self.interface:
             raise ValueError("Interface not loaded")
 
-        interface_tasks = [t.get("name") for t in self.interface.get("task", [])]
+        interface_tasks = [
+            t.get("name")
+            for t in self.interface.get("task", [])
+            if isinstance(t, dict) and not t.get("builtin")
+        ]
         interface_tasks = [t for t in interface_tasks if isinstance(t, str) and t]
 
         # 当前配置中已存在的任务名（用于幂等：防止重复插入同名任务）
@@ -485,7 +549,9 @@ class TaskService:
         logger.info("重新加载 interface 数据...")
         if not interface:
             raise ValueError("Interface not loaded")
-        self.interface = interface
+        self.resource_interface = interface
+        self.builtin_task_loader.reload()
+        self.interface = self._build_effective_interface(interface)
 
         # 重新生成默认选项
         self.default_option = self.gen_default_option()
@@ -593,7 +659,7 @@ class TaskService:
         注意：基础任务（Controller, Resource, Post-Action）不需要 speedrun_config
         """
         # 基础任务不需要 speedrun_config
-        if task.is_base_task():
+        if task.is_base_task() or task.is_builtin_task():
             # 如果基础任务中有 speedrun_config，删除它
             if isinstance(task.task_option, dict) and "_speedrun_config" in task.task_option:
                 del task.task_option["_speedrun_config"]
@@ -810,7 +876,8 @@ class TaskService:
         # 实际上，基础任务不会在 interface 的 task 列表中，所以这里不需要特殊处理
         # 但为了安全，我们检查 task_name 是否可能是基础任务
         is_base_task_name = task_name in ["Controller", "Resource", "Post-Action", "Pre-Configuration"]
-        if not is_base_task_name:
+        is_builtin_task = bool(task.get("builtin") or task.get("task_source") == TASK_SOURCE_BUILTIN)
+        if not is_base_task_name and not is_builtin_task:
             task_default_option["_speedrun_config"] = self.build_speedrun_config(task_name)
 
         return task_default_option
@@ -1050,6 +1117,13 @@ class TaskService:
         if not task:
             logger.warning(f"任务 {task_id} 不存在")
             return None
+
+        if task.is_builtin_task():
+            return {
+                "builtin": True,
+                "builtin_key": task.builtin_key,
+                "pipeline_override": {},
+            }
 
         if not self.interface:
             logger.error("Interface 未加载")

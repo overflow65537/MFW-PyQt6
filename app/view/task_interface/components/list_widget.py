@@ -656,6 +656,7 @@ class TaskDragListWidget(BaseListWidget):
 
         # 否则按原有逻辑新增项
         list_item = QListWidgetItem()
+        list_item.setSizeHint(QSize(0, self._TASK_ITEM_HEIGHT))
         task_widget = TaskListItem(
             task, interface=interface, service_coordinator=self.service_coordinator
         )

@@ -27,7 +27,12 @@ from maa.define import (
     MaaAdbInputMethodEnum,
     MaaAdbScreencapMethodEnum,
 )
-from app.utils.notice import NoticeTiming, send_notice, send_thread
+from app.utils.notice import (
+    NoticeTiming,
+    send_all_enabled_channels,
+    send_notice,
+    send_thread,
+)
 
 from app.utils.logger import logger
 from app.core.service.config_service import ConfigService
@@ -40,6 +45,7 @@ from app.core.runner.maafw import (
 from app.utils.controller_utils import ControllerHelper
 
 from app.core.item import FromeServiceCoordinator, RunnerEvents, TaskItem
+from app.core.builtin_task_loader import BuiltinTaskContext
 
 
 def _ndarray_to_png_bytes(ndarray) -> bytes | None:
@@ -482,7 +488,7 @@ class TaskFlowRunner(QObject):
             interface_manager = InterfaceManager()
             embedded_ready = interface_manager.apply_agent_customization()
             runner_interface = interface_manager.get_interface() or {}
-            self.task_service.interface = runner_interface
+            self.task_service.update_runtime_interface(runner_interface)
 
             # 1. 配置级 global_option + resource.option（已在函数内按优先级合并）
             self._default_pipeline_override = get_pipeline_override_from_task_option(
@@ -1465,6 +1471,8 @@ class TaskFlowRunner(QObject):
             return
         elif not task.is_checked:
             return
+        if task.is_builtin_task():
+            return await self._run_builtin_task(task)
         speedrun_cfg = self._resolve_speedrun_config(task)
         # 仅依据任务自身的速通开关，不再依赖全局 speedrun_mode；单任务执行可跳过校验
         if (not skip_speedrun) and speedrun_cfg and speedrun_cfg.get("enabled", False):
@@ -1521,6 +1529,92 @@ class TaskFlowRunner(QObject):
         # 仅在任务未被 abort 且正常完成时记录速通耗时
         if self._current_task_ok:
             self._record_speedrun_runtime(task)
+
+    async def _run_builtin_task(self, task: TaskItem):
+        """执行 Core 外部模块声明的内置任务。"""
+        definition = self.task_service.get_builtin_task_definition(task)
+        if definition is None:
+            logger.error("内置任务未找到或未加载: %s", task.builtin_key)
+            return False
+
+        context = self._create_builtin_task_context()
+        try:
+            result = await self.task_service.builtin_task_loader.execute(
+                task.builtin_key,
+                context,
+                task.task_option if isinstance(task.task_option, dict) else {},
+            )
+        except Exception as exc:
+            logger.error("内置任务执行异常 %s: %s", task.name, exc)
+            self.log_output.emit("ERROR", self.tr("Builtin task failed: ") + str(exc))
+            return False
+
+        if result.message:
+            level = "INFO" if result.success else "ERROR"
+            self.log_output.emit(level, self.tr(result.message))
+        return None if result.success else False
+
+    def _create_builtin_task_context(self) -> BuiltinTaskContext:
+        return BuiltinTaskContext(
+            log=lambda level, text: self.log_output.emit(str(level), str(text)),
+            sleep=self._builtin_sleep,
+            is_stopping=lambda: bool(self.need_stop),
+            notify_system=lambda message: self.runner_events.focus_notification.emit(
+                str(message)
+            ),
+            notify_external=lambda title, text: send_all_enabled_channels(
+                str(title), str(text)
+            ),
+            start_process=self._builtin_start_process,
+            play_system_sound=self._builtin_play_system_sound,
+            tr=lambda text: self.tr(str(text)),
+        )
+
+    async def _builtin_sleep(self, seconds: float) -> bool:
+        """等待指定秒数，期间响应停止请求。"""
+        try:
+            remaining = max(0.0, float(seconds))
+        except (TypeError, ValueError):
+            remaining = 0.0
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + remaining
+        while True:
+            if self.need_stop:
+                return False
+            left = deadline - loop.time()
+            if left <= 0:
+                return True
+            await asyncio.sleep(min(left, 0.2))
+
+    async def _builtin_start_process(
+        self, path: str, args: list[str] | str | None = None, wait: bool = False
+    ) -> int | None:
+        process = await asyncio.to_thread(self._start_process, path, args)
+        if not wait:
+            return None
+        while process.poll() is None:
+            if self.need_stop:
+                try:
+                    process.terminate()
+                except Exception:
+                    pass
+                return process.poll()
+            await asyncio.sleep(0.2)
+        return process.returncode
+
+    async def _builtin_play_system_sound(self) -> None:
+        if sys.platform.startswith("win32"):
+            try:
+                import winsound
+
+                await asyncio.to_thread(winsound.MessageBeep)
+                return
+            except Exception as exc:
+                logger.debug("播放系统提示音失败: %s", exc)
+        try:
+            print("\a", end="", flush=True)
+        except Exception:
+            pass
 
     async def stop_task(self, *, manual: bool = False):
         """停止当前正在运行的任务

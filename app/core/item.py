@@ -70,20 +70,31 @@ class TaskItem:
     item_id: str
     is_checked: bool
     task_option: Dict[str, Any]
+    task_source: str = "resource"
+    builtin_key: str = ""
     is_hidden: bool = False  # 标记任务是否被隐藏（不保存到配置，仅运行时使用）
 
     def is_base_task(self) -> bool:
         """判断是否为基础任务（资源或完成后操作）"""
         return self.item_id in ( _CONTROLLER_, _RESOURCE_, POST_ACTION)
 
+    def is_builtin_task(self) -> bool:
+        """判断是否为框架加载的内置任务。"""
+        return self.task_source == "builtin" and bool(self.builtin_key)
+
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
-        return {
+        payload = {
             "name": self.name,
             "item_id": self.item_id,
             "is_checked": self.is_checked,
             "task_option": self.task_option,
         }
+        if self.task_source != "resource":
+            payload["task_source"] = self.task_source
+        if self.builtin_key:
+            payload["builtin_key"] = self.builtin_key
+        return payload
 
     @staticmethod
     def generate_id() -> str:
@@ -132,6 +143,8 @@ class TaskItem:
             item_id=item_id,
             is_checked=data.get("is_checked", False),
             task_option=task_option,
+            task_source=data.get("task_source", "resource") or "resource",
+            builtin_key=data.get("builtin_key", "") or "",
         )
 
 

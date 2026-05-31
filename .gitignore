@@ -484,6 +484,7 @@ app/i18n/i18n.zh_TW.qm
 app/i18n/i18n.ja_JP.qm
 release_notes/*
 MPA_custom/*
+MPAcustom_custom/*
 tasks/*
 .llm.txt
 
