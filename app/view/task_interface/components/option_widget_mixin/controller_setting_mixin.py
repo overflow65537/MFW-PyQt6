@@ -6,6 +6,7 @@ from qfluentwidgets import (
     BodyLabel,
     ComboBox,
     LineEdit,
+    SwitchButton,
     ToolTipPosition,
 )
 from pathlib import Path
@@ -543,6 +544,7 @@ class ControllerSettingWidget(QWidget):
     def _refresh_advanced_options_visibility(self) -> None:
         """根据 show_hide_option 刷新 GPU/Agent/自定义路径及控制器输入截图方式等控件。"""
         self._toggle_children_visible(["agent_timeout"], self.show_hide_option)
+        self._toggle_children_visible(["agent_embedded"], self.show_hide_option)
         self._toggle_children_visible(["custom"], self.show_hide_option)
         self._toggle_children_visible(["gpu_combo"], self.show_hide_option)
 
@@ -602,6 +604,14 @@ class ControllerSettingWidget(QWidget):
             interface.get("controller", [])
         )
         agent_interface_config = interface.get("agent", {})
+        if not isinstance(agent_interface_config, dict):
+            agent_interface_config = {}
+        if "embedded" in agent_interface_config:
+            self.interface_agent_embedded_default = bool(
+                agent_interface_config["embedded"]
+            )
+        else:
+            self.interface_agent_embedded_default = False
         interface_custom = interface.get("custom")
         self.interface_custom_default = (
             interface_custom if isinstance(interface_custom, str) else ""
@@ -637,6 +647,8 @@ class ControllerSettingWidget(QWidget):
             self._create_gpu_option()
             # 创建 agent 启动超时时间选项
             self._create_agent_timeout_option()
+            # 创建 Agent 内置模式开关（始终显示；仅用户切换后才写入配置并覆盖运行时）
+            self._create_agent_embedded_option()
             # 创建自定义模块路径输入（隐藏选项）
             self._create_custom_option()
             # 创建ADB、Win32和PlayCover子选项
@@ -808,6 +820,31 @@ class ControllerSettingWidget(QWidget):
         timeout_edit.textChanged.connect(self._on_agent_timeout_changed)
 
         self._toggle_children_visible(["agent_timeout"], self.show_hide_option)
+
+    def _get_agent_embedded_display_value(self) -> bool:
+        """开关展示值：用户已保存的配置优先，否则仅反映 interface（不写回配置）。"""
+        if "agent_embedded" in self.current_config:
+            return bool(self.current_config["agent_embedded"])
+        return bool(getattr(self, "interface_agent_embedded_default", False))
+
+    def _create_agent_embedded_option(self):
+        """创建 Agent 内置模式开关（展示 interface 默认值，不自动改写 interface）"""
+        embedded_label = BodyLabel(self.tr("Embedded Agent Mode"))
+        embedded_switch = SwitchButton(self)
+        embedded_switch.setOnText(self.tr("On"))
+        embedded_switch.setOffText(self.tr("Off"))
+
+        embedded_layout = QHBoxLayout()
+        embedded_layout.addWidget(embedded_label)
+        embedded_layout.addStretch()
+        embedded_layout.addWidget(embedded_switch)
+        self.parent_layout.addLayout(embedded_layout)
+
+        self.resource_setting_widgets["agent_embedded_label"] = embedded_label
+        self.resource_setting_widgets["agent_embedded"] = embedded_switch
+        embedded_switch.checkedChanged.connect(self._on_agent_embedded_changed)
+
+        self._toggle_children_visible(["agent_embedded"], self.show_hide_option)
 
     def _create_custom_option(self):
         """创建自定义模块路径输入"""
@@ -1657,6 +1694,10 @@ class ControllerSettingWidget(QWidget):
                     controller_task_option["agent_timeout"] = self.current_config[
                         "agent_timeout"
                     ]
+                if "agent_embedded" in self.current_config:
+                    controller_task_option["agent_embedded"] = self.current_config[
+                        "agent_embedded"
+                    ]
                 if "custom" in self.current_config:
                     controller_task_option["custom"] = self.current_config["custom"]
                 # 保存控制器特定的配置（使用控制器名称作为键）
@@ -1858,6 +1899,7 @@ class ControllerSettingWidget(QWidget):
         self._fill_custom_option()
         self._fill_gpu_option()
         self._fill_agent_timeout_option()
+        self._fill_agent_embedded_option()
         # 填充设备名称
         device_name = self.current_config[controller_name].get(
             "device_name", self.tr("Unknown Device")
@@ -2030,6 +2072,20 @@ class ControllerSettingWidget(QWidget):
         self.current_config["agent_timeout"] = timeout_value
         # 仅提交 agent_timeout 字段
         self._auto_save_options({"agent_timeout": timeout_value})
+
+    def _fill_agent_embedded_option(self):
+        embedded_switch = self.resource_setting_widgets.get("agent_embedded")
+        if not isinstance(embedded_switch, SwitchButton):
+            return
+        embedded_switch.blockSignals(True)
+        embedded_switch.setChecked(self._get_agent_embedded_display_value())
+        embedded_switch.blockSignals(False)
+
+    def _on_agent_embedded_changed(self, checked: bool):
+        if self._syncing:
+            return
+        self.current_config["agent_embedded"] = bool(checked)
+        self._auto_save_options({"agent_embedded": bool(checked)})
 
     def _on_gpu_option_changed(self, index: int):
         combo = self.resource_setting_widgets.get("gpu_combo")

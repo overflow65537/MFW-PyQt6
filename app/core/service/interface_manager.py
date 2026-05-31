@@ -385,16 +385,20 @@ class InterfaceManager:
         """
         return self._original_interface
 
-    def apply_agent_customization(self) -> bool:
+    def apply_agent_customization(
+        self, *, embedded_override: bool | None = None
+    ) -> bool:
         """
         若 interface 中 agent 存在且设置了 embedded，则在当前内存中的
         interface 上准备 custom 产物并注入 custom 字段。
+
+        embedded_override: 控制器预配置中的 agent_embedded，覆盖 interface.agent.embedded。
 
         该方法只修改内存中的 interface，不会回写 interface 文件。
         """
         if not self._initialized:
             self.initialize()
-        return self._handle_embedded_agent()
+        return self._handle_embedded_agent(embedded_override=embedded_override)
 
     def _clear_embedded_customization(self, interface: Dict[str, Any]) -> None:
         """清理上次运行前注入的 embedded custom 临时字段。"""
@@ -403,13 +407,17 @@ class InterfaceManager:
         interface.pop("__embedded_generated_custom", None)
         interface.pop("__embedded_agent_error", None)
 
-    def _handle_embedded_agent(self) -> bool:
+    def _handle_embedded_agent(self, *, embedded_override: bool | None = None) -> bool:
         interface = self._translated_interface
         self._clear_embedded_customization(interface)
 
         agent_info = interface.get("agent")
         if not isinstance(agent_info, dict):
             return True
+        if embedded_override is not None:
+            agent_info = dict(agent_info)
+            agent_info["embedded"] = bool(embedded_override)
+            interface["agent"] = agent_info
         if not agent_info.get("embedded"):
             logger.debug("agent 配置中没有 embedded 字段，跳过嵌入式转换")
             return True

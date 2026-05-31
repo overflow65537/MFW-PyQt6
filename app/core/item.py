@@ -126,7 +126,15 @@ class TaskItem:
             
             # Resource 任务不应该包含控制器相关字段
             if item_id == _RESOURCE_:
-                fields_to_remove = ["gpu", "agent_timeout", "custom", "controller_type", "adb", "win32"]
+                fields_to_remove = [
+                    "gpu",
+                    "agent_timeout",
+                    "agent_embedded",
+                    "custom",
+                    "controller_type",
+                    "adb",
+                    "win32",
+                ]
                 if isinstance(task_option, dict):
                     task_option = dict(task_option)  # 确保是副本
                     for field in fields_to_remove:

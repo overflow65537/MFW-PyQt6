@@ -486,7 +486,16 @@ class TaskFlowRunner(QObject):
             from app.core.service.interface_manager import InterfaceManager
 
             interface_manager = InterfaceManager()
-            embedded_ready = interface_manager.apply_agent_customization()
+            embedded_override: bool | None = None
+            controller_option = controller_cfg.task_option or {}
+            if (
+                isinstance(controller_option, dict)
+                and "agent_embedded" in controller_option
+            ):
+                embedded_override = bool(controller_option["agent_embedded"])
+            embedded_ready = interface_manager.apply_agent_customization(
+                embedded_override=embedded_override
+            )
             runner_interface = interface_manager.get_interface() or {}
             self.task_service.update_runtime_interface(runner_interface)
 
