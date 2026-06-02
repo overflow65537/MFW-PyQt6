@@ -824,7 +824,9 @@ class LogoutputWidget(QWidget):
             if getattr(task, "is_builtin_task", lambda: False)():
                 definition = task_service.get_builtin_task_definition(task)
                 if definition:
-                    return definition.label
+                    return task_service.builtin_task_loader.i18n_service.translate_text(
+                        definition.label
+                    )
             interface = getattr(task_service, "interface", {}) or {}
             for task_def in interface.get("task", []):
                 if task_def.get("name") == getattr(task, "name", ""):
