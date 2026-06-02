@@ -30,6 +30,7 @@ from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.common.config import cfg
 from app.core.core import ServiceCoordinator
 from app.core.builtin_task_loader import BUILTIN_TASK_GROUP_NAME
+from app.core.service.i18n_service import I18nService
 from app.common.signal_bus import signalBus
 
 
@@ -122,6 +123,7 @@ class AddConfigDialog(BaseAddDialog):
         # 加载可用的资源包
         self.resource_bundles = resource_bundles or []
         self.load_resource_bundles(self.resource_bundles, default_resource)
+        self.resource_combo.currentIndexChanged.connect(self._on_bundle_changed)
 
         self.resource_layout.addWidget(self.resource_label)
         self.resource_layout.addLayout(self.resource_row_layout)
@@ -164,7 +166,8 @@ class AddConfigDialog(BaseAddDialog):
                     self.resource_combo.setCurrentIndex(index)
 
     def _load_presets(self):
-        """从 interface 中加载预设配置到下拉框"""
+        """根据当前选中的 bundle 重新加载预设配置到下拉框。"""
+        previous_text = self.preset_combo.currentText().strip()
         self.preset_combo.clear()
         self._presets = []
         self._selected_preset_name = None
@@ -173,18 +176,65 @@ class AddConfigDialog(BaseAddDialog):
         default_label = self.tr("Default (all tasks)")
         self.preset_combo.addItem(default_label)
 
-        # 从 service_coordinator 获取预设列表
+        presets = self._load_presets_for_selected_bundle()
+        if isinstance(presets, list):
+            self._presets = presets
+            for preset in presets:
+                if not isinstance(preset, dict):
+                    continue
+                display_name = preset.get("label") or preset.get("name", "")
+                if display_name:
+                    self.preset_combo.addItem(display_name)
+        if previous_text:
+            idx = self.preset_combo.findText(previous_text)
+            if idx >= 0:
+                self.preset_combo.setCurrentIndex(idx)
+
+    def _on_bundle_changed(self, _index: int) -> None:
+        self._load_presets()
+
+    def _resolve_selected_bundle_info(self) -> dict | None:
+        selected_bundle_name = self.resource_combo.currentText().strip()
+        if not selected_bundle_name:
+            return None
+        for bundle in self.resource_bundles or []:
+            if isinstance(bundle, dict) and str(bundle.get("name", "")).strip() == selected_bundle_name:
+                return bundle
+        return None
+
+    def _load_presets_for_selected_bundle(self) -> list[dict]:
+        bundle = self._resolve_selected_bundle_info()
+        if not bundle:
+            return []
+
+        bundle_path = str(bundle.get("path", "./") or "./")
+        interface_dir = Path(bundle_path) if Path(bundle_path).is_absolute() else Path.cwd() / bundle_path
+        interface_path = None
+        for candidate in [interface_dir / "interface.jsonc", interface_dir / "interface.json"]:
+            if candidate.exists():
+                interface_path = candidate
+                break
+        if interface_path is None:
+            return []
+
+        try:
+            with open(interface_path, "r", encoding="utf-8") as f:
+                bundle_interface = jsonc.load(f)
+        except Exception:
+            return []
+
+        language = "zh_cn"
         if self._service_coordinator:
-            presets = self._service_coordinator.get_presets()
-            if isinstance(presets, list):
-                self._presets = presets
-                for preset in presets:
-                    if not isinstance(preset, dict):
-                        continue
-                    # 显示 label（如果有），否则使用 name
-                    display_name = preset.get("label") or preset.get("name", "")
-                    if display_name:
-                        self.preset_combo.addItem(display_name)
+            try:
+                language = self._service_coordinator.interface_obj.get_current_language()
+            except Exception:
+                pass
+
+        i18n_service = I18nService(language=language)
+        i18n_service.load_translations_from_interface(bundle_interface, interface_dir)
+        translated_interface = i18n_service.translate_any(bundle_interface)
+        presets = translated_interface.get("preset", [])
+        return presets if isinstance(presets, list) else []
 
     def _existing_config_display_names(self) -> set[str]:
         names: set[str] = set()
