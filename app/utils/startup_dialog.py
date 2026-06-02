@@ -556,6 +556,28 @@ def run_force_restart_shutdown_flow(
     return False
 
 
+def show_deprecated_cli_dialog(deprecated: list[str], parent=None) -> None:
+    """显示旧版启动参数弃用提示。"""
+    if not deprecated:
+        return
+
+    manager = StartupDialogManager(parent)
+    detail_lines = "\n".join(f"  · {item}" for item in deprecated)
+    detail = (
+        f"{detail_lines}\n\n"
+        f"{manager.tr('运行「python main.py --help」或「MFW.exe --help」查看完整说明。')}\n"
+        f"{manager.tr('注意：Nuitka 打包版不支持 -c（与 Python 解释器冲突），请改用 --config-id。')}"
+    )
+    manager.show_custom(
+        title=manager.tr("启动参数已弃用"),
+        content=manager.tr(
+            "检测到旧版命令行参数。程序已按新规则继续启动，但请尽快改用下列写法："
+        ),
+        detail=detail,
+        dialog_type=StartupDialogType.WARNING,
+    )
+
+
 def show_uncaught_exception_dialog(
     exc_type, exc_value, exc_traceback, parent=None
 ) -> None:

@@ -19,6 +19,17 @@ MFW_FLAGS = (
     FLAG_FORCE_RESTART,
 )
 
+# 已弃用的旧写法 → 现行开关
+DEPRECATED_CLI_ALIASES: dict[str, str] = {
+    "-c": FLAG_CONFIG_ID,
+    "--config": FLAG_CONFIG_ID,
+    "-d": FLAG_DIRECT_RUN,
+    "-f": FLAG_FORCE_RESTART,
+    "-dev": FLAG_DEV,
+}
+_DEPRECATED_VALUE_FLAGS = frozenset({"-c", "--config"})
+_KNOWN_MFW_OPTION_NAMES = frozenset(DEPRECATED_CLI_ALIASES) | frozenset(MFW_FLAGS)
+
 
 @dataclass(frozen=True, slots=True)
 class StartupOptions:
@@ -28,6 +39,59 @@ class StartupOptions:
     direct_run: bool = False
     enable_dev: bool = False
     force_restart: bool = False
+
+
+def _token_option_name(token: str) -> str:
+    if "=" in token:
+        return token.split("=", 1)[0]
+    return token
+
+
+def normalize_mfw_argv(mfw_argv: list[str]) -> tuple[list[str], list[str]]:
+    """将旧版 MFW 参数转换为现行写法，并返回弃用提示列表。"""
+    normalized: list[str] = []
+    deprecated: list[str] = []
+    seen: set[str] = set()
+
+    def _note(old: str, new: str) -> None:
+        message = f"{old} → {new}"
+        if message not in seen:
+            seen.add(message)
+            deprecated.append(message)
+
+    i = 0
+    while i < len(mfw_argv):
+        token = mfw_argv[i]
+        name = _token_option_name(token)
+        replacement = DEPRECATED_CLI_ALIASES.get(name)
+
+        if replacement is None:
+            normalized.append(token)
+            i += 1
+            continue
+
+        if "=" in token:
+            _, _, value = token.partition("=")
+            _note(name, f"{replacement}=<ID>")
+            normalized.append(f"{replacement}={value}")
+            i += 1
+            continue
+
+        if name in _DEPRECATED_VALUE_FLAGS:
+            _note(name, f"{replacement} <ID>")
+            normalized.append(replacement)
+            if i + 1 < len(mfw_argv) and _token_option_name(mfw_argv[i + 1]) not in _KNOWN_MFW_OPTION_NAMES:
+                normalized.append(mfw_argv[i + 1])
+                i += 2
+            else:
+                i += 1
+            continue
+
+        _note(name, replacement)
+        normalized.append(replacement)
+        i += 1
+
+    return normalized, deprecated
 
 
 def split_mfw_and_qt_argv(argv: list[str]) -> tuple[list[str], list[str]]:
@@ -103,10 +167,13 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def parse_startup_cli(argv: list[str] | None = None) -> tuple[StartupOptions, list[str]]:
-    """解析 MFW 启动参数，返回 (选项, 传给 Qt 的额外参数列表)。"""
+def parse_startup_cli(
+    argv: list[str] | None = None,
+) -> tuple[StartupOptions, list[str], list[str]]:
+    """解析 MFW 启动参数，返回 (选项, Qt 参数, 弃用提示列表)。"""
     source = list(argv if argv is not None else sys.argv[1:])
     mfw_argv, qt_extra = split_mfw_and_qt_argv(source)
+    mfw_argv, deprecated = normalize_mfw_argv(mfw_argv)
 
     parser = _build_parser()
     ns = parser.parse_args(mfw_argv)
@@ -117,4 +184,4 @@ def parse_startup_cli(argv: list[str] | None = None) -> tuple[StartupOptions, li
         enable_dev=bool(ns.enable_dev),
         force_restart=bool(ns.force_restart),
     )
-    return options, qt_extra
+    return options, qt_extra, deprecated

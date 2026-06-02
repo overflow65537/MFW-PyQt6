@@ -121,8 +121,19 @@ def _run() -> int:
     from app.utils.startup_cli import parse_startup_cli
 
     # 启动参数解析（单实例检查前处理 --force-restart）
-    options, qt_extra = parse_startup_cli()
+    options, qt_extra, deprecated_cli = parse_startup_cli()
     qt_argv = [sys.argv[0]] + qt_extra
+    deprecated_cli_shown = False
+
+    def _show_deprecated_cli_if_needed() -> None:
+        nonlocal deprecated_cli_shown
+        if deprecated_cli_shown or not deprecated_cli:
+            return
+        from app.utils.startup_dialog import show_deprecated_cli_dialog
+
+        logger.warning("检测到已弃用的启动参数: %s", ", ".join(deprecated_cli))
+        show_deprecated_cli_dialog(deprecated_cli)
+        deprecated_cli_shown = True
 
     instance_key = str(Path(_install_anchor_path()).resolve())
 
@@ -139,6 +150,7 @@ def _run() -> int:
         early_app = QApplication(qt_argv)
         early_app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
         apply_theme_from_config()
+        _show_deprecated_cli_if_needed()
         if not run_force_restart_shutdown_flow(instance_key):
             return 1
 
@@ -184,6 +196,8 @@ def _run() -> int:
         app = QApplication(qt_argv)
         app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
         apply_theme_from_config()
+
+    _show_deprecated_cli_if_needed()
 
     if single_instance.start_activation_server(app):
         atexit.register(single_instance.stop_activation_server)
