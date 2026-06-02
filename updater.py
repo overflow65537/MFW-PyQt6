@@ -15,17 +15,9 @@ from pathlib import Path
 from typing import List, Tuple
 from uuid import uuid4
 
-DIRECT_RUN_EXTRA_ARGS: list[str] = []
+from mfw_cli import FLAG_DIRECT_RUN, collect_passthrough_flags
 
-
-def _collect_direct_run_args(argv: list[str]) -> list[str]:
-    args = []
-    if "-d" in argv or "--direct-run" in argv:
-        args.append("-d")
-    return args
-
-
-DIRECT_RUN_EXTRA_ARGS = _collect_direct_run_args(sys.argv)
+DIRECT_RUN_EXTRA_ARGS: list[str] = collect_passthrough_flags(sys.argv, FLAG_DIRECT_RUN)
 
 
 class _SingleInstanceLock:
@@ -1898,8 +1890,8 @@ if __name__ == "__main__":
                     default=None,
                     help="触发更新时的主程序文件名（用于更新后恢复原名称）",
                 )
-                # 兼容透传给主程序的 direct-run 标志（更新器自身不消费，但不能因未知参数失败）
-                parser.add_argument("-d", "--direct-run", action="store_true")
+                # 兼容透传给主程序的 --direct-run（更新器自身不消费，但不能因未知参数失败）
+                parser.add_argument(FLAG_DIRECT_RUN, action="store_true")
 
                 known, _unknown = parser.parse_known_args(sys.argv[2:])
                 RUNTIME_OPTS.parent_pid = known.parent_pid

@@ -61,11 +61,14 @@ MFW-ChainFlow Assistant 旨在为 MaaFramework 用户提供开箱即用的可视
 
 ## 常用命令行参数
 
-- `-c <config_id>`：使用指定配置 ID 启动（可用 `-c=<config_id>`；`python main.py` 与 `MFW.exe` 均支持）
-- `-d`：启动后直接运行任务
-- `-f`：强制启动，会关闭同目录下正在运行的其他 MFW 实例（即使仍在执行任务）
-- `-dev`：启用调试模式
-- 未列出的参数（如 Qt 的 `-platform`）会原样传给 Qt，无需使用 `--` 分隔
+MFW 开关写在分隔符 `--` 之前；之后仅传给 Qt。
+
+- `--config-id <ID>`：使用指定配置 ID 启动（可用 `--config-id=<ID>`）
+- `--direct-run`：启动后直接运行任务
+- `--force-restart`：强制启动，会关闭同目录下正在运行的其他 MFW 实例
+- `--dev`：启用调试模式（显示测试页）
+
+示例：`MFW.exe --direct-run --force-restart --config-id c_xxx`
 
 ## 外部通知
 

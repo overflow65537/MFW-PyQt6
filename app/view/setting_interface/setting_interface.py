@@ -42,6 +42,8 @@ from qfluentwidgets import (
     ToolButton,
 )
 
+from mfw_cli import FLAG_DIRECT_RUN
+
 from app.utils.markdown_helper import render_markdown
 from app.utils.rich_text_helper import apply_rich_text_html, configure_rich_text_label
 from app.common.fluent_tooltip import apply_fluent_tooltip
@@ -3062,7 +3064,7 @@ class SettingInterface(QWidget):
     def _start_updater(self) -> bool:
         """启动更新程序（允许更新器自行显示界面）。"""
         try:
-            extra_args = ["-d"] if self._propagate_direct_run_arg else []
+            extra_args = [FLAG_DIRECT_RUN] if self._propagate_direct_run_arg else []
             launch_updater_process(*extra_args)
             return True
         except Exception as e:

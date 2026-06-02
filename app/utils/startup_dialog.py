@@ -322,7 +322,7 @@ class StartupDialogManager(QObject):
             self._cleanup_dummy_parent()
 
     def show_force_restart_failed(self) -> None:
-        """显示 -f 强制重启时无法在时限内关闭旧实例的弹窗。"""
+        """显示 --force-restart 强制重启时无法在时限内关闭旧实例的弹窗。"""
         config = StartupDialogConfig(
             dialog_type=StartupDialogType.WARNING,
             title=self.tr("关闭失败"),
@@ -548,7 +548,7 @@ def show_instance_running_dialog(parent=None) -> None:
 def run_force_restart_shutdown_flow(
     instance_key: str, *, timeout: float = 30.0, parent=None
 ) -> bool:
-    """-f 启动：请求旧实例优雅退出并等待；失败时弹窗且返回 False。"""
+    """--force-restart 启动：请求旧实例优雅退出并等待；失败时弹窗且返回 False。"""
     manager = StartupDialogManager(parent)
     if manager.wait_for_force_restart_shutdown(instance_key, timeout=timeout):
         return True

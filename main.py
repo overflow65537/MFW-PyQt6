@@ -120,13 +120,13 @@ def _run() -> int:
     from app.utils.single_instance import SingleInstanceGuard, is_instance_running
     from app.utils.startup_cli import parse_startup_cli
 
-    # 启动参数解析（单实例检查前处理 -f，通过套接字请求旧实例优雅退出）
+    # 启动参数解析（单实例检查前处理 --force-restart）
     options, qt_extra = parse_startup_cli()
     qt_argv = [sys.argv[0]] + qt_extra
 
     instance_key = str(Path(_install_anchor_path()).resolve())
 
-    # DPI缩放配置（-f 等待弹窗也需要）
+    # DPI缩放配置（--force-restart 等待弹窗也需要）
     if cfg.get(cfg.dpiScale) != "Auto":
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
         os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
@@ -178,7 +178,7 @@ def _run() -> int:
 
     sys.excepthook = global_except_hook
 
-    # 创建Qt应用实例（-f 等待阶段可能已创建）
+    # 创建Qt应用实例（--force-restart 等待阶段可能已创建）
     app = QApplication.instance()
     if app is None or not isinstance(app, QApplication):
         app = QApplication(qt_argv)
@@ -229,7 +229,7 @@ def _run() -> int:
 
     single_instance.set_activation_callback(_activate_existing_window)
 
-    # 国际化配置（须在 -f 等待弹窗之后安装，以便弹窗也能翻译）
+    # 国际化配置（须在 --force-restart 等待弹窗之后安装，以便弹窗也能翻译）
     locale = cfg.get(cfg.language)
     translator = FluentTranslator(locale.value)
     galleryTranslator = QTranslator()
@@ -312,7 +312,7 @@ def _run() -> int:
                 if task_runner.is_running or task_runner.maafw.has_active_runtime():
                     await window.service_coordinator.stop_task(manual=True)
             except Exception:
-                logger.exception("收到 -f 关闭请求后停止任务失败")
+                logger.exception("收到 --force-restart 关闭请求后停止任务失败")
             window._allow_window_close = True
             from PySide6.QtCore import QTimer
 
