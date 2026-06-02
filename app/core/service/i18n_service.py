@@ -39,6 +39,20 @@ class I18nService:
             return
         self._current_language = value
 
+    def set_translations(self, language: str, translations: Dict[str, str]) -> None:
+        """直接设置某语言的翻译表。"""
+        if not language:
+            return
+        self._translations[language] = dict(translations or {})
+
+    def merge_translations(self, language: str, translations: Dict[str, str]) -> None:
+        """将翻译增量合并到现有翻译表中，后者覆盖前者。"""
+        if not language:
+            return
+        base = dict(self._translations.get(language, {}))
+        base.update(translations or {})
+        self._translations[language] = base
+
     def load_translations_from_interface(
         self, interface_data: Dict[str, Any], interface_dir: Path
     ) -> None:
@@ -63,7 +77,7 @@ class I18nService:
         try:
             with open(translation_path, "r", encoding="utf-8") as f:
                 translations: Dict[str, str] = jsonc.load(f)
-            self._translations[lang] = translations
+            self.merge_translations(lang, translations)
             logger.debug(
                 "已加载翻译文件: %s (%d 条翻译)",
                 translation_path,

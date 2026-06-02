@@ -43,7 +43,7 @@ async def execute_launch_program(context, task_option: dict[str, Any]):
     program_args = str(_nested_value(task_option, "program", "args", "") or "").strip()
     wait = _switch_enabled(task_option, "wait_process", False)
     if not program_path:
-        context.log("WARNING", context.tr("Builtin launch program path is empty, skipped."))
+        context.log("WARNING", context.tr("$builtin_log_launch_program_path_empty"))
         return {"success": True, "message": "program path is empty"}
     return_code = await context.start_process(program_path, _parse_args(program_args), wait)
     if wait and return_code not in (0, None):
@@ -57,25 +57,31 @@ async def execute_wait_duration(context, task_option: dict[str, Any]):
         seconds = max(0.0, float(raw_seconds))
     except (TypeError, ValueError):
         seconds = 1.0
-    context.log("INFO", context.tr("Builtin task waits {seconds} second(s).").format(seconds=f"{seconds:g}"))
+    context.log(
+        "INFO",
+        context.tr("$builtin_log_wait_duration").format(seconds=f"{seconds:g}"),
+    )
     return await context.sleep(seconds)
 
 
 async def execute_wait_until(context, task_option: dict[str, Any]):
     target_text = str(_nested_value(task_option, "target_time", "time", "") or "").strip()
     if not target_text:
-        context.log("WARNING", context.tr("Builtin wait-until target time is empty, skipped."))
+        context.log("WARNING", context.tr("$builtin_log_wait_until_empty"))
         return True
 
     target = _parse_target_datetime(target_text)
     if target is None:
-        context.log("ERROR", context.tr("Failed to parse builtin wait-until target time: {time}").format(time=target_text))
+        context.log(
+            "ERROR",
+            context.tr("$builtin_log_wait_until_invalid").format(time=target_text),
+        )
         return False
 
     seconds = max(0.0, (target - datetime.now()).total_seconds())
     context.log(
         "INFO",
-        context.tr("Builtin task waits until {time}.").format(
+        context.tr("$builtin_log_wait_until_target").format(
             time=target.strftime("%Y-%m-%d %H:%M:%S")
         ),
     )
@@ -106,7 +112,7 @@ def _parse_target_datetime(text: str) -> datetime | None:
 async def execute_system_notification(context, task_option: dict[str, Any]):
     message = str(_nested_value(task_option, "system_notice", "message", "") or "").strip()
     if not message:
-        message = "MFW builtin task notification"
+        message = "$builtin_default_system_notification"
     message = context.tr(message)
     if _switch_enabled(task_option, "play_sound", True):
         await context.play_system_sound()
@@ -120,7 +126,7 @@ async def execute_external_notification(context, task_option: dict[str, Any]):
     if not title:
         title = "MFW"
     if not text:
-        text = "MFW builtin task external notification"
+        text = "$builtin_default_external_notification"
     title = context.tr(title)
     text = context.tr(text)
     context.notify_external(title, text)
@@ -139,7 +145,7 @@ def _switch_option(label: str, default: bool = False, description: str = ""):
         "type": "switch",
         "label": label,
         "default_case": "Yes" if default else "No",
-        "cases": [{"name": "Yes", "label": "Yes"}, {"name": "No", "label": "No"}],
+        "cases": [{"name": "Yes", "label": "$builtin_yes"}, {"name": "No", "label": "$builtin_no"}],
     }
     if description:
         payload["description"] = description
@@ -151,31 +157,31 @@ def get_builtin_tasks():
         {
             "key": "launch_program",
             "name": "BuiltinLaunchProgram",
-            "label": "Launch Program",
-            "description": "Launch an external program and optionally wait for it to exit.",
+            "label": "$builtin_launch_program_label",
+            "description": "$builtin_launch_program_description",
             "options": ["program", "wait_process"],
             "option_defs": {
                 "program": _input_option(
-                    "Program",
+                    "$builtin_program_label",
                     [
-                        {"name": "path", "label": "Program Path", "default": ""},
-                        {"name": "args", "label": "Arguments", "default": ""},
+                        {"name": "path", "label": "$builtin_program_path_label", "default": ""},
+                        {"name": "args", "label": "$builtin_arguments_label", "default": ""},
                     ],
                 ),
-                "wait_process": _switch_option("Wait for Process", False),
+                "wait_process": _switch_option("$builtin_wait_for_process_label", False),
             },
             "execute": execute_launch_program,
         },
         {
             "key": "wait_duration",
             "name": "BuiltinWaitDuration",
-            "label": "Wait",
-            "description": "Wait for the specified number of seconds before continuing.",
+            "label": "$builtin_wait_label",
+            "description": "$builtin_wait_description",
             "options": ["duration"],
             "option_defs": {
                 "duration": _input_option(
-                    "Wait",
-                    [{"name": "seconds", "label": "Seconds", "default": 5, "pipeline_type": "int"}],
+                    "$builtin_wait_option_label",
+                    [{"name": "seconds", "label": "$builtin_seconds_label", "default": 5, "pipeline_type": "int"}],
                 )
             },
             "execute": execute_wait_duration,
@@ -183,13 +189,13 @@ def get_builtin_tasks():
         {
             "key": "wait_until",
             "name": "BuiltinWaitUntil",
-            "label": "Wait Until",
-            "description": "Wait until the specified time. Supports HH:MM or YYYY-MM-DD HH:MM.",
+            "label": "$builtin_wait_until_label",
+            "description": "$builtin_wait_until_description",
             "options": ["target_time"],
             "option_defs": {
                 "target_time": _input_option(
-                    "Target Time",
-                    [{"name": "time", "label": "Time", "default": "23:59"}],
+                    "$builtin_target_time_label",
+                    [{"name": "time", "label": "$builtin_time_label", "default": "23:59"}],
                 )
             },
             "execute": execute_wait_until,
@@ -197,30 +203,30 @@ def get_builtin_tasks():
         {
             "key": "system_notification",
             "name": "BuiltinSystemNotification",
-            "label": "System Notification",
-            "description": "Send a system notification and optionally play the system sound.",
+            "label": "$builtin_system_notification_label",
+            "description": "$builtin_system_notification_description",
             "options": ["system_notice", "play_sound"],
             "option_defs": {
                 "system_notice": _input_option(
-                    "System Notification",
-                    [{"name": "message", "label": "Message", "default": "MFW builtin task notification"}],
+                    "$builtin_system_notification_option_label",
+                    [{"name": "message", "label": "$builtin_message_label", "default": "$builtin_default_system_notification"}],
                 ),
-                "play_sound": _switch_option("Play System Sound", True),
+                "play_sound": _switch_option("$builtin_play_system_sound_label", True),
             },
             "execute": execute_system_notification,
         },
         {
             "key": "external_notification",
             "name": "BuiltinExternalNotification",
-            "label": "External Notification",
-            "description": "Send a message to all currently enabled external notification channels.",
+            "label": "$builtin_external_notification_label",
+            "description": "$builtin_external_notification_description",
             "options": ["external_notice"],
             "option_defs": {
                 "external_notice": _input_option(
-                    "External Notification",
+                    "$builtin_external_notification_option_label",
                     [
-                        {"name": "title", "label": "Title", "default": "MFW"},
-                        {"name": "text", "label": "Message", "default": "MFW builtin task external notification"},
+                        {"name": "title", "label": "$builtin_title_label", "default": "MFW"},
+                        {"name": "text", "label": "$builtin_message_label", "default": "$builtin_default_external_notification"},
                     ],
                 )
             },

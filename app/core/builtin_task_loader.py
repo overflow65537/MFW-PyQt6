@@ -7,13 +7,14 @@ from dataclasses import dataclass
 from types import ModuleType
 from typing import Any, Awaitable, Callable
 
+from app.core.service.i18n_service import I18nService
 from app.utils.logger import logger
 
 
 TASK_SOURCE_BUILTIN = "builtin"
 TASK_SOURCE_RESOURCE = "resource"
 BUILTIN_TASK_GROUP_NAME = "__mfw_builtin_tasks__"
-BUILTIN_TASK_GROUP_LABEL = "Framework Built-in Tasks"
+BUILTIN_TASK_GROUP_LABEL = "$builtin_group_label"
 
 
 class BuiltinTaskError(RuntimeError):
@@ -166,8 +167,14 @@ class BuiltinTaskDefinition:
 class BuiltinTaskLoader:
     """Loads self-describing builtin task modules outside app.core."""
 
-    def __init__(self, package_name: str = "app.builtin_tasks"):
+    def __init__(
+        self,
+        package_name: str = "app.builtin_tasks",
+        *,
+        i18n_service: I18nService | None = None,
+    ):
         self.package_name = package_name
+        self.i18n_service = i18n_service or I18nService()
         self._tasks_by_key: dict[str, BuiltinTaskDefinition] = {}
         self._tasks_by_name: dict[str, BuiltinTaskDefinition] = {}
         self.reload()
@@ -253,7 +260,7 @@ class BuiltinTaskLoader:
             task_defs.append(task.to_interface_task())
             for option_name, option_def in task.option_defs.items():
                 option_defs[option_name] = dict(option_def)
-        return {
+        extension = {
             "group": [
                 {
                     "name": BUILTIN_TASK_GROUP_NAME,
@@ -266,6 +273,7 @@ class BuiltinTaskLoader:
             "task": task_defs,
             "option": option_defs,
         }
+        return self.i18n_service.translate_any(extension)
 
     async def execute(
         self,

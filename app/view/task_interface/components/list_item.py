@@ -188,19 +188,6 @@ class BaseListItem(QWidget):
 class TaskListItem(BaseListItem):
     checkbox_changed = Signal(object)  # 发射 TaskItem 对象
 
-    def _tr_builtin_text(self, text: str) -> str:
-        """Translate builtin task metadata with explicit literals for pylupdate."""
-        builtin_texts = {
-            "Launch Program": self.tr("Launch Program"),
-            "Wait": self.tr("Wait"),
-            "Wait Until": self.tr("Wait Until"),
-            "System Notification": self.tr("System Notification"),
-            "External Notification": self.tr("External Notification"),
-            "Yes": self.tr("Yes"),
-            "No": self.tr("No"),
-        }
-        return builtin_texts.get(text, self.tr(text))
-
     def __init__(
         self,
         task: TaskItem,
@@ -428,12 +415,12 @@ class TaskListItem(BaseListItem):
                 if task["name"] == self.task.name:
                     display_label = task.get("label", task.get("name", self.task.name))
                     logger.info(f"任务显示: {self.task.name} -> {display_label}")
-                    return self._tr_builtin_text(str(display_label))
+                    return str(display_label)
         # 如果没有找到对应的 label，返回 name
         logger.warning(
             f"任务未找到 label，使用 name: {self.task.name} (interface={bool(self.interface)})"
         )
-        return self._tr_builtin_text(self.task.name)
+        return self.task.name
 
     def _create_name_label(self):
         """创建名称标签（使用 label 而不是 name）"""
@@ -532,10 +519,10 @@ class TaskListItem(BaseListItem):
                                     if opt_name == str(
                                         option_value
                                     ) or opt_label == str(option_value):
-                                        display_value = self._tr_builtin_text(str(opt_label))
+                                        display_value = str(opt_label)
                                         break
                                 elif str(opt) == str(option_value):
-                                    display_value = self._tr_builtin_text(str(opt))
+                                    display_value = str(opt)
                                     break
 
                     # 如果没找到 label，使用原始值

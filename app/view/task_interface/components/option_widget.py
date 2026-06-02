@@ -774,49 +774,13 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 放在最后确保选项区域已经正确设置可见性
         self.set_description(description or "", has_options=has_valid_options)
 
-    def _tr_builtin_text(self, text: str) -> str:
-        """Translate builtin task option metadata with explicit literals."""
-        builtin_texts = {
-            "Program": self.tr("Program"),
-            "Program Path": self.tr("Program Path"),
-            "Arguments": self.tr("Arguments"),
-            "Wait for Process": self.tr("Wait for Process"),
-            "Wait": self.tr("Wait"),
-            "Seconds": self.tr("Seconds"),
-            "Target Time": self.tr("Target Time"),
-            "Time": self.tr("Time"),
-            "System Notification": self.tr("System Notification"),
-            "Message": self.tr("Message"),
-            "Play System Sound": self.tr("Play System Sound"),
-            "External Notification": self.tr("External Notification"),
-            "Title": self.tr("Title"),
-            "Launch an external program and optionally wait for it to exit.": self.tr(
-                "Launch an external program and optionally wait for it to exit."
-            ),
-            "Wait for the specified number of seconds before continuing.": self.tr(
-                "Wait for the specified number of seconds before continuing."
-            ),
-            "Wait until the specified time. Supports HH:MM or YYYY-MM-DD HH:MM.": self.tr(
-                "Wait until the specified time. Supports HH:MM or YYYY-MM-DD HH:MM."
-            ),
-            "Send a system notification and optionally play the system sound.": self.tr(
-                "Send a system notification and optionally play the system sound."
-            ),
-            "Send a message to all currently enabled external notification channels.": self.tr(
-                "Send a message to all currently enabled external notification channels."
-            ),
-            "Yes": self.tr("Yes"),
-            "No": self.tr("No"),
-        }
-        return builtin_texts.get(text, self.tr(text))
-
     def _translate_form_structure(self, value):
         """翻译动态选项结构中的用户可见文本。"""
         if isinstance(value, dict):
             translated = {}
             for key, item in value.items():
                 if key in {"label", "description", "pattern_msg"} and isinstance(item, str):
-                    translated[key] = self._tr_builtin_text(item)
+                    translated[key] = item
                 else:
                     translated[key] = self._translate_form_structure(item)
             return translated

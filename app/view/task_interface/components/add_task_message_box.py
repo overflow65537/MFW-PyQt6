@@ -29,6 +29,7 @@ from app.core.item import TaskItem, ConfigItem
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.common.config import cfg
 from app.core.core import ServiceCoordinator
+from app.core.builtin_task_loader import BUILTIN_TASK_GROUP_NAME
 from app.common.signal_bus import signalBus
 
 
@@ -371,36 +372,6 @@ class AddConfigDialog(BaseAddDialog):
 class AddTaskDialog(BaseAddDialog):
     _DEFAULT_GROUP_KEY = "__default_group__"
 
-    def _tr_builtin_text(self, text: str) -> str:
-        """Translate builtin task metadata with explicit literals for pylupdate."""
-        builtin_texts = {
-            "Framework Built-in Tasks": self.tr("Framework Built-in Tasks"),
-            "Builtin tasks loaded by the framework.": self.tr(
-                "Builtin tasks loaded by the framework."
-            ),
-            "Launch Program": self.tr("Launch Program"),
-            "Launch an external program and optionally wait for it to exit.": self.tr(
-                "Launch an external program and optionally wait for it to exit."
-            ),
-            "Wait": self.tr("Wait"),
-            "Wait for the specified number of seconds before continuing.": self.tr(
-                "Wait for the specified number of seconds before continuing."
-            ),
-            "Wait Until": self.tr("Wait Until"),
-            "Wait until the specified time. Supports HH:MM or YYYY-MM-DD HH:MM.": self.tr(
-                "Wait until the specified time. Supports HH:MM or YYYY-MM-DD HH:MM."
-            ),
-            "System Notification": self.tr("System Notification"),
-            "Send a system notification and optionally play the system sound.": self.tr(
-                "Send a system notification and optionally play the system sound."
-            ),
-            "External Notification": self.tr("External Notification"),
-            "Send a message to all currently enabled external notification channels.": self.tr(
-                "Send a message to all currently enabled external notification channels."
-            ),
-        }
-        return builtin_texts.get(text, self.tr(text))
-
     def __init__(
         self,
         task_map: dict[str, dict[str, dict]],
@@ -543,8 +514,10 @@ class AddTaskDialog(BaseAddDialog):
         return [self._DEFAULT_GROUP_KEY]
 
     def _group_sort_key(self, group_name: str) -> tuple[int, int, str]:
-        """按 interface.group 顺序排序，默认分组放末尾。"""
+        """按 interface.group 顺序排序，默认分组和内置分组放末尾。"""
         interface_groups = self.interface.get("group", []) if self.interface else []
+        if group_name == BUILTIN_TASK_GROUP_NAME:
+            return (3, 0, group_name)
         if group_name == self._DEFAULT_GROUP_KEY:
             return (2, 0, group_name)
         for idx, group_def in enumerate(interface_groups):
@@ -583,13 +556,10 @@ class AddTaskDialog(BaseAddDialog):
 
         group_def = self._group_meta.get(group_name, {"name": group_name})
         group_label = group_def.get("label") or group_def.get("name") or group_name
-        group_title = StrongBodyLabel(
-            self._tr_builtin_text(str(group_label)), group_widget
-        )
+        group_title = StrongBodyLabel(str(group_label), group_widget)
         description = group_def.get("description")
         apply_fluent_tooltip(
-            group_title,
-            self._tr_builtin_text(str(description)) if description else None,
+            group_title, str(description) if description else None,
         )
 
         group_hint = CaptionLabel(
@@ -623,7 +593,7 @@ class AddTaskDialog(BaseAddDialog):
         task_label = task_def.get("label") or task_name
         task_button = TogglePushButton(self.task_scroll_content)
         task_button.setCheckable(True)
-        task_button.setText(self._tr_builtin_text(str(task_label)))
+        task_button.setText(str(task_label))
         task_button.setMinimumHeight(38)
         task_button.setMinimumWidth(116)
         task_button.setProperty("taskName", task_name)
@@ -634,8 +604,7 @@ class AddTaskDialog(BaseAddDialog):
 
         description = task_def.get("description")
         apply_fluent_tooltip(
-            task_button,
-            self._tr_builtin_text(str(description)) if description else None,
+            task_button, str(description) if description else None,
         )
         self._task_button_group.addButton(task_button)
         return task_button

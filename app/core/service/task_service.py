@@ -3,7 +3,9 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
 from app.utils.logger import logger
+from app.core.builtin_i18n_defaults import DEFAULT_BUILTIN_TRANSLATIONS
 from app.core.service.config_service import ConfigService
+from app.core.service.i18n_service import I18nService
 from app.core.item import TaskItem, CoreSignalBus
 from app.core.builtin_task_loader import (
     TASK_SOURCE_BUILTIN,
@@ -41,7 +43,11 @@ class TaskService:
         self.current_tasks = []
         self.know_task = []
         self.resource_interface = interface or {}
-        self.builtin_task_loader = BuiltinTaskLoader()
+        self.builtin_i18n_service = I18nService(language=self._detect_interface_language())
+        self._refresh_builtin_i18n()
+        self.builtin_task_loader = BuiltinTaskLoader(
+            i18n_service=self.builtin_i18n_service
+        )
         self.interface = self._build_effective_interface(self.resource_interface)
         self.default_option = {}
         self.on_config_changed(self.config_service.current_config_id)
@@ -89,6 +95,36 @@ class TaskService:
         merged["option"] = merged_options
         return merged
 
+    def _resolve_interface_dir(self):
+        from app.core.service.interface_manager import InterfaceManager
+
+        manager = InterfaceManager()
+        return getattr(manager, "_interface_dir", None)
+
+    def _detect_interface_language(self) -> str:
+        from app.core.service.interface_manager import InterfaceManager
+
+        manager = InterfaceManager()
+        return getattr(manager, "_current_language", "zh_cn")
+
+    def _refresh_builtin_i18n(self) -> None:
+        language = self._detect_interface_language()
+        self.builtin_i18n_service.language = language
+        default_mapping = DEFAULT_BUILTIN_TRANSLATIONS.get(language, {})
+        self.builtin_i18n_service.set_translations(language, default_mapping)
+        interface_dir = self._resolve_interface_dir()
+        if interface_dir:
+            self.builtin_i18n_service.load_translations_from_interface(
+                self.resource_interface, interface_dir
+            )
+
+    def rebuild_builtin_extensions(self) -> None:
+        """在语言、bundle 或运行态 interface 变化后重建内置任务扩展。"""
+        self._refresh_builtin_i18n()
+        self.builtin_task_loader.reload()
+        self.interface = self._build_effective_interface(self.resource_interface)
+        self.default_option = self.gen_default_option()
+
     def get_builtin_task_definition(self, task: TaskItem) -> BuiltinTaskDefinition | None:
         if not task or not task.is_builtin_task():
             return None
@@ -97,8 +133,7 @@ class TaskService:
     def update_runtime_interface(self, interface: Dict[str, Any]) -> None:
         """更新运行期 interface，同时保留 Core 外部加载的内置任务描述。"""
         self.resource_interface = interface or {}
-        self.interface = self._build_effective_interface(self.resource_interface)
-        self.default_option = self.gen_default_option()
+        self.rebuild_builtin_extensions()
 
     def on_config_changed(self, config_id: str):
         """当配置变化时加载对应任务（由协调器直接调用）"""
@@ -550,11 +585,8 @@ class TaskService:
         if not interface:
             raise ValueError("Interface not loaded")
         self.resource_interface = interface
-        self.builtin_task_loader.reload()
-        self.interface = self._build_effective_interface(interface)
-
-        # 重新生成默认选项
-        self.default_option = self.gen_default_option()
+        self._refresh_builtin_i18n()
+        self.rebuild_builtin_extensions()
 
         # interface 变化可能影响任务可见性/可运行性，刷新一次隐藏标记
         self.refresh_hidden_flags()
