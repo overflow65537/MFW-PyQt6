@@ -41,6 +41,7 @@ from app.core.service.task_service import TaskService
 from app.core.runner.maafw import (
     MaaFW,
     MaaFWError,
+    should_start_external_agent,
 )
 from app.utils.controller_utils import ControllerHelper
 
@@ -526,12 +527,8 @@ class TaskFlowRunner(QObject):
                 return
 
             agent_config = runner_interface.get("agent", None)
-            if (
-                isinstance(agent_config, dict)
-                and agent_config
-                and not agent_config.get("embedded")
-            ):
-                self.maafw.agent_data_raw = runner_interface.get("agent", None)
+            if should_start_external_agent(agent_config):
+                self.maafw.agent_data_raw = agent_config
                 # v2.5.0: 构建 PI_* 环境变量供 agent 子进程使用
                 self.maafw.agent_env_vars = self._build_agent_env_vars(
                     controller_cfg, resource_cfg

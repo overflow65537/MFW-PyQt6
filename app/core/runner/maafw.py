@@ -12,7 +12,7 @@ import re
 import sys
 import importlib.util
 from enum import Enum, IntEnum
-from typing import List, Dict
+from typing import Any, Dict, List
 import subprocess
 import threading
 from pathlib import Path
@@ -51,6 +51,27 @@ except ImportError:  # pragma: no cover
 from PySide6.QtCore import QObject, Signal
 
 from app.utils.logger import logger
+
+
+def iter_agent_entries(agent_config: Any):
+    """遍历 interface.agent 中的全部启动项（dict 为单项，list 为多项）。"""
+    if isinstance(agent_config, dict):
+        if agent_config:
+            yield agent_config
+    elif isinstance(agent_config, list):
+        for item in agent_config:
+            if isinstance(item, dict) and item:
+                yield item
+
+
+def normalize_agent_entry(agent_config: Any) -> dict | None:
+    """将 interface.agent 规范为第一个启动项 dict（兼容旧逻辑）。"""
+    return next(iter_agent_entries(agent_config), None)
+
+
+def should_start_external_agent(agent_config: Any) -> bool:
+    """是否应以外部子进程方式启动 agent（非 embedded）。"""
+    return any(not entry.get("embedded") for entry in iter_agent_entries(agent_config))
 
 
 # 以下代码引用自 MaaDebugger 项目的 ./src/MaaDebugger/maafw/__init__.py 文件，用于生成maafw实例
@@ -213,6 +234,9 @@ class MaaFW(QObject):
 
     agent_thread: subprocess.Popen | None
     agent_output_thread: threading.Thread | None
+    agents: list[AgentClient]
+    agent_threads: list[subprocess.Popen]
+    agent_output_threads: list[threading.Thread]
 
     maa_controller_sink: MaaControllerEventSink | None
     maa_context_sink: MaaContextSink | None
@@ -252,6 +276,9 @@ class MaaFW(QObject):
             self.callback.emit
         )
 
+        self.agents = []
+        self.agent_threads = []
+        self.agent_output_threads = []
         self.agent = None
         self.agent_thread = None
         self.agent_output_thread = None
@@ -665,66 +692,84 @@ class MaaFW(QObject):
         self.tasker.bind(self.resource, self.controller)
         return self.tasker
 
-    def _init_agent(self, agent_data_raw: dict) -> bool:
+    def _init_agent(self, agent_data_raw: Any) -> bool:
         if not (self.resource and self.controller):
             raise RuntimeError("agent 初始化前必须存在 resource/controller")
         if not self.tasker:
             self.tasker = self._init_tasker()
-        if self.agent:
+        if self.agents:
             return True
-
-        self.agent = AgentClient()
-        self.agent.register_sink(self.resource, self.controller, self.tasker)
-        self.agent.bind(self.resource)
 
         if not agent_data_raw:
             logger.warning("未找到agent配置")
             self._send_custom_info(MaaFWError.AGENT_CONFIG_MISSING)
             return False
 
-        if isinstance(agent_data_raw, list):
-            if agent_data_raw:
-                agent_data: dict = agent_data_raw[0]
-            else:
-                agent_data = {}
-                logger.warning("agent 配置为一个空列表，使用空字典作为默认值")
-                self._send_custom_info(MaaFWError.AGENT_CONFIG_EMPTY_LIST)
-        elif isinstance(agent_data_raw, dict):
-            agent_data = agent_data_raw
-        else:
-            agent_data = {}
-            logger.warning("agent 配置既不是字典也不是列表，使用空字典作为默认值")
-            self._send_custom_info(MaaFWError.AGENT_CONFIG_INVALID)
+        if isinstance(agent_data_raw, list) and not agent_data_raw:
+            logger.warning("agent 配置为一个空列表")
+            self._send_custom_info(MaaFWError.AGENT_CONFIG_EMPTY_LIST)
+            return False
 
+        entries = [
+            entry
+            for entry in iter_agent_entries(agent_data_raw)
+            if not entry.get("embedded")
+        ]
+        if not entries:
+            logger.warning("agent 配置既不是字典也不是列表，或全部为 embedded")
+            self._send_custom_info(MaaFWError.AGENT_CONFIG_INVALID)
+            return False
+
+        for agent_data in entries:
+            if not self._start_one_agent(agent_data):
+                self._teardown_agents()
+                return False
+
+        self._sync_agent_legacy_fields()
+        return True
+
+    def _agent_socket_id(self, client: AgentClient, agent_data: dict) -> str:
+        configured = agent_data.get("identifier")
+        if configured is not None and str(configured).strip():
+            return str(configured).strip()
+        socket_id = client.identifier
+        if callable(socket_id):
+            socket_id = socket_id() or "maafw_socket_id"
+        elif socket_id is None:
+            socket_id = "maafw_socket_id"
+        return str(socket_id)
+
+    def _start_one_agent(self, agent_data: dict) -> bool:
         child_exec = agent_data.get("child_exec", "")
         if not child_exec:
             logger.warning("agent 配置缺少 child_exec，无法启动")
             self._send_custom_info(MaaFWError.AGENT_CHILD_EXEC_MISSING)
             return False
 
-        socket_id = self.agent.identifier
-        if callable(socket_id):
-            socket_id = socket_id() or "maafw_socket_id"
-        elif socket_id is None:
-            socket_id = "maafw_socket_id"
-        socket_id = str(socket_id)
+        configured_id = agent_data.get("identifier")
+        if configured_id is not None and str(configured_id).strip():
+            client = AgentClient(str(configured_id).strip())
+        else:
+            client = AgentClient()
+
+        if not client.register_sink(self.resource, self.controller, self.tasker):
+            logger.error("agent register_sink 失败")
+            return False
+        if not client.bind(self.resource):
+            logger.error("agent bind resource 失败")
+            return False
+
+        socket_id = self._agent_socket_id(client, agent_data)
         child_args = agent_data.get("child_args", [])
         project_dir = Path.cwd()
         child_args = [
             arg.replace("{PROJECT_DIR}", str(project_dir)) for arg in child_args
         ]
-        agent_process: subprocess.Popen | None = None
         start_cmd = [child_exec, *child_args, socket_id]
         logger.debug(f"启动agent命令: {start_cmd}")
-        # 如果是打包模式,使用utf8,否则使用gbk
-        import os
-        import sys
 
-        # 使用 sys.frozen 判断是否打包（PyInstaller 标准方式）
         is_packed = getattr(sys, "frozen", False)
         encoding = "utf-8" if is_packed else "gbk"
-
-        # v2.5.0: 构建子进程环境变量，注入 PI_* 变量
         env = os.environ.copy()
         if self.agent_env_vars:
             env.update(self.agent_env_vars)
@@ -743,19 +788,59 @@ class MaaFW(QObject):
                 bufsize=1,
                 env=env,
             )
-            self.agent_thread = agent_process
-            self._watch_agent_output(agent_process)
         except Exception as e:
             logger.error(f"启动agent失败: {e}")
             self._send_custom_info(MaaFWError.AGENT_START_FAILED)
             return False
-        if self.agent_data_raw and self.agent_data_raw.get("timeout"):
-            timeout = self.agent_data_raw.get("timeout")
-            self.agent.set_timeout(timeout)
-        if not self.agent.connect():
+
+        self.agents.append(client)
+        self.agent_threads.append(agent_process)
+        self._watch_agent_output(agent_process)
+
+        if agent_data.get("timeout"):
+            client.set_timeout(agent_data.get("timeout"))
+        if not client.connect():
             self._send_custom_info(MaaFWError.AGENT_CONNECTION_FAILED)
             return False
         return True
+
+    def _sync_agent_legacy_fields(self) -> None:
+        self.agent = self.agents[0] if self.agents else None
+        self.agent_thread = self.agent_threads[0] if self.agent_threads else None
+        self.agent_output_thread = (
+            self.agent_output_threads[0] if self.agent_output_threads else None
+        )
+
+    def _teardown_agents(self) -> None:
+        for client in self.agents:
+            try:
+                client.disconnect()
+            except Exception as e:
+                logger.error(f"断开agent连接失败: {e}")
+        self.agents.clear()
+
+        for process in self.agent_threads:
+            try:
+                process.terminate()
+                try:
+                    process.wait(timeout=self.AGENT_TERMINATE_TIMEOUT_SECONDS)
+                except subprocess.TimeoutExpired:
+                    logger.warning("等待 agent 终止超时，执行 kill 操作")
+                    process.kill()
+                    try:
+                        process.wait(timeout=1)
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.error(f"终止agent进程失败: {e}")
+        self.agent_threads.clear()
+
+        for watcher in self.agent_output_threads:
+            watcher.join(timeout=0.1)
+        self.agent_output_threads.clear()
+        self.agent = None
+        self.agent_thread = None
+        self.agent_output_thread = None
 
     @asyncify
     def load_resource(self, dir: str | Path, gpu_index: int = -1) -> bool:
@@ -806,9 +891,9 @@ class MaaFW(QObject):
                 self.tasker is not None,
                 self.resource is not None,
                 self.controller is not None,
-                self.agent is not None,
-                self.agent_thread is not None,
-                self.agent_output_thread is not None,
+                bool(self.agents),
+                bool(self.agent_threads),
+                bool(self.agent_output_threads),
             )
         )
 
@@ -838,36 +923,9 @@ class MaaFW(QObject):
                     self.resource = None
             if self.controller:
                 self.controller = None
-            if self.agent:
-                try:
-                    self.agent.disconnect()
-                except Exception as e:
-                    logger.error(f"断开agent连接失败: {e}")
-                finally:
-                    self.agent = None
+            self._teardown_agents()
             self.agent_data_raw = None
             self.agent_env_vars = {}
-            if self.agent_thread:
-                try:
-                    self.agent_thread.terminate()
-                    try:
-                        self.agent_thread.wait(
-                            timeout=self.AGENT_TERMINATE_TIMEOUT_SECONDS
-                        )
-                    except subprocess.TimeoutExpired:
-                        logger.warning("等待 agent 终止超时，执行 kill 操作")
-                        self.agent_thread.kill()
-                        try:
-                            self.agent_thread.wait(timeout=1)
-                        except Exception:
-                            pass
-                except Exception as e:
-                    logger.error(f"终止agent线程失败: {e}")
-                finally:
-                    self.agent_thread = None
-            if self.agent_output_thread:
-                self.agent_output_thread.join(timeout=0.1)
-                self.agent_output_thread = None
         finally:
             self._cleanup_lock.release()
 
@@ -887,6 +945,7 @@ class MaaFW(QObject):
 
         watcher = threading.Thread(target=_forward_output, daemon=True)
         watcher.start()
+        self.agent_output_threads.append(watcher)
         self.agent_output_thread = watcher
 
     async def screencap_test(self) -> numpy.ndarray:
