@@ -24,7 +24,6 @@ MFW-ChainFlow Assistant 启动文件
 
 import os
 import sys
-import argparse
 import atexit
 import traceback
 from pathlib import Path
@@ -119,27 +118,10 @@ def _run() -> int:
     from app.utils.crypto import crypto_manager
     from app.utils.logger import logger
     from app.utils.single_instance import SingleInstanceGuard, is_instance_running
+    from app.utils.startup_cli import parse_startup_cli
 
     # 启动参数解析（单实例检查前处理 -f，通过套接字请求旧实例优雅退出）
-    parser = argparse.ArgumentParser(
-        description="MFW-ChainFlow Assistant", add_help=True
-    )
-    parser.add_argument(
-        "-d", "--direct-run", action="store_true", help="启动后直接运行任务流"
-    )
-    parser.add_argument(
-        "-c", "--config", dest="config_id", help="启动后切换到指定配置ID"
-    )
-    parser.add_argument(
-        "-dev", "--dev", dest="enable_dev", action="store_true", help="显示测试页面"
-    )
-    parser.add_argument(
-        "-f",
-        "--force-restart",
-        action="store_true",
-        help="请求同安装目录下正在运行的 MFW 停止任务并退出后启动本进程",
-    )
-    args, qt_extra = parser.parse_known_args(sys.argv[1:])
+    options, qt_extra = parse_startup_cli()
     qt_argv = [sys.argv[0]] + qt_extra
 
     instance_key = str(Path(_install_anchor_path()).resolve())
@@ -151,7 +133,7 @@ def _run() -> int:
 
     init_language_on_first_run()
 
-    if args.force_restart and is_instance_running(instance_key):
+    if options.force_restart and is_instance_running(instance_key):
         from app.utils.startup_dialog import run_force_restart_shutdown_flow
 
         early_app = QApplication(qt_argv)
@@ -364,9 +346,9 @@ def _run() -> int:
     # 创建主窗口
     w = MainWindow(
         loop=loop,
-        auto_run=args.direct_run,
-        switch_config_id=args.config_id,
-        force_enable_test=args.enable_dev,
+        auto_run=options.direct_run,
+        switch_config_id=options.config_id,
+        force_enable_test=options.enable_dev,
     )
     window_holder["window"] = w
     if pending_force_shutdown["requested"]:

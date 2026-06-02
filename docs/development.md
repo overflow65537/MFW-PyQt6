@@ -35,16 +35,18 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-常用启动参数：
+常用启动参数（仅下列开关由 MFW 解析，其余如 Qt 的 `-platform` 会原样透传）：
 
-- `-c <config_id>`：启动后切换到指定配置
+- `-c <config_id>`（或 `-c=<config_id>`）：启动后切换到指定配置
 - `-d`：启动后直接运行任务流
 - `-dev`：显示测试页面（开发调试开关）
+- `-f`：强制重启同目录下已有实例
 
 示例：
 
 ```powershell
 python main.py -c default -d -dev
+python main.py -c=default -d -platform windows:darkmode=1
 ```
 
 ## 3. 目录结构（开发重点）

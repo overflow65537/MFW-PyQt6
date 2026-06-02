@@ -59,9 +59,10 @@ MFW-ChainFlow Assistant provides a ready-to-use visual orchestrator for MaaFrame
 
 ## Common CLI Parameters
 
-- `-c <config_id>`: start with the specified config ID (works for `python main.py` and packaged `MFW.exe`)
-- `-d`: run tasks immediately after launch (also works for `MFW.exe`)
+- `-c <config_id>`: start with the specified config ID (`-c=<config_id>` also works; for `python main.py` and `MFW.exe`)
+- `-d`: run tasks immediately after launch
 - `-dev`: enable developer test page
+- Unrecognized flags (e.g. Qt `-platform`) are passed through to Qt as-is; no `--` separator is required
 
 ## External Notifications
 
