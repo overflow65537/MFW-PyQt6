@@ -20,7 +20,7 @@ jobs:
       release_body: ${{ steps.git-cliff.outputs.content }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -37,7 +37,7 @@ jobs:
   meta:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - id: set_tag
@@ -76,7 +76,7 @@ jobs:
           echo is_prerelease=$is_prerelease | tee -a $GITHUB_OUTPUT
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -91,7 +91,7 @@ jobs:
           python ./tools/lrelease.py
 
       - name: Upload i18n
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: i18n
           path: app/i18n
@@ -139,9 +139,9 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           architecture: ${{ matrix.python_arch }}
@@ -158,7 +158,7 @@ jobs:
       # 缓存 OpenSSL 等二进制与源码包，避免 ARM64 runner 上每次全量编译
       - name: Cache vcpkg downloads & installed (Windows ARM64)
         if: matrix.platform == 'win' && matrix.arch == 'aarch64'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             vcpkg/downloads
@@ -195,7 +195,7 @@ jobs:
           python -m pip install -r requirements.txt
 
       - name: Download i18n
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: i18n
           path: app/i18n
@@ -467,7 +467,7 @@ jobs:
         run: python tools/build_nuitka.py --file-list
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
           path: ${{ matrix.nuitka_artifact }}
@@ -496,12 +496,12 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
  
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           architecture: ${{ matrix.python_arch }}
@@ -546,7 +546,7 @@ jobs:
           python -m pip install -r ./requirements.txt
 
       - name: Download i18n
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: i18n
           path: app/i18n
@@ -564,7 +564,7 @@ jobs:
         shell: pwsh  
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
           path: "dist/MFW/"
@@ -576,7 +576,7 @@ jobs:
     needs: [meta, nuitka, pyinstaller, changelog]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: assets
 
