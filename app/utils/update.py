@@ -222,9 +222,7 @@ class BaseUpdate(QThread):
                 final_path.unlink()
             return None, error_message
         except Exception as e:
-            info = normalize_download_error(
-                e, source=download_source, tr=self.tr
-            )
+            info = normalize_download_error(e, source=download_source)
             logger.error("%s", info.log_message, exc_info=True)
             error_message = info.user_message
             if final_path and final_path.exists():
@@ -663,7 +661,6 @@ class BaseUpdate(QThread):
             info = normalize_network_error(
                 e,
                 source=source,
-                tr=self.tr,
                 response=e.response,
                 context_label=context_label,
                 fallback_to_github=fallback_to_github,
@@ -674,7 +671,6 @@ class BaseUpdate(QThread):
             info = normalize_network_error(
                 e,
                 source=source,
-                tr=self.tr,
                 context_label=context_label,
                 fallback_to_github=fallback_to_github,
             )
@@ -688,7 +684,7 @@ class BaseUpdate(QThread):
             logger.warning("GitHub API请求被限制")
         else:
             logger.error("GitHub更新检查失败（HTTP错误）: %s", error)
-        info = normalize_github_http_error(error, tr=self.tr)
+        info = normalize_github_http_error(error)
         return self._error_dict_from_info(info)
 
     def _github_request_headers(self) -> dict[str, str] | None:
@@ -761,7 +757,7 @@ class BaseUpdate(QThread):
         mirror_msg = str(mirror_data.get("msg", ""))
         if isinstance(code, int) and code not in [None, 0]:
             info = normalize_mirror_business_error(
-                code, tr=self.tr, fallback_to_github=True
+                code, fallback_to_github=True
             )
             logger.warning("更新检查失败: %s (%s)", mirror_msg, info.log_message)
             if code in (7001, 7002, 7003, 7004):
@@ -830,7 +826,7 @@ class BaseUpdate(QThread):
             }
         except Exception as e:
             info = normalize_network_error(
-                e, source="github", tr=self.tr, context_label="GitHub"
+                e, source="github", context_label="GitHub"
             )
             logger.exception(info.log_message)
             return {"status": "failed", "msg": info.user_message}

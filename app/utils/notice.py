@@ -257,7 +257,7 @@ class SMTP:
                 )
             smtp.login(cfg.get(cfg.Notice_SMTP_user_name), decode_key("smtp"))
         except Exception as e:
-            info = normalize_network_error(e, source="smtp", tr=_notice_tr)
+            info = normalize_network_error(e, source="smtp")
             set_notice_error_context("smtp", info)
             logger.error(info.log_message)
             return NoticeErrorCode.SMTP_CONNECT_FAILED
@@ -270,7 +270,7 @@ class SMTP:
             )
             return NoticeErrorCode.SUCCESS
         except Exception as e:
-            info = normalize_network_error(e, source="smtp", tr=_notice_tr)
+            info = normalize_network_error(e, source="smtp")
             set_notice_error_context("smtp", info)
             logger.error(info.log_message)
             return NoticeErrorCode.NETWORK_ERROR
@@ -299,7 +299,7 @@ class WxPusher:
             response = requests.post(url=url, json=msg)
             status_code = response.json()["code"]
         except Exception as e:
-            info = normalize_network_error(e, source="wxpusher", tr=_notice_tr)
+            info = normalize_network_error(e, source="wxpusher")
             set_notice_error_context("wxpusher", info)
             logger.error(info.log_message)
             return False
@@ -327,7 +327,7 @@ class QYWX:
             response = requests.post(url=url, json=msg)
             status_code = response.json()["errcode"]
         except Exception as e:
-            info = normalize_network_error(e, source="qywx", tr=_notice_tr)
+            info = normalize_network_error(e, source="qywx")
             set_notice_error_context("qywx", info)
             logger.error(info.log_message)
             return NoticeErrorCode.NETWORK_ERROR
@@ -375,7 +375,7 @@ class Gotify:
                 logger.error(f"Gotify 发送失败，状态码: {response.status_code}，响应: {response.text}")
                 return NoticeErrorCode.RESPONSE_ERROR
         except Exception as e:
-            info = normalize_network_error(e, source="gotify", tr=_notice_tr)
+            info = normalize_network_error(e, source="gotify")
             set_notice_error_context("gotify", info)
             logger.error(info.log_message)
             return NoticeErrorCode.NETWORK_ERROR
@@ -430,7 +430,7 @@ class NoticeSendThread(QThread):
                     result = send_func(msg_dict, status)
                     signalBus.notice_finished.emit(int(result), send_func.__name__)
                     message = format_notice_result_message(
-                        send_func.__name__, int(result), self.tr
+                        send_func.__name__, int(result)
                     )
                     level = "success" if result == NoticeErrorCode.SUCCESS else "warning"
                     signalBus.info_bar_requested.emit(level, message)
@@ -527,7 +527,7 @@ def dingtalk_send(
         response = requests.post(url=url, headers=headers, json=msg)
         status_code = response.json()[APP.codename]
     except Exception as e:
-        info = normalize_network_error(e, source="dingtalk", tr=_notice_tr)
+        info = normalize_network_error(e, source="dingtalk")
         set_notice_error_context("dingtalk", info)
         logger.error(
             "%s%s",
@@ -568,7 +568,7 @@ def lark_send(
         response = requests.post(url=url, headers=headers, json=msg)
         status_code = response.json()[APP.codename]
     except Exception as e:
-        info = normalize_network_error(e, source="lark", tr=_notice_tr)
+        info = normalize_network_error(e, source="lark")
         set_notice_error_context("lark", info)
         logger.error(
             "%s%s",
@@ -618,7 +618,7 @@ def WxPusher_send(
         )
         status_code = response.json()["code"]
     except Exception as e:
-        info = normalize_network_error(e, source="wxpusher", tr=_notice_tr)
+        info = normalize_network_error(e, source="wxpusher")
         set_notice_error_context("wxpusher", info)
         logger.error(info.log_message)
         return NoticeErrorCode.NETWORK_ERROR

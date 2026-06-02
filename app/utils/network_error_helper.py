@@ -13,8 +13,17 @@ from enum import StrEnum
 from typing import Callable, Literal, Optional
 
 import requests
+from PySide6.QtCore import QCoreApplication
 
 TranslateFn = Callable[[str], str]
+
+# pylupdate 将本模块 tr() 源串收集到 .ts 的空 <name /> context，须用相同 context 查找。
+_NETWORK_ERROR_I18N_CONTEXT = ""
+
+
+def network_error_tr(text: str) -> str:
+    """翻译网络/更新/通知类 InfoBar 文案（与 i18n .ts 中空 context 一致）。"""
+    return QCoreApplication.translate(_NETWORK_ERROR_I18N_CONTEXT, text)
 
 UpdateSource = Literal["github", "mirror"]
 NoticeSource = Literal[
@@ -89,8 +98,8 @@ SEND_FUNC_TO_CHANNEL: dict[str, str] = {
 _notice_error_context: dict[str, NetworkErrorInfo] = {}
 
 
-def _identity_tr(text: str) -> str:
-    return text
+def _default_tr(text: str) -> str:
+    return network_error_tr(text)
 
 
 def classify_request_exception(
@@ -296,7 +305,7 @@ def normalize_network_error(
     fallback_to_github: bool = False,
     context_label: str = "",
 ) -> NetworkErrorInfo:
-    translate = tr or _identity_tr
+    translate = tr or _default_tr
     category = classify_request_exception(exc, response=response)
 
     if source == "github":
@@ -335,7 +344,7 @@ def normalize_mirror_business_error(
     tr: TranslateFn | None = None,
     fallback_to_github: bool = True,
 ) -> NetworkErrorInfo:
-    translate = tr or _identity_tr
+    translate = tr or _default_tr
     category = MIRROR_CODE_TO_CATEGORY.get(
         code, NetworkErrorCategory.UNKNOWN
     )
@@ -361,7 +370,7 @@ def normalize_github_http_error(
     *,
     tr: TranslateFn | None = None,
 ) -> NetworkErrorInfo:
-    translate = tr or _identity_tr
+    translate = tr or _default_tr
     if error.response is not None and error.response.status_code == 403:
         user_message = _append_tag(
             translate(
@@ -396,7 +405,7 @@ def normalize_download_error(
     source: UpdateSource,
     tr: TranslateFn | None = None,
 ) -> NetworkErrorInfo:
-    translate = tr or _identity_tr
+    translate = tr or _default_tr
     category = classify_request_exception(exc)
     prefix = "GitHub" if source == "github" else "MirrorChyan"
     if category == NetworkErrorCategory.TIMEOUT:
@@ -435,41 +444,42 @@ def channel_from_send_func(send_func_name: str) -> str:
 def format_notice_result_message(
     send_func_name: str,
     error_code: int,
-    tr: TranslateFn,
+    tr: TranslateFn | None = None,
 ) -> str:
+    translate = tr or _default_tr
     channel = channel_from_send_func(send_func_name)
     label = NOTICE_CHANNEL_LABELS.get(channel, channel)
 
     if error_code == 0:
-        return tr("{channel} sent successfully.").format(channel=label)
+        return translate("{channel} sent successfully.").format(channel=label)
     if error_code == 1:
-        return tr("{channel} notifications are disabled.").format(channel=label)
+        return translate("{channel} notifications are disabled.").format(channel=label)
     if error_code == 2:
-        return tr("{channel}: required settings are empty.").format(channel=label)
+        return translate("{channel}: required settings are empty.").format(channel=label)
     if error_code == 3:
-        return tr("{channel}: invalid URL or parameter format.").format(channel=label)
+        return translate("{channel}: invalid URL or parameter format.").format(channel=label)
     if error_code == 4:
         cached = pop_notice_error_context(channel)
         if cached is not None:
             return cached.user_message
-        return tr("{channel} send failed due to a network error. (Network)").format(
+        return translate("{channel} send failed due to a network error. (Network)").format(
             channel=label
         )
     if error_code == 5:
-        return tr(
+        return translate(
             "{channel} send failed: server returned an error. Check webhook or token."
         ).format(channel=label)
     if error_code == 7:
-        return tr("{channel}: SMTP port must be a valid number. (Config)").format(
+        return translate("{channel}: SMTP port must be a valid number. (Config)").format(
             channel=label
         )
     if error_code == 8:
         cached = pop_notice_error_context(channel)
         if cached is not None:
             return cached.user_message
-        return tr(
+        return translate(
             "{channel} SMTP connection failed. Check server address, port, and credentials. (Connection)"
         ).format(channel=label)
-    return tr("{channel} send failed with an unknown error. (Unknown)").format(
+    return translate("{channel} send failed with an unknown error. (Unknown)").format(
         channel=label
     )
