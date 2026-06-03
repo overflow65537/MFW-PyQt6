@@ -2943,7 +2943,9 @@ class SettingInterface(QWidget):
         except Exception as e:
             self._updater_started = False
             logger.error(f"重命名更新程序失败: {e}")
-            signalBus.info_bar_requested.emit("error", e)
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Failed to rename updater: {}").format(str(e))
+            )
             if notify_if_cancel:
                 signalBus.update_stopped.emit(3)
             return
@@ -2953,7 +2955,9 @@ class SettingInterface(QWidget):
         except Exception as e:
             self._updater_started = False
             logger.error(f"启动更新程序失败: {e}")
-            signalBus.info_bar_requested.emit("error", e)
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Failed to start updater: {}").format(str(e))
+            )
             if notify_if_cancel:
                 signalBus.update_stopped.emit(3)
             return
@@ -3084,7 +3088,9 @@ class SettingInterface(QWidget):
             return True
         except Exception as e:
             logger.error(f"启动更新程序失败: {e}")
-            signalBus.info_bar_requested.emit("error", str(e))
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Failed to start updater: {}").format(str(e))
+            )
             return False
 
     def _on_download_progress(self, downloaded: int, total: int):

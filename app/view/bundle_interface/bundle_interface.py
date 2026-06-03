@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from PySide6.QtCore import Qt, Signal, QMetaObject, QCoreApplication, QTimer
+from PySide6.QtCore import Qt, Signal, QMetaObject, QCoreApplication, QTimer, QEvent
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QWidget,
@@ -130,7 +130,7 @@ class BundleListItem(QWidget):
         self.update_log_button.setFixedSize(32, 32)
         apply_fluent_tooltip(
             self.update_log_button,
-            QCoreApplication.translate("BundleInterface", "Open update log")
+            self.tr("Open update log"),
         )
         layout.addWidget(self.update_log_button)
 
@@ -139,7 +139,7 @@ class BundleListItem(QWidget):
         self.delete_button.setFixedSize(32, 32)
         apply_fluent_tooltip(
             self.delete_button,
-            QCoreApplication.translate("BundleInterface", "Delete bundle")
+            self.tr("Delete bundle"),
         )
         layout.addWidget(self.delete_button)
 
@@ -417,12 +417,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self._is_updating_all = False
         self._selected_bundle_name: Optional[str] = None  # 当前选中的 bundle 名称
 
-        # 设置标题
-        self.list_title.setText(self.tr("Bundle List"))
-        self.detail_title.setText(self.tr("Bundle Details"))
-
-        self.auto_update_switch.setText(self.tr("Auto Update"))
-        self.auto_update_switch.setToolTip(self.tr("Auto Update"))
+        self._retranslate_ui()
         self._apply_bundle_auto_update_policy()
 
         # 连接信号
@@ -447,6 +442,27 @@ class BundleInterface(UI_BundleInterface, QWidget):
         # 启动时自动检查所有资源的更新（仅在多资源适配开启时）
         if self._is_multi_resource_enabled():
             self._check_all_updates()
+
+    def changeEvent(self, event):
+        if event.type() == QEvent.Type.LanguageChange:
+            self._retranslate_ui()
+            self._apply_bundle_auto_update_policy()
+        super().changeEvent(event)
+
+    def _retranslate_ui(self) -> None:
+        """刷新 Bundle 页静态文案（与 setupUi 中 _translate 互补）。"""
+        self.list_title.setText(self.tr("Bundle List"))
+        self.detail_title.setText(self.tr("Bundle Details"))
+        self.auto_update_switch.setText(self.tr("Auto Update"))
+        if self.auto_update_switch.isEnabled():
+            self.auto_update_switch.setToolTip(self.tr("Auto Update"))
+        apply_fluent_tooltip(self.add_bundle_button, self.tr("Add Bundle"))
+        apply_fluent_tooltip(self.update_all_button, self.tr("Update All Bundles"))
+        self.default_label.setText(
+            self.tr("Please select a Bundle from the left")
+        )
+        self.license_button.setText(self.tr("License"))
+        self.welcome_button.setText(self.tr("Welcome"))
 
     def _load_bundles(self, force_refresh: bool = False):
         """从 service_coordinator 加载所有 bundle
@@ -1134,7 +1150,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         updater.start()
         logger.info(f"开始更新 bundle: {bundle_name}")
         signalBus.info_bar_requested.emit(
-            "info", self.tr(f"Updating bundle: {bundle_name}")
+            "info", self.tr("Updating bundle: {}").format(bundle_name)
         )
 
     def _on_update_finished(self, bundle_name: str):
@@ -1158,28 +1174,30 @@ class BundleInterface(UI_BundleInterface, QWidget):
             if not is_auto_update_all:
                 # 如果不是自动更新所有，显示通知
                 signalBus.info_bar_requested.emit(
-                    "success", self.tr(f"Bundle '{bundle_name}' updated successfully")
+                    "success",
+                    self.tr("Bundle '{}' updated successfully").format(bundle_name),
                 )
         elif status == 0:
             # 用户取消
             logger.warning(f"Bundle '{bundle_name}' 更新被取消")
             if not is_auto_update_all:
                 signalBus.info_bar_requested.emit(
-                    "warning", self.tr(f"Update cancelled: {bundle_name}")
+                    "warning", self.tr("Update cancelled: {}").format(bundle_name)
                 )
         elif status == 2:
             # 需要重启
             logger.info(f"Bundle '{bundle_name}' 需要重启以完成更新")
             if not is_auto_update_all:
                 signalBus.info_bar_requested.emit(
-                    "info", self.tr(f"Restart required for bundle: {bundle_name}")
+                    "info",
+                    self.tr("Restart required for bundle: {}").format(bundle_name),
                 )
         else:
             # 其他错误
             logger.error(f"Bundle '{bundle_name}' 更新失败，状态码: {status}")
             if not is_auto_update_all:
                 signalBus.info_bar_requested.emit(
-                    "error", self.tr(f"Update failed for bundle: {bundle_name}")
+                    "error", self.tr("Update failed for bundle: {}").format(bundle_name)
                 )
 
         # 清理当前更新器
@@ -1527,7 +1545,11 @@ class AddBundleDialog(MessageBoxBase):
             self,
             self.tr("Choose Interface File"),
             "./",
-            "Interface Files (interface.json interface.jsonc);;JSON Files (*.json *.jsonc);;All Files (*)",
+            self.tr("Interface Files (interface.json interface.jsonc)")
+            + ";;"
+            + self.tr("JSON Files (*.json *.jsonc)")
+            + ";;"
+            + self.tr("All Files (*)"),
         )
         if not file_path:
             return
@@ -1562,7 +1584,7 @@ class AddBundleDialog(MessageBoxBase):
             if interface_name:
                 self.name_edit.setText(interface_name)
             else:
-                self.name_edit.setText("Default Bundle")
+                self.name_edit.setText(self.tr("Default Bundle"))
 
     def _on_confirm(self) -> None:
         # 防止重复执行

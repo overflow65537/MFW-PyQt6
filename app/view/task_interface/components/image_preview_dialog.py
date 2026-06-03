@@ -26,7 +26,7 @@ class ImagePreviewDialog(QDialog):
 
     def _init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("图片预览")
+        self.setWindowTitle(self.tr("Image Preview"))
         self.setWindowFlags(
             Qt.WindowType.Window
             | Qt.WindowType.WindowCloseButtonHint
@@ -88,7 +88,7 @@ class ImagePreviewDialog(QDialog):
         self.main_layout.addWidget(self.scroll_area, 1)
 
         # 关闭按钮
-        self.close_btn = PrimaryPushButton("关闭")
+        self.close_btn = PrimaryPushButton(self.tr("Close"))
         self.close_btn.setFixedWidth(120)
         self.close_btn.clicked.connect(self.close)
         
@@ -117,7 +117,9 @@ class ImagePreviewDialog(QDialog):
         
         if not pixmap or pixmap.isNull():
             # 如果加载失败，显示错误信息
-            self.image_label.setText(f"无法加载图片:\n{self.image_path}")
+            self.image_label.setText(
+                self.tr("Failed to load image:\n{path}").format(path=self.image_path)
+            )
             self.image_label.setStyleSheet(
                 """
                 QLabel {

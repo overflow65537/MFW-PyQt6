@@ -719,7 +719,10 @@ class TaskDragListWidget(BaseListWidget):
                 if widget.task.is_base_task():
                     # 基础任务不可删除，记录日志并显示提示
                     signalBus.info_bar_requested.emit(
-                        "warning", "基础任务（资源、完成后操作）不可删除"
+                        "warning",
+                        self.tr(
+                            "Base tasks (Resource, Post-Task) cannot be deleted (ID: {id})"
+                        ).format(id=task_id),
                     )
                     return
                 self.takeItem(i)

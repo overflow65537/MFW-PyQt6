@@ -154,7 +154,9 @@ class NoticeMessageBox(MessageBoxBase):
                 self.Layout.addWidget(self.index_cards[-1])
 
             if not content:
-                self.Layout.addWidget(QuantifiedItemCard(["暂无信息", ""]))
+                self.Layout.addWidget(
+                    QuantifiedItemCard([self.tr("No information available"), ""])
+                )
 
             self.Layout.addStretch(1)
 

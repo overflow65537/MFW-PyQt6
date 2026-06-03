@@ -392,7 +392,11 @@ class ScheduleService(QObject):
         self._sort_schedules()
         self._persist()
         self._notify_schedules_changed()
-        self._log_info(f"计划任务：{entry.name} ({entry.describe()}) 已添加")
+        self._log_info(
+            self.tr("Schedule: {name} ({describe}) added").format(
+                name=entry.name, describe=entry.describe(self.tr)
+            )
+        )
         return True
 
     def remove_schedule(self, entry_id: str) -> bool:
@@ -407,7 +411,11 @@ class ScheduleService(QObject):
             pass
         self._persist()
         self._notify_schedules_changed()
-        self._log_info(f"计划任务：{entry.name} ({entry.describe()}) 已删除")
+        self._log_info(
+            self.tr("Schedule: {name} ({describe}) removed").format(
+                name=entry.name, describe=entry.describe(self.tr)
+            )
+        )
         return True
 
     def set_schedule_enabled(self, entry_id: str, enabled: bool) -> bool:
@@ -420,8 +428,13 @@ class ScheduleService(QObject):
         self._sort_schedules()
         self._persist()
         self._notify_schedules_changed()
+        status = self.tr("enabled") if enabled else self.tr("disabled")
         self._log_info(
-            f"计划任务：{entry.name} ({entry.describe()}) {'已启用' if enabled else '已禁用'}"
+            self.tr("Schedule: {name} ({describe}) {status}").format(
+                name=entry.name,
+                describe=entry.describe(self.tr),
+                status=status,
+            )
         )
         return True
 
@@ -460,7 +473,11 @@ class ScheduleService(QObject):
             await self._trigger_entry(entry, now)
 
     async def _trigger_entry(self, entry: ScheduleEntry, now: datetime) -> None:
-        self._log_info(f"计划任务：{entry.name} ({entry.describe()}) 触发")
+        self._log_info(
+            self.tr("Schedule: {name} ({describe}) triggered").format(
+                name=entry.name, describe=entry.describe(self.tr)
+            )
+        )
         if entry.schedule_type == SCHEDULE_SINGLE:
             entry.enabled = False
             entry.next_run = None
@@ -476,7 +493,9 @@ class ScheduleService(QObject):
         else:
             self._pending_queue.append(entry)
             self._log_info(
-                f"计划任务：{entry.name} 已加入队列，剩余 {len(self._pending_queue)} 个任务"
+                self.tr(
+                    "Schedule: {name} queued, {count} task(s) remaining"
+                ).format(name=entry.name, count=len(self._pending_queue))
             )
             await self._try_start_next()
 
@@ -512,13 +531,21 @@ class ScheduleService(QObject):
 
     async def _execute_entry(self, entry: ScheduleEntry) -> None:
         signalBus.log_clear_requested.emit()
-        self._log_info(f"计划任务：{entry.name} ({entry.describe()}) 开始执行")
+        self._log_info(
+            self.tr("Schedule: {name} ({describe}) started").format(
+                name=entry.name, describe=entry.describe(self.tr)
+            )
+        )
         original_config = self.service_coordinator.config.current_config_id
         switched = False
         if entry.config_id and entry.config_id != original_config:
             switched = self.service_coordinator.select_config(entry.config_id)
             if not switched:
-                self._log_info(f"计划任务：目标配置 {entry.config_id} 不存在，跳过")
+                self._log_info(
+                    self.tr(
+                        "Schedule: target config {config_id} not found, skipped"
+                    ).format(config_id=entry.config_id)
+                )
                 self._current_task = None
                 await self._try_start_next()
                 return
@@ -531,7 +558,11 @@ class ScheduleService(QObject):
             await self.service_coordinator.run_tasks_flow()
         except Exception as exc:
             logger.exception("计划任务执行失败: %s", exc)
-            self._log_info(f"计划任务：{entry.name} 执行失败 {exc}")
+            self._log_info(
+                self.tr("Schedule: {name} failed: {error}").format(
+                    name=entry.name, error=exc
+                )
+            )
         finally:
             if switched and entry.config_id != original_config:
                 self.service_coordinator.select_config(original_config)
@@ -544,4 +575,4 @@ class ScheduleService(QObject):
 
     def _log_info(self, message: str) -> None:
         logger.info(message)
-        signalBus.info_bar_requested.emit("INFO", message)
+        signalBus.info_bar_requested.emit("info", message)
