@@ -1892,6 +1892,8 @@ class SettingInterface(QWidget):
             logger.info("开始执行 bundle 迁移操作")
             self._move_bundle()
 
+        self._reload_service_interface_after_migration()
+
     def _is_bundle_migration_completed(self) -> bool:
         """
         检查 bundle 迁移是否已完成。
@@ -1991,6 +1993,8 @@ class SettingInterface(QWidget):
         更新 multi_config.json 中的 bundle 配置（内部方法）。
 
         在文件移动到 bundle 目录后，更新主配置文件中对应 bundle 的路径。
+        同时修正仍指向项目根目录（./）的旧 bundle 条目，避免多资源迁移后
+        interface 路径解析失败。
 
         Args:
             name: bundle 名称（从 interface.json 中获取）
@@ -2004,47 +2008,58 @@ class SettingInterface(QWidget):
             logger.error("bundle 名称为空，无法更新配置")
             return
 
-        # 检查当前配置中的路径
-        current_path = None
-        try:
-            bundle_info = self._service_coordinator.config_service.get_bundle(name)
-            current_path = bundle_info.get("path", "")
-        except (FileNotFoundError, Exception) as e:
-            logger.debug(f"获取当前 bundle 配置失败（可能不存在）: {e}")
-
-        # 构建新的 bundle 路径（相对于项目根目录）
         bundle_path = f"./bundle/{name}"
+        bundles_to_update: dict[str, str] = {name: bundle_path}
 
-        # 如果当前路径是 "./" 或空，或者路径不正确，则强制更新
-        needs_update = False
-        if not current_path or current_path == "./" or current_path == ".":
-            logger.info(
-                f"检测到 bundle 路径为 '{current_path}'，需要更新为 '{bundle_path}'"
-            )
-            needs_update = True
-        elif current_path != bundle_path and not current_path.endswith(
-            f"/bundle/{name}"
-        ):
-            logger.info(
-                f"检测到 bundle 路径不正确 '{current_path}'，需要更新为 '{bundle_path}'"
-            )
-            needs_update = True
-        else:
-            logger.info(f"bundle 配置已正确，跳过更新: {name} -> {current_path}")
-            return
+        try:
+            for bundle_key in self._service_coordinator.config_service.list_bundles():
+                info = self._service_coordinator.config_service.get_bundle(bundle_key)
+                current_path = str(info.get("path", "")).strip().replace("\\", "/")
+                normalized = current_path.rstrip("/")
+                if normalized in ("", ".", "./"):
+                    bundles_to_update[bundle_key] = bundle_path
+                    continue
 
-        if needs_update:
-            # 更新 multi_config.json 中的 bundle 配置
+                base_dir = Path(current_path)
+                if not base_dir.is_absolute():
+                    base_dir = Path.cwd() / base_dir
+                if not self._service_coordinator._find_interface_file_in_dir(
+                    base_dir
+                ):
+                    bundles_to_update[bundle_key] = bundle_path
+        except Exception as exc:
+            logger.warning(f"扫描待修正 bundle 路径时出错: {exc}")
+
+        for bundle_key, new_path in bundles_to_update.items():
+            display_name = name if bundle_key == name else None
             success = self._service_coordinator.update_bundle_path(
-                bundle_name=name,
-                new_path=bundle_path,
-                bundle_display_name=name,
+                bundle_name=bundle_key,
+                new_path=new_path,
+                bundle_display_name=display_name,
             )
-
             if success:
-                logger.info(f"已更新 bundle 配置: {name} -> {bundle_path}")
+                logger.info(f"已更新 bundle 配置: {bundle_key} -> {new_path}")
             else:
-                logger.error(f"更新 bundle 配置失败: {name}")
+                logger.error(f"更新 bundle 配置失败: {bundle_key}")
+
+    def _reload_service_interface_after_migration(self) -> None:
+        """多资源迁移完成后，按最新 bundle 路径重新加载 interface。"""
+        if not self._service_coordinator:
+            return
+        try:
+            coordinator = self._service_coordinator
+            config_id = coordinator.config_service.current_config_id
+            if config_id:
+                coordinator._update_interface_path_for_config(config_id)
+                return
+
+            new_path = coordinator._resolve_interface_path(
+                coordinator.config_repo.main_config_path, None
+            )
+            if new_path and new_path != coordinator._interface_path:
+                coordinator._reload_interface(new_path)
+        except Exception as exc:
+            logger.warning(f"多资源迁移后重新加载 interface 失败: {exc}")
 
     def _move_bundle(self):
         """

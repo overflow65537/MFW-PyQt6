@@ -53,6 +53,11 @@ class TaskService:
         self.on_config_changed(self.config_service.current_config_id)
         # UI 的任务勾选切换事件现在通过 ServiceCoordinator.modify_task 路径处理
 
+    def _ensure_interface_loaded(self) -> None:
+        """确认 interface 已加载（含内置任务扩展）。"""
+        if not isinstance(self.interface, dict) or not self.interface.get("task"):
+            raise ValueError("Interface not loaded")
+
     def _build_effective_interface(self, interface: Dict[str, Any]) -> Dict[str, Any]:
         """合并资源 interface 与 Core 外部加载的内置任务描述。"""
         merged = deepcopy(interface) if isinstance(interface, dict) else {}
@@ -163,8 +168,7 @@ class TaskService:
                 return True
 
         unknown_tasks: list[str] = []
-        if not self.interface:
-            raise ValueError("Interface not loaded")
+        self._ensure_interface_loaded()
 
         interface_tasks = [
             t.get("name")

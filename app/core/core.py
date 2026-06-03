@@ -228,19 +228,21 @@ class ServiceCoordinator:
                     if not base_dir.is_absolute():
                         base_dir = Path.cwd() / base_dir
 
-                    # 优先使用 interface.jsonc，其次 interface.json
-                    candidate = base_dir / "interface.jsonc"
-                    if not candidate.exists():
-                        candidate = base_dir / "interface.json"
+                    candidate = self._find_interface_file_in_dir(base_dir)
+                    if candidate:
+                        logger.info(f"从主配置解析到 interface 路径: {candidate}")
+                        return candidate
 
-                    if not candidate.exists():
-                        logger.warning(
-                            f"在 bundle 路径 {base_dir} 下未找到 interface.jsonc/interface.json"
-                        )
-                        return None
+                    logger.warning(
+                        f"在 bundle 路径 {base_dir} 下未找到 interface.jsonc/interface.json"
+                    )
 
-                    logger.info(f"从主配置解析到 interface 路径: {candidate}")
-                    return candidate
+            discovered = self._discover_migrated_bundle_interface_path()
+            if discovered:
+                logger.info(
+                    f"从 bundle 目录中发现迁移后的 interface 路径: {discovered}"
+                )
+                return discovered
 
             return None
         except Exception as e:
@@ -266,6 +268,213 @@ class ServiceCoordinator:
                 return first_key
             return str(raw_bundle.get("name") or first_key)
         return None
+
+    @staticmethod
+    def _find_interface_file_in_dir(base_dir: Path) -> Path | None:
+        """在指定目录中查找 interface.jsonc 或 interface.json。"""
+        for fname in ("interface.jsonc", "interface.json"):
+            candidate = base_dir / fname
+            if candidate.is_file():
+                return candidate
+        return None
+
+    @staticmethod
+    def _read_interface_name_from_file(interface_path: Path) -> str | None:
+        """读取 interface 文件中的 name 字段。"""
+        try:
+            with open(interface_path, "r", encoding="utf-8") as handle:
+                data = jsonc.load(handle)
+            name = data.get("name") if isinstance(data, dict) else None
+            return str(name).strip() if name else None
+        except Exception:
+            return None
+
+    @classmethod
+    def _pick_best_interface_candidate(
+        cls,
+        candidates: list[Path],
+        bundle_name: str | None = None,
+        assigned_bundle_dirs: set[Path] | None = None,
+    ) -> Path:
+        """在多个 bundle interface 候选中选择最匹配的一项。"""
+        assigned_bundle_dirs = assigned_bundle_dirs or set()
+        unassigned = [
+            candidate
+            for candidate in candidates
+            if candidate.parent.resolve() not in assigned_bundle_dirs
+        ]
+        pool = unassigned or list(candidates)
+
+        if bundle_name:
+            for candidate in pool:
+                if candidate.parent.name == bundle_name:
+                    return candidate
+            for candidate in pool:
+                if cls._read_interface_name_from_file(candidate) == bundle_name:
+                    return candidate
+
+        migration_style = [
+            candidate
+            for candidate in pool
+            if cls._read_interface_name_from_file(candidate) == candidate.parent.name
+        ]
+        if len(migration_style) == 1:
+            return migration_style[0]
+        if migration_style:
+            pool = migration_style
+
+        logger.warning(
+            "bundle 目录下存在多个 interface 文件，默认使用: %s",
+            pool[0],
+        )
+        return pool[0]
+
+    def _collect_assigned_bundle_dirs(self) -> set[Path]:
+        """收集主配置中已正确指向 interface 的 bundle 目录。"""
+        assigned: set[Path] = set()
+        try:
+            if not hasattr(self, "config_service") or not self.config_service:
+                return assigned
+            for bundle_key in self.config_service.list_bundles():
+                bundle_info = self.config_service.get_bundle(bundle_key)
+                bundle_path_str = str(bundle_info.get("path", "")).strip()
+                if not bundle_path_str:
+                    continue
+                base_dir = Path(bundle_path_str)
+                if not base_dir.is_absolute():
+                    base_dir = (Path.cwd() / base_dir).resolve()
+                found = self._find_interface_file_in_dir(base_dir)
+                if found:
+                    assigned.add(found.parent.resolve())
+        except Exception as exc:
+            logger.debug(f"收集已分配 bundle 目录失败: {exc}")
+        return assigned
+
+    def _collect_valid_bundle_interfaces_from_main_config(
+        self, exclude_bundle: str | None = None
+    ) -> list[Path]:
+        """从 multi_config.json 收集已配置且可解析的 bundle interface 路径。"""
+        candidates: list[Path] = []
+        try:
+            main_config_path = self._main_config_path
+        except AttributeError:
+            return candidates
+        if not main_config_path or not main_config_path.exists():
+            return candidates
+
+        try:
+            with open(main_config_path, "r", encoding="utf-8") as handle:
+                main_cfg = jsonc.load(handle)
+        except Exception:
+            return candidates
+
+        bundle_dict = main_cfg.get("bundle") or {}
+        if not isinstance(bundle_dict, dict):
+            return candidates
+
+        for key, bundle_info in bundle_dict.items():
+            if exclude_bundle and key == exclude_bundle:
+                continue
+            if not isinstance(bundle_info, dict):
+                continue
+            bundle_path_str = str(bundle_info.get("path", "")).strip()
+            if not bundle_path_str or bundle_path_str.rstrip("/") in (".", "./"):
+                continue
+            base_dir = Path(bundle_path_str)
+            if not base_dir.is_absolute():
+                base_dir = Path.cwd() / base_dir
+            found = self._find_interface_file_in_dir(base_dir)
+            if found:
+                candidates.append(found)
+        return candidates
+
+    def _discover_migrated_bundle_interface_path(
+        self, bundle_name: str | None = None
+    ) -> Path | None:
+        """多资源迁移后，在 ./bundle/*/ 下搜索 interface 配置文件。"""
+        sibling_candidates: list[Path] = []
+        if bundle_name and hasattr(self, "config_service") and self.config_service:
+            try:
+                for key in self.config_service.list_bundles():
+                    if key == bundle_name:
+                        continue
+                    bundle_info = self.config_service.get_bundle(key)
+                    bundle_path_str = str(bundle_info.get("path", "")).strip()
+                    if not bundle_path_str or bundle_path_str.rstrip("/") in (".", "./"):
+                        continue
+                    base_dir = Path(bundle_path_str)
+                    if not base_dir.is_absolute():
+                        base_dir = Path.cwd() / base_dir
+                    found = self._find_interface_file_in_dir(base_dir)
+                    if found:
+                        sibling_candidates.append(found)
+            except Exception as exc:
+                logger.debug(f"扫描 sibling bundle interface 失败: {exc}")
+        elif bundle_name:
+            sibling_candidates = self._collect_valid_bundle_interfaces_from_main_config(
+                exclude_bundle=bundle_name
+            )
+
+        if len(sibling_candidates) == 1:
+            return sibling_candidates[0]
+        if len(sibling_candidates) > 1:
+            return self._pick_best_interface_candidate(
+                sibling_candidates,
+                bundle_name,
+                self._collect_assigned_bundle_dirs(),
+            )
+
+        bundle_root = Path.cwd() / "bundle"
+        if not bundle_root.is_dir():
+            return None
+
+        if bundle_name:
+            found = self._find_interface_file_in_dir(bundle_root / bundle_name)
+            if found:
+                return found
+
+        candidates: list[Path] = []
+        try:
+            for sub in sorted(bundle_root.iterdir()):
+                if sub.is_dir():
+                    found = self._find_interface_file_in_dir(sub)
+                    if found:
+                        candidates.append(found)
+        except OSError as exc:
+            logger.warning(f"扫描 bundle 目录失败: {exc}")
+            return None
+
+        if not candidates:
+            return None
+        if len(candidates) == 1:
+            return candidates[0]
+        return self._pick_best_interface_candidate(
+            candidates,
+            bundle_name,
+            self._collect_assigned_bundle_dirs(),
+        )
+
+    def _maybe_repair_bundle_path(
+        self, bundle_name: str, interface_path: Path
+    ) -> None:
+        """发现迁移后的 interface 路径时，回写 bundle.path。"""
+        if not bundle_name or not interface_path:
+            return
+        try:
+            bundle_dir = interface_path.parent
+            rel_path = bundle_dir.relative_to(Path.cwd())
+            new_path = f"./{rel_path.as_posix()}"
+        except ValueError:
+            new_path = str(interface_path.parent)
+
+        try:
+            if hasattr(self, "config_service") and self.config_service:
+                current = self.config_service.get_bundle(bundle_name)
+                current_path = str(current.get("path", "")).strip()
+                if current_path != new_path:
+                    self.update_bundle_path(bundle_name, new_path)
+        except Exception as exc:
+            logger.warning(f"回写 bundle '{bundle_name}' 路径失败: {exc}")
 
     def _resolve_interface_path_from_bundle(
         self, bundle_name: str | None
@@ -300,18 +509,21 @@ class ServiceCoordinator:
         if not base_dir.is_absolute():
             base_dir = Path.cwd() / base_dir
 
-        # 优先使用 interface.jsonc，其次 interface.json
-        candidate = base_dir / "interface.jsonc"
-        if not candidate.exists():
-            candidate = base_dir / "interface.json"
+        candidate = self._find_interface_file_in_dir(base_dir)
+        if candidate:
+            return candidate
 
-        if not candidate.exists():
-            logger.warning(
-                f"在 bundle 路径 {base_dir} 下未找到 interface.jsonc/interface.json"
+        logger.warning(
+            f"在 bundle 路径 {base_dir} 下未找到 interface.jsonc/interface.json"
+        )
+        discovered = self._discover_migrated_bundle_interface_path(bundle_name)
+        if discovered:
+            logger.info(
+                f"在 bundle 目录中发现迁移后的 interface: {discovered}"
             )
-            return None
-
-        return candidate
+            self._maybe_repair_bundle_path(bundle_name, discovered)
+            return discovered
+        return None
 
     def _get_bundle_path_from_main_config(self, bundle_name: str) -> str | None:
         """在 config_service 可用前，从 multi_config.json 中查找 bundle 的 path。"""
