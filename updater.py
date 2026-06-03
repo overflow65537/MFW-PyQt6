@@ -1373,26 +1373,52 @@ def _load_interface_data(bundle_path: Path) -> tuple[list[Path], dict]:
     return interface_paths, {}
 
 
-def _get_resource_dirs_from_interface(interface_data: dict) -> list[Path]:
-    """从 interface 配置解析 resource.path，按原始 path 去重，仅保留存在的目录。"""
-    resource_list = interface_data.get("resource", [])
-    if not isinstance(resource_list, list):
-        return []
+def _get_resource_dirs_from_interface(
+    interface_data: dict,
+    bundle_base: Path | None = None,
+) -> list[Path]:
+    """从 interface 解析 resource.path 与 controller.attach_resource_path，去重后返回存在的目录。"""
     seen: set[str] = set()
     dirs: list[Path] = []
-    for resource in resource_list:
-        if not isinstance(resource, dict):
-            continue
-        raw_paths = resource.get("path", [])
-        if not isinstance(raw_paths, list):
-            continue
-        for raw_path in raw_paths:
-            if not isinstance(raw_path, str) or raw_path in seen:
+    base = bundle_base.resolve() if bundle_base else None
+
+    def _try_add(raw_path: object) -> None:
+        if not isinstance(raw_path, str):
+            return
+        stripped = raw_path.strip()
+        if not stripped or stripped in seen:
+            return
+        seen.add(stripped)
+        if base is not None:
+            normalized = stripped.replace("{PROJECT_DIR}", "").strip().lstrip("\\/")
+            if not normalized:
+                return
+            resolved = (base / normalized).resolve()
+        else:
+            resolved = Path(stripped.replace("{PROJECT_DIR}", "."))
+        if resolved.is_dir():
+            dirs.append(resolved)
+
+    resource_list = interface_data.get("resource", [])
+    if isinstance(resource_list, list):
+        for resource in resource_list:
+            if not isinstance(resource, dict):
                 continue
-            seen.add(raw_path)
-            resolved = Path(raw_path.replace("{PROJECT_DIR}", "."))
-            if resolved.is_dir():
-                dirs.append(resolved)
+            raw_paths = resource.get("path", [])
+            if isinstance(raw_paths, list):
+                for raw_path in raw_paths:
+                    _try_add(raw_path)
+
+    controller_list = interface_data.get("controller", [])
+    if isinstance(controller_list, list):
+        for controller in controller_list:
+            if not isinstance(controller, dict):
+                continue
+            attach_paths = controller.get("attach_resource_path", [])
+            if isinstance(attach_paths, list):
+                for raw_path in attach_paths:
+                    _try_add(raw_path)
+
     return dirs
 
 
@@ -1556,7 +1582,12 @@ def apply_github_hotfix(package_path, metadata=None):
 
     update_logger.info("[步骤5] 读取 interface 配置文件...")
     interface_paths, interface_data = _load_interface_data(bundle_path_obj)
-    resource_dirs = _get_resource_dirs_from_interface(interface_data)
+    bundle_base = bundle_path_obj
+    if not bundle_base.is_absolute():
+        bundle_base = (Path.cwd() / bundle_base).resolve()
+    else:
+        bundle_base = bundle_base.resolve()
+    resource_dirs = _get_resource_dirs_from_interface(interface_data, bundle_base)
     update_logger.info(f"[步骤5] 获取到 {len(resource_dirs)} 个资源目录")
     resource_backups: list[tuple[Path, Path]] = []
 
