@@ -176,6 +176,46 @@ Microsoft Visual C++ 可再发行程序包</translation>
         <translation>MirrorChyan 更新检查失败。</translation>
     </message>
     <message>
+        <location filename="../utils/network_error_helper.py" line="409"/>
+        <source>GitHub download timed out. Check your network or proxy.</source>
+        <translation>GitHub 下载超时，请检查网络或代理。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="412"/>
+        <source>GitHub download SSL failed. Check certificate or proxy settings.</source>
+        <translation>GitHub 下载 SSL 失败，请检查证书或代理设置。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="415"/>
+        <source>GitHub download connection failed. Check your network.</source>
+        <translation>GitHub 下载连接失败，请检查网络。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="416"/>
+        <source>GitHub download failed. Please try again.</source>
+        <translation>GitHub 下载失败，请重试。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="418"/>
+        <source>MirrorChyan download timed out. Check your network or proxy.</source>
+        <translation>MirrorChyan 下载超时，请检查网络或代理。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="421"/>
+        <source>MirrorChyan download SSL failed. Check certificate or proxy settings.</source>
+        <translation>MirrorChyan 下载 SSL 失败，请检查证书或代理设置。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="424"/>
+        <source>MirrorChyan download connection failed. Check your network.</source>
+        <translation>MirrorChyan 下载连接失败，请检查网络。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="425"/>
+        <source>MirrorChyan download failed. Please try again.</source>
+        <translation>MirrorChyan 下载失败，请重试。</translation>
+    </message>
+    <message>
         <location filename="../utils/network_error_helper.py" line="269"/>
         <source>{channel} send failed: SSL error. Check certificate or proxy settings.</source>
         <translation>{channel} 发送失败：SSL 错误，请检查证书或代理设置。</translation>

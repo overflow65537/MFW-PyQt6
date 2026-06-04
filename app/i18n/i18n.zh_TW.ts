@@ -174,6 +174,46 @@
         <translation>MirrorChyan 更新檢查失敗。</translation>
     </message>
     <message>
+        <location filename="../utils/network_error_helper.py" line="409"/>
+        <source>GitHub download timed out. Check your network or proxy.</source>
+        <translation>GitHub 下載逾時，請檢查網路或代理。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="412"/>
+        <source>GitHub download SSL failed. Check certificate or proxy settings.</source>
+        <translation>GitHub 下載 SSL 失敗，請檢查憑證或代理設定。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="415"/>
+        <source>GitHub download connection failed. Check your network.</source>
+        <translation>GitHub 下載連線失敗，請檢查網路。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="416"/>
+        <source>GitHub download failed. Please try again.</source>
+        <translation>GitHub 下載失敗，請重試。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="418"/>
+        <source>MirrorChyan download timed out. Check your network or proxy.</source>
+        <translation>MirrorChyan 下載逾時，請檢查網路或代理。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="421"/>
+        <source>MirrorChyan download SSL failed. Check certificate or proxy settings.</source>
+        <translation>MirrorChyan 下載 SSL 失敗，請檢查憑證或代理設定。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="424"/>
+        <source>MirrorChyan download connection failed. Check your network.</source>
+        <translation>MirrorChyan 下載連線失敗，請檢查網路。</translation>
+    </message>
+    <message>
+        <location filename="../utils/network_error_helper.py" line="425"/>
+        <source>MirrorChyan download failed. Please try again.</source>
+        <translation>MirrorChyan 下載失敗，請重試。</translation>
+    </message>
+    <message>
         <location filename="../utils/network_error_helper.py" line="269"/>
         <source>{channel} send failed: SSL error. Check certificate or proxy settings.</source>
         <translation>{channel} 發送失敗：SSL 錯誤，請檢查憑證或代理設定。</translation>

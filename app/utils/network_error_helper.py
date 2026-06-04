@@ -399,6 +399,32 @@ def normalize_github_http_error(
     )
 
 
+def _download_message(
+    source: UpdateSource,
+    category: NetworkErrorCategory,
+    tr: TranslateFn,
+) -> str:
+    if source == "github":
+        if category == NetworkErrorCategory.TIMEOUT:
+            return tr("GitHub download timed out. Check your network or proxy.")
+        if category == NetworkErrorCategory.SSL_ERROR:
+            return tr(
+                "GitHub download SSL failed. Check certificate or proxy settings."
+            )
+        if category == NetworkErrorCategory.CONNECTION_ERROR:
+            return tr("GitHub download connection failed. Check your network.")
+        return tr("GitHub download failed. Please try again.")
+    if category == NetworkErrorCategory.TIMEOUT:
+        return tr("MirrorChyan download timed out. Check your network or proxy.")
+    if category == NetworkErrorCategory.SSL_ERROR:
+        return tr(
+            "MirrorChyan download SSL failed. Check certificate or proxy settings."
+        )
+    if category == NetworkErrorCategory.CONNECTION_ERROR:
+        return tr("MirrorChyan download connection failed. Check your network.")
+    return tr("MirrorChyan download failed. Please try again.")
+
+
 def normalize_download_error(
     exc: BaseException,
     *,
@@ -407,17 +433,7 @@ def normalize_download_error(
 ) -> NetworkErrorInfo:
     translate = tr or _default_tr
     category = classify_request_exception(exc)
-    prefix = "GitHub" if source == "github" else "MirrorChyan"
-    if category == NetworkErrorCategory.TIMEOUT:
-        base = translate(f"{prefix} download timed out. Check your network or proxy.")
-    elif category == NetworkErrorCategory.SSL_ERROR:
-        base = translate(
-            f"{prefix} download SSL failed. Check certificate or proxy settings."
-        )
-    elif category == NetworkErrorCategory.CONNECTION_ERROR:
-        base = translate(f"{prefix} download connection failed. Check your network.")
-    else:
-        base = translate(f"{prefix} download failed. Please try again.")
+    base = _download_message(source, category, translate)
     tech_tag = _tech_tag_for_category(category)
     return NetworkErrorInfo(
         category=category,
