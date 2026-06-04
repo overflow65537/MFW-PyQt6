@@ -38,6 +38,7 @@ from app.utils.logger import logger
 from app.core.service.config_service import ConfigService
 from app.core.utils.holiday import emit_holiday_startup_logs
 from app.core.service.task_service import TaskService
+from app.core.runner.embedded_agent_log_bridge import EmbeddedAgentLogBridge
 from app.core.runner.maafw import (
     MaaFW,
     MaaFWError,
@@ -96,6 +97,7 @@ class TaskFlowRunner(QObject):
         self.maafw.callback.connect(self.callback.emit)
         self.maafw.custom_info.connect(self._handle_maafw_custom_info)
         self.maafw.agent_info.connect(self._handle_agent_info)
+        self._embedded_agent_log_bridge = EmbeddedAgentLogBridge()
         self.process = None
 
         self.need_stop = False
@@ -646,6 +648,16 @@ class TaskFlowRunner(QObject):
                     )
                     await self.stop_task()
                     return
+
+                attached = self._embedded_agent_log_bridge.attach(
+                    lambda level, text: self.log_output.emit(level, text),
+                    agent_root_path,
+                )
+                if attached:
+                    logger.debug(
+                        "embedded agent 日志已桥接到 UI，挂载 logger 数量: %s",
+                        attached,
+                    )
             # 资源加载完成后连接控制器
             logger.info("开始连接设备...")
             self.log_output.emit("INFO", self.tr("Starting to connect device..."))
@@ -822,6 +834,7 @@ class TaskFlowRunner(QObject):
                     logger.debug(f"发射 task_flow_finished 信号失败（忽略）: {exc}")
 
             # 先发送任务完成通知（在完成后操作之前，以便退出软件时可以等待通知发送完成）
+            self._embedded_agent_log_bridge.detach()
             # 断开日志收集信号
             self.log_output.disconnect(collect_log)
 
