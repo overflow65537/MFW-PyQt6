@@ -1,7 +1,8 @@
 """
 将 embedded agent 包内 logging / loguru 日志转发到 Runner log_output（UI 日志面板）。
 
-仅在任务流生命周期内挂载，避免污染 app 自身日志。
+路径范围由调用方传入：须为 interface 解析出的 custom 根目录（及可选的补充根），
+不得写死 agent/ 目录名。
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ from __future__ import annotations
 import importlib
 import logging
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,8 @@ _LOGURU_TO_UI = {
     "CRITICAL": "CRITICAL",
 }
 
+_CLIENT_PATH_MARKERS = ("/app/", "\\app\\")
+
 
 def _logging_level_to_ui(levelno: int) -> str:
     return _LOGGING_TO_UI.get(levelno, "INFO")
@@ -54,51 +57,103 @@ def _is_logging_logger(obj: Any) -> bool:
     return isinstance(obj, logging.Logger)
 
 
-class _RunnerUiLogHandler(logging.Handler):
-    """把标准 logging 记录转发到 UI log_output。"""
+def _normalize_path(file_path: str) -> str:
+    return str(file_path).replace("\\", "/").lower()
 
-    def __init__(self, emit_fn: EmitFn):
-        super().__init__(level=logging.INFO)
-        self._emit_fn = emit_fn
 
-    def emit(self, record: logging.LogRecord) -> None:
+def _build_allowed_roots(
+    custom_root: Path, extra_roots: Sequence[Path] = ()
+) -> tuple[str, ...]:
+    """
+    将 interface 解析的 custom 目录（及额外根）转为用于路径比对的规范前缀。
+
+    custom_root: 对应 interface 注入的 custom 字段（agent 入口脚本所在目录）。
+    """
+    ordered: list[Path] = [custom_root, *extra_roots]
+    prefixes: list[str] = []
+    seen: set[str] = set()
+    for raw in ordered:
         try:
-            if record.levelno < logging.INFO:
-                return
-            message = record.getMessage()
-            if not message:
-                return
-            self._emit_fn(_logging_level_to_ui(record.levelno), message)
-        except Exception:
-            self.handleError(record)
+            resolved = raw.resolve()
+        except OSError:
+            continue
+        prefix = str(resolved).replace("\\", "/").lower() + "/"
+        if prefix in seen:
+            continue
+        seen.add(prefix)
+        prefixes.append(prefix)
+    return tuple(prefixes)
 
 
-def _path_under_roots(file_path: str, roots: tuple[str, ...]) -> bool:
-    normalized = str(file_path).replace("\\", "/").lower()
-    return any(normalized.startswith(root) for root in roots)
+def _resolve_log_path(file_path: str) -> str:
+    if not file_path:
+        return ""
+    path = Path(file_path)
+    try:
+        if path.is_absolute():
+            return str(path.resolve())
+    except OSError:
+        pass
+    try:
+        return str((Path.cwd() / path).resolve())
+    except OSError:
+        return str(path)
 
 
-def collect_agent_loggers(agent_root: Path) -> list[Any]:
+def _is_client_log_path(file_path: str) -> bool:
+    """主程序 app/ 目录下的日志不得进入 UI 桥接（避免与 logoutput_widget 形成环）。"""
+    normalized = _normalize_path(file_path)
+    return any(marker in normalized for marker in _CLIENT_PATH_MARKERS)
+
+
+def _is_under_custom_roots(file_path: str, allowed_roots: tuple[str, ...]) -> bool:
+    if not file_path or not allowed_roots or _is_client_log_path(file_path):
+        return False
+    resolved = _normalize_path(_resolve_log_path(file_path))
+    if any(resolved.startswith(root) for root in allowed_roots):
+        return True
+    try:
+        path_obj = Path(_resolve_log_path(file_path)).resolve()
+        for root in allowed_roots:
+            root_path = Path(root.rstrip("/"))
+            if path_obj.is_relative_to(root_path):
+                return True
+    except (OSError, ValueError):
+        pass
+    return False
+
+
+def _should_skip_logging_logger(logger_obj: logging.Logger) -> bool:
+    name = (logger_obj.name or "").strip()
+    return bool(name.startswith("app."))
+
+
+def collect_agent_loggers(
+    custom_root: Path, allowed_roots: tuple[str, ...]
+) -> list[Any]:
     """
-    收集 agent 工程内可能用于输出的 logger 对象（logging.Logger 或 loguru logger）。
+    收集 custom 工程内的 logger（含 root），去重后挂载；由路径过滤保证不污染 app 日志。
     """
-    agent_root = agent_root.resolve()
-    roots = (
-        str(agent_root).replace("\\", "/").lower() + "/",
-        str(agent_root.parent).replace("\\", "/").lower() + "/",
-    )
     found: list[Any] = []
-    seen_ids: set[int] = set()
+    seen_logging_names: set[str] = set()
+    seen_loguru_ids: set[int] = set()
 
     def _add(obj: Any) -> None:
-        oid = id(obj)
-        if oid in seen_ids:
-            return
-        if _is_logging_logger(obj) or _is_loguru_logger(obj):
-            seen_ids.add(oid)
+        if _is_logging_logger(obj):
+            if _should_skip_logging_logger(obj):
+                return
+            if obj.name in seen_logging_names:
+                return
+            seen_logging_names.add(obj.name)
+            found.append(obj)
+        elif _is_loguru_logger(obj):
+            oid = id(obj)
+            if oid in seen_loguru_ids:
+                return
+            seen_loguru_ids.add(oid)
             found.append(obj)
 
-    for mod_name in ("utils", "utils.logger"):
+    for mod_name in ("utils.logger", "utils"):
         try:
             mod = importlib.import_module(mod_name)
         except Exception:
@@ -110,7 +165,7 @@ def collect_agent_loggers(agent_root: Path) -> list[Any]:
         if mod is None:
             continue
         file_name = getattr(mod, "__file__", None)
-        if not file_name or not _path_under_roots(file_name, roots):
+        if not file_name or not _is_under_custom_roots(file_name, allowed_roots):
             continue
         for attr in ("logger", "log"):
             _add(getattr(mod, attr, None))
@@ -118,21 +173,54 @@ def collect_agent_loggers(agent_root: Path) -> list[Any]:
     return found
 
 
+class _RunnerUiLogHandler(logging.Handler):
+    """把 custom 源文件内的标准 logging 记录转发到 UI log_output。"""
+
+    def __init__(self, emit_fn: EmitFn, allowed_roots: tuple[str, ...]):
+        super().__init__(level=logging.INFO)
+        self._emit_fn = emit_fn
+        self._allowed_roots = allowed_roots
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            if record.levelno < logging.INFO:
+                return
+            pathname = getattr(record, "pathname", "") or ""
+            if not _is_under_custom_roots(pathname, self._allowed_roots):
+                return
+            message = record.getMessage()
+            if not message:
+                return
+            self._emit_fn(_logging_level_to_ui(record.levelno), message)
+        except Exception:
+            self.handleError(record)
+
+
 class EmbeddedAgentLogBridge:
     """任务流内临时挂载 / 卸载 embedded agent 日志转发。"""
 
     def __init__(self) -> None:
-        self._emit_fn: EmitFn | None = None
+        self._allowed_roots: tuple[str, ...] = ()
         self._logging_handlers: list[tuple[logging.Logger, _RunnerUiLogHandler]] = []
         self._loguru_sinks: list[tuple[Any, int]] = []
 
-    def attach(self, emit_fn: EmitFn, agent_root: Path) -> int:
+    def attach(
+        self,
+        emit_fn: EmitFn,
+        *,
+        custom_root: Path,
+        extra_roots: Sequence[Path] = (),
+    ) -> int:
+        """
+        :param custom_root: interface.custom 解析后的绝对路径（agent 源码根目录）
+        :param extra_roots: 可选补充根（如与 custom 不同的入口父目录）
+        """
         self.detach()
-        self._emit_fn = emit_fn
+        self._allowed_roots = _build_allowed_roots(custom_root, extra_roots)
         attached = 0
-        for logger_obj in collect_agent_loggers(agent_root):
+        for logger_obj in collect_agent_loggers(custom_root, self._allowed_roots):
             if _is_logging_logger(logger_obj):
-                handler = _RunnerUiLogHandler(emit_fn)
+                handler = _RunnerUiLogHandler(emit_fn, self._allowed_roots)
                 logger_obj.addHandler(handler)
                 self._logging_handlers.append((logger_obj, handler))
                 attached += 1
@@ -144,10 +232,16 @@ class EmbeddedAgentLogBridge:
         return attached
 
     def _attach_loguru(self, logger_obj: Any, emit_fn: EmitFn) -> int | None:
+        allowed_roots = self._allowed_roots
+
         def _sink(message: Any) -> None:
             try:
                 record = message.record
                 level_name = record["level"].name
+                file_info = record["file"]
+                file_path = getattr(file_info, "path", None) or str(file_info)
+                if not _is_under_custom_roots(str(file_path), allowed_roots):
+                    return
                 text = str(record["message"])
                 if not text:
                     return
@@ -177,4 +271,4 @@ class EmbeddedAgentLogBridge:
             except Exception:
                 pass
         self._loguru_sinks.clear()
-        self._emit_fn = None
+        self._allowed_roots = ()

@@ -649,14 +649,27 @@ class TaskFlowRunner(QObject):
                     await self.stop_task()
                     return
 
+                # custom 根目录来自 interface（InterfaceManager 根据 agent.child_args 写入 custom）
+                log_extra_roots: list[Path] = []
+                if agent_entry_path is not None:
+                    entry_parent = agent_entry_path.parent.resolve()
+                    if entry_parent != agent_root_path.resolve():
+                        log_extra_roots.append(entry_parent)
                 attached = self._embedded_agent_log_bridge.attach(
                     lambda level, text: self.log_output.emit(level, text),
-                    agent_root_path,
+                    custom_root=agent_root_path,
+                    extra_roots=log_extra_roots,
                 )
                 if attached:
                     logger.debug(
-                        "embedded agent 日志已桥接到 UI，挂载 logger 数量: %s",
+                        "embedded agent 日志已桥接到 UI（custom=%s），挂载 logger 数量: %s",
+                        agent_root_path,
                         attached,
+                    )
+                else:
+                    logger.warning(
+                        "embedded agent 日志桥接未挂载任何 logger，custom 路径: %s",
+                        agent_root_path,
                     )
             # 资源加载完成后连接控制器
             logger.info("开始连接设备...")
