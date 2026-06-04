@@ -70,6 +70,48 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
             self.assertIn("alpha", maafw.resource.custom_action_list)
             self.assertIn("beta", maafw.resource.custom_recognition_list)
 
+    def test_load_embedded_agent_custom_rewrites_agent_server_decorators(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            _write_agent_source(root, "")
+            agent_file = root / "agent" / "agent_file.py"
+            agent_file.write_text(
+                '\n'.join(
+                    [
+                        'from maa.agent.agent_server import AgentServer',
+                        'from maa.custom_action import CustomAction',
+                        'from maa.custom_recognition import CustomRecognition',
+                        '',
+                        '@AgentServer.custom_action("legacy_action")',
+                        'class LegacyAction(CustomAction):',
+                        '    def run(self, context, argv):',
+                        '        return True',
+                        '',
+                        '@AgentServer.custom_recognition("legacy_reco")',
+                        'class LegacyRecognition(CustomRecognition):',
+                        '    def analyze(self, context, argv):',
+                        '        return None',
+                        '',
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            maafw = MaaFW()
+            self.assertTrue(
+                maafw.load_embedded_agent_custom(
+                    agent_root=root / "agent",
+                    agent_entry=root / "agent" / "main.py",
+                )
+            )
+            rewritten = agent_file.read_text(encoding="utf-8")
+            self.assertIn("from maa.resource import resource", rewritten)
+            self.assertIn('@resource.custom_action("legacy_action")', rewritten)
+            self.assertIn('@resource.custom_recognition("legacy_reco")', rewritten)
+            self.assertNotIn("AgentServer.custom_action", rewritten)
+            self.assertIn("legacy_action", maafw.resource.custom_action_list)
+            self.assertIn("legacy_reco", maafw.resource.custom_recognition_list)
+
     def test_load_embedded_agent_custom_scans_non_agent_source_root(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -125,8 +167,10 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
             (sink_dir / "aspect_ratio.py").write_text(
                 '\n'.join(
                     [
+                        'from maa.agent.agent_server import AgentServer',
                         'from maa.tasker import TaskerEventSink',
                         '',
+                        '@AgentServer.tasker_sink()',
                         'class AspectRatioChecker(TaskerEventSink):',
                         '    pass',
                         '',
@@ -144,6 +188,8 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
             )
             self.assertTrue(maafw.load_embedded_aspect_ratio_sink())
             self.assertEqual(1, len(maafw._embedded_tasker_sinks))
+            sink_text = (sink_dir / "aspect_ratio.py").read_text(encoding="utf-8")
+            self.assertNotIn("AgentServer.tasker_sink", sink_text)
 
     def test_interface_manager_mutates_single_in_memory_interface_only(self):
         with tempfile.TemporaryDirectory() as temp_dir:

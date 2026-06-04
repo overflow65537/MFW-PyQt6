@@ -394,6 +394,13 @@ class MaaFW(QObject):
             "recognitions": {"success": [], "failed": []},
         }
         decorators = self._scan_embedded_decorators(agent_path)
+        rewritten_files = self._rewrite_embedded_agent_sources(decorators)
+        if rewritten_files:
+            logger.info(
+                "已将内置 agent 装饰器写回为 resource/add_sink 模式: %s",
+                ", ".join(str(path) for path in rewritten_files),
+            )
+            decorators = self._scan_embedded_decorators(agent_path)
         for item in decorators:
             logger.info(
                 "扫描到内置 agent 装饰器: type=%s, name=%s, class=%s.%s, file=%s",
@@ -495,6 +502,80 @@ class MaaFW(QObject):
                 setattr(maa_resource_module, "resource", old_value)
 
         return restore
+
+    def _rewrite_embedded_agent_sources(
+        self, decorators: list[EmbeddedDecoratorInfo]
+    ) -> list[Path]:
+        rewritten: list[Path] = []
+        for file_path in sorted({item.file_path for item in decorators}):
+            try:
+                text = file_path.read_text(encoding="utf-8")
+            except OSError as exc:
+                logger.warning("读取内置 agent 源文件失败，跳过改写 %s: %s", file_path, exc)
+                continue
+
+            original = text
+            has_custom = (
+                "@AgentServer.custom_action(" in text
+                or "@AgentServer.custom_recognition(" in text
+            )
+            has_sink = "@AgentServer.tasker_sink()" in text
+
+            if has_custom:
+                text = text.replace(
+                    "@AgentServer.custom_action(", "@resource.custom_action("
+                )
+                text = text.replace(
+                    "@AgentServer.custom_recognition(",
+                    "@resource.custom_recognition(",
+                )
+                text = self._ensure_resource_import(text)
+
+            if has_sink:
+                text = re.sub(
+                    r"^[ \t]*@AgentServer\.tasker_sink\(\)\r?\n",
+                    "",
+                    text,
+                    flags=re.MULTILINE,
+                )
+
+            if "AgentServer." not in text:
+                text = re.sub(
+                    r"^[ \t]*from maa\.agent\.agent_server import AgentServer\r?\n",
+                    "",
+                    text,
+                    count=1,
+                    flags=re.MULTILINE,
+                )
+
+            if text == original:
+                continue
+
+            try:
+                file_path.write_text(text, encoding="utf-8")
+            except OSError as exc:
+                logger.warning("写回内置 agent 源文件失败 %s: %s", file_path, exc)
+                continue
+            rewritten.append(file_path)
+        return rewritten
+
+    @staticmethod
+    def _ensure_resource_import(text: str) -> str:
+        resource_import = "from maa.resource import resource"
+        if resource_import in text:
+            return text
+        agent_import_pattern = (
+            r"^[ \t]*from maa\.agent\.agent_server import AgentServer\r?\n"
+        )
+        if re.search(agent_import_pattern, text, flags=re.MULTILINE):
+            return re.sub(
+                agent_import_pattern,
+                f"{resource_import}\n",
+                text,
+                count=1,
+                flags=re.MULTILINE,
+            )
+        return f"{resource_import}\n{text}"
 
     _EMBEDDED_SKIP_DIRS = {
         ".git",
