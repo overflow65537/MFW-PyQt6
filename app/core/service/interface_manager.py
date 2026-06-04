@@ -437,6 +437,7 @@ class InterfaceManager:
         # pathlib 的 relative_to 按字符串前缀比较，必须先 resolve 再算相对路径。
         interface_root = self._interface_dir.resolve()
         agent_root = entry_path.parent.resolve()
+        logger.info("准备处理嵌入式 agent 源目录: %s，入口脚本: %s", agent_root, entry_path)
         agent_relative = self._to_interface_relative(agent_root, interface_root)
         entry_relative = self._to_interface_relative(entry_path.resolve(), interface_root)
         interface["custom"] = agent_relative

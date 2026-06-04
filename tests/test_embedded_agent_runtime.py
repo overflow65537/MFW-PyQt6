@@ -43,14 +43,14 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
                     [
                         'from maa.custom_action import CustomAction',
                         'from maa.custom_recognition import CustomRecognition',
-                        'from maa_resource_registry import MaaResource',
+                        'from maa.resource import resource',
                         '',
-                        '@MaaResource.custom_action("alpha")',
+                        '@resource.custom_action("alpha")',
                         'class AlphaAction(CustomAction):',
                         '    def run(self, context, argv):',
                         '        return True',
                         '',
-                        '@MaaResource.custom_recognition("beta")',
+                        '@resource.custom_recognition("beta")',
                         'class BetaRecognition(CustomRecognition):',
                         '    def analyze(self, context, argv):',
                         '        return None',
@@ -70,6 +70,38 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
             self.assertIn("alpha", maafw.resource.custom_action_list)
             self.assertIn("beta", maafw.resource.custom_recognition_list)
 
+    def test_load_embedded_agent_custom_scans_non_agent_source_root(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source_root = root / "plugin_src"
+            action_dir = source_root / "nested"
+            action_dir.mkdir(parents=True, exist_ok=True)
+            (source_root / "boot.py").write_text("", encoding="utf-8")
+            (action_dir / "actions.py").write_text(
+                '\n'.join(
+                    [
+                        'from maa.custom_action import CustomAction',
+                        'from maa.resource import resource',
+                        '',
+                        '@resource.custom_action("gamma")',
+                        'class GammaAction(CustomAction):',
+                        '    def run(self, context, argv):',
+                        '        return True',
+                        '',
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            maafw = MaaFW()
+            self.assertTrue(
+                maafw.load_embedded_agent_custom(
+                    agent_root=source_root,
+                    agent_entry=source_root / "boot.py",
+                )
+            )
+            self.assertIn("gamma", maafw.resource.custom_action_list)
+
     def test_load_embedded_aspect_ratio_sink_uses_tasker_decorator(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -78,9 +110,9 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
                 '\n'.join(
                     [
                         'from maa.custom_action import CustomAction',
-                        'from maa_resource_registry import MaaResource',
+                        'from maa.resource import resource',
                         '',
-                        '@MaaResource.custom_action("alpha")',
+                        '@resource.custom_action("alpha")',
                         'class AlphaAction(CustomAction):',
                         '    def run(self, context, argv):',
                         '        return True',
@@ -94,9 +126,7 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
                 '\n'.join(
                     [
                         'from maa.tasker import TaskerEventSink',
-                        'from maa_tasker_registry import MaaTasker',
                         '',
-                        '@MaaTasker.tasker_sink()',
                         'class AspectRatioChecker(TaskerEventSink):',
                         '    pass',
                         '',

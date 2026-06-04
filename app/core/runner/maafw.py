@@ -6,11 +6,12 @@ MFW-ChainFlow Assistant MaaFW核心
 修改:overflow65537
 """
 
+import ast
+import importlib
 import os
 import re
 import sys
-import importlib.util
-import types
+from dataclasses import dataclass
 from enum import Enum, IntEnum
 from typing import Any, Dict, List
 import subprocess
@@ -48,6 +49,15 @@ except ImportError:  # pragma: no cover
 from PySide6.QtCore import QObject, Signal
 
 from app.utils.logger import logger
+
+
+@dataclass(frozen=True)
+class EmbeddedDecoratorInfo:
+    file_path: Path
+    module_name: str
+    class_name: str
+    kind: str
+    register_name: str | None = None
 
 
 def iter_agent_entries(agent_config: Any):
@@ -343,19 +353,18 @@ class MaaFW(QObject):
         self, agent_root: str | Path, agent_entry: str | Path | None = None
     ) -> bool:
         """
-        内置模式：直接 import agent 源入口，经 Resource 装饰器注册动作/识别器。
+        内置模式：扫描 agent 源码中的装饰器并导入相关模块完成注册。
 
         :param agent_root: agent 源目录
-        :param agent_entry: agent 入口脚本；为空时默认使用 agent_root/main.py
+        :param agent_entry: interface.agent 解析出的入口脚本
         """
         agent_path = Path(str(agent_root).replace("{PROJECT_DIR}", str(Path.cwd()))).resolve()
         if not agent_path.is_dir():
             logger.warning("agent 目录 %s 不存在", agent_path)
             return False
 
-        if agent_entry is None:
-            entry_path = agent_path / "main.py"
-        else:
+        entry_path: Path | None = None
+        if agent_entry is not None:
             entry_path = Path(
                 str(agent_entry).replace("{PROJECT_DIR}", str(Path.cwd()))
             )
@@ -363,10 +372,11 @@ class MaaFW(QObject):
                 entry_path = (agent_path / entry_path).resolve()
             else:
                 entry_path = entry_path.resolve()
-        if not entry_path.is_file():
+        if entry_path is not None and not entry_path.is_file():
             logger.error("内置 agent 入口脚本不存在: %s", entry_path)
             return False
 
+        logger.info("准备加载内置 agent 源目录: %s，入口脚本: %s", agent_path, entry_path)
         self._embedded_tasker_sinks.clear()
         self._purge_modules_under_root(self._last_custom_root)
         self._remove_custom_sys_paths()
@@ -383,18 +393,50 @@ class MaaFW(QObject):
             "actions": {"success": [], "failed": []},
             "recognitions": {"success": [], "failed": []},
         }
+        decorators = self._scan_embedded_decorators(agent_path)
+        for item in decorators:
+            logger.info(
+                "扫描到内置 agent 装饰器: type=%s, name=%s, class=%s.%s, file=%s",
+                item.kind,
+                item.register_name or "",
+                item.module_name,
+                item.class_name,
+                item.file_path,
+            )
 
+        actions_before = set(resource.custom_action_list or [])
+        recognitions_before = set(resource.custom_recognition_list or [])
+        sink_count_before = len(self._embedded_tasker_sinks)
+        modules_before = set(sys.modules.keys())
+
+        resource_patch = self._patch_maa_resource_instance(resource)
+        cwd = Path.cwd()
         try:
-            self._bind_embedded_registries(resource)
-            self._load_embedded_agent_entry(entry_path)
+            self._load_embedded_decorator_modules(agent_path, decorators)
         except Exception:
             logger.exception("加载内置 agent custom 失败")
             return False
+        finally:
+            os.chdir(cwd)
+            resource_patch()
 
         actions = list(resource.custom_action_list or [])
         recognitions = list(resource.custom_recognition_list or [])
+        converted_actions = sorted(set(actions) - actions_before)
+        converted_recognitions = sorted(set(recognitions) - recognitions_before)
+        converted_sinks = self._embedded_tasker_sinks[sink_count_before:]
         self.custom_load_report["actions"]["success"] = actions
         self.custom_load_report["recognitions"]["success"] = recognitions
+
+        logger.info(
+            "内置 agent 转换结果: actions=%s, recognitions=%s, tasker_sinks=%s",
+            converted_actions or [],
+            converted_recognitions or [],
+            [
+                f"{sink.__class__.__module__}.{sink.__class__.__name__}"
+                for sink in converted_sinks
+            ],
+        )
 
         if actions:
             logger.info("成功加载内置自定义动作: %s", ", ".join(actions))
@@ -402,51 +444,224 @@ class MaaFW(QObject):
             logger.info("成功加载内置自定义识别器: %s", ", ".join(recognitions))
 
         if not actions and not recognitions:
-            logger.warning("内置 agent 未注册任何自定义动作或识别器")
+            imported_modules = self._collect_imported_modules_under_root(
+                agent_path, modules_before
+            )
+            logger.warning(
+                "内置 agent 未注册任何自定义动作或识别器，源目录: %s，入口脚本: %s，"
+                "本次导入模块: %s",
+                agent_path,
+                entry_path,
+                imported_modules or [],
+            )
             return False
         return True
 
-    def _bind_embedded_registries(self, resource: Resource) -> None:
-        """向源 agent 暴露当前 MaaFW 正在使用的注册入口。"""
-        resource_module = types.ModuleType("maa_resource_registry")
-        resource_module.MaaResource = resource
-        sys.modules["maa_resource_registry"] = resource_module
-
-        class EmbeddedTaskerRegistry:
-            def tasker_sink(registry_self):
-                def wrapper_sink(sink):
-                    instance = sink()
-                    if not isinstance(instance, TaskerEventSink):
-                        raise TypeError(f"{sink.__name__} 不是 TaskerEventSink 子类")
-                    self._embedded_tasker_sinks.append(instance)
-                    if self.tasker is not None:
-                        self.tasker.add_sink(instance)
-                    return sink
-
-                return wrapper_sink
-
-        tasker_module = types.ModuleType("maa_tasker_registry")
-        tasker_module.MaaTasker = EmbeddedTaskerRegistry()
-        sys.modules["maa_tasker_registry"] = tasker_module
+    @staticmethod
+    def _collect_imported_modules_under_root(
+        root: Path, modules_before: set[Any]
+    ) -> list[str]:
+        imported_modules: list[str] = []
+        for module_key in sys.modules.keys() - modules_before:
+            if not isinstance(module_key, str):
+                continue
+            module = sys.modules.get(module_key)
+            module_file = getattr(module, "__file__", None)
+            if not module_file:
+                continue
+            try:
+                module_path = Path(module_file).resolve()
+                if module_path.is_relative_to(root):
+                    imported_modules.append(f"{module_key} ({module_path})")
+            except (OSError, ValueError):
+                continue
+        return sorted(imported_modules)
 
     @staticmethod
-    def _load_embedded_agent_entry(entry_path: Path) -> None:
-        """导入内置 agent 的源入口脚本，触发 MaaResource 装饰器注册。"""
-        module_key = f"embedded_agent_entry:{entry_path}"
-        if module_key in sys.modules:
-            del sys.modules[module_key]
+    def _patch_maa_resource_instance(resource: Resource):
+        import maa.resource as maa_resource_module
 
-        spec = importlib.util.spec_from_file_location(module_key, entry_path)
-        if spec is None or spec.loader is None:
-            raise ImportError(f"无法加载 {entry_path}")
+        sentinel = object()
+        old_value = getattr(maa_resource_module, "resource", sentinel)
+        setattr(maa_resource_module, "resource", resource)
 
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[module_key] = module
-        cwd = Path.cwd()
+        def restore() -> None:
+            if old_value is sentinel:
+                try:
+                    delattr(maa_resource_module, "resource")
+                except AttributeError:
+                    pass
+            else:
+                setattr(maa_resource_module, "resource", old_value)
+
+        return restore
+
+    _EMBEDDED_SKIP_DIRS = {
+        ".git",
+        ".hg",
+        ".svn",
+        ".venv",
+        "venv",
+        "env",
+        "__pycache__",
+        "site-packages",
+        "dist-packages",
+        "node_modules",
+        "build",
+        "dist",
+    }
+
+    def _scan_embedded_decorators(self, root: Path) -> list[EmbeddedDecoratorInfo]:
+        decorators: list[EmbeddedDecoratorInfo] = []
+        for file_path in sorted(root.rglob("*.py")):
+            if self._should_skip_embedded_scan_file(root, file_path):
+                continue
+            try:
+                tree = ast.parse(file_path.read_text(encoding="utf-8"))
+            except (OSError, SyntaxError, UnicodeDecodeError) as exc:
+                logger.warning("扫描内置 agent 装饰器失败，跳过 %s: %s", file_path, exc)
+                continue
+
+            module_name = self._module_name_from_path(root, file_path)
+            if not module_name:
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ClassDef):
+                    continue
+                has_sink_decorator = False
+                for decorator in node.decorator_list:
+                    info = self._parse_embedded_decorator(
+                        decorator, file_path, module_name, node.name
+                    )
+                    if info is not None:
+                        has_sink_decorator = has_sink_decorator or info.kind == "sink"
+                        decorators.append(info)
+                if not has_sink_decorator and self._is_tasker_sink_class(node):
+                    decorators.append(
+                        EmbeddedDecoratorInfo(
+                            file_path=file_path,
+                            module_name=module_name,
+                            class_name=node.name,
+                            kind="sink",
+                        )
+                    )
+        return decorators
+
+    def _should_skip_embedded_scan_file(self, root: Path, file_path: Path) -> bool:
         try:
-            spec.loader.exec_module(module)  # type: ignore[arg-type]
-        finally:
-            os.chdir(cwd)
+            relative = file_path.relative_to(root)
+        except ValueError:
+            return True
+        return any(part in self._EMBEDDED_SKIP_DIRS for part in relative.parts)
+
+    @staticmethod
+    def _module_name_from_path(root: Path, file_path: Path) -> str | None:
+        try:
+            relative = file_path.relative_to(root)
+        except ValueError:
+            return None
+        parts = list(relative.with_suffix("").parts)
+        if not parts:
+            return None
+        if parts[-1] == "__init__":
+            parts = parts[:-1]
+        if not parts:
+            return None
+        return ".".join(parts)
+
+    @staticmethod
+    def _parse_embedded_decorator(
+        decorator: ast.expr, file_path: Path, module_name: str, class_name: str
+    ) -> EmbeddedDecoratorInfo | None:
+        if not isinstance(decorator, ast.Call):
+            return None
+        func = decorator.func
+        if not isinstance(func, ast.Attribute):
+            return None
+
+        owner = func.value
+        owner_name = owner.id if isinstance(owner, ast.Name) else ""
+        attr = func.attr
+
+        if owner_name in {"AgentServer", "resource", "Resource"}:
+            if attr == "custom_action":
+                kind = "action"
+            elif attr == "custom_recognition":
+                kind = "recognition"
+            else:
+                return None
+            register_name = None
+            if decorator.args and isinstance(decorator.args[0], ast.Constant):
+                if isinstance(decorator.args[0].value, str):
+                    register_name = decorator.args[0].value
+            return EmbeddedDecoratorInfo(
+                file_path=file_path,
+                module_name=module_name,
+                class_name=class_name,
+                kind=kind,
+                register_name=register_name,
+            )
+
+        if owner_name in {"AgentServer", "MaaTasker"} and attr == "tasker_sink":
+            return EmbeddedDecoratorInfo(
+                file_path=file_path,
+                module_name=module_name,
+                class_name=class_name,
+                kind="sink",
+            )
+        return None
+
+    @staticmethod
+    def _is_tasker_sink_class(node: ast.ClassDef) -> bool:
+        for base in node.bases:
+            if isinstance(base, ast.Name) and base.id == "TaskerEventSink":
+                return True
+            if isinstance(base, ast.Attribute) and base.attr == "TaskerEventSink":
+                return True
+        return False
+
+    def _load_embedded_decorator_modules(
+        self, root: Path, decorators: list[EmbeddedDecoratorInfo]
+    ) -> None:
+        modules = sorted({item.module_name for item in decorators})
+        for module_name in modules:
+            if module_name in sys.modules:
+                if self._module_belongs_to_root(sys.modules[module_name], root):
+                    logger.debug("内置 agent 装饰器模块已由依赖链导入: %s", module_name)
+                    continue
+                del sys.modules[module_name]
+            logger.info("导入内置 agent 装饰器模块: %s", module_name)
+            importlib.import_module(module_name)
+
+        for item in decorators:
+            if item.kind != "sink":
+                continue
+            module = sys.modules.get(item.module_name)
+            if module is None:
+                continue
+            class_obj = getattr(module, item.class_name, None)
+            if class_obj is None:
+                logger.warning(
+                    "内置 agent sink 类不存在: %s.%s", item.module_name, item.class_name
+                )
+                continue
+            if not issubclass(class_obj, TaskerEventSink):
+                raise TypeError(f"{item.module_name}.{item.class_name} 不是 TaskerEventSink 子类")
+            instance = class_obj()
+            logger.info("内置 agent 注册 Tasker sink: %s.%s", item.module_name, item.class_name)
+            self._embedded_tasker_sinks.append(instance)
+            if self.tasker is not None:
+                self.tasker.add_sink(instance)
+
+    @staticmethod
+    def _module_belongs_to_root(module: Any, root: Path) -> bool:
+        module_file = getattr(module, "__file__", None)
+        if not module_file:
+            return False
+        try:
+            return Path(module_file).resolve().is_relative_to(root)
+        except (OSError, ValueError):
+            return False
 
     def _purge_modules_under_root(self, root: Path | None) -> None:
         if not root:
@@ -496,56 +711,14 @@ class MaaFW(QObject):
             if path in sys.path:
                 sys.path.remove(path)
         self._custom_sys_paths.clear()
-        sys.modules.pop("maa_resource_registry", None)
-        sys.modules.pop("maa_tasker_registry", None)
-
-    _EMBEDDED_ASPECT_RATIO_SINK = (
-        "custom",
-        "sink",
-        "aspect_ratio.py",
-    )
 
     def load_embedded_aspect_ratio_sink(self) -> bool:
         """
-        内置模式下从 agent 源目录加载分辨率检查 Tasker sink。
+        兼容旧调用点。
 
-        须在 load_embedded_agent_custom 之后调用（依赖其设置的 agent 根目录与 sys.path）。
+        内置模式的 Tasker sink 已在 load_embedded_agent_custom 中通过装饰器扫描统一加载。
         """
-        custom_root = self._last_custom_root
-        if custom_root is None:
-            logger.warning("未设置 custom_root，跳过分辨率检查 sink 加载")
-            return False
-
-        sink_file = custom_root.joinpath(*self._EMBEDDED_ASPECT_RATIO_SINK)
-        if not sink_file.is_file():
-            logger.debug("未找到内置分辨率检查模块 %s，跳过", sink_file)
-            return True
-
-        module_name = sink_file.stem
-        module_key = f"embedded_sink:{sink_file}"
-
-        if module_key in sys.modules:
-            del sys.modules[module_key]
-
-        spec = importlib.util.spec_from_file_location(module_name, sink_file)
-        if spec is None or spec.loader is None:
-            logger.error("无法加载内置分辨率检查模块 %s", sink_file)
-            return False
-
-        try:
-            sink_count = len(self._embedded_tasker_sinks)
-            self._bind_embedded_registries(self._init_resource())
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[module_key] = module
-            spec.loader.exec_module(module)  # type: ignore[arg-type]
-            if len(self._embedded_tasker_sinks) <= sink_count:
-                logger.error("模块 %s 未通过 MaaTasker 注册任何 Tasker sink", sink_file)
-                return False
-        except Exception:
-            logger.exception("加载内置分辨率检查 sink 失败")
-            return False
-
-        logger.info("已加载内置分辨率检查 sink")
+        logger.info("内置 Tasker sink 已随自定义组件扫描加载: %s 个", len(self._embedded_tasker_sinks))
         return True
 
     @staticmethod

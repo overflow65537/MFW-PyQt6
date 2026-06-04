@@ -141,6 +141,38 @@ class TaskFlowRunner(QObject):
         # 连接前置检查失败原因（用于在上层发送更明确的通知文案）
         self._connect_error_reason: str | None = None
 
+    def _resolve_current_bundle_base(self) -> Path:
+        bundle_base = Path(self.bundle_path or "./")
+        if not bundle_base.is_absolute():
+            bundle_base = (Path.cwd() / bundle_base).resolve()
+        else:
+            bundle_base = bundle_base.resolve()
+        return bundle_base
+
+    def _resolve_current_bundle_interface_path(self) -> Path | None:
+        bundle_base = self._resolve_current_bundle_base()
+        for file_name in ("interface.jsonc", "interface.json"):
+            candidate = bundle_base / file_name
+            if candidate.is_file():
+                return candidate
+        return None
+
+    def _reload_interface_for_current_bundle(self) -> None:
+        from app.core.service.interface_manager import InterfaceManager
+
+        interface_path = self._resolve_current_bundle_interface_path()
+        if interface_path is None:
+            logger.warning(
+                "当前 bundle 缺少 interface.jsonc/interface.json，跳过运行前 interface 刷新: %s",
+                self._resolve_current_bundle_base(),
+            )
+            return
+
+        logger.info("运行前按当前 bundle 刷新 interface: %s", interface_path)
+        interface_manager = InterfaceManager()
+        interface_manager.reload(interface_path=interface_path)
+        self.task_service.update_runtime_interface(interface_manager.get_interface() or {})
+
     @property
     def callback(self):
         return self.runner_events.callback
@@ -447,6 +479,7 @@ class TaskFlowRunner(QObject):
                 self.fs_signal_bus.fs_start_button_status.emit(
                     {"text": "STOP", "status": "disabled"}
                 )
+            self._reload_interface_for_current_bundle()
             controller_cfg = self.task_service.get_task(_CONTROLLER_)
             if not controller_cfg:
                 raise ValueError("未找到基础预配置任务")
@@ -574,6 +607,16 @@ class TaskFlowRunner(QObject):
                         agent_entry_path = entry_path_obj
                     else:
                         agent_entry_path = (base_dir / normalized_entry).resolve()
+
+                logger.info(
+                    "embedded agent 路径解析: bundle_path=%s, base_dir=%s, custom=%s, "
+                    "agent_root=%s, agent_entry=%s",
+                    bundle_path_str,
+                    base_dir,
+                    agent_root,
+                    agent_root_path,
+                    agent_entry_path,
+                )
 
                 if not self.maafw.load_embedded_agent_custom(
                     agent_root=agent_root_path,
