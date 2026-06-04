@@ -528,6 +528,10 @@ class TaskFlowRunner(QObject):
 
             agent_config = runner_interface.get("agent", None)
             if should_start_external_agent(agent_config):
+                bundle_base = Path(self.bundle_path or "./")
+                if not bundle_base.is_absolute():
+                    bundle_base = (Path.cwd() / bundle_base).resolve()
+                self.maafw.agent_project_dir = bundle_base
                 self.maafw.agent_data_raw = agent_config
                 # v2.5.0: 构建 PI_* 环境变量供 agent 子进程使用
                 self.maafw.agent_env_vars = self._build_agent_env_vars(
@@ -535,66 +539,67 @@ class TaskFlowRunner(QObject):
                 )
                 self.log_output.emit("INFO", self.tr("Agent Service Start"))
 
-            if runner_interface.get("custom", None) and self.maafw.resource:
-                logger.info(
-                    "检测到 embedded custom，准备加载自定义组件: %s",
-                    runner_interface.get("custom", ""),
-                )
+            embedded_custom = bool(
+                runner_interface.get("__embedded_generated_custom")
+            )
+            if embedded_custom and runner_interface.get("custom") and self.maafw.resource:
+                agent_root = runner_interface.get("custom", "")
+                logger.info("检测到 embedded agent，准备加载自定义组件: %s", agent_root)
                 self.log_output.emit(
                     "INFO", self.tr("Starting to load custom components...")
                 )
                 self.maafw.resource.clear_custom_recognition()
                 self.maafw.resource.clear_custom_action()
 
-                # 兼容绝对路径与相对 bundle.path 的自定义配置路径
-                custom_config_path = runner_interface.get("custom", "")
-                if custom_config_path:
-                    bundle_path_str = self.bundle_path or "./"
-                    base_dir = Path(bundle_path_str)
-                    if not base_dir.is_absolute():
-                        base_dir = (Path.cwd() / base_dir).resolve()
+                bundle_path_str = self.bundle_path or "./"
+                base_dir = Path(bundle_path_str)
+                if not base_dir.is_absolute():
+                    base_dir = (Path.cwd() / base_dir).resolve()
 
-                    # 先处理占位符与前导分隔符
-                    raw_custom = str(custom_config_path).replace("{PROJECT_DIR}", "")
-                    normalized_custom = raw_custom.lstrip("\\/")
-                    custom_path_obj = Path(normalized_custom)
+                raw_agent = str(agent_root).replace("{PROJECT_DIR}", "")
+                normalized_agent = raw_agent.lstrip("\\/")
+                agent_path_obj = Path(normalized_agent)
+                if agent_path_obj.is_absolute():
+                    agent_root_path = agent_path_obj
+                else:
+                    agent_root_path = (base_dir / normalized_agent).resolve()
 
-                    # 绝对路径：直接使用，保持兼容已有配置
-                    if custom_path_obj.is_absolute():
-                        custom_config_path = custom_path_obj
+                agent_entry = runner_interface.get("__embedded_agent_entry")
+                agent_entry_path = None
+                if agent_entry:
+                    raw_entry = str(agent_entry).replace("{PROJECT_DIR}", "")
+                    normalized_entry = raw_entry.lstrip("\\/")
+                    entry_path_obj = Path(normalized_entry)
+                    if entry_path_obj.is_absolute():
+                        agent_entry_path = entry_path_obj
                     else:
-                        # 相对路径：视为相对 bundle.path 的路径
-                        custom_config_path = (base_dir / normalized_custom).resolve()
+                        agent_entry_path = (base_dir / normalized_entry).resolve()
 
-                result = self.maafw.load_custom_objects(
-                    custom_config_path=custom_config_path
-                )
-                if not result:
-                    failed_actions = self.maafw.custom_load_report["actions"]["failed"]
-                    failed_recogs = self.maafw.custom_load_report["recognitions"][
-                        "failed"
-                    ]
-                    detail_parts = [
-                        f"动作 {item.get('name', '')}: {item.get('reason', '')}"
-                        for item in failed_actions
-                    ] + [
-                        f"识别器 {item.get('name', '')}: {item.get('reason', '')}"
-                        for item in failed_recogs
-                    ]
-                    detail_msg = (
-                        "；".join([part for part in detail_parts if part]) or "未知原因"
-                    )
-
-                    logger.error(f"自定义组件加载失败，流程终止: {detail_msg}")
+                if not self.maafw.load_embedded_agent_custom(
+                    agent_root=agent_root_path,
+                    agent_entry=agent_entry_path,
+                ):
+                    logger.error("内置 agent 自定义组件加载失败")
                     self.log_output.emit(
                         "ERROR",
                         self.tr(
-                            "Custom components loading failed, the flow is terminated: "
-                        )
-                        + detail_msg,
+                            "Custom components loading failed, the flow is terminated."
+                        ),
                     )
                     self.log_output.emit(
                         "ERROR", self.tr("please try to reset resource in setting")
+                    )
+                    await self.stop_task()
+                    return
+
+                if not self.maafw.load_embedded_aspect_ratio_sink():
+                    logger.error("内置模式分辨率检查 sink 加载失败")
+                    self.log_output.emit(
+                        "ERROR",
+                        self.tr(
+                            "Embedded aspect ratio checker failed to load, "
+                            "the flow is terminated."
+                        ),
                     )
                     await self.stop_task()
                     return

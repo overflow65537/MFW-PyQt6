@@ -6,11 +6,11 @@ MFW-ChainFlow Assistant MaaFW核心
 修改:overflow65537
 """
 
-import json
 import os
 import re
 import sys
 import importlib.util
+import types
 from enum import Enum, IntEnum
 from typing import Any, Dict, List
 import subprocess
@@ -21,9 +21,6 @@ from asyncify import asyncify
 
 import maa
 from maa.context import Context, ContextEventSink
-from maa.custom_action import CustomAction
-from maa.custom_recognition import CustomRecognition
-
 from maa.controller import AdbController, Win32Controller
 from maa.tasker import Tasker
 from maa.agent_client import AgentClient
@@ -72,6 +69,44 @@ def normalize_agent_entry(agent_config: Any) -> dict | None:
 def should_start_external_agent(agent_config: Any) -> bool:
     """是否应以外部子进程方式启动 agent（非 embedded）。"""
     return any(not entry.get("embedded") for entry in iter_agent_entries(agent_config))
+
+
+def _child_exec_looks_like_path(child_exec: str) -> bool:
+    return (
+        "/" in child_exec
+        or "\\" in child_exec
+        or child_exec.startswith(".")
+        or child_exec.startswith("{PROJECT_DIR}")
+    )
+
+
+def resolve_agent_executable(child_exec: str, project_dir: Path) -> str:
+    """
+    将 interface.agent.child_exec 解析为可执行路径。
+
+    相对路径（如 agent/go-service）相对于 PI 项目目录（interface 所在目录），
+    而非 Client 进程 cwd。纯命令名（如 python）保持原样以便从 PATH 查找。
+    """
+    raw = child_exec.strip()
+    if not raw or not _child_exec_looks_like_path(raw):
+        return raw
+
+    expanded = raw.replace("{PROJECT_DIR}", str(project_dir))
+    path = Path(expanded)
+    if not path.is_absolute():
+        path = (project_dir / path).resolve()
+    else:
+        path = path.resolve()
+
+    if path.is_file():
+        return str(path)
+
+    if sys.platform == "win32" and path.suffix == "":
+        with_exe = path.with_suffix(".exe")
+        if with_exe.is_file():
+            return str(with_exe)
+
+    return str(path)
 
 
 # 以下代码引用自 MaaDebugger 项目的 ./src/MaaDebugger/maafw/__init__.py 文件，用于生成maafw实例
@@ -284,6 +319,8 @@ class MaaFW(QObject):
         self.agent_output_thread = None
 
         self.agent_data_raw = None
+        # PI 项目目录（interface.json 所在目录），用于解析 agent 相对路径
+        self.agent_project_dir: Path | None = None
         # v2.5.0: 启动 agent 子进程时注入的 PI_* 环境变量
         self.agent_env_vars: Dict[str, str] = {}
         # 控制是否需要向 UI 报告自定义对象注册情况
@@ -297,283 +334,219 @@ class MaaFW(QObject):
         self._custom_sys_paths: List[str] = []
         # 记录上次加载的 custom_root，用于清理模块缓存
         self._last_custom_root: Path | None = None
+        # 内置模式下的额外 Tasker sink（如分辨率检查）
+        self._embedded_tasker_sinks: List[TaskerEventSink] = []
         # 底层 maa 对象清理不是线程安全的，必须串行执行。
         self._cleanup_lock = threading.Lock()
 
-    def load_custom_objects(self, custom_config_path: str | Path) -> bool:
+    def load_embedded_agent_custom(
+        self, agent_root: str | Path, agent_entry: str | Path | None = None
+    ) -> bool:
         """
-        从 custom.json 加载并注册自定义动作/识别器。
+        内置模式：直接 import agent 源入口，经 Resource 装饰器注册动作/识别器。
 
-        :param custom_config_path: custom.json 文件路径或包含它的目录
-        :return: 是否成功加载到至少一个自定义对象
+        :param agent_root: agent 源目录
+        :param agent_entry: agent 入口脚本；为空时默认使用 agent_root/main.py
         """
-        project_dir = Path.cwd()
-        config_path = Path(
-            str(custom_config_path).replace("{PROJECT_DIR}", str(project_dir))
-        )
-        if config_path.is_dir():
-            config_path = config_path / "custom.json"
-
-        if not config_path.exists():
-            logger.warning(f"自定义配置文件 {config_path} 不存在")
-            return False
-        if not config_path.is_file():
-            logger.warning(f"自定义配置路径 {config_path} 不是文件")
+        agent_path = Path(str(agent_root).replace("{PROJECT_DIR}", str(Path.cwd()))).resolve()
+        if not agent_path.is_dir():
+            logger.warning("agent 目录 %s 不存在", agent_path)
             return False
 
-        try:
-            with config_path.open("r", encoding="utf-8") as fp:
-                custom_config: Dict[str, Dict] = json.load(fp)
-        except Exception as exc:
-            logger.error(f"读取自定义配置失败: {exc}")
+        if agent_entry is None:
+            entry_path = agent_path / "main.py"
+        else:
+            entry_path = Path(
+                str(agent_entry).replace("{PROJECT_DIR}", str(Path.cwd()))
+            )
+            if not entry_path.is_absolute():
+                entry_path = (agent_path / entry_path).resolve()
+            else:
+                entry_path = entry_path.resolve()
+        if not entry_path.is_file():
+            logger.error("内置 agent 入口脚本不存在: %s", entry_path)
             return False
 
-        custom_root = config_path.parent.resolve()
+        self._embedded_tasker_sinks.clear()
+        self._purge_modules_under_root(self._last_custom_root)
+        self._remove_custom_sys_paths()
+        self._last_custom_root = agent_path
+
+        # 源入口作为脚本运行时通常可同时 import 同目录模块与项目根包。
+        for sys_path in (str(agent_path), str(agent_path.parent)):
+            if sys_path not in sys.path:
+                sys.path.insert(0, sys_path)
+                self._custom_sys_paths.append(sys_path)
+
         resource = self._init_resource()
-        loaded_any = False
         self.custom_load_report = {
             "actions": {"success": [], "failed": []},
             "recognitions": {"success": [], "failed": []},
         }
 
-        # 清理之前加载的模块：移除所有与之前 custom_root 相关的模块
-        # 包括主模块、子模块和顶级包模块（如 action, Recognition）
-        if hasattr(self, "_last_custom_root") and self._last_custom_root:
-            modules_to_remove = []
-            for module_key in list(sys.modules.keys()):
-                # 移除所有以文件路径为key的模块
-                if isinstance(module_key, str) and (
-                    module_key.startswith(str(self._last_custom_root))
-                    or (
-                        os.path.isabs(module_key)
-                        and Path(module_key).is_relative_to(self._last_custom_root)
-                    )
-                ):
-                    modules_to_remove.append(module_key)
-                # 检查模块的 __file__ 或 __path__ 是否在旧的 custom_root 下
-                elif isinstance(module_key, str):
+        try:
+            self._bind_embedded_registries(resource)
+            self._load_embedded_agent_entry(entry_path)
+        except Exception:
+            logger.exception("加载内置 agent custom 失败")
+            return False
+
+        actions = list(resource.custom_action_list or [])
+        recognitions = list(resource.custom_recognition_list or [])
+        self.custom_load_report["actions"]["success"] = actions
+        self.custom_load_report["recognitions"]["success"] = recognitions
+
+        if actions:
+            logger.info("成功加载内置自定义动作: %s", ", ".join(actions))
+        if recognitions:
+            logger.info("成功加载内置自定义识别器: %s", ", ".join(recognitions))
+
+        if not actions and not recognitions:
+            logger.warning("内置 agent 未注册任何自定义动作或识别器")
+            return False
+        return True
+
+    def _bind_embedded_registries(self, resource: Resource) -> None:
+        """向源 agent 暴露当前 MaaFW 正在使用的注册入口。"""
+        resource_module = types.ModuleType("maa_resource_registry")
+        resource_module.MaaResource = resource
+        sys.modules["maa_resource_registry"] = resource_module
+
+        class EmbeddedTaskerRegistry:
+            def tasker_sink(registry_self):
+                def wrapper_sink(sink):
+                    instance = sink()
+                    if not isinstance(instance, TaskerEventSink):
+                        raise TypeError(f"{sink.__name__} 不是 TaskerEventSink 子类")
+                    self._embedded_tasker_sinks.append(instance)
+                    if self.tasker is not None:
+                        self.tasker.add_sink(instance)
+                    return sink
+
+                return wrapper_sink
+
+        tasker_module = types.ModuleType("maa_tasker_registry")
+        tasker_module.MaaTasker = EmbeddedTaskerRegistry()
+        sys.modules["maa_tasker_registry"] = tasker_module
+
+    @staticmethod
+    def _load_embedded_agent_entry(entry_path: Path) -> None:
+        """导入内置 agent 的源入口脚本，触发 MaaResource 装饰器注册。"""
+        module_key = f"embedded_agent_entry:{entry_path}"
+        if module_key in sys.modules:
+            del sys.modules[module_key]
+
+        spec = importlib.util.spec_from_file_location(module_key, entry_path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"无法加载 {entry_path}")
+
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_key] = module
+        cwd = Path.cwd()
+        try:
+            spec.loader.exec_module(module)  # type: ignore[arg-type]
+        finally:
+            os.chdir(cwd)
+
+    def _purge_modules_under_root(self, root: Path | None) -> None:
+        if not root:
+            return
+        modules_to_remove: list[str] = []
+        for module_key in list(sys.modules.keys()):
+            if isinstance(module_key, str) and (
+                module_key.startswith(str(root))
+                or (
+                    os.path.isabs(module_key)
+                    and Path(module_key).is_relative_to(root)
+                )
+            ):
+                modules_to_remove.append(module_key)
+                continue
+            if not isinstance(module_key, str):
+                continue
+            try:
+                module = sys.modules.get(module_key)
+                if not module:
+                    continue
+                if getattr(module, "__file__", None):
                     try:
-                        module = sys.modules.get(module_key)
-                        if not module:
+                        if Path(module.__file__).resolve().is_relative_to(root):
+                            modules_to_remove.append(module_key)
                             continue
-
-                        # 检查普通模块的 __file__
-                        if hasattr(module, "__file__") and module.__file__:
-                            try:
-                                if (
-                                    Path(module.__file__)
-                                    .resolve()
-                                    .is_relative_to(self._last_custom_root)
-                                ):
-                                    modules_to_remove.append(module_key)
-                                    continue
-                            except (ValueError, OSError):
-                                pass
-
-                        # 检查包模块的 __path__
-                        if hasattr(module, "__path__"):
-                            try:
-                                for path_entry in module.__path__:
-                                    if (
-                                        Path(path_entry)
-                                        .resolve()
-                                        .is_relative_to(self._last_custom_root)
-                                    ):
-                                        modules_to_remove.append(module_key)
-                                        break
-                            except (ValueError, OSError):
-                                pass
-                    except Exception:
+                    except (ValueError, OSError):
                         pass
+                if hasattr(module, "__path__"):
+                    for path_entry in module.__path__:
+                        try:
+                            if Path(path_entry).resolve().is_relative_to(root):
+                                modules_to_remove.append(module_key)
+                                break
+                        except (ValueError, OSError):
+                            pass
+            except Exception:
+                pass
+        for module_key in set(modules_to_remove):
+            try:
+                del sys.modules[module_key]
+            except KeyError:
+                pass
 
-            for module_key in set(modules_to_remove):
-                try:
-                    del sys.modules[module_key]
-                    logger.debug(f"已清理模块缓存: {module_key}")
-                except KeyError:
-                    pass
-
-        # 清理之前添加的 sys.path 条目（如果存在）
+    def _remove_custom_sys_paths(self) -> None:
         for path in self._custom_sys_paths:
             if path in sys.path:
                 sys.path.remove(path)
-                logger.debug(f"已从 sys.path 移除: {path}")
         self._custom_sys_paths.clear()
+        sys.modules.pop("maa_resource_registry", None)
+        sys.modules.pop("maa_tasker_registry", None)
 
-        # 记录当前 custom_root，用于下次清理
-        self._last_custom_root = custom_root
+    _EMBEDDED_ASPECT_RATIO_SINK = (
+        "custom",
+        "sink",
+        "aspect_ratio.py",
+    )
 
-        # 将custom_root的父目录添加到sys.path，以便模块可以使用绝对导入
-        # 例如：from MPAcustom.action.tool.LoadSetting 需要 MPAcustom 的父目录在 sys.path 中
-        # 同时也要添加custom_root本身，以便相对导入也能工作
-        custom_root_parent = str(custom_root.parent)
-        custom_root_str = str(custom_root)
+    def load_embedded_aspect_ratio_sink(self) -> bool:
+        """
+        内置模式下从 agent 源目录加载分辨率检查 Tasker sink。
 
-        # 添加父目录到sys.path（用于绝对导入，如 from MPAcustom.xxx）
-        if custom_root_parent not in sys.path:
-            sys.path.insert(0, custom_root_parent)
-            self._custom_sys_paths.append(custom_root_parent)
-            logger.debug(f"已将父目录 {custom_root_parent} 添加到 sys.path")
+        须在 load_embedded_agent_custom 之后调用（依赖其设置的 agent 根目录与 sys.path）。
+        """
+        custom_root = self._last_custom_root
+        if custom_root is None:
+            logger.warning("未设置 custom_root，跳过分辨率检查 sink 加载")
+            return False
 
-        # 添加custom_root本身到sys.path（用于相对导入）
-        if custom_root_str not in sys.path:
-            sys.path.insert(0, custom_root_str)
-            self._custom_sys_paths.append(custom_root_str)
-            logger.debug(f"已将 {custom_root_str} 添加到 sys.path")
+        sink_file = custom_root.joinpath(*self._EMBEDDED_ASPECT_RATIO_SINK)
+        if not sink_file.is_file():
+            logger.debug("未找到内置分辨率检查模块 %s，跳过", sink_file)
+            return True
 
-        def _get_bucket(type_name: str) -> str | None:
-            return {"action": "actions", "recognition": "recognitions"}.get(type_name)
+        module_name = sink_file.stem
+        module_key = f"embedded_sink:{sink_file}"
 
-        def _record_success(type_name: str, name: str):
-            bucket = _get_bucket(type_name)
-            if bucket:
-                self.custom_load_report[bucket]["success"].append(name)
+        if module_key in sys.modules:
+            del sys.modules[module_key]
 
-        def _record_failure(
-            type_name: str, name: str, reason: str, level: str = "warning"
-        ):
-            bucket = _get_bucket(type_name)
-            if bucket:
-                self.custom_load_report[bucket]["failed"].append(
-                    {"name": name, "reason": reason, "level": level}
-                )
+        spec = importlib.util.spec_from_file_location(module_name, sink_file)
+        if spec is None or spec.loader is None:
+            logger.error("无法加载内置分辨率检查模块 %s", sink_file)
+            return False
 
-        for custom_name, custom in custom_config.items():
-            custom_type: str = (custom.get("type") or "").strip()
-            custom_class_name: str = custom.get("class") or ""
-            custom_file_path: str = custom.get("file_path") or ""
+        try:
+            sink_count = len(self._embedded_tasker_sinks)
+            self._bind_embedded_registries(self._init_resource())
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_key] = module
+            spec.loader.exec_module(module)  # type: ignore[arg-type]
+            if len(self._embedded_tasker_sinks) <= sink_count:
+                logger.error("模块 %s 未通过 MaaTasker 注册任何 Tasker sink", sink_file)
+                return False
+        except Exception:
+            logger.exception("加载内置分辨率检查 sink 失败")
+            return False
 
-            if not all([custom_type, custom_name, custom_class_name, custom_file_path]):
-                reason = f"配置项 {custom} 缺少必要信息，跳过"
-                logger.warning(reason)
-                _record_failure(custom_type, custom_name, reason)
-                continue
-
-            # 处理占位符与相对路径
-            custom_file_path = custom_file_path.replace(
-                "{custom_path}", str(custom_root)
-            )
-            custom_file_path = custom_file_path.replace(
-                "{PROJECT_DIR}", str(project_dir)
-            )
-            if not os.path.isabs(custom_file_path):
-                custom_file_path = os.path.join(custom_root, custom_file_path)
-            custom_file_path = os.path.abspath(custom_file_path)
-
-            if not os.path.isfile(custom_file_path):
-                reason = f"自定义脚本 {custom_file_path} 不存在，跳过 {custom_name}"
-                logger.warning(reason)
-                _record_failure(custom_type, custom_name, reason)
-                continue
-
-            module_name = Path(custom_file_path).stem
-            module_key = str(custom_file_path)
-
-            # 如果该文件路径的模块已存在，先移除（可能是之前加载的）
-            if module_key in sys.modules:
-                logger.debug(f"移除已存在的模块缓存: {module_key}")
-                del sys.modules[module_key]
-
-            # 计算模块的包名，用于支持相对导入
-            # 将 custom_root.name 作为包名，这样 from .action.Fishing 可以工作
-            custom_root_name = custom_root.name
-            try:
-                file_path_obj = Path(custom_file_path).resolve()
-                custom_root_obj = custom_root.resolve()
-                if file_path_obj.is_relative_to(custom_root_obj):
-                    relative_path = file_path_obj.relative_to(custom_root_obj)
-                    if len(relative_path.parts) > 1:
-                        # 文件在子目录中
-                        package_parts = [custom_root_name] + list(
-                            relative_path.parts[:-1]
-                        )
-                        package_name = ".".join(package_parts)
-                    else:
-                        # 文件在根目录
-                        package_name = custom_root_name
-                else:
-                    package_name = custom_root_name
-            except (ValueError, AttributeError):
-                package_name = custom_root_name
-
-            spec = importlib.util.spec_from_file_location(module_name, custom_file_path)
-            if spec is None or spec.loader is None:
-                reason = f"无法获取模块 {module_name} 的 spec，跳过加载"
-                logger.error(reason)
-                _record_failure(custom_type, custom_name, reason, level="error")
-                continue
-
-            try:
-                module = importlib.util.module_from_spec(spec)
-                # 设置 __package__ 以支持相对导入（from .action.Fishing）
-                # 绝对导入（from action.Fishing）通过 sys.path 自动支持
-                module.__package__ = package_name
-
-                # 使用文件路径作为key存储到sys.modules，避免同名模块冲突
-                sys.modules[module_key] = module
-                spec.loader.exec_module(module)  # type: ignore[arg-type]
-
-                class_obj = getattr(module, custom_class_name, None)
-                if class_obj is None:
-                    reason = f"模块 {module_name} 中未找到类 {custom_class_name}，跳过"
-                    logger.error(reason)
-                    _record_failure(custom_type, custom_name, reason, level="error")
-                    continue
-                instance = class_obj()
-            except Exception as exc:
-                # 使用 logger.exception 自动记录完整的堆栈信息
-                reason = f"加载自定义对象 {custom_name} 失败: {exc}"
-                logger.exception(f"加载自定义对象 {custom_name} 失败")
-                _record_failure(custom_type, custom_name, reason, level="error")
-                continue
-
-            if custom_type == "action":
-                if not isinstance(instance, CustomAction):
-                    reason = f"{custom_name} 不是 CustomAction 子类，跳过"
-                    logger.warning(reason)
-                    _record_failure(custom_type, custom_name, reason)
-                    continue
-                if resource.register_custom_action(custom_name, instance):
-                    loaded_any = True
-                    _record_success(custom_type, custom_name)
-                else:
-                    reason = f"自定义动作 {custom_name} 注册失败"
-                    logger.warning(reason)
-                    _record_failure(custom_type, custom_name, reason)
-            elif custom_type == "recognition":
-                if not isinstance(instance, CustomRecognition):
-                    reason = f"{custom_name} 不是 CustomRecognition 子类，跳过"
-                    logger.warning(reason)
-                    _record_failure(custom_type, custom_name, reason)
-                    continue
-                if resource.register_custom_recognition(custom_name, instance):
-                    loaded_any = True
-                    _record_success(custom_type, custom_name)
-                else:
-                    reason = f"自定义识别器 {custom_name} 注册失败"
-                    logger.warning(reason)
-                    _record_failure(custom_type, custom_name, reason)
-            else:
-                logger.warning(f"未知的自定义类型 {custom_type}，跳过 {custom_name}")
-
-        actions_success = self.custom_load_report["actions"]["success"]
-        recognitions_success = self.custom_load_report["recognitions"]["success"]
-        actions_failed = self.custom_load_report["actions"]["failed"]
-        recognitions_failed = self.custom_load_report["recognitions"]["failed"]
-
-        if actions_success:
-            logger.info(f"成功加载自定义动作: {', '.join(actions_success)}")
-        if recognitions_success:
-            logger.info(f"成功加载自定义识别器: {', '.join(recognitions_success)}")
-
-        if actions_failed:
-            for item in actions_failed:
-                logger.warning(f"自定义动作 {item['name']} 加载失败: {item['reason']}")
-        if recognitions_failed:
-            for item in recognitions_failed:
-                logger.warning(f"自定义识别器 {item['name']} 加载失败: {item['reason']}")
-
-        return loaded_any
+        logger.info("已加载内置分辨率检查 sink")
+        return True
 
     @staticmethod
     @asyncify
@@ -685,6 +658,8 @@ class MaaFW(QObject):
             self.tasker = Tasker()
             self.tasker.add_context_sink(self.maa_context_sink)
 
+            for sink in self._embedded_tasker_sinks:
+                self.tasker.add_sink(sink)
             if self.maa_tasker_sink:
                 self.tasker.add_sink(self.maa_tasker_sink)
         if not self.resource or not self.controller:
@@ -761,7 +736,8 @@ class MaaFW(QObject):
 
         socket_id = self._agent_socket_id(client, agent_data)
         child_args = agent_data.get("child_args", [])
-        project_dir = Path.cwd()
+        project_dir = (self.agent_project_dir or Path.cwd()).resolve()
+        child_exec = resolve_agent_executable(child_exec, project_dir)
         child_args = [
             arg.replace("{PROJECT_DIR}", str(project_dir)) for arg in child_args
         ]
@@ -925,7 +901,12 @@ class MaaFW(QObject):
                 self.controller = None
             self._teardown_agents()
             self.agent_data_raw = None
+            self.agent_project_dir = None
             self.agent_env_vars = {}
+            self._purge_modules_under_root(self._last_custom_root)
+            self._last_custom_root = None
+            self._embedded_tasker_sinks.clear()
+            self._remove_custom_sys_paths()
         finally:
             self._cleanup_lock.release()
 

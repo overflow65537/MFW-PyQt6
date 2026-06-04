@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from app.core.service.interface_manager import InterfaceManager
-from app.utils.custom_builder import build_custom_bundle
+from app.core.runner.maafw import MaaFW
 
 
 INTERFACE_TEMPLATE = {
@@ -26,60 +26,94 @@ def _write_agent_source(target_dir: Path, source: str) -> None:
 
 
 class EmbeddedAgentRuntimeTests(unittest.TestCase):
-    def test_build_custom_bundle_rebuilds_existing_directory(self):
+    def test_load_embedded_agent_custom_imports_source_entry(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             _write_agent_source(
                 root,
                 '\n'.join(
                     [
-                        'class AgentServer:',
-                        '    @staticmethod',
-                        '    def custom_action(name):',
-                        '        def decorator(cls):',
-                        '            return cls',
-                        '        return decorator',
-                        '',
-                        '@AgentServer.custom_action("alpha")',
-                        'class AlphaAction:',
-                        '    pass',
+                        'from agent_file import *',
                         '',
                     ]
                 ),
             )
+            (root / "agent" / "agent_file.py").write_text(
+                '\n'.join(
+                    [
+                        'from maa.custom_action import CustomAction',
+                        'from maa.custom_recognition import CustomRecognition',
+                        'from maa_resource_registry import MaaResource',
+                        '',
+                        '@MaaResource.custom_action("alpha")',
+                        'class AlphaAction(CustomAction):',
+                        '    def run(self, context, argv):',
+                        '        return True',
+                        '',
+                        '@MaaResource.custom_recognition("beta")',
+                        'class BetaRecognition(CustomRecognition):',
+                        '    def analyze(self, context, argv):',
+                        '        return None',
+                        '',
+                    ]
+                ),
+                encoding="utf-8",
+            )
 
-            entry = root / "agent" / "main.py"
-            custom_dir = root / "agent_custom"
+            maafw = MaaFW()
+            self.assertTrue(
+                maafw.load_embedded_agent_custom(
+                    agent_root=root / "agent",
+                    agent_entry=root / "agent" / "main.py",
+                )
+            )
+            self.assertIn("alpha", maafw.resource.custom_action_list)
+            self.assertIn("beta", maafw.resource.custom_recognition_list)
 
-            first_bundle = build_custom_bundle(entry, custom_dir)
-            self.assertTrue(first_bundle.custom_json.exists())
-            self.assertIn("alpha", first_bundle.entries)
-
+    def test_load_embedded_aspect_ratio_sink_uses_tasker_decorator(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
             _write_agent_source(
                 root,
                 '\n'.join(
                     [
-                        'class AgentServer:',
-                        '    @staticmethod',
-                        '    def custom_action(name):',
-                        '        def decorator(cls):',
-                        '            return cls',
-                        '        return decorator',
+                        'from maa.custom_action import CustomAction',
+                        'from maa_resource_registry import MaaResource',
                         '',
-                        '@AgentServer.custom_action("alpha")',
-                        'class AlphaAction:',
-                        '    pass',
-                        '',
-                        '@AgentServer.custom_action("beta")',
-                        'class BetaAction:',
-                        '    pass',
+                        '@MaaResource.custom_action("alpha")',
+                        'class AlphaAction(CustomAction):',
+                        '    def run(self, context, argv):',
+                        '        return True',
                         '',
                     ]
                 ),
             )
+            sink_dir = root / "agent" / "custom" / "sink"
+            sink_dir.mkdir(parents=True, exist_ok=True)
+            (sink_dir / "aspect_ratio.py").write_text(
+                '\n'.join(
+                    [
+                        'from maa.tasker import TaskerEventSink',
+                        'from maa_tasker_registry import MaaTasker',
+                        '',
+                        '@MaaTasker.tasker_sink()',
+                        'class AspectRatioChecker(TaskerEventSink):',
+                        '    pass',
+                        '',
+                    ]
+                ),
+                encoding="utf-8",
+            )
 
-            second_bundle = build_custom_bundle(entry, custom_dir)
-            self.assertIn("beta", second_bundle.entries)
+            maafw = MaaFW()
+            self.assertTrue(
+                maafw.load_embedded_agent_custom(
+                    agent_root=root / "agent",
+                    agent_entry=root / "agent" / "main.py",
+                )
+            )
+            self.assertTrue(maafw.load_embedded_aspect_ratio_sink())
+            self.assertEqual(1, len(maafw._embedded_tasker_sinks))
 
     def test_interface_manager_mutates_single_in_memory_interface_only(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -125,37 +159,11 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
             self.assertTrue(manager.apply_agent_customization())
             self.assertIn("agent", translated_interface)
             self.assertEqual("agent/main.py", translated_interface["agent"]["child_args"][0])
-            self.assertEqual("agent_custom/custom.json", translated_interface.get("custom"))
-            self.assertTrue(translated_interface.get("__embedded_generated_custom"))
-
-            _write_agent_source(
-                root,
-                '\n'.join(
-                    [
-                        'class AgentServer:',
-                        '    @staticmethod',
-                        '    def custom_action(name):',
-                        '        def decorator(cls):',
-                        '            return cls',
-                        '        return decorator',
-                        '',
-                        '@AgentServer.custom_action("alpha")',
-                        'class AlphaAction:',
-                        '    pass',
-                        '',
-                        '@AgentServer.custom_action("beta")',
-                        'class BetaAction:',
-                        '    pass',
-                        '',
-                    ]
-                ),
+            self.assertEqual("agent", translated_interface.get("custom"))
+            self.assertEqual(
+                "agent/main.py", translated_interface.get("__embedded_agent_entry")
             )
-
-            self.assertTrue(manager.apply_agent_customization())
-            custom_json = root / "agent_custom" / "custom.json"
-            custom_entries = json.loads(custom_json.read_text(encoding="utf-8"))
-
-            self.assertIn("beta", custom_entries)
+            self.assertTrue(translated_interface.get("__embedded_generated_custom"))
             self.assertIn("agent", json.loads(interface_path.read_text(encoding="utf-8")))
             self.assertNotIn("custom", json.loads(interface_path.read_text(encoding="utf-8")))
 
@@ -198,7 +206,8 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
 
             self.assertTrue(manager.apply_agent_customization())
             translated = manager.get_interface()
-            self.assertEqual("agent_custom/custom.json", translated.get("custom"))
+            self.assertEqual("agent", translated.get("custom"))
+            self.assertEqual("agent/main.py", translated.get("__embedded_agent_entry"))
             self.assertNotIn("__embedded_agent_error", translated)
 
 

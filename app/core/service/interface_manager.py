@@ -11,7 +11,6 @@ from copy import deepcopy
 from app.common.config import cfg
 from app.utils.logger import logger
 from app.core.service.i18n_service import I18nService
-from app.utils.custom_builder import build_custom_bundle
 
 # child_args 无法解析时，相对 interface 目录回退的 agent 入口
 DEFAULT_AGENT_ENTRY_RELATIVE = "agent/main.py"
@@ -393,7 +392,7 @@ class InterfaceManager:
     ) -> bool:
         """
         若 interface 中 agent 存在且设置了 embedded，则在当前内存中的
-        interface 上准备 custom 产物并注入 custom 字段。
+        interface 上记录源 agent 入口，供 runner 直接 import 源文件注册自定义组件。
 
         embedded_override: 控制器预配置中的 agent_embedded，覆盖 interface.agent.embedded。
 
@@ -408,6 +407,7 @@ class InterfaceManager:
         if interface.get("__embedded_generated_custom"):
             interface.pop("custom", None)
         interface.pop("__embedded_generated_custom", None)
+        interface.pop("__embedded_agent_entry", None)
         interface.pop("__embedded_agent_error", None)
 
     def _handle_embedded_agent(self, *, embedded_override: bool | None = None) -> bool:
@@ -433,23 +433,23 @@ class InterfaceManager:
             logger.warning("找不到 agent.child_args 指向的启动脚本，跳过嵌入式转换")
             return False
 
-        custom_dir = entry_path.parent.with_name(f"{entry_path.parent.name}_custom")
-
-        try:
-            build_custom_bundle(entry_path, custom_dir)
-        except Exception as exc:
-            interface["__embedded_agent_error"] = f"转换嵌入式 agent 失败: {exc}"
-            logger.exception("转换嵌入式 agent 失败: %s", exc)
-            return False
-
         # Windows 上 cwd/argv 可能为 8.3 短路径，而 child_args 常为完整路径；
         # pathlib 的 relative_to 按字符串前缀比较，必须先 resolve 再算相对路径。
         interface_root = self._interface_dir.resolve()
-        custom_root = custom_dir.resolve()
-        custom_relative = (custom_root.relative_to(interface_root) / "custom.json").as_posix()
-        interface["custom"] = custom_relative
+        agent_root = entry_path.parent.resolve()
+        agent_relative = self._to_interface_relative(agent_root, interface_root)
+        entry_relative = self._to_interface_relative(entry_path.resolve(), interface_root)
+        interface["custom"] = agent_relative
+        interface["__embedded_agent_entry"] = entry_relative
         interface["__embedded_generated_custom"] = True
         return True
+
+    @staticmethod
+    def _to_interface_relative(path: Path, interface_root: Path) -> str:
+        try:
+            return path.relative_to(interface_root).as_posix()
+        except ValueError:
+            return path.as_posix()
 
     def _resolve_agent_entry(self, child_args: Sequence[Any]) -> Path | None:
         """

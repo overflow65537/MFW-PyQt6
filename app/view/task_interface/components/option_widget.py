@@ -225,6 +225,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 监听运行状态变化，禁用/启用选项编辑
         from app.common.signal_bus import signalBus
         signalBus.task_status_changed.connect(self._on_task_status_changed)
+        service_coordinator.fs_signals.fs_start_button_status.connect(
+            self._on_run_status_changed
+        )
         
         # 初始化时隐藏描述区域
         self._toggle_description(visible=False, animate=False)
@@ -665,6 +668,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
         self.current_task = None
         self.current_config = {}
+        self._update_options_enabled()
 
     def _on_config_changed(self, config_id: str):
         """配置切换时清除选项面板"""
@@ -1066,11 +1070,27 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         """监听任务状态变化，更新选项的启用/禁用状态"""
         self._update_options_enabled()
 
+    def _on_run_status_changed(self, status: dict):
+        """监听任务流启停，同步选项区域的启用/禁用状态"""
+        self._update_options_enabled()
+
     def _update_options_enabled(self):
         """根据运行状态更新所有选项的启用/禁用状态"""
         # 检查是否有任务正在运行
         is_running = self.service_coordinator.run_manager.is_running
         self._set_options_enabled(not is_running)
+        if not is_running:
+            self._reapply_contextual_disable_rules()
+
+    def _reapply_contextual_disable_rules(self) -> None:
+        """任务未运行时，恢复各设置区域的上下文禁用规则（如完成后操作的互斥）。"""
+        if getattr(self, "post_action_widgets", None):
+            update_combo = getattr(self, "_update_combo_enabled_state", None)
+            update_program = getattr(self, "_update_program_inputs_enabled", None)
+            if callable(update_combo):
+                update_combo()
+            if callable(update_program):
+                update_program()
 
     def _set_options_enabled(self, enabled: bool):
         """设置所有选项控件的启用/禁用状态
@@ -1103,6 +1123,14 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 禁用/启用普通任务的选项表单控件
         if hasattr(self, 'option_form_widget'):
             self._set_widget_enabled(self.option_form_widget, enabled)
+        
+        # 禁用/启用资源页中的资源专属选项表单
+        if getattr(self, 'resource_option_form_widget', None):
+            self._set_widget_enabled(self.resource_option_form_widget, enabled)
+
+        # 禁用/启用资源页中的全局选项表单
+        if getattr(self, 'global_option_form_widget', None):
+            self._set_widget_enabled(self.global_option_form_widget, enabled)
         
         # 禁用/启用速通配置控件
         if hasattr(self, 'speedrun_widget'):

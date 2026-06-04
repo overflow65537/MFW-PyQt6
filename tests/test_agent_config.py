@@ -1,8 +1,12 @@
+import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 from app.core.runner.maafw import (
     iter_agent_entries,
     normalize_agent_entry,
+    resolve_agent_executable,
     should_start_external_agent,
 )
 
@@ -42,6 +46,20 @@ class TestAgentConfig(unittest.TestCase):
             "child_args": ["{PROJECT_DIR}/agent/main.py"],
         }
         self.assertTrue(should_start_external_agent(config))
+
+    def test_resolve_agent_executable_relative_to_project_dir(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            agent_dir = root / "agent"
+            agent_dir.mkdir()
+            exe_name = "go-service.exe" if sys.platform == "win32" else "go-service"
+            (agent_dir / exe_name).write_bytes(b"")
+
+            resolved = resolve_agent_executable("agent/go-service", root)
+            self.assertEqual(str((agent_dir / exe_name).resolve()), resolved)
+
+    def test_resolve_agent_executable_keeps_path_command(self):
+        self.assertEqual("python", resolve_agent_executable("python", Path.cwd()))
 
 
 if __name__ == "__main__":
