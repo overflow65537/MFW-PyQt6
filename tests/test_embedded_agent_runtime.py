@@ -144,34 +144,43 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
             )
             self.assertIn("gamma", maafw.resource.custom_action_list)
 
-    def test_load_embedded_aspect_ratio_sink_uses_tasker_decorator(self):
+    def test_load_embedded_agent_custom_rewrites_agent_server_sink_decorators(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             _write_agent_source(
                 root,
                 '\n'.join(
                     [
-                        'from maa.custom_action import CustomAction',
-                        'from maa.resource import resource',
-                        '',
-                        '@resource.custom_action("alpha")',
-                        'class AlphaAction(CustomAction):',
-                        '    def run(self, context, argv):',
-                        '        return True',
-                        '',
+                        'from custom.sink.event_sinks import *',
                     ]
                 ),
             )
             sink_dir = root / "agent" / "custom" / "sink"
             sink_dir.mkdir(parents=True, exist_ok=True)
-            (sink_dir / "aspect_ratio.py").write_text(
+            sink_file = sink_dir / "event_sinks.py"
+            sink_file.write_text(
                 '\n'.join(
                     [
                         'from maa.agent.agent_server import AgentServer',
+                        'from maa.resource import ResourceEventSink',
+                        'from maa.controller import ControllerEventSink',
                         'from maa.tasker import TaskerEventSink',
+                        'from maa.context import ContextEventSink',
+                        '',
+                        '@AgentServer.resource_sink()',
+                        'class ResourceSink(ResourceEventSink):',
+                        '    pass',
+                        '',
+                        '@AgentServer.controller_sink()',
+                        'class ControllerSink(ControllerEventSink):',
+                        '    pass',
                         '',
                         '@AgentServer.tasker_sink()',
-                        'class AspectRatioChecker(TaskerEventSink):',
+                        'class TaskerSink(TaskerEventSink):',
+                        '    pass',
+                        '',
+                        '@AgentServer.context_sink()',
+                        'class ContextSink(ContextEventSink):',
                         '    pass',
                         '',
                     ]
@@ -187,9 +196,15 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
                 )
             )
             self.assertTrue(maafw.load_embedded_aspect_ratio_sink())
+            self.assertEqual(1, len(maafw._embedded_resource_sinks))
+            self.assertEqual(1, len(maafw._embedded_controller_sinks))
             self.assertEqual(1, len(maafw._embedded_tasker_sinks))
-            sink_text = (sink_dir / "aspect_ratio.py").read_text(encoding="utf-8")
+            self.assertEqual(1, len(maafw._embedded_context_sinks))
+            sink_text = sink_file.read_text(encoding="utf-8")
+            self.assertNotIn("AgentServer.resource_sink", sink_text)
+            self.assertNotIn("AgentServer.controller_sink", sink_text)
             self.assertNotIn("AgentServer.tasker_sink", sink_text)
+            self.assertNotIn("AgentServer.context_sink", sink_text)
 
     def test_interface_manager_mutates_single_in_memory_interface_only(self):
         with tempfile.TemporaryDirectory() as temp_dir:

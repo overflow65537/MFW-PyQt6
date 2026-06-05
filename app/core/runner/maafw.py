@@ -61,6 +61,14 @@ class EmbeddedDecoratorInfo:
     register_name: str | None = None
 
 
+_EMBEDDED_AGENT_SERVER_SINK_DECORATORS = {
+    "resource_sink",
+    "controller_sink",
+    "tasker_sink",
+    "context_sink",
+}
+
+
 def iter_agent_entries(agent_config: Any):
     """遍历 interface.agent 中的全部启动项（dict 为单项，list 为多项）。"""
     if isinstance(agent_config, dict):
@@ -348,8 +356,11 @@ class MaaFW(QObject):
         self._custom_sys_paths: List[str] = []
         # 记录上次加载的 custom_root，用于清理模块缓存
         self._last_custom_root: Path | None = None
-        # 内置模式下的额外 Tasker sink（如分辨率检查）
+        # 内置模式下的额外 Maa event sink。
+        self._embedded_resource_sinks: List[ResourceEventSink] = []
+        self._embedded_controller_sinks: List[ControllerEventSink] = []
         self._embedded_tasker_sinks: List[TaskerEventSink] = []
+        self._embedded_context_sinks: List[ContextEventSink] = []
         # 底层 maa 对象清理不是线程安全的，必须串行执行。
         self._cleanup_lock = threading.Lock()
 
@@ -381,7 +392,10 @@ class MaaFW(QObject):
             return False
 
         logger.info("准备加载内置 agent 源目录: %s，入口脚本: %s", agent_path, entry_path)
+        self._embedded_resource_sinks.clear()
+        self._embedded_controller_sinks.clear()
         self._embedded_tasker_sinks.clear()
+        self._embedded_context_sinks.clear()
         self._purge_modules_under_root(self._last_custom_root)
         self._remove_custom_sys_paths()
         self._last_custom_root = agent_path
@@ -417,7 +431,7 @@ class MaaFW(QObject):
 
         actions_before = set(resource.custom_action_list or [])
         recognitions_before = set(resource.custom_recognition_list or [])
-        sink_count_before = len(self._embedded_tasker_sinks)
+        sink_count_before = self._embedded_sink_counts()
         modules_before = set(sys.modules.keys())
 
         resource_patch = self._patch_maa_resource_instance(resource)
@@ -435,17 +449,17 @@ class MaaFW(QObject):
         recognitions = list(resource.custom_recognition_list or [])
         converted_actions = sorted(set(actions) - actions_before)
         converted_recognitions = sorted(set(recognitions) - recognitions_before)
-        converted_sinks = self._embedded_tasker_sinks[sink_count_before:]
+        converted_sinks = self._embedded_sinks_after(sink_count_before)
         self.custom_load_report["actions"]["success"] = actions
         self.custom_load_report["recognitions"]["success"] = recognitions
 
         logger.info(
-            "内置 agent 转换结果: actions=%s, recognitions=%s, tasker_sinks=%s",
+            "内置 agent 转换结果: actions=%s, recognitions=%s, sinks=%s",
             converted_actions or [],
             converted_recognitions or [],
             [
-                f"{sink.__class__.__module__}.{sink.__class__.__name__}"
-                for sink in converted_sinks
+                f"{kind}:{sink.__class__.__module__}.{sink.__class__.__name__}"
+                for kind, sink in converted_sinks
             ],
         )
 
@@ -454,12 +468,12 @@ class MaaFW(QObject):
         if recognitions:
             logger.info("成功加载内置自定义识别器: %s", ", ".join(recognitions))
 
-        if not actions and not recognitions:
+        if not actions and not recognitions and not self._has_embedded_sinks():
             imported_modules = self._collect_imported_modules_under_root(
                 agent_path, modules_before
             )
             logger.warning(
-                "内置 agent 未注册任何自定义动作或识别器，源目录: %s，入口脚本: %s，"
+                "内置 agent 未注册任何自定义动作、识别器或事件 sink，源目录: %s，入口脚本: %s，"
                 "本次导入模块: %s",
                 agent_path,
                 entry_path,
@@ -467,6 +481,34 @@ class MaaFW(QObject):
             )
             return False
         return True
+
+    def _has_embedded_sinks(self) -> bool:
+        return any(self._embedded_sink_counts().values())
+
+    def _embedded_sink_counts(self) -> dict[str, int]:
+        return {
+            "resource_sink": len(self._embedded_resource_sinks),
+            "controller_sink": len(self._embedded_controller_sinks),
+            "tasker_sink": len(self._embedded_tasker_sinks),
+            "context_sink": len(self._embedded_context_sinks),
+        }
+
+    def _embedded_sinks_after(
+        self, counts: dict[str, int]
+    ) -> list[tuple[str, ResourceEventSink | ControllerEventSink | TaskerEventSink | ContextEventSink]]:
+        return [
+            ("resource_sink", sink)
+            for sink in self._embedded_resource_sinks[counts["resource_sink"] :]
+        ] + [
+            ("controller_sink", sink)
+            for sink in self._embedded_controller_sinks[counts["controller_sink"] :]
+        ] + [
+            ("tasker_sink", sink)
+            for sink in self._embedded_tasker_sinks[counts["tasker_sink"] :]
+        ] + [
+            ("context_sink", sink)
+            for sink in self._embedded_context_sinks[counts["context_sink"] :]
+        ]
 
     @staticmethod
     def _collect_imported_modules_under_root(
@@ -523,7 +565,10 @@ class MaaFW(QObject):
                 "@AgentServer.custom_action(" in text
                 or "@AgentServer.custom_recognition(" in text
             )
-            has_sink = "@AgentServer.tasker_sink()" in text
+            has_sink = any(
+                f"@AgentServer.{decorator}()" in text
+                for decorator in _EMBEDDED_AGENT_SERVER_SINK_DECORATORS
+            )
 
             if has_custom:
                 text = text.replace(
@@ -537,7 +582,11 @@ class MaaFW(QObject):
 
             if has_sink:
                 text = re.sub(
-                    r"^[ \t]*@AgentServer\.tasker_sink\(\)\r?\n",
+                    (
+                        r"^[ \t]*@AgentServer\."
+                        r"(?:resource_sink|controller_sink|tasker_sink|context_sink)"
+                        r"\(\)\r?\n"
+                    ),
                     "",
                     text,
                     flags=re.MULTILINE,
@@ -619,15 +668,20 @@ class MaaFW(QObject):
                         decorator, file_path, module_name, node.name
                     )
                     if info is not None:
-                        has_sink_decorator = has_sink_decorator or info.kind == "sink"
+                        has_sink_decorator = has_sink_decorator or info.kind.endswith(
+                            "_sink"
+                        )
                         decorators.append(info)
-                if not has_sink_decorator and self._is_tasker_sink_class(node):
+                if not has_sink_decorator:
+                    implicit_sink_kind = self._implicit_sink_kind(node)
+                    if implicit_sink_kind is None:
+                        continue
                     decorators.append(
                         EmbeddedDecoratorInfo(
                             file_path=file_path,
                             module_name=module_name,
                             class_name=node.name,
-                            kind="sink",
+                            kind=implicit_sink_kind,
                         )
                     )
         return decorators
@@ -687,23 +741,39 @@ class MaaFW(QObject):
                 register_name=register_name,
             )
 
-        if owner_name in {"AgentServer", "MaaTasker"} and attr == "tasker_sink":
+        if owner_name == "AgentServer" and attr in _EMBEDDED_AGENT_SERVER_SINK_DECORATORS:
             return EmbeddedDecoratorInfo(
                 file_path=file_path,
                 module_name=module_name,
                 class_name=class_name,
-                kind="sink",
+                kind=attr,
+            )
+        if owner_name == "MaaTasker" and attr == "tasker_sink":
+            return EmbeddedDecoratorInfo(
+                file_path=file_path,
+                module_name=module_name,
+                class_name=class_name,
+                kind="tasker_sink",
             )
         return None
 
     @staticmethod
-    def _is_tasker_sink_class(node: ast.ClassDef) -> bool:
+    def _implicit_sink_kind(node: ast.ClassDef) -> str | None:
         for base in node.bases:
-            if isinstance(base, ast.Name) and base.id == "TaskerEventSink":
-                return True
-            if isinstance(base, ast.Attribute) and base.attr == "TaskerEventSink":
-                return True
-        return False
+            base_name = ""
+            if isinstance(base, ast.Name):
+                base_name = base.id
+            elif isinstance(base, ast.Attribute):
+                base_name = base.attr
+            if base_name == "ResourceEventSink":
+                return "resource_sink"
+            if base_name == "ControllerEventSink":
+                return "controller_sink"
+            if base_name == "TaskerEventSink":
+                return "tasker_sink"
+            if base_name == "ContextEventSink":
+                return "context_sink"
+        return None
 
     def _load_embedded_decorator_modules(
         self, root: Path, decorators: list[EmbeddedDecoratorInfo]
@@ -719,7 +789,7 @@ class MaaFW(QObject):
             importlib.import_module(module_name)
 
         for item in decorators:
-            if item.kind != "sink":
+            if not item.kind.endswith("_sink"):
                 continue
             module = sys.modules.get(item.module_name)
             if module is None:
@@ -730,13 +800,50 @@ class MaaFW(QObject):
                     "内置 agent sink 类不存在: %s.%s", item.module_name, item.class_name
                 )
                 continue
-            if not issubclass(class_obj, TaskerEventSink):
-                raise TypeError(f"{item.module_name}.{item.class_name} 不是 TaskerEventSink 子类")
             instance = class_obj()
-            logger.info("内置 agent 注册 Tasker sink: %s.%s", item.module_name, item.class_name)
+            self._register_embedded_sink(item.kind, instance, item)
+
+    def _register_embedded_sink(
+        self,
+        kind: str,
+        instance: Any,
+        item: EmbeddedDecoratorInfo,
+    ) -> None:
+        class_name = f"{item.module_name}.{item.class_name}"
+        if kind == "resource_sink":
+            if not isinstance(instance, ResourceEventSink):
+                raise TypeError(f"{class_name} 不是 ResourceEventSink 子类")
+            logger.info("内置 agent 注册 Resource sink: %s", class_name)
+            self._embedded_resource_sinks.append(instance)
+            if self.resource is not None:
+                self.resource.add_sink(instance)
+            return
+
+        if kind == "controller_sink":
+            if not isinstance(instance, ControllerEventSink):
+                raise TypeError(f"{class_name} 不是 ControllerEventSink 子类")
+            logger.info("内置 agent 注册 Controller sink: %s", class_name)
+            self._embedded_controller_sinks.append(instance)
+            if self.controller is not None:
+                self.controller.add_sink(instance)
+            return
+
+        if kind == "tasker_sink":
+            if not isinstance(instance, TaskerEventSink):
+                raise TypeError(f"{class_name} 不是 TaskerEventSink 子类")
+            logger.info("内置 agent 注册 Tasker sink: %s", class_name)
             self._embedded_tasker_sinks.append(instance)
             if self.tasker is not None:
                 self.tasker.add_sink(instance)
+            return
+
+        if kind == "context_sink":
+            if not isinstance(instance, ContextEventSink):
+                raise TypeError(f"{class_name} 不是 ContextEventSink 子类")
+            logger.info("内置 agent 注册 Context sink: %s", class_name)
+            self._embedded_context_sinks.append(instance)
+            if self.tasker is not None:
+                self.tasker.add_context_sink(instance)
 
     @staticmethod
     def _module_belongs_to_root(module: Any, root: Path) -> bool:
@@ -901,6 +1008,8 @@ class MaaFW(QObject):
     def _init_controller(self, controller: Controller) -> Controller:
         if self.maa_controller_sink:
             controller.add_sink(self.maa_controller_sink)
+        for sink in self._embedded_controller_sinks:
+            controller.add_sink(sink)
         self.controller = controller
         return self.controller
 
@@ -909,12 +1018,16 @@ class MaaFW(QObject):
             self.resource = Resource()
             if self.maa_resource_sink:
                 self.resource.add_sink(self.maa_resource_sink)
+            for sink in self._embedded_resource_sinks:
+                self.resource.add_sink(sink)
         return self.resource
 
     def _init_tasker(self) -> Tasker:
         if self.tasker is None:
             self.tasker = Tasker()
             self.tasker.add_context_sink(self.maa_context_sink)
+            for sink in self._embedded_context_sinks:
+                self.tasker.add_context_sink(sink)
 
             for sink in self._embedded_tasker_sinks:
                 self.tasker.add_sink(sink)
@@ -1182,7 +1295,10 @@ class MaaFW(QObject):
             self.agent_env_vars = {}
             self._purge_modules_under_root(self._last_custom_root)
             self._last_custom_root = None
+            self._embedded_resource_sinks.clear()
+            self._embedded_controller_sinks.clear()
             self._embedded_tasker_sinks.clear()
+            self._embedded_context_sinks.clear()
             self._remove_custom_sys_paths()
         finally:
             self._cleanup_lock.release()
