@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 import threading
 from typing import Callable
 
@@ -18,6 +19,15 @@ from qfluentwidgets import (
     SubtitleLabel,
 )
 
+TimeRangeValue = timedelta | None
+
+
+def build_time_cutoff(time_range: TimeRangeValue) -> datetime | None:
+    """根据时间范围选项计算截止时间；None 表示不限制。"""
+    if time_range is None:
+        return None
+    return datetime.now() - time_range
+
 
 @dataclass(slots=True)
 class LogZipOptions:
@@ -29,10 +39,13 @@ class LogZipOptions:
     include_vision_images: bool = True
     include_screenshot_images: bool = True
     include_other_images: bool = True
-    on_error_days: int | None = None
-    vision_days: int | None = None
-    screenshot_days: int | None = None
-    other_images_days: int | None = None
+    maafw_logs_time_range: TimeRangeValue = None
+    gui_logs_time_range: TimeRangeValue = None
+    other_text_logs_time_range: TimeRangeValue = None
+    on_error_time_range: TimeRangeValue = None
+    vision_time_range: TimeRangeValue = None
+    screenshot_time_range: TimeRangeValue = None
+    other_images_time_range: TimeRangeValue = None
 
     def has_any_selection(self) -> bool:
         return any(
@@ -94,7 +107,7 @@ class LogZipDialog(MessageBoxBase):
         title = SubtitleLabel(self.tr("Package logs"), self)
         desc = BodyLabel(
             self.tr(
-                "Choose log files and image folders to include. Image items can be filtered by time range."
+                "Choose log files and image folders to include. Both logs and images can be filtered by time range."
             ),
             self,
         )
@@ -159,21 +172,34 @@ class LogZipDialog(MessageBoxBase):
 
         title = SubtitleLabel(self.tr("Logs"), card)
         layout.addWidget(title)
+        range_hint = BodyLabel(
+            self.tr("Default is all log categories with time range set to all."),
+            card,
+        )
+        range_hint.setWordWrap(True)
+        layout.addWidget(range_hint)
 
-        self.maafw_logs_checkbox = CheckBox(self.tr("maafw.log (including .bak)"), card)
-        self.maafw_logs_checkbox.setChecked(True)
-        self.gui_logs_checkbox = CheckBox(self.tr("gui.log"), card)
-        self.gui_logs_checkbox.setChecked(True)
-        self.other_text_logs_checkbox = CheckBox(self.tr("other .log/.txt"), card)
-        self.other_text_logs_checkbox.setChecked(True)
+        self.maafw_logs_checkbox, self.maafw_logs_combo = self._create_filterable_row(
+            self.tr("maafw.log (including .bak)"), card
+        )
+        self.gui_logs_checkbox, self.gui_logs_combo = self._create_filterable_row(
+            self.tr("gui.log"), card
+        )
+        self.other_text_logs_checkbox, self.other_text_logs_combo = self._create_filterable_row(
+            self.tr("other .log/.txt"), card
+        )
 
-        for cb in (
-            self.maafw_logs_checkbox,
-            self.gui_logs_checkbox,
-            self.other_text_logs_checkbox,
+        for checkbox, combo in (
+            (self.maafw_logs_checkbox, self.maafw_logs_combo),
+            (self.gui_logs_checkbox, self.gui_logs_combo),
+            (self.other_text_logs_checkbox, self.other_text_logs_combo),
         ):
-            cb.toggled.connect(self._refresh_preview)
-            layout.addWidget(cb)
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(10)
+            row.addWidget(checkbox, 1)
+            row.addWidget(combo, 0)
+            layout.addLayout(row)
 
         return card
 
@@ -192,16 +218,16 @@ class LogZipDialog(MessageBoxBase):
         range_hint.setWordWrap(True)
         layout.addWidget(range_hint)
 
-        self.on_error_images_checkbox, self.on_error_combo = self._create_image_row(
+        self.on_error_images_checkbox, self.on_error_combo = self._create_filterable_row(
             self.tr("on_error (debug/on_error)"), card
         )
-        self.vision_images_checkbox, self.vision_combo = self._create_image_row(
+        self.vision_images_checkbox, self.vision_combo = self._create_filterable_row(
             self.tr("vision (debug/vision)"), card
         )
-        self.screenshot_images_checkbox, self.screenshot_combo = self._create_image_row(
+        self.screenshot_images_checkbox, self.screenshot_combo = self._create_filterable_row(
             self.tr("screenshot (debug/screenshot)"), card
         )
-        self.other_images_checkbox, self.other_images_combo = self._create_image_row(
+        self.other_images_checkbox, self.other_images_combo = self._create_filterable_row(
             self.tr("other .jpg/.png"), card
         )
 
@@ -236,7 +262,7 @@ class LogZipDialog(MessageBoxBase):
 
         return card
 
-    def _create_image_row(self, text: str, parent: QWidget) -> tuple[CheckBox, ComboBox]:
+    def _create_filterable_row(self, text: str, parent: QWidget) -> tuple[CheckBox, ComboBox]:
         checkbox = CheckBox(text, parent)
         checkbox.setChecked(True)
 
@@ -248,9 +274,12 @@ class LogZipDialog(MessageBoxBase):
 
     def _populate_time_range_combo(self, combo: ComboBox) -> None:
         combo.addItem(self.tr("all"), userData=None)
-        combo.addItem(self.tr("today"), userData=1)
-        combo.addItem(self.tr("within 2 days"), userData=2)
-        combo.addItem(self.tr("within 3 days"), userData=3)
+        combo.addItem(self.tr("within 1 hour"), userData=timedelta(hours=1))
+        combo.addItem(self.tr("within 6 hours"), userData=timedelta(hours=6))
+        combo.addItem(self.tr("within 12 hours"), userData=timedelta(hours=12))
+        combo.addItem(self.tr("within 24 hours"), userData=timedelta(hours=24))
+        combo.addItem(self.tr("within 48 hours"), userData=timedelta(hours=48))
+        combo.addItem(self.tr("within 72 hours"), userData=timedelta(hours=72))
 
     def _refresh_preview(self) -> None:
         self.total_size_label.setText(self.tr("Selected total size:") + self.tr(" calculating..."))
@@ -319,15 +348,12 @@ class LogZipDialog(MessageBoxBase):
         self.start_button.clicked.connect(self._on_start_clicked)
         self.cancel_button.clicked.connect(self._on_cancel_clicked)
 
-        for checkbox in (
-            self.maafw_logs_checkbox,
-            self.gui_logs_checkbox,
-            self.other_text_logs_checkbox,
-            self.other_files_checkbox,
-        ):
-            checkbox.toggled.connect(self._refresh_preview)
+        self.other_files_checkbox.toggled.connect(self._refresh_preview)
 
         for checkbox, combo in (
+            (self.maafw_logs_checkbox, self.maafw_logs_combo),
+            (self.gui_logs_checkbox, self.gui_logs_combo),
+            (self.other_text_logs_checkbox, self.other_text_logs_combo),
             (self.on_error_images_checkbox, self.on_error_combo),
             (self.vision_images_checkbox, self.vision_combo),
             (self.screenshot_images_checkbox, self.screenshot_combo),
@@ -347,10 +373,13 @@ class LogZipDialog(MessageBoxBase):
             include_vision_images=self.vision_images_checkbox.isChecked(),
             include_screenshot_images=self.screenshot_images_checkbox.isChecked(),
             include_other_images=self.other_images_checkbox.isChecked(),
-            on_error_days=self._combo_to_days(self.on_error_combo),
-            vision_days=self._combo_to_days(self.vision_combo),
-            screenshot_days=self._combo_to_days(self.screenshot_combo),
-            other_images_days=self._combo_to_days(self.other_images_combo),
+            maafw_logs_time_range=self._combo_to_time_range(self.maafw_logs_combo),
+            gui_logs_time_range=self._combo_to_time_range(self.gui_logs_combo),
+            other_text_logs_time_range=self._combo_to_time_range(self.other_text_logs_combo),
+            on_error_time_range=self._combo_to_time_range(self.on_error_combo),
+            vision_time_range=self._combo_to_time_range(self.vision_combo),
+            screenshot_time_range=self._combo_to_time_range(self.screenshot_combo),
+            other_images_time_range=self._combo_to_time_range(self.other_images_combo),
         )
 
     def set_running(self, running: bool) -> None:
@@ -367,6 +396,9 @@ class LogZipDialog(MessageBoxBase):
             self.vision_images_checkbox,
             self.screenshot_images_checkbox,
             self.other_images_checkbox,
+            self.maafw_logs_combo,
+            self.gui_logs_combo,
+            self.other_text_logs_combo,
             self.on_error_combo,
             self.vision_combo,
             self.screenshot_combo,
@@ -433,7 +465,7 @@ class LogZipDialog(MessageBoxBase):
             return
         super().closeEvent(event)
 
-    def _combo_to_days(self, combo: ComboBox) -> int | None:
+    def _combo_to_time_range(self, combo: ComboBox) -> TimeRangeValue:
         return combo.currentData()
 
     def _set_status(self, text: str, *, error: bool = False) -> None:

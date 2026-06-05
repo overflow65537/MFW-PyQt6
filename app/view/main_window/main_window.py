@@ -115,6 +115,8 @@ from app.view.main_window.log_zip_dialog import (
     LogZipDialog,
     LogZipOptions,
     LogZipPreview,
+    TimeRangeValue,
+    build_time_cutoff,
 )
 
 
@@ -1491,10 +1493,21 @@ class MainWindow(MSFluentWindow):
         seen: set[Path] = set()
         file_entries: list[LogZipFileEntry] = []
 
-        def _add_file(path: Path, category: str) -> None:
+        def _add_file(
+            path: Path,
+            category: str,
+            time_range: TimeRangeValue = None,
+        ) -> None:
             resolved = path.resolve()
             if resolved in seen or not path.is_file():
                 return
+            cutoff = build_time_cutoff(time_range)
+            if cutoff is not None:
+                try:
+                    if datetime.fromtimestamp(path.stat().st_mtime) < cutoff:
+                        return
+                except OSError:
+                    return
             seen.add(resolved)
             rel_path = path.relative_to(debug_dir).as_posix()
             file_entries.append(
@@ -1511,14 +1524,14 @@ class MainWindow(MSFluentWindow):
                 debug_dir.glob("maafw*.log*"), key=lambda p: str(p).lower()
             ):
                 if log_path.is_file():
-                    _add_file(log_path, "maafw_logs")
+                    _add_file(log_path, "maafw_logs", options.maafw_logs_time_range)
 
         if options.include_gui_logs:
             for log_path in sorted(
                 debug_dir.glob("gui.log*"), key=lambda p: str(p).lower()
             ):
                 if log_path.is_file():
-                    _add_file(log_path, "gui_logs")
+                    _add_file(log_path, "gui_logs", options.gui_logs_time_range)
 
         if options.include_other_text_logs:
             for path in sorted(debug_dir.rglob("*"), key=lambda item: str(item).lower()):
@@ -1529,7 +1542,7 @@ class MainWindow(MSFluentWindow):
                     continue
                 if path.suffix.lower() not in {".log", ".txt"}:
                     continue
-                _add_file(path, "other_text_logs")
+                _add_file(path, "other_text_logs", options.other_text_logs_time_range)
 
         if options.include_other_files:
             self._collect_other_files(debug_dir, seen, file_entries)
@@ -1538,7 +1551,7 @@ class MainWindow(MSFluentWindow):
             self._collect_image_files(
                 debug_dir / "on_error",
                 debug_dir,
-                options.on_error_days,
+                options.on_error_time_range,
                 seen,
                 file_entries,
                 "on_error_images",
@@ -1548,7 +1561,7 @@ class MainWindow(MSFluentWindow):
             self._collect_image_files(
                 debug_dir / "vision",
                 debug_dir,
-                options.vision_days,
+                options.vision_time_range,
                 seen,
                 file_entries,
                 "vision_images",
@@ -1558,7 +1571,7 @@ class MainWindow(MSFluentWindow):
             self._collect_image_files(
                 debug_dir / "screenshot",
                 debug_dir,
-                options.screenshot_days,
+                options.screenshot_time_range,
                 seen,
                 file_entries,
                 "screenshot_images",
@@ -1567,7 +1580,7 @@ class MainWindow(MSFluentWindow):
         if options.include_other_images:
             self._collect_other_image_files(
                 debug_dir,
-                options.other_images_days,
+                options.other_images_time_range,
                 seen,
                 file_entries,
                 "other_images",
@@ -1582,14 +1595,14 @@ class MainWindow(MSFluentWindow):
         self,
         folder: Path,
         debug_dir: Path,
-        days: int | None,
+        time_range: TimeRangeValue,
         seen: set[Path],
         output: list[LogZipFileEntry],
         category: str,
     ) -> None:
         if not folder.exists() or not folder.is_dir():
             return
-        cutoff = self._build_image_cutoff(days)
+        cutoff = build_time_cutoff(time_range)
         for path in sorted(folder.rglob("*"), key=lambda item: str(item).lower()):
             if not path.is_file() or path.suffix.lower() not in self._IMAGE_SUFFIXES:
                 continue
@@ -1615,12 +1628,12 @@ class MainWindow(MSFluentWindow):
     def _collect_other_image_files(
         self,
         debug_dir: Path,
-        days: int | None,
+        time_range: TimeRangeValue,
         seen: set[Path],
         output: list[LogZipFileEntry],
         category: str,
     ) -> None:
-        cutoff = self._build_image_cutoff(days)
+        cutoff = build_time_cutoff(time_range)
         excluded_roots = {"on_error", "vision", "screenshot"}
         for path in sorted(debug_dir.rglob("*"), key=lambda item: str(item).lower()):
             if not path.is_file() or path.suffix.lower() not in self._OTHER_IMAGE_SUFFIXES:
@@ -1728,14 +1741,6 @@ class MainWindow(MSFluentWindow):
         except Exception:
             logger.exception("收集实时图片失败")
             return []
-
-    def _build_image_cutoff(self, days: int | None) -> datetime | None:
-        if days is None:
-            return None
-        now = datetime.now()
-        if days <= 1:
-            return datetime(now.year, now.month, now.day)
-        return now - timedelta(days=days)
 
     def _build_log_zip_preview(self, options: LogZipOptions) -> LogZipPreview:
         debug_dir = Path.cwd() / "debug"
