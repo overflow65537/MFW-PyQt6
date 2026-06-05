@@ -708,13 +708,40 @@ class MainWindow(MSFluentWindow):
 
             logger.error(f"详细错误信息: {traceback.format_exc()}")
 
+    def _safe_set_mica_effect_enabled(self, enabled: bool) -> None:
+        """安全设置 Mica，避免窗口未就绪或 DWM COM 异常导致启动闪退。"""
+        try:
+            self.setMicaEffectEnabled(bool(enabled))
+        except Exception as exc:
+            logger.warning("设置 Mica 效果失败，已自动关闭: %s", exc)
+            try:
+                cfg.set(cfg.micaEnabled, False)
+            except Exception:
+                pass
+            try:
+                self.setMicaEffectEnabled(False)
+            except Exception:
+                pass
+
+    def _schedule_mica_effect(self) -> None:
+        """窗口 show 后再应用 Mica，确保 winId 已创建且 DWM 可响应。"""
+        if not cfg.get(cfg.micaEnabled):
+            return
+        QTimer.singleShot(0, lambda: self._safe_set_mica_effect_enabled(True))
+
+    def _reapply_mica_after_theme_change(self) -> None:
+        try:
+            self.windowEffect.setMicaEffect(self.winId(), isDarkTheme())
+        except Exception as exc:
+            logger.warning("主题切换后重设 Mica 失败，已自动关闭: %s", exc)
+            self._safe_set_mica_effect_enabled(False)
+
     def initWindow(self):
         """初始化窗口设置。"""
         self.resize(1170, 760)
         self.setMinimumWidth(1170)
         self.setMinimumHeight(760)
         self.set_title()
-        self.setMicaEffectEnabled(cfg.get(cfg.micaEnabled))
         self._adjust_title_bar_for_macos()
 
         # 设置图标
@@ -738,6 +765,7 @@ class MainWindow(MSFluentWindow):
         self.show()
         self._init_background_layer()
         QApplication.processEvents()
+        self._schedule_mica_effect()
 
     def _startup_page_interface_map(self) -> dict[str, QWidget | None]:
         """启动页 key 到对应界面的映射（不含 Bundle/Announcement）。"""
@@ -1168,7 +1196,7 @@ class MainWindow(MSFluentWindow):
 
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
-        signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
+        signalBus.micaEnableChanged.connect(self._safe_set_mica_effect_enabled)
         signalBus.title_changed.connect(self.set_title)
         signalBus.set_window_title.connect(self.setWindowTitle)
         signalBus.info_bar_requested.connect(self.show_info_bar)
@@ -2976,10 +3004,7 @@ class MainWindow(MSFluentWindow):
 
         # 重试
         if self.isMicaEffectEnabled():
-            QTimer.singleShot(
-                100,
-                lambda: self.windowEffect.setMicaEffect(self.winId(), isDarkTheme()),
-            )
+            QTimer.singleShot(100, self._reapply_mica_after_theme_change)
 
     def clear_thread_async(self):
         """异步清理线程和资源"""
