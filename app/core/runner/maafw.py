@@ -16,6 +16,7 @@ from enum import Enum, IntEnum
 from typing import Any, Dict, List
 import subprocess
 import threading
+import time
 from pathlib import Path
 import numpy
 from asyncify import asyncify
@@ -293,6 +294,9 @@ class MaaFW(QObject):
 
     # 超时后仍未停止的 agent 进程最长等待时间
     AGENT_TERMINATE_TIMEOUT_SECONDS: float = 5.0
+    # post_stop 后等待 Tasker 完全空闲的最长时长（避免 CustomAction 仍在执行时销毁原生对象）
+    TASKER_IDLE_TIMEOUT_SECONDS: float = 30.0
+    TASKER_IDLE_POLL_INTERVAL_SECONDS: float = 0.05
 
     def __init__(
         self,
@@ -1131,6 +1135,23 @@ class MaaFW(QObject):
         """同步强制清理 MaaFW 运行态，供应用退出阶段调用。"""
         self._cleanup_runtime()
 
+    def _wait_for_tasker_idle(self, tasker: Tasker) -> None:
+        """等待 Tasker 完全停止，避免 CustomAction 回调仍在执行时触发原生析构。"""
+        deadline = time.monotonic() + self.TASKER_IDLE_TIMEOUT_SECONDS
+        while time.monotonic() < deadline:
+            try:
+                if not tasker.running and not tasker.stopping:
+                    return
+            except Exception as exc:
+                logger.debug(f"查询 Tasker 状态失败，跳过空闲等待: {exc}")
+                return
+            time.sleep(self.TASKER_IDLE_POLL_INTERVAL_SECONDS)
+
+        logger.warning(
+            "等待 Tasker 空闲超时 (%.0fs)，将强制销毁",
+            self.TASKER_IDLE_TIMEOUT_SECONDS,
+        )
+
     def _cleanup_runtime(self) -> None:
         if not self._cleanup_lock.acquire(blocking=False):
             logger.debug("MaaFW 清理已在进行中，忽略重复请求")
@@ -1138,8 +1159,10 @@ class MaaFW(QObject):
 
         try:
             if self.tasker:
+                tasker = self.tasker
                 try:
-                    self.tasker.post_stop().wait()
+                    tasker.post_stop().wait()
+                    self._wait_for_tasker_idle(tasker)
                 except Exception as e:
                     logger.error(f"停止任务失败: {e}")
                 finally:
