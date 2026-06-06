@@ -221,7 +221,22 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
             cfg = dlg.get_config_item()
             if cfg:
                 preset_name = dlg.get_selected_preset_name()
-                self.service_coordinator.add_config(cfg, preset_name=preset_name)
+                shared_tasks = dlg.get_shared_tasks()
+                self.service_coordinator.add_config(
+                    cfg, preset_name=preset_name, shared_tasks=shared_tasks
+                )
+                version_mismatch = dlg.get_share_version_mismatch()
+                if version_mismatch is not None:
+                    shared_ver, target_ver = version_mismatch
+                    shared_label = shared_ver or self.tr("unknown")
+                    target_label = target_ver or self.tr("unknown")
+                    signalBus.info_bar_requested.emit(
+                        "warning",
+                        self.tr(
+                            "Shared config version ({0}) differs from current "
+                            "resource version ({1}); imported anyway."
+                        ).format(shared_label, target_label),
+                    )
 
     def remove_config(self):
         """移除配置项"""

@@ -448,12 +448,12 @@
     <context>
         <name>AddConfigDialog</name>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="96" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="98" />
             <source>Add New Config</source>
             <translation>新規設定を追加</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="102" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="104" />
             <source>Config Name:</source>
             <translation>設定名:</translation>
         </message>
@@ -462,17 +462,17 @@
             <translation type="vanished">設定の名前を入力してください</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="114" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="116" />
             <source>Resource Bundle:</source>
             <translation>リソースバンドル:</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="133" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="135" />
             <source>Preset:</source>
             <translation>プリセット:</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="176" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="226" />
             <source>Default (all tasks)</source>
             <translation>デフォルト (すべてのタスク)</translation>
         </message>
@@ -481,59 +481,106 @@
             <translation type="vanished">設定名を空にすることはできません</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="105" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="107" />
             <source>Enter name, or leave empty for auto (preset name + index)</source>
             <translation>名前を入力するか、空欄のまま自動生成（プリセット名＋インデックス）</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="256" />
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="258" />
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="298" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="147" />
+            <source>Import shared config:</source>
+            <translation>共有設定をインポート：</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="149" />
+            <source>Off</source>
+            <translation>オフ</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="150" />
+            <source>On</source>
+            <translation>オン</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="158" />
+            <source>Paste shared config content here</source>
+            <translation>共有設定の内容を貼り付け</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="306" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="308" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="401" />
             <source>Config</source>
             <translation>設定</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="260" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="310" />
             <source>{0} {1}</source>
             <translation>{0} {1}</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="300" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="334" />
+            <source>Please paste shared config content</source>
+            <translation>共有設定の内容を貼り付けてください</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="339" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="342" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="368" />
+            <source>Invalid shared config content</source>
+            <translation>無効な共有設定の内容です</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="345" />
+            <source>Shared config contains no tasks</source>
+            <translation>共有設定にタスクが含まれていません</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="350" />
+            <source>Please select a resource bundle</source>
+            <translation>リソースバンドルを選択してください</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="362" />
+            <source>Resource mismatch: shared config is for "{0}", but you selected "{1}".</source>
+            <translation>リソースが一致しません：共有設定は「{0}」用ですが、「{1}」が選択されています。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="403" />
             <source>New Config</source>
             <translation>新規設定</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="303" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="406" />
             <source>Could not allocate a unique config name</source>
             <translation>一意な設定名を割り当てられませんでした</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="309" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="412" />
             <source>Cannot use 'default' as config name</source>
             <translation>設定名に「default」は使用できません</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="324" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="427" />
             <source>Resource bundle not found</source>
             <translation>リソースバンドルが見つかりません</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="350" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="453" />
             <source>Interface file not found in bundle: {}</source>
             <translation>バンドル内にインターフェースファイルが見つかりません: {}</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="361" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="464" />
             <source>Failed to load interface from bundle: {}</source>
             <translation>バンドルからのインターフェース読み込みに失敗しました: {}</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="367" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="470" />
             <source>Controller not found in bundle interface</source>
             <translation>バンドルインターフェース内にコントローラーが見つかりません</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="370" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="473" />
             <source>Resource not found in bundle interface</source>
             <translation>バンドルインターフェース内にリソースが見つかりません</translation>
         </message>
@@ -589,47 +636,47 @@
             <translation type="vanished">現在有効なすべての外部通知チャンネルにメッセージを送信します。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="433" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="544" />
             <source>Add New Task</source>
             <translation>新規タスクを追加</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="436" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="547" />
             <source>Close</source>
             <translation>閉じる</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="437" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="548" />
             <source>Add</source>
             <translation>追加</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="443" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="554" />
             <source>Task List</source>
             <translation>タスク一覧</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="445" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="556" />
             <source>Select one task from the groups below.</source>
             <translation>以下のグループからタスクを1つ選択してください。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="541" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="652" />
             <source>Default Group</source>
             <translation>デフォルトグループ</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="542" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="653" />
             <source>Tasks without an explicit group</source>
             <translation>明示的なグループがないタスク</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="616" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="727" />
             <source>{} tasks</source>
             <translation>{} タスク</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="683" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="794" />
             <source>Please select a task</source>
             <translation>タスクを選択してください</translation>
         </message>
@@ -720,17 +767,17 @@
     <context>
         <name>BaseAddDialog</name>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="56" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="58" />
             <source>Confirm</source>
             <translation>確認</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="57" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="59" />
             <source>Cancel</source>
             <translation>キャンセル</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/add_task_message_box.py" line="76" />
+            <location filename="../view/task_interface/components/add_task_message_box.py" line="78" />
             <source>Error</source>
             <translation>エラー</translation>
         </message>
@@ -1176,6 +1223,32 @@ The following configurations using this bundle will also be deleted:
             <source>Copy config ID</source>
             <translation>設定IDコピー</translation>
         </message>
+        <message>
+            <location filename="../view/task_interface/components/list_item.py" line="1075" />
+            <source>Share config</source>
+            <translation>設定を共有</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/list_item.py" line="1150" />
+            <source>Failed to load config for sharing.</source>
+            <translation>共有用の設定の読み込みに失敗しました。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/list_item.py" line="1157" />
+            <source>Config has no resource bundle, cannot share.</source>
+            <translation>設定にリソースバンドルがないため、共有できません。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/list_item.py" line="1173" />
+            <location filename="../view/task_interface/components/list_item.py" line="1178" />
+            <source>Failed to encode config for sharing.</source>
+            <translation>共有用の設定のエンコードに失敗しました。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/list_item.py" line="1184" />
+            <source>Config copied to clipboard.</source>
+            <translation>設定をクリップボードにコピーしました。</translation>
+        </message>
     </context>
     <context>
         <name>ConfigListToolBarWidget</name>
@@ -1186,13 +1259,24 @@ The following configurations using this bundle will also be deleted:
         </message>
         <message>
             <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="176" />
-            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="230" />
+            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="245" />
             <source>Task is running, configurations are locked.</source>
             <translation>タスク実行中、設定はロックされています。</translation>
         </message>
         <message>
+            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="231" />
+            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="232" />
+            <source>unknown</source>
+            <translation>不明</translation>
+        </message>
+        <message>
             <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="236" />
-            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="239" />
+            <source>Shared config version ({0}) differs from current resource version ({1}); imported anyway.</source>
+            <translation>共有設定のバージョン（{0}）が現在のリソースバージョン（{1}）と異なりますが、インポートしました。</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="251" />
+            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="254" />
             <source>Cannot delete the last configuration!</source>
             <translation>最後の設定は削除できません！</translation>
         </message>
@@ -2322,57 +2406,57 @@ Please check for updates first, or visit the GitHub releases page.</source>
             <translation>終了</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="804" />
+            <location filename="../view/main_window/main_window.py" line="832" />
             <source>Task flow is already running</source>
             <translation>タスクフローは既に実行中です</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="816" />
+            <location filename="../view/main_window/main_window.py" line="844" />
             <source>Failed to start task flow</source>
             <translation>タスクフローの開始に失敗しました</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1140" />
+            <location filename="../view/main_window/main_window.py" line="1168" />
             <source>Config load failed, automatically reset to default. Backup of corrupted config file completed. Error details:</source>
             <translation>設定の読み込みに失敗しました。自動的にデフォルトにリセットされました。破損した設定ファイルのバックアップが完了しました。エラーの詳細:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1144" />
+            <location filename="../view/main_window/main_window.py" line="1172" />
             <source>Config load failed, automatically reset to default. Backup of corrupted config file completed.</source>
             <translation>設定の読み込みに失敗しました。自動的にデフォルトにリセットされました。破損した設定ファイルのバックアップが完了しました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1151" />
+            <location filename="../view/main_window/main_window.py" line="1179" />
             <source>Config load failed, automatically reset to default. Failed to backup corrupted config file. Error details:</source>
             <translation>設定ファイルの読み込みに失敗しました。自動的にデフォルト設定にリセットします。破損した設定ファイルのバックアップに失敗しました。エラーの詳細:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1155" />
+            <location filename="../view/main_window/main_window.py" line="1183" />
             <source>Config load failed, automatically reset to default. Failed to backup corrupted config file.</source>
             <translation>設定ファイルの読み込みに失敗しました。自動的にデフォルト設定にリセットします。破損した設定ファイルのバックアップに失敗しました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1161" />
+            <location filename="../view/main_window/main_window.py" line="1189" />
             <source>Config load failed and error occurred while resetting config:</source>
             <translation>設定ファイルの読み込みに失敗し、設定のリセット中にエラーが発生しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1165" />
+            <location filename="../view/main_window/main_window.py" line="1193" />
             <source>Config load failed and error occurred while resetting config.</source>
             <translation>設定ファイルの読み込みに失敗し、設定のリセット中にエラーが発生しました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1242" />
+            <location filename="../view/main_window/main_window.py" line="1270" />
             <source>(empty)</source>
             <translation>(空)</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1255" />
+            <location filename="../view/main_window/main_window.py" line="1283" />
             <source>(none)</source>
             <translation>(なし)</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1258" />
+            <location filename="../view/main_window/main_window.py" line="1286" />
             <source>Controller information is missing. Verify that {controller} is the expected controller.
 Supported controllers in the current resource: {controllers}</source>
             <translation>コントローラー情報がありません。{controller}が期待されるコントローラーであることを確認してください。
@@ -2395,31 +2479,31 @@ Supported controllers in the current resource: {controllers}</source>
             <translation type="vanished">コントローラーのADB設定が不完全です。ここをタップしてコントローラーを開き、パス/アドレス/ポートを修正してください。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1333" />
-            <location filename="../view/main_window/main_window.py" line="1339" />
+            <location filename="../view/main_window/main_window.py" line="1361" />
+            <location filename="../view/main_window/main_window.py" line="1367" />
             <source>hotkey disabled due to permission issue</source>
             <translation>権限の問題によりホットキーが無効化されています</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1358" />
+            <location filename="../view/main_window/main_window.py" line="1386" />
             <source>Log is being packaged, please wait...</source>
             <translation>ログをパッケージ化中です。お待ちください...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1379" />
-            <location filename="../view/main_window/main_window.py" line="1429" />
+            <location filename="../view/main_window/main_window.py" line="1407" />
+            <location filename="../view/main_window/main_window.py" line="1457" />
             <source>Preparing files...</source>
             <translation>ファイルを準備中...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1401" />
-            <location filename="../view/main_window/main_window.py" line="1405" />
+            <location filename="../view/main_window/main_window.py" line="1429" />
+            <location filename="../view/main_window/main_window.py" line="1433" />
             <source>Debug directory not found, cannot package logs.</source>
             <translation>デバッグディレクトリが見つかりません。ログをパッケージ化できません。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1420" />
-            <location filename="../view/main_window/main_window.py" line="1425" />
+            <location filename="../view/main_window/main_window.py" line="1448" />
+            <location filename="../view/main_window/main_window.py" line="1453" />
             <source>No matching files were found for the selected options.</source>
             <translation>選択されたオプションに一致するファイルが見つかりませんでした。</translation>
         </message>
@@ -2432,88 +2516,88 @@ Supported controllers in the current resource: {controllers}</source>
             <translation type="vanished">選択した実行記録に一致するファイルが見つかりませんでした。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1438" />
-            <location filename="../view/main_window/main_window.py" line="1453" />
+            <location filename="../view/main_window/main_window.py" line="1466" />
+            <location filename="../view/main_window/main_window.py" line="1481" />
             <source>Packing:</source>
             <translation>パッケージ化中:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1471" />
-            <location filename="../view/main_window/main_window.py" line="1472" />
+            <location filename="../view/main_window/main_window.py" line="1499" />
+            <location filename="../view/main_window/main_window.py" line="1500" />
             <source>Log packaging cancelled.</source>
             <translation>ログのパッケージ化がキャンセルされました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1476" />
-            <location filename="../view/main_window/main_window.py" line="1480" />
+            <location filename="../view/main_window/main_window.py" line="1504" />
+            <location filename="../view/main_window/main_window.py" line="1508" />
             <source>Log packaging failed:</source>
             <translation>ログのパッケージ化に失敗しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2041" />
+            <location filename="../view/main_window/main_window.py" line="2069" />
             <source>, there are </source>
             <translation>、</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2043" />
+            <location filename="../view/main_window/main_window.py" line="2071" />
             <source> files not added</source>
             <translation> 個のファイルが追加されていません</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2047" />
+            <location filename="../view/main_window/main_window.py" line="2075" />
             <source>Log has been packaged, but some files failed to read:</source>
             <translation>ログはパッケージ化されましたが、一部のファイルの読み込みに失敗しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2054" />
+            <location filename="../view/main_window/main_window.py" line="2082" />
             <source>Log has been packaged:</source>
             <translation>ログはパッケージ化されました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2059" />
+            <location filename="../view/main_window/main_window.py" line="2087" />
             <source>Packaging completed, but some files were skipped.</source>
             <translation>パッケージ化は完了しましたが、一部のファイルはスキップされました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2060" />
+            <location filename="../view/main_window/main_window.py" line="2088" />
             <source>Packaging completed:</source>
             <translation>パッケージ化完了:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2107" />
-            <location filename="../view/main_window/main_window.py" line="2274" />
-            <location filename="../view/main_window/main_window.py" line="2703" />
+            <location filename="../view/main_window/main_window.py" line="2135" />
+            <location filename="../view/main_window/main_window.py" line="2302" />
+            <location filename="../view/main_window/main_window.py" line="2731" />
             <source>Announcement</source>
             <translation>お知らせ</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2110" />
+            <location filename="../view/main_window/main_window.py" line="2138" />
             <source>There is no announcement at the moment.</source>
             <translation>現在、お知らせはありません。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2217" />
-            <location filename="../view/main_window/main_window.py" line="2227" />
+            <location filename="../view/main_window/main_window.py" line="2245" />
+            <location filename="../view/main_window/main_window.py" line="2255" />
             <source>Welcome</source>
             <translation>ようこそ</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2330" />
+            <location filename="../view/main_window/main_window.py" line="2358" />
             <source>This is the configuration area. Each configuration maps to different task sets.</source>
             <translation>ここは設定エリアです。各設定は異なるタスクセットに対応しています。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2336" />
+            <location filename="../view/main_window/main_window.py" line="2364" />
             <source>This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running.</source>
             <translation>ここはタスクエリアです。まずコントローラーとリソース設定を設定してください。それら以外のすべてのタスクは、実行前にドラッグして順序を変更できます。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2342" />
+            <location filename="../view/main_window/main_window.py" line="2370" />
             <source>The monitor area displays live footage once tasks are running.</source>
             <translation>モニターエリアは、タスク実行時にライブ映像を表示します。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2348" />
+            <location filename="../view/main_window/main_window.py" line="2376" />
             <source>When you encounter issues while running, click this button and send the generated log zip file in the debug folder to the developers.</source>
             <translation>実行中に問題が発生した場合は、このボタンをクリックし、debug フォルダ内に生成されたログ ZIP を開発者に送信してください。</translation>
         </message>
@@ -2522,54 +2606,54 @@ Supported controllers in the current resource: {controllers}</source>
             <translation type="vanished">このボタンをクリックして特殊タスクに切り替えます。特殊とマークされたタスクのみが実行されます。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2684" />
+            <location filename="../view/main_window/main_window.py" line="2712" />
             <source>Close</source>
             <translation>閉じる</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2720" />
+            <location filename="../view/main_window/main_window.py" line="2748" />
             <source>Item </source>
             <translation>項目 </translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2724" />
+            <location filename="../view/main_window/main_window.py" line="2752" />
             <source>Detail</source>
             <translation>詳細</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2735" />
-            <location filename="../view/main_window/main_window.py" line="2738" />
-            <location filename="../view/main_window/main_window.py" line="2794" />
+            <location filename="../view/main_window/main_window.py" line="2763" />
+            <location filename="../view/main_window/main_window.py" line="2766" />
+            <location filename="../view/main_window/main_window.py" line="2822" />
             <source>Info</source>
             <translation>情報</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2736" />
+            <location filename="../view/main_window/main_window.py" line="2764" />
             <source>Warning</source>
             <translation>警告</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2737" />
+            <location filename="../view/main_window/main_window.py" line="2765" />
             <source>Error</source>
             <translation>エラー</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2802" />
+            <location filename="../view/main_window/main_window.py" line="2830" />
             <source>Confirm</source>
             <translation>確認</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2845" />
+            <location filename="../view/main_window/main_window.py" line="2873" />
             <source>admin</source>
             <translation>管理者</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2878" />
+            <location filename="../view/main_window/main_window.py" line="2906" />
             <source>Stopping task...</source>
             <translation>タスクを停止中...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2886" />
+            <location filename="../view/main_window/main_window.py" line="2914" />
             <source>Please wait...</source>
             <translation>お待ちください...</translation>
         </message>
@@ -5275,12 +5359,12 @@ You can copy the detailed stack trace below and report it to the developer.</sou
     <context>
         <name>TaskListToolBarWidget</name>
         <message>
-            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="280" />
+            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="295" />
             <source>Tasks</source>
             <translation>タスク</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="312" />
+            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="327" />
             <source>No available tasks to add.</source>
             <translation>追加可能なタスクがありません。</translation>
         </message>
@@ -5297,7 +5381,7 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation type="vanished">特殊タスクに切り替え</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="432" />
+            <location filename="../view/task_interface/components/list_tool_bar_widget.py" line="447" />
             <source>Base tasks (Resource, Post-Task) cannot be deleted (ID: {id})</source>
             <translation>基本タスク（リソース、後処理）は削除できません（ID: {id}）</translation>
         </message>

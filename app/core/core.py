@@ -1008,19 +1008,27 @@ class ServiceCoordinator:
             return []
         return presets
 
-    def add_config(self, config_item: ConfigItem, preset_name: str | None = None) -> str:
+    def add_config(
+        self,
+        config_item: ConfigItem,
+        preset_name: str | None = None,
+        shared_tasks: list | None = None,
+    ) -> str:
         """添加配置，传入 ConfigItem 对象，返回新配置ID
 
         Args:
             config_item: 配置项对象
             preset_name: 可选的预设名称。若指定且能找到预设，则仅物化 preset.task 中的任务（含 enabled/option）；否则按全 interface 物化。
+            shared_tasks: 可选的分享任务列表。若指定则优先于 preset 用于初始化任务。
         """
         new_id = self.config_service.create_config(config_item)
         if new_id:
             # Select the new config
             self.config_service.current_config_id = new_id
 
-            if preset_name:
+            if shared_tasks is not None:
+                self.task_service.init_config_from_shared(shared_tasks)
+            elif preset_name:
                 preset = self._find_preset(preset_name)
                 if preset:
                     self.task_service.init_config_from_preset(preset)

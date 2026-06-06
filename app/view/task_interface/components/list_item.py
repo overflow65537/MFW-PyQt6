@@ -1071,6 +1071,11 @@ class ConfigListItem(BaseListItem):
         copy_action.triggered.connect(self._copy_config_id)
         menu.addAction(copy_action)
 
+        # 分享配置（仅任务顺序与选项）
+        share_action = Action(FIF.SHARE, self.tr("Share config"))
+        share_action.triggered.connect(self._share_config)
+        menu.addAction(share_action)
+
         menu.popup(event.globalPos())
         event.accept()
 
@@ -1123,4 +1128,59 @@ class ConfigListItem(BaseListItem):
         if not config_id:
             return
         QGuiApplication.clipboard().setText(str(config_id))
+
+    def _share_config(self):
+        """将配置中的任务顺序与选项编码到剪贴板。"""
+        if not self.service_coordinator:
+            return
+        if not isinstance(self.item, ConfigItem):
+            return
+
+        from app.common.signal_bus import signalBus
+        from app.utils.config_share import (
+            ConfigShareError,
+            encode_config_tasks,
+            resolve_bundle_resource_version,
+        )
+
+        config_id = self.item.item_id
+        config = self.service_coordinator.config.get_config(config_id)
+        if not config:
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Failed to load config for sharing.")
+            )
+            return
+
+        bundle_name = (config.bundle or "").strip()
+        if not bundle_name:
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Config has no resource bundle, cannot share.")
+            )
+            return
+
+        resource_version = resolve_bundle_resource_version(
+            self.service_coordinator.config, bundle_name
+        )
+
+        try:
+            code = encode_config_tasks(
+                config,
+                bundle=bundle_name,
+                resource_version=resource_version,
+            )
+        except ConfigShareError:
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Failed to encode config for sharing.")
+            )
+            return
+        except Exception:
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Failed to encode config for sharing.")
+            )
+            return
+
+        QGuiApplication.clipboard().setText(code)
+        signalBus.info_bar_requested.emit(
+            "success", self.tr("Config copied to clipboard.")
+        )
 

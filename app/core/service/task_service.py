@@ -321,6 +321,86 @@ class TaskService:
             self.signal_bus.tasks_loaded.emit(self.current_tasks)
         return ok
 
+    def init_config_from_shared(self, shared_tasks: List[Dict[str, Any]]) -> bool:
+        """从分享编码导入的任务列表初始化当前配置（仅含任务顺序与选项）。"""
+        if not isinstance(shared_tasks, list):
+            return False
+
+        config_id = self.config_service.current_config_id
+        if not config_id:
+            return False
+        config = self.config_service.get_config(config_id)
+        if not config:
+            return False
+
+        base_tasks = [t for t in config.tasks if t.is_base_task()]
+        config.tasks = list(base_tasks)
+        config.interface_task_list_materialized = True
+
+        interface_by_name: Dict[str, Dict[str, Any]] = {
+            t["name"]: t
+            for t in self.interface.get("task", [])
+            if isinstance(t, dict) and isinstance(t.get("name"), str)
+        }
+
+        ordered_names: List[str] = []
+
+        for entry in shared_tasks:
+            if not isinstance(entry, dict):
+                continue
+            raw_name = entry.get("name")
+            if not isinstance(raw_name, str) or not raw_name.strip():
+                continue
+            name = raw_name.strip()
+
+            task_source = entry.get("task_source", "resource") or "resource"
+            builtin_key = entry.get("builtin_key", "") or ""
+
+            if task_source == TASK_SOURCE_BUILTIN:
+                if not builtin_key or not self.builtin_task_loader.get_by_key(builtin_key):
+                    logger.warning(
+                        "shared config: unknown builtin task, skipped: %s", builtin_key
+                    )
+                    continue
+            elif name not in interface_by_name:
+                logger.warning(
+                    "shared config: task not in interface, skipped: %s", name
+                )
+                continue
+
+            task_option = entry.get("task_option", {})
+            if not isinstance(task_option, dict):
+                task_option = {}
+
+            new_task = TaskItem(
+                name=name,
+                item_id=TaskItem.generate_id(),
+                is_checked=bool(entry.get("is_checked", True)),
+                task_option=deepcopy(task_option),
+                task_source=task_source,
+                builtin_key=builtin_key,
+            )
+
+            insert_at = next(
+                (
+                    i
+                    for i, t in enumerate(config.tasks)
+                    if t.is_base_task() and t.item_id == POST_ACTION
+                ),
+                len(config.tasks),
+            )
+            config.tasks.insert(insert_at, new_task)
+            ordered_names.append(name)
+
+        config.know_task = list(ordered_names)
+        ok = self.config_service.update_config(config_id, config)
+        if ok:
+            self.current_tasks = config.tasks
+            self.know_task = list(ordered_names)
+            self.refresh_hidden_flags()
+            self.signal_bus.tasks_loaded.emit(self.current_tasks)
+        return ok
+
     def apply_preset(self, preset: Dict[str, Any]) -> bool:
         """在已有任务列表上按 preset 的 ``task`` 顺序应用勾选与选项。
 

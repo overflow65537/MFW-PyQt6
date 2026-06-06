@@ -22,6 +22,8 @@ from qfluentwidgets import (
     SimpleCardWidget,
     FlowLayout,
     TogglePushButton,
+    SwitchButton,
+    TextEdit,
 )
 import jsonc
 from app.common.fluent_tooltip import apply_fluent_tooltip
@@ -139,17 +141,65 @@ class AddConfigDialog(BaseAddDialog):
         self.preset_layout.addWidget(self.preset_label)
         self.preset_layout.addWidget(self.preset_combo)
 
+        # 导入分享配置
+        self.import_layout = QVBoxLayout()
+        import_row = QHBoxLayout()
+        self.import_label = BodyLabel(self.tr("Import shared config:"), self)
+        self.import_switch = SwitchButton(self)
+        self.import_switch.setOffText(self.tr("Off"))
+        self.import_switch.setOnText(self.tr("On"))
+        import_row.addWidget(self.import_label)
+        import_row.addStretch()
+        import_row.addWidget(self.import_switch)
+        self.import_layout.addLayout(import_row)
+
+        self.import_edit = TextEdit(self)
+        self.import_edit.setPlaceholderText(
+            self.tr("Paste shared config content here")
+        )
+        self.import_edit.setMinimumHeight(100)
+        self.import_edit.setMaximumHeight(160)
+        self.import_edit.hide()
+        self.import_layout.addWidget(self.import_edit)
+        self.import_switch.checkedChanged.connect(self._on_import_switch_changed)
+
         # 将布局添加到对话框
         self.viewLayout.addLayout(self.name_layout)
         self.viewLayout.addSpacing(10)
         self.viewLayout.addLayout(self.resource_layout)
         self.viewLayout.addSpacing(10)
         self.viewLayout.addLayout(self.preset_layout)
+        self.viewLayout.addSpacing(10)
+        self.viewLayout.addLayout(self.import_layout)
 
         # 存储数据的变量
         self.config_name = ""
         self.resource_name = ""
+        self._shared_tasks: list | None = None
+        self._share_version_mismatch: tuple[str, str] | None = None
 
+
+    def _resolve_selected_bundle_version(self) -> str:
+        bundle = self._resolve_selected_bundle_info()
+        if not bundle:
+            return ""
+        from app.utils.config_share import load_bundle_interface
+        from app.utils.version_policy import resource_version_from_interface
+
+        path = str(bundle.get("path", "./") or "./")
+        interface = load_bundle_interface(path)
+        return resource_version_from_interface(interface)
+
+    def _on_import_switch_changed(self, checked: bool):
+        """切换分享配置导入模式。"""
+        self.import_edit.setVisible(checked)
+        self.preset_combo.setEnabled(not checked)
+        self.preset_label.setEnabled(not checked)
+        if checked:
+            self.widget.setMinimumHeight(380)
+        else:
+            self.widget.setMinimumHeight(180)
+            self.import_edit.clear()
 
     def load_resource_bundles(self, resource_bundles, default_resource):
         """加载可用的资源包到下拉框"""
@@ -266,22 +316,75 @@ class AddConfigDialog(BaseAddDialog):
 
     def on_confirm(self):
         """确认添加配置"""
+        self._shared_tasks = None
+        self._share_version_mismatch = None
         self.config_name = self.name_edit.text().strip()
         self.resource_name = self.resource_combo.currentText()
 
-        preset_index = self.preset_combo.currentIndex()
-        selected_preset_dict: dict | None = None
-        if preset_index > 0 and preset_index - 1 < len(self._presets):
-            raw = self._presets[preset_index - 1]
-            selected_preset_dict = raw if isinstance(raw, dict) else None
-            raw_nm = selected_preset_dict.get("name")
-            self._selected_preset_name = (
-                raw_nm.strip()
-                if isinstance(raw_nm, str) and raw_nm.strip()
-                else None
+        if self.import_switch.isChecked():
+            from app.utils.config_share import (
+                ConfigShareError,
+                ConfigShareResourceError,
+                decode_share_payload,
+                validate_share_for_import,
             )
-        else:
+
+            raw = self.import_edit.toPlainText().strip()
+            if not raw:
+                self.show_error(self.tr("Please paste shared config content"))
+                return
+            try:
+                payload = decode_share_payload(raw)
+            except ConfigShareError:
+                self.show_error(self.tr("Invalid shared config content"))
+                return
+            except Exception:
+                self.show_error(self.tr("Invalid shared config content"))
+                return
+            if not payload.tasks:
+                self.show_error(self.tr("Shared config contains no tasks"))
+                return
+
+            target_bundle = self.resource_name.strip()
+            if not target_bundle:
+                self.show_error(self.tr("Please select a resource bundle"))
+                return
+
+            try:
+                self._share_version_mismatch = validate_share_for_import(
+                    payload,
+                    target_bundle=target_bundle,
+                    target_resource_version=self._resolve_selected_bundle_version(),
+                )
+            except ConfigShareResourceError as exc:
+                self.show_error(
+                    self.tr(
+                        "Resource mismatch: shared config is for \"{0}\", "
+                        "but you selected \"{1}\"."
+                    ).format(exc.shared_bundle, exc.target_bundle)
+                )
+                return
+            except ConfigShareError:
+                self.show_error(self.tr("Invalid shared config content"))
+                return
+
+            self._shared_tasks = payload.tasks
             self._selected_preset_name = None
+            selected_preset_dict = None
+        else:
+            preset_index = self.preset_combo.currentIndex()
+            selected_preset_dict = None
+            if preset_index > 0 and preset_index - 1 < len(self._presets):
+                raw = self._presets[preset_index - 1]
+                selected_preset_dict = raw if isinstance(raw, dict) else None
+                raw_nm = selected_preset_dict.get("name") if selected_preset_dict else None
+                self._selected_preset_name = (
+                    raw_nm.strip()
+                    if isinstance(raw_nm, str) and raw_nm.strip()
+                    else None
+                )
+            else:
+                self._selected_preset_name = None
 
         if not self.config_name:
             used = self._existing_config_display_names()
@@ -417,6 +520,14 @@ class AddConfigDialog(BaseAddDialog):
     def get_selected_preset_name(self) -> str | None:
         """获取选中的预设名称，如果未选择预设则返回 None"""
         return self._selected_preset_name
+
+    def get_shared_tasks(self) -> list | None:
+        """获取从分享编码解析出的任务列表，未启用导入时返回 None"""
+        return self._shared_tasks
+
+    def get_share_version_mismatch(self) -> tuple[str, str] | None:
+        """获取跨版本导入警告信息 (shared_version, target_version)，无警告时返回 None"""
+        return self._share_version_mismatch
 
 
 class AddTaskDialog(BaseAddDialog):
