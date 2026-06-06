@@ -106,8 +106,10 @@ def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:
 def _run() -> int:
     from qasync import QEventLoop, asyncio
 
-    # 应用 qasync Windows 平台补丁
+    # 应用 qasync / qframelesswindow Windows 平台补丁
     import app.utils.qasync_patch
+    import app.utils.qframeless_patch
+    app.utils.qframeless_patch.install_qframeless_window_patch()
     from qfluentwidgets import FluentTranslator
     from PySide6.QtCore import Qt, QTranslator
     from PySide6.QtWidgets import QApplication
