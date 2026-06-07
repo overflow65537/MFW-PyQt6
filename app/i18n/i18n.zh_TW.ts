@@ -2326,27 +2326,27 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <context>
         <name>LogoutputWidget</name>
         <message>
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="104" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="105" />
             <source>Monitor</source>
             <translation>監控</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="296" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="297" />
             <source>Log Output</source>
             <translation>日誌輸出</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="302" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="303" />
             <source>generate log zip</source>
             <translation>產生日誌壓縮檔</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="506" />
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="856" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="507" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="849" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="854" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="859" />
             <location filename="../view/task_interface/components/logoutput_widget.py" line="861" />
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="866" />
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="868" />
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="869" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="862" />
             <source>System</source>
             <translation>系統</translation>
         </message>
@@ -2714,7 +2714,7 @@ Supported controllers in the current resource: {controllers}</source>
     <context>
         <name>MonitorDialog</name>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="922" />
+            <location filename="../view/task_interface/components/monitor_widget.py" line="915" />
             <source>Monitor</source>
             <translation>監視器</translation>
         </message>
@@ -2801,47 +2801,47 @@ Supported controllers in the current resource: {controllers}</source>
     <context>
         <name>MonitorWidget</name>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="706" />
+            <location filename="../view/task_interface/components/monitor_widget.py" line="699" />
             <source>No screenshot available to save</source>
             <translation>無可用螢幕截圖可儲存</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="714" />
+            <location filename="../view/task_interface/components/monitor_widget.py" line="707" />
             <source>Screenshot saved to </source>
             <translation>螢幕截圖已儲存至 </translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="717" />
+            <location filename="../view/task_interface/components/monitor_widget.py" line="710" />
             <source>Failed to save screenshot: </source>
             <translation>儲存螢幕截圖失敗：</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="779" />
+            <location filename="../view/task_interface/components/monitor_widget.py" line="772" />
             <source>Controller not ready. Please ensure the device is connected.</source>
             <translation>控制器未就緒。請確認裝置已連線。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="806" />
+            <location filename="../view/task_interface/components/monitor_widget.py" line="799" />
             <source>Failed to start monitoring loop</source>
             <translation>開始監控循環失敗</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="814" />
+            <location filename="../view/task_interface/components/monitor_widget.py" line="807" />
             <source>Monitoring started</source>
             <translation>監控已開始</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="834" />
+            <location filename="../view/task_interface/components/monitor_widget.py" line="827" />
             <source>Failed to start monitoring: </source>
             <translation>開始監控失敗：</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="897" />
+            <location filename="../view/task_interface/components/monitor_widget.py" line="890" />
             <source>Monitoring stopped</source>
             <translation>監控已停止</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="901" />
+            <location filename="../view/task_interface/components/monitor_widget.py" line="894" />
             <source>Failed to stop monitoring: </source>
             <translation>停止監控失敗：</translation>
         </message>
@@ -4772,12 +4772,12 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <context>
         <name>StartupDialogManager</name>
         <message>
-            <location filename="../utils/startup_dialog.py" line="269" />
+            <location filename="../utils/startup_dialog.py" line="303" />
             <source>Missing Runtime Library</source>
             <translation>缺少執行階段程式庫</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="271" />
+            <location filename="../utils/startup_dialog.py" line="305" />
             <source>Failed to load MAA framework library.
 
 Microsoft Visual C++ Redistributable runtime library is missing.
@@ -4794,23 +4794,23 @@ Please download and install Visual C++ Redistributable, then restart the program
 請下載並安裝 Visual C++ Redistributable，然後重新啟動程式。</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="278" />
+            <location filename="../utils/startup_dialog.py" line="312" />
             <source>Open Download Page</source>
             <translation>開啟下載頁面</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="283" />
-            <location filename="../utils/startup_dialog.py" line="467" />
+            <location filename="../utils/startup_dialog.py" line="317" />
+            <location filename="../utils/startup_dialog.py" line="539" />
             <source>Exit</source>
             <translation>結束</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="302" />
+            <location filename="../utils/startup_dialog.py" line="336" />
             <source>Program Already Running</source>
             <translation>程式已在執行中</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="304" />
+            <location filename="../utils/startup_dialog.py" line="338" />
             <source>The program is already running.
 
 Please close the existing window or terminate the process in Task Manager before starting again.</source>
@@ -4819,39 +4819,74 @@ Please close the existing window or terminate the process in Task Manager before
 請關閉現有視窗或在工作管理員中終止程序，然後再重新啟動。</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="309" />
-            <location filename="../utils/startup_dialog.py" line="334" />
-            <location filename="../utils/startup_dialog.py" line="509" />
+            <location filename="../utils/startup_dialog.py" line="343" />
+            <location filename="../utils/startup_dialog.py" line="373" />
+            <location filename="../utils/startup_dialog.py" line="388" />
+            <location filename="../utils/startup_dialog.py" line="581" />
             <source>OK</source>
             <translation>確定</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="328" />
             <source>关闭失败</source>
-            <translation>關閉失敗</translation>
+            <translation type="vanished">關閉失敗</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="330" />
             <source>无法在 30 秒内关闭正在运行的实例，请手动关闭后重试。</source>
-            <translation>無法在 30 秒內關閉正在執行的實例，請手動關閉後重試。</translation>
+            <translation type="vanished">無法在 30 秒內關閉正在執行的實例，請手動關閉後重試。</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="361" />
+            <location filename="../utils/startup_dialog.py" line="368" />
+            <source>The existing instance did not respond and could not be closed automatically.
+
+Please end the process in Task Manager, then start the program again.</source>
+            <translation>現有實例沒有回應，無法自動關閉。
+
+請在任務管理器中結束該程序，然後重新啟動。</translation>
+        </message>
+        <message>
+            <location filename="../utils/startup_dialog.py" line="379" />
+            <source>The existing instance did not respond and could not be closed automatically.
+
+Please try one of the following:
+• End the process in Task Manager
+• Right-click the program and choose "Run as administrator"
+
+If the existing instance was started with administrator privileges, you must also run as administrator to replace it.</source>
+            <translation>現有實例沒有回應，無法自動關閉。
+
+請嘗試以下其中一種方法：
+• 在任務管理器中結束該程序
+• 右鍵點擊該程序並選擇「以系統管理員身分執行」
+
+如果現有實例是以系統管理員權限啟動的，您也必須以系統管理員身分執行才能取代它。</translation>
+        </message>
+        <message>
+            <location filename="../utils/startup_dialog.py" line="395" />
+            <source>Run as administrator</source>
+            <translation>以系統管理員身分執行</translation>
+        </message>
+        <message>
+            <location filename="../utils/startup_dialog.py" line="403" />
+            <source>Unable to Start Program</source>
+            <translation>無法啟動程式</translation>
+        </message>
+        <message>
+            <location filename="../utils/startup_dialog.py" line="433" />
             <source>正在关闭</source>
             <translation>正在關閉</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="362" />
+            <location filename="../utils/startup_dialog.py" line="434" />
             <source>检测到其他任务正在运行，正在关闭中...</source>
             <translation>偵測到其他任務正在執行，正在關閉中...</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="413" />
+            <location filename="../utils/startup_dialog.py" line="485" />
             <source>Program Error</source>
             <translation>程式錯誤</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="415" />
+            <location filename="../utils/startup_dialog.py" line="487" />
             <source>The program encountered an unhandled exception.
 
 Error type: {exc_type}
@@ -4866,23 +4901,23 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
 以下是詳細的堆疊追蹤。您可以複製並回報給開發者：</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="423" />
-            <location filename="../utils/startup_dialog.py" line="462" />
+            <location filename="../utils/startup_dialog.py" line="495" />
+            <location filename="../utils/startup_dialog.py" line="534" />
             <source>Copy Error Info</source>
             <translation>複製錯誤資訊</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="428" />
+            <location filename="../utils/startup_dialog.py" line="500" />
             <source>Continue</source>
             <translation>繼續</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="452" />
+            <location filename="../utils/startup_dialog.py" line="524" />
             <source>Program Failed to Start</source>
             <translation>程式啟動失敗</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="454" />
+            <location filename="../utils/startup_dialog.py" line="526" />
             <source>The program failed during startup and could not continue.
 
 Error type: {exc_type}
@@ -5622,12 +5657,12 @@ You can copy the detailed stack trace below and report it to the developer.</sou
     <context>
         <name>manager</name>
         <message>
-            <location filename="../utils/startup_dialog.py" line="572" />
+            <location filename="../utils/startup_dialog.py" line="704" />
             <source>启动参数已弃用</source>
             <translation>啟動參數已棄用</translation>
         </message>
         <message>
-            <location filename="../utils/startup_dialog.py" line="574" />
+            <location filename="../utils/startup_dialog.py" line="706" />
             <source>检测到旧版命令行参数。程序已按新规则继续启动，但请尽快改用下列写法：</source>
             <translation>偵測到舊版命令列參數。程式已依新規則繼續啟動，但請盡快改用下列寫法：</translation>
         </message>
