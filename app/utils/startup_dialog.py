@@ -23,6 +23,7 @@ MFW-ChainFlow Assistant
 """
 
 import sys
+import os
 import time
 import traceback
 from enum import Enum, auto
@@ -40,6 +41,39 @@ from qfluentwidgets import (
     PushButton,
     TextEdit,
 )
+
+
+def _is_running_with_admin_privileges() -> bool:
+    from app.utils.single_instance import is_running_with_admin_privileges
+
+    return is_running_with_admin_privileges()
+
+
+def _launch_self_as_admin() -> None:
+    """Windows：以管理员权限重新启动当前程序。"""
+    if not sys.platform.startswith("win32"):
+        return
+
+    import ctypes
+    import subprocess
+    from pathlib import Path
+
+    if getattr(sys, "frozen", False):
+        executable = Path(sys.executable).resolve()
+    else:
+        executable = Path(sys.argv[0]).resolve()
+
+    args = subprocess.list2cmdline(sys.argv[1:])
+    result = ctypes.windll.shell32.ShellExecuteW(
+        None,
+        "runas",
+        str(executable),
+        args,
+        str(executable.parent),
+        1,
+    )
+    if result <= 32:
+        raise RuntimeError(f"ShellExecuteW failed with code {result}")
 
 
 class StartupDialogType(Enum):
@@ -323,18 +357,52 @@ class StartupDialogManager(QObject):
 
     def show_force_restart_failed(self) -> None:
         """显示 --force-restart 强制重启时无法在时限内关闭旧实例的弹窗。"""
-        config = StartupDialogConfig(
-            dialog_type=StartupDialogType.WARNING,
-            title=self.tr("关闭失败"),
-            content=self.tr(
-                "无法在 30 秒内关闭正在运行的实例，请手动关闭后重试。"
-            ),
-            buttons=[
+        self.show_stale_instance_recovery_failed(
+            is_admin=_is_running_with_admin_privileges()
+        )
+
+    def show_stale_instance_recovery_failed(self, *, is_admin: bool) -> None:
+        """已有实例无响应且无法自动关闭时的提示弹窗。"""
+        if is_admin:
+            content = self.tr(
+                "The existing instance did not respond and could not be closed automatically.\n\n"
+                "Please end the process in Task Manager, then start the program again."
+            )
+            buttons = [
                 DialogButton(
                     text=self.tr("OK"),
                     is_primary=True,
                 ),
-            ],
+            ]
+        else:
+            content = self.tr(
+                "The existing instance did not respond and could not be closed automatically.\n\n"
+                "Please try one of the following:\n"
+                "• End the process in Task Manager\n"
+                "• Right-click the program and choose \"Run as administrator\"\n\n"
+                "If the existing instance was started with administrator privileges, "
+                "you must also run as administrator to replace it."
+            )
+            buttons = [
+                DialogButton(
+                    text=self.tr("OK"),
+                    is_primary=False,
+                ),
+            ]
+            if sys.platform.startswith("win32"):
+                buttons.append(
+                    DialogButton(
+                        text=self.tr("Run as administrator"),
+                        is_primary=True,
+                        callback=_launch_self_as_admin,
+                    )
+                )
+
+        config = StartupDialogConfig(
+            dialog_type=StartupDialogType.WARNING,
+            title=self.tr("Unable to Start Program"),
+            content=content,
+            buttons=buttons,
             exit_after_close=True,
             exit_code=1,
         )
@@ -347,14 +415,18 @@ class StartupDialogManager(QObject):
             self._cleanup_dummy_parent()
 
     def wait_for_force_restart_shutdown(
-        self, instance_key: str, *, timeout: float = 30.0
+        self, instance_key: str, *, timeout: float | None = None
     ) -> bool:
         """显示等待弹窗，请求旧实例关闭并轮询单实例锁直至超时。"""
         from app.utils.single_instance import (
+            FORCE_RESTART_WAIT_TIMEOUT,
             _ActivationServer,
             _SingleInstanceLock,
             request_instance_shutdown,
         )
+
+        if timeout is None:
+            timeout = FORCE_RESTART_WAIT_TIMEOUT
 
         config = StartupDialogConfig(
             dialog_type=StartupDialogType.INFO,
@@ -546,14 +618,74 @@ def show_instance_running_dialog(parent=None) -> None:
 
 
 def run_force_restart_shutdown_flow(
-    instance_key: str, *, timeout: float = 30.0, parent=None
+    instance_key: str, *, timeout: float | None = None, parent=None
 ) -> bool:
     """--force-restart 启动：请求旧实例优雅退出并等待；失败时弹窗且返回 False。"""
+    import os
+
+    from app.utils.single_instance import (
+        FORCE_RESTART_WAIT_TIMEOUT,
+        try_force_terminate_stale_instance,
+    )
+
+    if timeout is None:
+        timeout = FORCE_RESTART_WAIT_TIMEOUT
+
     manager = StartupDialogManager(parent)
     if manager.wait_for_force_restart_shutdown(instance_key, timeout=timeout):
         return True
+    if try_force_terminate_stale_instance(instance_key, exclude_pid=os.getpid()):
+        return True
     manager.show_force_restart_failed()
     return False
+
+
+def run_duplicate_instance_flow(
+    instance_key: str,
+    *,
+    activate_retries: int = 3,
+    activate_retry_delay: float = 0.4,
+    shutdown_timeout: float | None = None,
+    parent=None,
+) -> str:
+    """重复启动时的恢复流程：前置 → 优雅关闭 →（管理员）强杀 → 提示。
+
+    返回:
+        ``activated`` — 旧实例已正常响应并前置
+        ``restarted`` — 旧实例已结束，可继续启动新实例
+        ``failed`` — 无法关闭旧实例
+    """
+    from app.utils.single_instance import (
+        FORCE_RESTART_WAIT_TIMEOUT,
+        _ActivationServer,
+        is_running_with_admin_privileges,
+        try_activate_existing_instance,
+        try_force_terminate_stale_instance,
+    )
+
+    if shutdown_timeout is None:
+        shutdown_timeout = FORCE_RESTART_WAIT_TIMEOUT
+
+    server_name = _ActivationServer.make_server_name(str(instance_key))
+    retries = max(1, int(activate_retries))
+
+    for attempt in range(retries):
+        if try_activate_existing_instance(server_name):
+            return "activated"
+        if attempt + 1 < retries:
+            time.sleep(max(0.0, activate_retry_delay))
+
+    manager = StartupDialogManager(parent)
+    if manager.wait_for_force_restart_shutdown(instance_key, timeout=shutdown_timeout):
+        return "restarted"
+
+    if try_force_terminate_stale_instance(instance_key, exclude_pid=os.getpid()):
+        return "restarted"
+
+    manager.show_stale_instance_recovery_failed(
+        is_admin=is_running_with_admin_privileges()
+    )
+    return "failed"
 
 
 def show_deprecated_cli_dialog(deprecated: list[str], parent=None) -> None:

@@ -146,21 +146,35 @@ def _run() -> int:
 
     init_language_on_first_run()
 
+    def _ensure_early_startup_app(qt_argv: list[str]) -> QApplication:
+        app = QApplication.instance()
+        if app is None or not isinstance(app, QApplication):
+            app = QApplication(qt_argv)
+            app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
+            apply_theme_from_config()
+        return app
+
     if options.force_restart and is_instance_running(instance_key):
         from app.utils.startup_dialog import run_force_restart_shutdown_flow
 
-        early_app = QApplication(qt_argv)
-        early_app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
-        apply_theme_from_config()
+        _ensure_early_startup_app(qt_argv)
         _show_deprecated_cli_if_needed()
         if not run_force_restart_shutdown_flow(instance_key):
             return 1
 
     single_instance = SingleInstanceGuard(instance_key)
     if not single_instance.acquire():
-        # 已有实例：仅尝试前置已有窗口，不弹窗
-        single_instance.notify_existing_instance()
-        return 0
+        from app.utils.startup_dialog import run_duplicate_instance_flow
+
+        _ensure_early_startup_app(qt_argv)
+        _show_deprecated_cli_if_needed()
+        outcome = run_duplicate_instance_flow(instance_key)
+        if outcome == "activated":
+            return 0
+        if outcome == "failed":
+            return 1
+        if not single_instance.acquire():
+            return 1
 
     atexit.register(single_instance.release)
 

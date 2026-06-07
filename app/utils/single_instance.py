@@ -9,7 +9,7 @@ CMD_SHUTDOWN = b"shutdown"
 RESP_OK = b"ok"
 RESP_ACCEPTED = b"accepted"
 RESP_FAIL = b"fail"
-FORCE_RESTART_WAIT_TIMEOUT = 30.0
+FORCE_RESTART_WAIT_TIMEOUT = 10.0
 
 
 class _SingleInstanceLock:
@@ -245,6 +245,142 @@ def is_instance_running(instance_key: str) -> bool:
     return True
 
 
+def is_running_with_admin_privileges() -> bool:
+    """当前进程是否具备管理员/root 权限。"""
+    if os.name == "nt":
+        try:
+            import ctypes
+
+            return bool(ctypes.windll.shell32.IsUserAnAdmin())
+        except Exception:
+            return False
+
+    get_euid = getattr(os, "geteuid", None)
+    if callable(get_euid):
+        try:
+            return get_euid() == 0
+        except Exception:
+            return False
+    return False
+
+
+def try_activate_existing_instance(
+    server_name: str,
+    *,
+    connect_ms: int = 800,
+    response_ms: int = 500,
+) -> bool:
+    """请求已有实例前置窗口；仅当收到 RESP_OK 时视为成功。"""
+    try:
+        from PySide6.QtNetwork import QLocalSocket
+    except Exception:
+        return False
+
+    socket = QLocalSocket()
+    socket.connectToServer(server_name)
+    if not socket.waitForConnected(connect_ms):
+        return False
+
+    try:
+        socket.write(CMD_ACTIVATE)
+        socket.flush()
+        if not socket.waitForBytesWritten(800):
+            return False
+        if not socket.waitForReadyRead(response_ms):
+            return False
+        response = bytes(socket.readAll()).strip().lower()
+        return response == RESP_OK
+    except Exception:
+        return False
+    finally:
+        try:
+            socket.disconnectFromServer()
+        except Exception:
+            pass
+
+
+def find_matching_instance_pids(
+    instance_key: str, *, exclude_pid: int | None = None
+) -> list[int]:
+    """查找同安装锚点下仍在运行的 MFW 主进程 PID 列表。"""
+    try:
+        import psutil
+    except Exception:
+        return []
+
+    anchor_path = _normalize_install_anchor(instance_key)
+    matched: list[int] = []
+    for proc in psutil.process_iter(["pid", "exe", "cmdline"]):
+        try:
+            pid = int(proc.info.get("pid") or 0)
+            if pid <= 0:
+                continue
+            cmdline = proc.info.get("cmdline") or []
+            if not isinstance(cmdline, list):
+                cmdline = list(cmdline)
+            exe = proc.info.get("exe")
+            if process_matches_install_anchor(
+                pid=pid,
+                exe=exe,
+                cmdline=cmdline,
+                anchor_path=anchor_path,
+                exclude_pid=exclude_pid,
+            ):
+                matched.append(pid)
+        except Exception:
+            continue
+    return matched
+
+
+def terminate_matching_instances(
+    instance_key: str,
+    *,
+    exclude_pid: int | None = None,
+    wait_timeout: float = 5.0,
+) -> bool:
+    """尝试终止同安装锚点的残留实例；返回是否至少结束了一个进程。"""
+    try:
+        import psutil
+    except Exception:
+        return False
+
+    pids = find_matching_instance_pids(instance_key, exclude_pid=exclude_pid)
+    if not pids:
+        return False
+
+    procs: list = []
+    for pid in pids:
+        try:
+            procs.append(psutil.Process(pid))
+        except Exception:
+            continue
+
+    if not procs:
+        return False
+
+    terminated_any = False
+    for proc in procs:
+        try:
+            proc.terminate()
+            terminated_any = True
+        except Exception:
+            continue
+
+    if not terminated_any:
+        return False
+
+    gone, alive = psutil.wait_procs(procs, timeout=max(0.0, wait_timeout))
+    for proc in alive:
+        try:
+            proc.kill()
+        except Exception:
+            continue
+    if alive:
+        psutil.wait_procs(alive, timeout=max(0.0, wait_timeout))
+
+    return True
+
+
 def request_instance_shutdown(server_name: str) -> bool:
     """通过本地套接字请求已有实例执行优雅关闭。"""
     try:
@@ -301,6 +437,25 @@ def wait_for_instance_available(
     return False
 
 
+def try_force_terminate_stale_instance(
+    instance_key: str,
+    *,
+    exclude_pid: int | None = None,
+    terminate_wait: float = 5.0,
+    lock_wait: float = 5.0,
+) -> bool:
+    """在具备权限时强杀残留实例并等待单实例锁释放。"""
+    if not is_running_with_admin_privileges():
+        return False
+    if not terminate_matching_instances(
+        instance_key,
+        exclude_pid=exclude_pid,
+        wait_timeout=terminate_wait,
+    ):
+        return False
+    return wait_for_instance_available(instance_key, timeout=lock_wait)
+
+
 class SingleInstanceGuard:
     """单实例守卫：文件锁判重 + 本地套接字激活已有实例。"""
 
@@ -332,29 +487,5 @@ class SingleInstanceGuard:
         return request_instance_shutdown(self.server_name)
 
     def notify_existing_instance(self) -> bool:
-        """请求已有实例前置窗口；发送成功即视为完成（不依赖前台焦点是否切换成功）。"""
-        try:
-            from PySide6.QtNetwork import QLocalSocket
-        except Exception:
-            return False
-
-        socket = QLocalSocket()
-        socket.connectToServer(self.server_name)
-        if not socket.waitForConnected(800):
-            return False
-
-        try:
-            socket.write(CMD_ACTIVATE)
-            socket.flush()
-            if not socket.waitForBytesWritten(800):
-                return False
-            if socket.waitForReadyRead(500):
-                bytes(socket.readAll())
-            return True
-        except Exception:
-            return False
-        finally:
-            try:
-                socket.disconnectFromServer()
-            except Exception:
-                pass
+        """请求已有实例前置窗口；仅当旧实例正常响应时返回 True。"""
+        return try_activate_existing_instance(self.server_name)
