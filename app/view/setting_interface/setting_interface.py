@@ -1372,6 +1372,21 @@ class SettingInterface(QWidget):
         )
 
         self.taskGroup.addSettingCard(self.gpu_acceleration_card)
+
+        self.reset_task_layout_card = PrimaryPushSettingCard(
+            text=self.tr("Reset"),
+            icon=FIF.SYNC,
+            title=self.tr("Reset task page layout"),
+            content=self.tr(
+                "Restore the task, option, and log columns to equal width (1:1:1)"
+            ),
+            parent=self.taskGroup,
+        )
+        self.reset_task_layout_card.clicked.connect(
+            self._on_reset_task_layout_clicked
+        )
+        self.taskGroup.addSettingCard(self.reset_task_layout_card)
+
         self.add_setting_group(self.taskGroup)
 
     def initialize_update_settings(self):
@@ -2874,6 +2889,13 @@ class SettingInterface(QWidget):
     def _on_instant_update_clicked(self):
         """立即更新"""
         self._handle_instant_update()
+
+    def _on_reset_task_layout_clicked(self):
+        """将任务页三栏布局恢复为默认 1:1:1。"""
+        signalBus.task_interface_layout_reset_requested.emit()
+        signalBus.info_bar_requested.emit(
+            "success", self.tr("Task page layout has been reset")
+        )
 
     def _on_reset_resource_clicked(self):
         """重置资源：强制重新下载最新资源包（跳过版本/热更新判断）。"""

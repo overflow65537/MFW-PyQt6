@@ -10,6 +10,7 @@ from qfluentwidgets import (
     FluentIcon as FIF,
 )
 
+from app.common.signal_bus import signalBus
 from app.view.task_interface.task_interface_ui import UI_TaskInterface
 class TaskInterface(UI_TaskInterface, QWidget):
 
@@ -44,6 +45,9 @@ class TaskInterface(UI_TaskInterface, QWidget):
         self.main_splitter.panel_geometry_changed.connect(
             self._on_panel_geometry_changed
         )
+        signalBus.task_interface_layout_reset_requested.connect(
+            self._reset_panel_layout
+        )
 
     def _show_reset_delay_ms(self) -> int:
         win = self.window()
@@ -58,6 +62,12 @@ class TaskInterface(UI_TaskInterface, QWidget):
         if hasattr(self, "main_splitter"):
             if not self.main_splitter.restore_layout_from_config():
                 self.main_splitter.apply_default_layout()
+        QTimer.singleShot(0, self._sync_log_panel_geometry)
+
+    def _reset_panel_layout(self) -> None:
+        if not hasattr(self, "main_splitter"):
+            return
+        self.main_splitter.reset_saved_layout()
         QTimer.singleShot(0, self._sync_log_panel_geometry)
 
     def _on_panel_geometry_changed(self) -> None:

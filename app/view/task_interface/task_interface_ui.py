@@ -51,9 +51,9 @@ class UI_TaskInterface(object):
         self.main_splitter.setCollapsible(0, True)
         self.main_splitter.setCollapsible(1, False)
         self.main_splitter.setCollapsible(2, True)
-        self.main_splitter.setStretchFactor(0, 1)
+        self.main_splitter.setStretchFactor(0, 0)
         self.main_splitter.setStretchFactor(1, 1)
-        self.main_splitter.setStretchFactor(2, 1)
+        self.main_splitter.setStretchFactor(2, 0)
         self.main_splitter.setSizes([1, 1, 1])
 
         self.main_layout.addWidget(self.main_splitter)

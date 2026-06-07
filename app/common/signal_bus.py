@@ -94,5 +94,8 @@ class SignalBus(QObject):
     # 控制器配置不完整时请求主窗口遮罩引导；payload 包含当前控制器和资源支持控制器列表
     controller_setup_hint_requested = Signal(dict)
 
+    # 请求将任务页三栏布局恢复为默认 1:1:1
+    task_interface_layout_reset_requested = Signal()
+
 
 signalBus = SignalBus()

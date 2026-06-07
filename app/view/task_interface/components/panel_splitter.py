@@ -131,6 +131,7 @@ def splitter_handle_stylesheet(
 class TaskInterfacePanelSplitter(QSplitter):
     """任务页三栏水平分割器。
 
+    任务/日志宽度由用户拖动决定，窗口变宽时仅选项区扩展；
     任务/日志最多占 2/3 宽度，选项区至少 1/3，拖动时可连续调整。
     """
 
@@ -143,6 +144,8 @@ class TaskInterfacePanelSplitter(QSplitter):
         self._apply_handle_style()
         qconfig.themeChanged.connect(self._apply_handle_style)
         self._layout_ratios = list(DEFAULT_PANEL_RATIOS)
+        self._fixed_task_width: int | None = None
+        self._fixed_log_width: int | None = None
         self._applying_layout = False
         self._pending_ratios: list[float] | None = None
         self._layout_restored = False
@@ -193,6 +196,15 @@ class TaskInterfacePanelSplitter(QSplitter):
         self._apply_ratio_sizes(self._layout_ratios, total)
         self._layout_restored = True
         self.panel_geometry_changed.emit()
+
+    def reset_saved_layout(self) -> None:
+        """清除已保存布局并恢复默认三等分。"""
+        cfg.set(cfg.task_interface_panel_layout, "")
+        self._pending_ratios = None
+        self._fixed_task_width = None
+        self._fixed_log_width = None
+        self._layout_restored = False
+        self.apply_default_layout()
 
     def restore_layout_from_config(self) -> bool:
         value = cfg.get(cfg.task_interface_panel_layout)
@@ -254,22 +266,31 @@ class TaskInterfacePanelSplitter(QSplitter):
             self.setSizes(sizes)
             self._clamp_panel_sizes()
             self._sync_layout_ratios_from_sizes()
+            self._sync_fixed_side_widths_from_sizes()
         finally:
             self.blockSignals(False)
             self._applying_layout = False
 
-    def _clamp_panel_sizes(self) -> None:
-        sizes = list(self.sizes())
-        total = sum(sizes)
-        if total <= 0:
+    def _sync_fixed_side_widths_from_sizes(self) -> None:
+        sizes = self.sizes()
+        if len(sizes) < 3:
             return
+        self._fixed_task_width = sizes[0]
+        self._fixed_log_width = sizes[2]
 
+    def _resolve_panel_sizes(
+        self,
+        total: int,
+        *,
+        task: int,
+        log: int,
+    ) -> list[int]:
         min_option = max(1, total // 3)
         max_task = max(0, total * 2 // 3)
         max_log = max(0, total * 2 // 3)
 
-        task = min(max(0, sizes[0]), max_task)
-        raw_log = max(0, sizes[2])
+        task = min(max(0, task), max_task)
+        raw_log = max(0, log)
         if raw_log == 0:
             log = 0
         else:
@@ -286,21 +307,55 @@ class TaskInterfacePanelSplitter(QSplitter):
                 task -= min(deficit, task)
             option = total - task - log
 
-        new_sizes = [task, option, log]
-        if (
-            self._is_equal_ratios(self._layout_ratios)
-            and new_sizes == self._equal_panel_sizes(total)
-        ):
-            if sizes != new_sizes:
-                self.blockSignals(True)
-                self.setSizes(new_sizes)
-                self.blockSignals(False)
+        return [task, option, log]
+
+    def _set_panel_sizes(self, new_sizes: list[int]) -> None:
+        sizes = self.sizes()
+        if new_sizes == sizes:
+            return
+        self.blockSignals(True)
+        try:
+            self.setSizes(new_sizes)
+        finally:
+            self.blockSignals(False)
+
+    def _clamp_panel_sizes(self) -> None:
+        sizes = list(self.sizes())
+        total = sum(sizes)
+        if total <= 0:
             return
 
-        if new_sizes != sizes:
-            self.blockSignals(True)
-            self.setSizes(new_sizes)
-            self.blockSignals(False)
+        new_sizes = self._resolve_panel_sizes(
+            total,
+            task=sizes[0],
+            log=sizes[2],
+        )
+        self._set_panel_sizes(new_sizes)
+        self._sync_fixed_side_widths_from_sizes()
+
+    def _apply_side_fixed_layout(self, total: int) -> None:
+        if self._fixed_task_width is None or self._fixed_log_width is None:
+            sizes = self.sizes()
+            if sum(sizes) > 0:
+                self._fixed_task_width = sizes[0]
+                self._fixed_log_width = sizes[2]
+            else:
+                self._fixed_task_width = total // 3
+                self._fixed_log_width = total // 3
+
+        new_sizes = self._resolve_panel_sizes(
+            total,
+            task=self._fixed_task_width,
+            log=self._fixed_log_width,
+        )
+        self._fixed_task_width = new_sizes[0]
+        self._fixed_log_width = new_sizes[2]
+        self._applying_layout = True
+        try:
+            self._set_panel_sizes(new_sizes)
+            self._sync_layout_ratios_from_sizes()
+        finally:
+            self._applying_layout = False
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
@@ -321,5 +376,5 @@ class TaskInterfacePanelSplitter(QSplitter):
         total = sum(self.sizes())
         if total <= 0:
             return
-        self._apply_ratio_sizes(self._layout_ratios, total)
+        self._apply_side_fixed_layout(total)
         self.panel_geometry_changed.emit()
