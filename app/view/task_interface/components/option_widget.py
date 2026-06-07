@@ -15,6 +15,7 @@ from qfluentwidgets import (
     SegmentedWidget,
     IconWidget,
     FluentIcon as FIF,
+    qconfig,
 )
 
 from app.utils.logger import logger
@@ -37,6 +38,11 @@ from app.view.task_interface.components.option_widget_mixin.resource_setting_mix
 )
 from app.view.task_interface.components.option_widget_mixin.controller_setting_mixin import (
     ControllerSettingWidget,
+)
+from app.view.task_interface.components.panel_splitter import (
+    PANEL_SECTION_SPACING,
+    panel_column_margins,
+    splitter_handle_stylesheet,
 )
 from ....core.core import ServiceCoordinator
 
@@ -385,19 +391,15 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # ==================== 分割器 ==================== #
         # 创建垂直分割器，实现可调整比例功能
         self.splitter = QSplitter(Qt.Orientation.Vertical)
-        self.splitter.setStyleSheet(
-            """
-            QSplitter::handle:vertical {
-                background: transparent;   
-            }
-            """
-        )
+        self.splitter.setHandleWidth(6)
+        self._apply_splitter_handle_style()
+        qconfig.themeChanged.connect(self._apply_splitter_handle_style)
 
         # 创建选项区域容器（仅用于分割器）
         self.option_splitter_widget = QWidget()
         self.option_splitter_layout = QVBoxLayout(self.option_splitter_widget)
         self.option_splitter_layout.addWidget(self.option_area_card)
-        self.option_splitter_layout.setContentsMargins(0, 13, 0, 0)
+        self.option_splitter_layout.setContentsMargins(0, 0, 0, 0)
 
         # 创建描述区域容器（仅用于分割器）
         self.description_splitter_widget = QWidget()
@@ -427,10 +429,15 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.main_layout.addLayout(self.title_row)  # 图标 + 标题
         self.main_layout.addWidget(self.splitter)  # 添加分割器
         # 添加主布局间距
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
-        self.main_layout.setSpacing(5)
+        self.main_layout.setContentsMargins(*panel_column_margins("option"))
+        self.main_layout.setSpacing(PANEL_SECTION_SPACING)
 
     # ==================== UI 辅助方法 ==================== #
+
+    def _apply_splitter_handle_style(self) -> None:
+        self.splitter.setStyleSheet(
+            splitter_handle_stylesheet(Qt.Orientation.Vertical)
+        )
 
     def _on_segmented_changed(self, key: str) -> None:
         """通过分段控件切换主选项/条件执行页"""

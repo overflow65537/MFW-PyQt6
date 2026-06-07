@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize, QTimer, QByteArray, QBuffer, QIODevice, QEvent
-from PySide6.QtGui import QFont, QPalette, QImage, QIcon, QColor
+from PySide6.QtGui import QFont, QPalette, QImage, QIcon, QColor, QResizeEvent
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsDropShadowEffect,
@@ -33,6 +33,10 @@ from app.common.config import cfg
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.monitor_widget import MonitorWidget
+from app.view.task_interface.components.panel_splitter import (
+    PANEL_SECTION_SPACING,
+    panel_column_margins,
+)
 from app.utils.markdown_helper import render_markdown
 from app.view.task_interface.components.log_item_widget import LogItemWidget, LogItemData
 
@@ -85,15 +89,15 @@ class LogoutputWidget(QWidget):
         self._apply_theme_colors()
         qconfig.themeChanged.connect(self._apply_theme_colors)
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 8, 0, 20)
-        self.main_layout.setSpacing(8)
+        self.main_layout.setContentsMargins(*panel_column_margins("log"))
+        self.main_layout.setSpacing(PANEL_SECTION_SPACING)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # 添加监控组件（如果有 service_coordinator）
         if self.service_coordinator:
             # 监控标题栏
             monitor_title_layout = QHBoxLayout()
-            monitor_title_layout.setContentsMargins(0, 22, 0, 0)  # 上部避让12px
+            monitor_title_layout.setContentsMargins(0, 0, 0, 0)
             monitor_title_layout.setSpacing(8)
 
             self.monitor_title_icon = IconWidget(FIF.VIDEO, self)
@@ -117,13 +121,11 @@ class LogoutputWidget(QWidget):
             self.monitor_card = SimpleCardWidget()
             self.monitor_card.setClickEnabled(False)
             self.monitor_card.setBorderRadius(8)
-            # 设置监控卡片为固定大小（344x194，16:9比例，与监控组件内部尺寸一致）
-            self.monitor_card.setFixedSize(self._monitor_width, self._monitor_height)
-            # 设置大小策略为固定，不影响其他组件
             monitor_card_policy = QSizePolicy(
-                QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
             )
             self.monitor_card.setSizePolicy(monitor_card_policy)
+            self.monitor_card.setMinimumWidth(0)
 
             # 创建监控组件
             self.monitor_widget = MonitorWidget(self.service_coordinator, self)
@@ -132,11 +134,9 @@ class LogoutputWidget(QWidget):
             monitor_card_layout = QVBoxLayout(self.monitor_card)
             monitor_card_layout.setContentsMargins(0, 0, 0, 0)
             monitor_card_layout.addWidget(self.monitor_widget)
-            # 卡片内容居中对齐
-            monitor_card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            # 监控组件使用固定尺寸，不使用拉伸因子
             self.main_layout.addWidget(self.monitor_card, 0)
+            self._sync_monitor_card_size()
 
         self.main_layout.addLayout(self.log_output_title_layout)
         # 日志区域占据较少空间（拉伸因子为 1）
@@ -152,6 +152,30 @@ class LogoutputWidget(QWidget):
         signalBus.log_zip_finished.connect(
             lambda: self.generate_log_zip_button.setEnabled(True)
         )
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._sync_monitor_card_size()
+
+    def _sync_monitor_card_size(self) -> None:
+        if not getattr(self, "monitor_card", None):
+            return
+        left_margin, _, right_margin, _ = panel_column_margins("log")
+        available_width = max(self.width() - left_margin - right_margin, 0)
+        if available_width <= 0:
+            return
+        height = max(int(available_width * 9 / 16), 1)
+        if (
+            self._monitor_width == available_width
+            and self._monitor_height == height
+        ):
+            return
+        self._monitor_width = available_width
+        self._monitor_height = height
+        self.monitor_card.setFixedHeight(height)
+        self.monitor_card.setFixedWidth(available_width)
+        if hasattr(self, "monitor_widget"):
+            self.monitor_widget.set_preview_bounds(available_width, height)
 
     def _apply_theme_colors(self, *_):
         """根据当前主题调整日志文本颜色"""
@@ -258,6 +282,8 @@ class LogoutputWidget(QWidget):
 
         # 日志输出区域标题栏总体布局
         self.log_output_title_layout = QHBoxLayout()
+        self.log_output_title_layout.setContentsMargins(0, 0, 0, 0)
+        self.log_output_title_layout.setSpacing(8)
         self.log_output_title_layout.addWidget(
             self.log_output_title_icon, 0, Qt.AlignmentFlag.AlignVCenter
         )

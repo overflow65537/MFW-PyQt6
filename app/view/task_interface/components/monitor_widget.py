@@ -131,6 +131,23 @@ class MonitorWidget(QWidget):
         self.setFixedSize(self._monitor_width, self._monitor_height)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
+    def set_preview_bounds(self, width: int, height: int) -> None:
+        """按父级布局宽度同步横向预览区域尺寸。"""
+        if width <= 0 or height <= 0:
+            return
+        if not getattr(self, "_is_landscape", True):
+            return
+        if self._monitor_width == width and self._monitor_height == height:
+            return
+        self._monitor_width = width
+        self._monitor_height = height
+        self.preview_card.setFixedSize(width, height)
+        self.preview_label.setFixedSize(width, height)
+        self.setFixedSize(width, height)
+        self._refresh_preview_image()
+        if hasattr(self, "_loading_overlay") and self._loading_overlay.isVisible():
+            self._loading_overlay.setGeometry(0, 0, width, height)
+
     def _init_loading_overlay(self) -> None:
         """初始化加载图标覆盖层"""
         self._loading_overlay = QWidget(self.preview_label)

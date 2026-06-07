@@ -1,4 +1,4 @@
-from PySide6.QtCore import QMetaObject, QCoreApplication
+from PySide6.QtCore import QMetaObject, QCoreApplication, Qt
 
 from PySide6.QtWidgets import (
     QVBoxLayout,
@@ -17,8 +17,10 @@ from app.view.task_interface.components.list_tool_bar_widget import (
 from app.view.task_interface.components.option_widget import OptionWidget
 from app.view.task_interface.components.panel_splitter import (
     MIN_OPTION_PANEL_WIDTH,
-    PANEL_UNIT_WIDTH,
+    PANEL_SECTION_SPACING,
     TaskInterfacePanelSplitter,
+    panel_column_margins,
+    panel_outer_margins,
 )
 from app.view.task_interface.components.start_bar_widget import StartBarWidget
 
@@ -31,7 +33,7 @@ class UI_TaskInterface(object):
     def setupUi(self, TaskInterface):
         TaskInterface.setObjectName("TaskInterface")
         self.main_layout = QHBoxLayout()
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setContentsMargins(*panel_outer_margins())
         self.main_layout.setSpacing(0)
 
         self.log_output_widget = LogoutputWidget(service_coordinator=self.service_coordinator)
@@ -49,12 +51,10 @@ class UI_TaskInterface(object):
         self.main_splitter.setCollapsible(0, True)
         self.main_splitter.setCollapsible(1, False)
         self.main_splitter.setCollapsible(2, True)
-        self.main_splitter.setStretchFactor(0, 0)
+        self.main_splitter.setStretchFactor(0, 1)
         self.main_splitter.setStretchFactor(1, 1)
-        self.main_splitter.setStretchFactor(2, 0)
-        self.main_splitter.setSizes(
-            [PANEL_UNIT_WIDTH, PANEL_UNIT_WIDTH, PANEL_UNIT_WIDTH]
-        )
+        self.main_splitter.setStretchFactor(2, 1)
+        self.main_splitter.setSizes([1, 1, 1])
 
         self.main_layout.addWidget(self.main_splitter)
         TaskInterface.setLayout(self.main_layout)
@@ -78,10 +78,10 @@ class UI_TaskInterface(object):
         self.config_selection = ConfigListToolBarWidget(
             service_coordinator=self.service_coordinator
         )
-        self.config_selection.setFixedHeight(195)
         self.config_selection.setSizePolicy(
-            QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         )
+        self.config_selection.selection_widget.setMinimumHeight(155)
 
         self.start_bar = StartBarWidget()
         self.start_bar.setSizePolicy(
@@ -90,7 +90,9 @@ class UI_TaskInterface(object):
 
         self.control_panel = QWidget()
         self.control_panel_layout = QVBoxLayout(self.control_panel)
-        self.control_panel_layout.setContentsMargins(0, 0, 0, 0)
+        self.control_panel_layout.setContentsMargins(*panel_column_margins("task"))
+        self.control_panel_layout.setSpacing(PANEL_SECTION_SPACING)
+        self.control_panel_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.task_info = TaskListToolBarWidget(
             service_coordinator=self.service_coordinator,
         )
@@ -106,10 +108,9 @@ class UI_TaskInterface(object):
         self.control_panel_layout.addWidget(self.task_info)
         self.control_panel_layout.addWidget(self.start_bar)
 
-        # 设置比例
-        self.control_panel_layout.setStretch(0, 5)
-        self.control_panel_layout.setStretch(1, 10)
-        self.control_panel_layout.setStretch(2, 1)
+        self.control_panel_layout.setStretch(0, 0)
+        self.control_panel_layout.setStretch(1, 1)
+        self.control_panel_layout.setStretch(2, 0)
 
     def retranslateUi(self, TaskInterface):
         _translate = QCoreApplication.translate

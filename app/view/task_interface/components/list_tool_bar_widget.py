@@ -26,6 +26,7 @@ from app.view.task_interface.components.add_task_message_box import (
     AddTaskDialog,
 )
 from app.core.core import ServiceCoordinator
+from app.view.task_interface.components.panel_splitter import PANEL_SECTION_SPACING
 from app.view.task_interface.components.list_item import TaskListItem, ConfigListItem
 from app.common.signal_bus import signalBus
 from app.common.constants import _RESOURCE_, _CONTROLLER_, PRE_CONFIGURATION
@@ -46,9 +47,10 @@ class BaseListToolBarWidget(QWidget):
         self._init_title()
         self._init_selection()
 
-        self.title_layout.setContentsMargins(0, 0, 2, 0)
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.addLayout(self.title_layout)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(PANEL_SECTION_SPACING)
+        self.main_layout.addWidget(self.title_bar)
         self.main_layout.addWidget(self.selection_widget)
 
     def _init_title(self):
@@ -81,14 +83,20 @@ class BaseListToolBarWidget(QWidget):
         self.delete_button = ToolButton(FIF.DELETE)
         apply_fluent_tooltip(self.delete_button, self.tr("Delete"))
 
-        # 布局
-        self.title_layout = QHBoxLayout()
-        # 设置边距
-        self.title_layout.addLayout(self.selection_title_row)
-        self.title_layout.addWidget(self.select_all_button)
-        self.title_layout.addWidget(self.deselect_all_button)
-        self.title_layout.addWidget(self.delete_button)
-        self.title_layout.addWidget(self.add_button)
+        self.title_bar = QWidget()
+        self.title_bar.setFixedHeight(22)
+        self.title_layout = QHBoxLayout(self.title_bar)
+        self.title_layout.setContentsMargins(0, 0, 0, 0)
+        self.title_layout.setSpacing(4)
+        self.title_layout.addLayout(self.selection_title_row, 1)
+        for button in (
+            self.select_all_button,
+            self.deselect_all_button,
+            self.delete_button,
+            self.add_button,
+        ):
+            button.setFixedSize(22, 22)
+            self.title_layout.addWidget(button)
 
     def _init_task_list(self):
         """初始化任务列表"""

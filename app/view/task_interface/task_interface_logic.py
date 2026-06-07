@@ -52,7 +52,8 @@ class TaskInterface(UI_TaskInterface, QWidget):
         if not self.isVisible():
             return
         if hasattr(self, "main_splitter"):
-            self.main_splitter.restore_layout_from_config()
+            if not self.main_splitter.restore_layout_from_config():
+                self.main_splitter.apply_default_layout()
 
     def _on_deferred_show_reset(self) -> None:
         if not self.isVisible():

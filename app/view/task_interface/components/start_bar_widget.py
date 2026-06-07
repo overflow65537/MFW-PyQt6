@@ -18,6 +18,8 @@ class StartBarWidget(QWidget):
         super().__init__(parent)
         self._init_start_bar()
         self.start_bar_main_layout = QHBoxLayout(self)
+        self.start_bar_main_layout.setContentsMargins(0, 0, 0, 0)
+        self.start_bar_main_layout.setSpacing(0)
         self.start_bar_main_layout.addWidget(self.start_bar)
 
 
