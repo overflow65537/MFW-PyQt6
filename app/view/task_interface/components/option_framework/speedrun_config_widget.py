@@ -74,6 +74,7 @@ class SpeedrunConfigWidget(QWidget):
     def _init_run_count_section(self) -> None:
         container = QWidget(self)
         layout = QFormLayout(container)
+        self.run_count_layout = layout
 
         self.period_combo = ComboBox(self)
         self.period_combo.addItem(self.tr("Daily"), userData="daily")
@@ -81,32 +82,28 @@ class SpeedrunConfigWidget(QWidget):
         self.period_combo.addItem(self.tr("Monthly"), userData="monthly")
         layout.addRow(self.tr("Period"), self.period_combo)
 
+        self.run_count_weekday_combo = self._build_weekday_combo()
+        layout.addRow(self.tr("Weekday"), self.run_count_weekday_combo)
+
+        self.run_count_month_day_combo = self._build_month_day_combo()
+        layout.addRow(self.tr("Day"), self.run_count_month_day_combo)
+
+        self.refresh_hour_combo = self._build_hour_combo()
+        layout.addRow(self.tr("Refresh Timeline"), self.refresh_hour_combo)
+
         self.count_spin = SpinBox(self)
         self.count_spin.setRange(1, 9999)
         self.count_spin.setValue(1)
         layout.addRow(self.tr("Run Count"), self.count_spin)
 
-        self.refresh_hour_combo = self._build_hour_combo()
-        layout.addRow(self.tr("Refresh Timeline"), self.refresh_hour_combo)
-
         self.run_count_section, self.run_count_line = self._wrap_with_indicator(container)
         self.main_layout.addWidget(self.run_count_section)
+        self._update_run_count_period_visibility("daily")
 
     def _init_weekday_section(self) -> None:
         container = QWidget(self)
         layout = QFormLayout(container)
-        self.weekday_combo = ComboBox(self)
-        weekdays = [
-            (self.tr("Monday"), 1),
-            (self.tr("Tuesday"), 2),
-            (self.tr("Wednesday"), 3),
-            (self.tr("Thursday"), 4),
-            (self.tr("Friday"), 5),
-            (self.tr("Saturday"), 6),
-            (self.tr("Sunday"), 7),
-        ]
-        for label, value in weekdays:
-            self.weekday_combo.addItem(label, userData=value)
+        self.weekday_combo = self._build_weekday_combo()
         layout.addRow(self.tr("Weekday"), self.weekday_combo)
         self.weekday_section, self.weekday_line = self._wrap_with_indicator(container)
         self.main_layout.addWidget(self.weekday_section)
@@ -114,9 +111,7 @@ class SpeedrunConfigWidget(QWidget):
     def _init_month_day_section(self) -> None:
         container = QWidget(self)
         layout = QFormLayout(container)
-        self.month_day_combo = ComboBox(self)
-        for day in range(1, 32):
-            self.month_day_combo.addItem(str(day), userData=day)
+        self.month_day_combo = self._build_month_day_combo()
         layout.addRow(self.tr("Day"), self.month_day_combo)
         self.month_day_section, self.month_day_line = self._wrap_with_indicator(container)
         self.main_layout.addWidget(self.month_day_section)
@@ -168,14 +163,37 @@ class SpeedrunConfigWidget(QWidget):
             combo.addItem(f"{hour:02d}:00", userData=hour)
         return combo
 
+    def _build_weekday_combo(self) -> ComboBox:
+        combo = ComboBox(self)
+        weekdays = [
+            (self.tr("Monday"), 1),
+            (self.tr("Tuesday"), 2),
+            (self.tr("Wednesday"), 3),
+            (self.tr("Thursday"), 4),
+            (self.tr("Friday"), 5),
+            (self.tr("Saturday"), 6),
+            (self.tr("Sunday"), 7),
+        ]
+        for label, value in weekdays:
+            combo.addItem(label, userData=value)
+        return combo
+
+    def _build_month_day_combo(self) -> ComboBox:
+        combo = ComboBox(self)
+        for day in range(1, 32):
+            combo.addItem(str(day), userData=day)
+        return combo
+
     def _bind_signals(self) -> None:
         self.condition_combo.currentIndexChanged.connect(self._on_condition_changed)
         self.action_combo.currentIndexChanged.connect(self._on_value_changed)
         self.notify_switch.checkedChanged.connect(self._on_value_changed)
         self.external_notify_switch.checkedChanged.connect(self._on_value_changed)
-        self.period_combo.currentIndexChanged.connect(self._on_value_changed)
+        self.period_combo.currentIndexChanged.connect(self._on_period_changed)
         self.count_spin.valueChanged.connect(self._on_value_changed)
         self.refresh_hour_combo.currentIndexChanged.connect(self._on_value_changed)
+        self.run_count_weekday_combo.currentIndexChanged.connect(self._on_value_changed)
+        self.run_count_month_day_combo.currentIndexChanged.connect(self._on_value_changed)
         self.weekday_combo.currentIndexChanged.connect(self._on_value_changed)
         self.month_day_combo.currentIndexChanged.connect(self._on_value_changed)
         self.after_hour_combo.currentIndexChanged.connect(self._on_value_changed)
@@ -213,13 +231,19 @@ class SpeedrunConfigWidget(QWidget):
 
         weekdays = condition.get("weekdays", [1])
         weekday = weekdays[0] if isinstance(weekdays, list) and weekdays else 1
-        self._set_combo_value(self.weekday_combo, self._to_int(weekday, 1, 1), 0)
+        weekday_value = self._to_int(weekday, 1, 1)
+        self._set_combo_value(self.run_count_weekday_combo, weekday_value, 0)
+        self._set_combo_value(self.weekday_combo, weekday_value, 0)
 
         days = condition.get("days", [1])
         day = days[0] if isinstance(days, list) and days else 1
-        self._set_combo_value(self.month_day_combo, self._to_int(day, 1, 1), 0)
+        day_value = self._to_int(day, 1, 1)
+        self._set_combo_value(self.run_count_month_day_combo, day_value, 0)
+        self._set_combo_value(self.month_day_combo, day_value, 0)
         self._set_combo_value(self.after_hour_combo, self._to_hour(condition.get("hour")), 0)
 
+        period = str(condition.get("period", "daily") or "daily")
+        self._update_run_count_period_visibility(period)
         self._update_condition_visibility(condition_type)
         self._updating = False
 
@@ -241,9 +265,21 @@ class SpeedrunConfigWidget(QWidget):
         period = str(self._get_combo_value(self.period_combo, "daily"))
         count = int(self.count_spin.value())
         refresh_hour = int(self._get_combo_value(self.refresh_hour_combo, 0))
-        weekday = int(self._get_combo_value(self.weekday_combo, 1))
-        day = int(self._get_combo_value(self.month_day_combo, 1))
+        run_count_weekday = int(self._get_combo_value(self.run_count_weekday_combo, 1))
+        run_count_day = int(self._get_combo_value(self.run_count_month_day_combo, 1))
+        standalone_weekday = int(self._get_combo_value(self.weekday_combo, 1))
+        standalone_day = int(self._get_combo_value(self.month_day_combo, 1))
         after_hour = int(self._get_combo_value(self.after_hour_combo, 0))
+
+        if condition_type == "weekday":
+            weekday = standalone_weekday
+            day = run_count_day
+        elif condition_type == "month_day":
+            weekday = run_count_weekday
+            day = standalone_day
+        else:
+            weekday = run_count_weekday
+            day = run_count_day
 
         config["enabled"] = True
         config["condition"].update(
@@ -275,6 +311,28 @@ class SpeedrunConfigWidget(QWidget):
         condition_type = str(self._get_combo_value(self.condition_combo, "run_count"))
         self._update_condition_visibility(condition_type)
         self._on_value_changed()
+
+    def _on_period_changed(self, _: int) -> None:
+        period = str(self._get_combo_value(self.period_combo, "daily"))
+        self._update_run_count_period_visibility(period)
+        self._on_value_changed()
+
+    def _update_run_count_period_visibility(self, period: str) -> None:
+        period = (period or "daily").lower()
+        self._set_form_row_visible(
+            self.run_count_layout, self.run_count_weekday_combo, period == "weekly"
+        )
+        self._set_form_row_visible(
+            self.run_count_layout, self.run_count_month_day_combo, period == "monthly"
+        )
+
+    def _set_form_row_visible(
+        self, layout: QFormLayout, field: QWidget, visible: bool
+    ) -> None:
+        field.setVisible(visible)
+        label = layout.labelForField(field)
+        if label is not None:
+            label.setVisible(visible)
 
     def _on_value_changed(self, *args, **kwargs) -> None:  # type: ignore[override]
         if self._updating:

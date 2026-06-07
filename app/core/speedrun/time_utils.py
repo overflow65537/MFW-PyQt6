@@ -57,19 +57,61 @@ def parse_history(raw_history: Any) -> list[datetime]:
     return parsed
 
 
-def current_period_start(mode: str, now: datetime, refresh_hour: int) -> datetime:
+def current_period_start(
+    mode: str,
+    now: datetime,
+    refresh_hour: int,
+    weekdays: list[int] | None = None,
+    month_days: list[int] | None = None,
+) -> datetime:
     refresh_hour = normalize_hour_value(refresh_hour)
+    if mode == "weekly":
+        anchor_weekday = _first_valid_int(weekdays, 1, 7, default=1)
+        return _weekly_period_start(now, refresh_hour, anchor_weekday)
+
+    if mode == "monthly":
+        anchor_day = _first_valid_int(month_days, 1, 31, default=1)
+        return _monthly_period_start(now, refresh_hour, anchor_day)
+
     base = now.replace(hour=refresh_hour, minute=0, second=0, microsecond=0)
     if now < base:
         base -= timedelta(days=1)
-
-    if mode == "weekly":
-        return base - timedelta(days=base.isoweekday() - 1)
-
-    if mode == "monthly":
-        return base.replace(day=1)
-
     return base
+
+
+def _weekly_period_start(now: datetime, refresh_hour: int, weekday: int) -> datetime:
+    candidate = now.replace(hour=refresh_hour, minute=0, second=0, microsecond=0)
+    days_back = (candidate.isoweekday() - weekday) % 7
+    period_start = candidate - timedelta(days=days_back)
+    if period_start > now:
+        period_start -= timedelta(days=7)
+    return period_start
+
+
+def _monthly_period_start(now: datetime, refresh_hour: int, day: int) -> datetime:
+    year = now.year
+    month = now.month
+    days_in_month = calendar.monthrange(year, month)[1]
+    safe_day = min(max(1, day), days_in_month)
+    candidate = datetime(year, month, safe_day, refresh_hour, 0, 0)
+
+    if candidate > now:
+        month -= 1
+        if month < 1:
+            month = 12
+            year -= 1
+        days_in_month = calendar.monthrange(year, month)[1]
+        safe_day = min(max(1, day), days_in_month)
+        candidate = datetime(year, month, safe_day, refresh_hour, 0, 0)
+
+    return candidate
+
+
+def _first_valid_int(
+    values: list[int] | None, min_value: int, max_value: int, default: int
+) -> int:
+    normalized = collect_valid_ints(values or [], min_value, max_value)
+    return normalized[0] if normalized else default
 
 
 def next_month_start(base_time: datetime) -> datetime:

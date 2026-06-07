@@ -26,7 +26,15 @@ class RunCountCondition(SpeedrunCondition):
 
         refresh_hour = normalize_hour_value(config.get("refresh_hour", 0))
         target_count = self._to_positive_int(config.get("count"), 1)
-        period_start = current_period_start(period, context.now, refresh_hour)
+        weekdays = config.get("weekdays", [1])
+        days = config.get("days", [1])
+        period_start = current_period_start(
+            period,
+            context.now,
+            refresh_hour,
+            weekdays=weekdays if isinstance(weekdays, list) else [1],
+            month_days=days if isinstance(days, list) else [1],
+        )
         period_key = f"{period}:{period_start.isoformat()}"
 
         state = context.state
