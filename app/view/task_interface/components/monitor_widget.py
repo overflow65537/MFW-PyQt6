@@ -23,6 +23,7 @@ from qfluentwidgets import (
 
 from app.core.core import ServiceCoordinator
 from app.core.runner.monitor_task import MonitorTask
+from app.utils.controller_utils import snapshot_cached_image
 from app.utils.logger import (
     logger,
     restore_asyncify_logging,
@@ -32,6 +33,9 @@ from app.utils.logger import (
 )
 from app.common.signal_bus import signalBus
 from app.common.config import cfg
+
+# 低功耗模式：只读 cached_image，不主动 post_screencap
+_LOW_POWER_REFRESH_FPS = 1
 
 
 class MonitorWidget(QWidget):
@@ -352,26 +356,13 @@ class MonitorWidget(QWidget):
     def _get_cached_image(self) -> Optional[Image.Image]:
         """从缓存的图像中获取一帧（低功耗模式使用）"""
         try:
-            controller = self._get_controller()
-            if controller is None:
-                return None
-            
-            # 尝试从 cached_image 获取图像
-            cached_image = getattr(controller, 'cached_image', None)
+            cached_image = snapshot_cached_image(self._get_controller())
             if cached_image is None:
                 return None
-            
-            # cached_image 可能是 numpy array，需要转换为 PIL Image
-            if isinstance(cached_image, np.ndarray):
-                # 如果是 BGR 格式，需要转换为 RGB
-                if len(cached_image.shape) == 3 and cached_image.shape[2] == 3:
-                    return Image.fromarray(cached_image[..., ::-1])
-                else:
-                    return Image.fromarray(cached_image)
-            elif isinstance(cached_image, Image.Image):
-                return cached_image
-            else:
-                return None
+
+            if len(cached_image.shape) == 3 and cached_image.shape[2] >= 3:
+                return Image.fromarray(cached_image[..., ::-1])
+            return Image.fromarray(cached_image)
         except Exception:
             return None
 
@@ -408,12 +399,15 @@ class MonitorWidget(QWidget):
         self._monitoring_active = True
         self._low_power_mode = True
         
-        # 创建定时器，24帧 = 1/24 秒间隔
+        # 低功耗模式：定时读 cached_image 刷新预览（不主动截图）
         self._low_power_timer = QTimer(self)
         self._low_power_timer.timeout.connect(self._low_power_refresh)
-        interval_ms = int(1000 / 24)  # 24帧每秒
+        interval_ms = int(1000 / _LOW_POWER_REFRESH_FPS)
         self._low_power_timer.start(interval_ms)
-        logger.info(f"[MonitorWidget] 低功耗模式定时器已启动，间隔: {interval_ms}ms (24fps)")
+        logger.info(
+            f"[MonitorWidget] 低功耗模式定时器已启动，间隔: {interval_ms}ms "
+            f"({_LOW_POWER_REFRESH_FPS}fps，仅读缓存)"
+        )
         
         # 立即刷新一次
         self._low_power_refresh()
@@ -502,9 +496,8 @@ class MonitorWidget(QWidget):
 
     def _get_target_interval(self) -> float:
         """获取目标间隔"""
-        # 低功耗模式下使用24帧，否则使用30帧
         if self._low_power_mode:
-            return 1.0 / 24
+            return 1.0 / _LOW_POWER_REFRESH_FPS
         return self._target_interval
 
     def _is_controller_connected(self) -> bool:

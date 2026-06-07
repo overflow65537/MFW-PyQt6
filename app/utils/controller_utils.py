@@ -11,6 +11,43 @@ import jsonc
 from app.utils.logger import logger
 
 
+def snapshot_cached_image(controller: Any) -> Optional[Any]:
+    """从 controller.cached_image 拷贝一帧，避免与 Maa 更新并发读写同一缓冲区。
+
+    返回 BGR 格式的 numpy.ndarray 副本；无法读取时返回 None。
+    """
+    if controller is None:
+        return None
+
+    try:
+        import numpy as np
+        from PIL import Image as PILImage
+
+        cached_attr = getattr(controller, "cached_image", None)
+        if cached_attr is None:
+            return None
+
+        raw = cached_attr() if callable(cached_attr) else cached_attr
+        if raw is None:
+            return None
+
+        if isinstance(raw, np.ndarray):
+            if raw.ndim < 2:
+                return None
+            h, w = int(raw.shape[0]), int(raw.shape[1])
+            if h <= 0 or w <= 0:
+                return None
+            return np.ascontiguousarray(raw.copy())
+
+        if isinstance(raw, PILImage.Image):
+            rgb = np.asarray(raw.convert("RGB"))
+            return np.ascontiguousarray(rgb[..., ::-1])
+
+        return None
+    except Exception:
+        return None
+
+
 class ControllerHelper:
     """控制器相关工具方法 - 包括 ADB 控制器（模拟器）、Win32 控制器等的管理功能"""
 

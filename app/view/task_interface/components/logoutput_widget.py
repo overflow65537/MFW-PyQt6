@@ -30,6 +30,7 @@ from qfluentwidgets import (
 
 from app.common.signal_bus import signalBus
 from app.common.config import cfg
+from app.utils.controller_utils import snapshot_cached_image
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.monitor_widget import MonitorWidget
@@ -690,17 +691,9 @@ class LogoutputWidget(QWidget):
         if controller is None:
             logger.debug("[LogImage] No controller available")
             return None
-        try:
-            cached_attr = getattr(controller, "cached_image", None)
-            if cached_attr is None:
-                logger.debug("[LogImage] controller has no cached_image attribute")
-                return None
-            cached = cached_attr() if callable(cached_attr) else cached_attr
-            if cached is None:
-                logger.debug("[LogImage] cached_image returned None")
-                return None
-        except Exception as e:
-            logger.debug(f"[LogImage] Failed to get cached_image: {e}")
+        cached = snapshot_cached_image(controller)
+        if cached is None:
+            logger.debug("[LogImage] cached_image unavailable or empty")
             return None
 
         # 兼容：cached 期望是 numpy.ndarray（BGR）
