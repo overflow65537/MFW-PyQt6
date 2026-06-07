@@ -192,7 +192,18 @@ class MaaContextSink(ContextEventSink):
         content = content.replace("{task_id}", str(details.get("task_id", "")))
         content = content.replace("{list}", details.get("list", ""))
 
-        self._emit({"name": "context", "details": content, "display": display})
+        self._emit(
+            {
+                "name": "context",
+                "details": content,
+                "display": display,
+                "context_meta": {
+                    "name": details.get("name", ""),
+                    "task_id": str(details.get("task_id", "")),
+                    "list": details.get("list", ""),
+                },
+            }
+        )
 
         if msg == "Node.Recognition.Succeeded":
             if details.get("Abort", False):

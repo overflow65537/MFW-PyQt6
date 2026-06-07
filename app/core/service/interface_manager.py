@@ -566,6 +566,11 @@ class InterfaceManager:
         """
         return self._current_language
 
+    @property
+    def i18n_service(self) -> I18nService:
+        """已加载 interface 翻译表的 i18n 服务（供 focus/log 等运行时文案翻译）。"""
+        return self._i18n_service
+
     def set_language(self, language: str):
         """
         设置当前语言

@@ -6,7 +6,7 @@ MFW-ChainFlow Assistant
 
 from PySide6.QtCore import QObject
 from app.core.item import RunnerEvents
-from app.core.service.i18n_service import get_i18n_service
+from app.core.service.interface_manager import get_interface_manager
 
 
 class CallbackLogProcessor(QObject):
@@ -51,17 +51,17 @@ class CallbackLogProcessor(QObject):
             task = signal.get("task", "")
             self._handle_task_signal(status, task)
 
-        # 处理上下文信息信号
+        # 处理上下文信息信号（MaaFW focus：content 可能为 $key，需先翻译再替换占位符）
         elif signal_name == "context":
             details = signal.get("details", "")
-            if details:
-                # 使用全局 i18n 服务，根据原始 label 翻译为当前语言文本
-                details = get_i18n_service().translate_label(details)
-                # 获取 display 渠道列表，默认为 ["log"]
-                display_channels = signal.get("display", ["log"])
-                if isinstance(display_channels, str):
-                    display_channels = [display_channels]
-                self._dispatch_display(details, display_channels)
+            if not details:
+                return
+            details = get_interface_manager().i18n_service.translate_label(details)
+            details = self._apply_context_placeholders(details, signal.get("context_meta"))
+            display_channels = signal.get("display", ["log"])
+            if isinstance(display_channels, str):
+                display_channels = [display_channels]
+            self._dispatch_display(details, display_channels)
 
     def _handle_resource_signal(self, status: int):
         """处理资源加载信号 - 只输出失败"""
@@ -93,6 +93,17 @@ class CallbackLogProcessor(QObject):
         elif status == 3:
             message = self.tr("Task execution failed: ") + task_text
             self.runner_events.log_output.emit("ERROR", message)
+
+    @staticmethod
+    def _apply_context_placeholders(message: str, meta: object) -> str:
+        """翻译后将 {name}/{task_id}/{list} 替换为 focus 上下文中的实际值。"""
+        if not message or not isinstance(meta, dict):
+            return message
+        result = message
+        result = result.replace("{name}", str(meta.get("name", "")))
+        result = result.replace("{task_id}", str(meta.get("task_id", "")))
+        result = result.replace("{list}", str(meta.get("list", "")))
+        return result
 
     def _dispatch_display(self, message: str, channels: list):
         """
