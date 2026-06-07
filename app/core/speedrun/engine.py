@@ -83,6 +83,7 @@ def evaluate_speedrun(
     if not condition_result.matched:
         return SpeedrunActionResult(should_run=True)
 
+    _run_side_effects(context, action_cfg, condition_result.reason)
     return action.execute(context, action_cfg, condition_result.reason)
 
 
@@ -126,6 +127,23 @@ def _normalize_action_config(speedrun: dict[str, Any]) -> dict[str, Any]:
         normalized = {"type": "skip"}
     normalized.setdefault("type", "skip")
     return normalized
+
+
+def _run_side_effects(
+    context: SpeedrunContext, action_cfg: dict[str, Any], condition_reason: str
+) -> None:
+    message = _build_notification_message(context, condition_reason)
+    if action_cfg.get("notify") and context.notify_system:
+        context.notify_system(message)
+    if action_cfg.get("external_notify") and context.notify_external:
+        context.notify_external("任务条件通知", message)
+
+
+def _build_notification_message(
+    context: SpeedrunContext, condition_reason: str
+) -> str:
+    reason = condition_reason or "条件已命中"
+    return f"任务 {context.task.name}：{reason}"
 
 
 def _legacy_condition_config(speedrun: dict[str, Any]) -> dict[str, Any]:

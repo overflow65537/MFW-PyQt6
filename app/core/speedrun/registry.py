@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from app.core.speedrun.actions.base import SpeedrunAction
-from app.core.speedrun.actions.external_notify import ExternalNotifyAction
 from app.core.speedrun.actions.normal_run import NormalRunAction
-from app.core.speedrun.actions.notify import NotifyAction
 from app.core.speedrun.actions.skip import SkipAction
 from app.core.speedrun.conditions.always import AlwaysCondition
 from app.core.speedrun.conditions.after_time import AfterTimeCondition
@@ -29,8 +27,6 @@ ACTIONS: dict[str, SpeedrunAction] = {
     for action in (
         NormalRunAction(),
         SkipAction(),
-        NotifyAction(),
-        ExternalNotifyAction(),
     )
 }
 

@@ -7,6 +7,7 @@ from qfluentwidgets import (
     BodyLabel,
     ComboBox,
     SpinBox,
+    SwitchButton,
     isDarkTheme,
     qconfig,
 )
@@ -38,16 +39,21 @@ class SpeedrunConfigWidget(QWidget):
         title.setStyleSheet("font-size: 16px; font-weight: 600;")
         self.main_layout.addWidget(title)
 
-        self._init_general_section()
+        self._init_condition_section()
         self._init_run_count_section()
         self._init_weekday_section()
         self._init_month_day_section()
         self._init_after_time_section()
+        self._init_execution_section()
         self._bind_signals()
         self._init_animators()
         self._hide_all_condition_sections()
 
-    def _init_general_section(self) -> None:
+    def _init_condition_section(self) -> None:
+        condition_title = BodyLabel(self.tr("Condition"))
+        condition_title.setStyleSheet("font-weight: 600;")
+        self.main_layout.addWidget(condition_title)
+
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
         form.setFormAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -58,18 +64,12 @@ class SpeedrunConfigWidget(QWidget):
         self.condition_combo.addItem(self.tr("Weekday"), userData="weekday")
         self.condition_combo.addItem(self.tr("Month Day"), userData="month_day")
         self.condition_combo.addItem(self.tr("After Time"), userData="after_time")
-        form.addRow(self.tr("Condition"), self.condition_combo)
-
-        self.action_combo = ComboBox(self)
-        self.action_combo.addItem(self.tr("Normal Run"), userData="normal_run")
-        self.action_combo.addItem(self.tr("Skip"), userData="skip")
-        self.action_combo.addItem(self.tr("Notify"), userData="notify")
-        self.action_combo.addItem(
-            self.tr("External Notify"), userData="external_notify"
-        )
-        form.addRow(self.tr("Execution"), self.action_combo)
-
+        form.addRow(self.tr("Condition Type"), self.condition_combo)
         self.main_layout.addLayout(form)
+
+        config_title = BodyLabel(self.tr("Condition Configuration"))
+        config_title.setStyleSheet("font-weight: 600;")
+        self.main_layout.addWidget(config_title)
 
     def _init_run_count_section(self) -> None:
         container = QWidget(self)
@@ -131,6 +131,37 @@ class SpeedrunConfigWidget(QWidget):
         )
         self.main_layout.addWidget(self.after_time_section)
 
+    def _init_execution_section(self) -> None:
+        execution_title = BodyLabel(self.tr("Execution"))
+        execution_title.setStyleSheet("font-weight: 600;")
+        self.main_layout.addWidget(execution_title)
+
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+        form.setFormAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        self.action_combo = ComboBox(self)
+        self.action_combo.addItem(self.tr("Run"), userData="normal_run")
+        self.action_combo.addItem(self.tr("Skip"), userData="skip")
+        form.addRow(self.tr("Execution Type"), self.action_combo)
+        self.main_layout.addLayout(form)
+
+        config_title = BodyLabel(self.tr("Execution Configuration"))
+        config_title.setStyleSheet("font-weight: 600;")
+        self.main_layout.addWidget(config_title)
+
+        config_form = QFormLayout()
+        self.notify_switch = SwitchButton(self)
+        self.notify_switch.setOnText(self.tr("Enabled"))
+        self.notify_switch.setOffText(self.tr("Disabled"))
+        config_form.addRow(self.tr("Notify"), self.notify_switch)
+
+        self.external_notify_switch = SwitchButton(self)
+        self.external_notify_switch.setOnText(self.tr("Enabled"))
+        self.external_notify_switch.setOffText(self.tr("Disabled"))
+        config_form.addRow(self.tr("External Notify"), self.external_notify_switch)
+        self.main_layout.addLayout(config_form)
+
     def _build_hour_combo(self) -> ComboBox:
         combo = ComboBox(self)
         for hour in range(24):
@@ -140,6 +171,8 @@ class SpeedrunConfigWidget(QWidget):
     def _bind_signals(self) -> None:
         self.condition_combo.currentIndexChanged.connect(self._on_condition_changed)
         self.action_combo.currentIndexChanged.connect(self._on_value_changed)
+        self.notify_switch.checkedChanged.connect(self._on_value_changed)
+        self.external_notify_switch.checkedChanged.connect(self._on_value_changed)
         self.period_combo.currentIndexChanged.connect(self._on_value_changed)
         self.count_spin.valueChanged.connect(self._on_value_changed)
         self.refresh_hour_combo.currentIndexChanged.connect(self._on_value_changed)
@@ -167,6 +200,10 @@ class SpeedrunConfigWidget(QWidget):
         condition_type = str(condition.get("type", "run_count") or "run_count")
         self._set_combo_value(self.condition_combo, condition_type, 0)
         self._set_combo_value(self.action_combo, action.get("type", "normal_run"), 0)
+        self.notify_switch.setChecked(bool(action.get("notify", False)))
+        self.external_notify_switch.setChecked(
+            bool(action.get("external_notify", False))
+        )
 
         self._set_combo_value(self.period_combo, condition.get("period", "daily"), 0)
         self.count_spin.setValue(self._to_int(condition.get("count"), 1, 1))
@@ -221,6 +258,8 @@ class SpeedrunConfigWidget(QWidget):
             }
         )
         config["action"]["type"] = action_type
+        config["action"]["notify"] = self.notify_switch.isChecked()
+        config["action"]["external_notify"] = self.external_notify_switch.isChecked()
 
         config["mode"] = period
         config["run"]["count"] = count

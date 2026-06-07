@@ -16,7 +16,11 @@ DEFAULT_CONDITION: dict[str, Any] = {
     "hour": 0,
 }
 
-DEFAULT_ACTION: dict[str, Any] = {"type": "normal_run"}
+DEFAULT_ACTION: dict[str, Any] = {
+    "type": "normal_run",
+    "notify": False,
+    "external_notify": False,
+}
 
 
 def normalize_speedrun_config(
@@ -44,6 +48,12 @@ def normalize_speedrun_config(
         action = {}
     merged_action = deepcopy(DEFAULT_ACTION)
     merged_action.update(action)
+    if merged_action.get("type") == "notify":
+        merged_action["type"] = "normal_run"
+        merged_action["notify"] = True
+    elif merged_action.get("type") == "external_notify":
+        merged_action["type"] = "normal_run"
+        merged_action["external_notify"] = True
     normalized["action"] = merged_action
 
     _sync_legacy_fields(normalized)
