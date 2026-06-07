@@ -37,12 +37,22 @@ class TaskInterface(UI_TaskInterface, QWidget):
         self._show_reset_timer.setSingleShot(True)
         self._show_reset_timer.timeout.connect(self._on_deferred_show_reset)
 
+        self._restore_layout_timer = QTimer(self)
+        self._restore_layout_timer.setSingleShot(True)
+        self._restore_layout_timer.timeout.connect(self._restore_panel_layout)
+
     def _show_reset_delay_ms(self) -> int:
         win = self.window()
         stacked = getattr(win, "stackedWidget", None) if win is not None else None
         if stacked is not None and stacked.isAnimationEnabled():
             return 330
         return 50
+
+    def _restore_panel_layout(self) -> None:
+        if not self.isVisible():
+            return
+        if hasattr(self, "main_splitter"):
+            self.main_splitter.restore_layout_from_config()
 
     def _on_deferred_show_reset(self) -> None:
         if not self.isVisible():
@@ -164,9 +174,14 @@ class TaskInterface(UI_TaskInterface, QWidget):
     def showEvent(self, event: QShowEvent):
         """界面显示时延迟重置选项区与任务选中（与主窗口页面切换动画错开）。"""
         super().showEvent(event)
+        self._restore_layout_timer.stop()
+        self._restore_layout_timer.start(0)
         self._show_reset_timer.stop()
         self._show_reset_timer.start(self._show_reset_delay_ms())
 
     def hideEvent(self, event: QHideEvent):
         self._show_reset_timer.stop()
+        self._restore_layout_timer.stop()
+        if hasattr(self, "main_splitter"):
+            self.main_splitter.save_layout_to_config()
         super().hideEvent(event)

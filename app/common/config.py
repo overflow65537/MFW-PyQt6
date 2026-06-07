@@ -190,6 +190,7 @@ class Config(QConfig):
     enable_gpu_acceleration = ConfigItem(
         "Task", "enable_gpu_acceleration", True, BoolValidator()
     )  # GPU 硬件加速开关（关闭时强制 CPU 推理）
+    task_interface_panel_layout = ConfigItem("Task", "task_interface_panel_layout", "")
 
     # ===== 日志设置 =====
     log_zip_include_images = ConfigItem(
