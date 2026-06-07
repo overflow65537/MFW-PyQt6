@@ -169,6 +169,7 @@ class ResourceSettingMixin:
                 self._update_resource_options_hidden_state(resource_option_names)
                 # 更新资源选项（如果有）
                 self._update_resource_options()
+                self._update_global_options()
                 # 资源变化时，通知任务列表更新（仅携带 resource 字段）
                 self._notify_task_list_update()
                 break
@@ -331,9 +332,10 @@ class ResourceSettingMixin:
         # 恢复信号
         resource_combo.blockSignals(False)
         
-        # 填充完成后，根据当前资源更新资源选项（如果有）
+        # 填充完成后，根据当前资源更新资源选项与全局选项（如果有）
         if target_label or (target and curren_config):
             self._update_resource_options()
+            self._update_global_options()
     
     def _get_current_resource_dict(self) -> Optional[Dict[str, Any]]:
         """获取当前资源的配置字典"""
@@ -354,18 +356,6 @@ class ResourceSettingMixin:
                 return resource
         
         return None
-    
-    def _get_current_controller_name(self) -> str:
-        """获取当前选中的控制器 name（用于按 controller 字段过滤选项）"""
-        from app.common.constants import _CONTROLLER_
-
-        try:
-            controller_task = self.service_coordinator.task.get_task(_CONTROLLER_)
-            if controller_task and isinstance(controller_task.task_option, dict):
-                return controller_task.task_option.get("controller_type", "") or ""
-        except Exception:
-            pass
-        return ""
 
     def _build_resource_option_form_structure(self, resource: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """构建资源选项的表单结构
@@ -389,16 +379,12 @@ class ResourceSettingMixin:
         
         form_structure = {}
         option_service = self.service_coordinator.option_service
-        current_controller = self._get_current_controller_name()
-        
+
         # 遍历资源需要的每个选项
         for option_name in resource_option_names:
             if option_name in all_options:
                 option_def = all_options[option_name]
-                # 按 controller 字段过滤：仅当当前控制器匹配时才显示
-                if not option_service._is_option_visible_for_controller(
-                    option_def, current_controller
-                ):
+                if not option_service.is_option_visible(option_def):
                     continue
                 # 使用 process_option_def 方法递归处理选项定义
                 field_config = option_service.process_option_def(
@@ -418,16 +404,12 @@ class ResourceSettingMixin:
         if not all_options:
             return None
         option_service = self.service_coordinator.option_service
-        current_controller = self._get_current_controller_name()
         form_structure = {}
         if isinstance(global_option_def, list):
             for option_name in global_option_def:
                 if option_name in all_options:
                     option_def = all_options[option_name]
-                    # 按 controller 字段过滤
-                    if not option_service._is_option_visible_for_controller(
-                        option_def, current_controller
-                    ):
+                    if not option_service.is_option_visible(option_def):
                         continue
                     field_config = option_service.process_option_def(
                         option_def, all_options, option_name
@@ -437,9 +419,8 @@ class ResourceSettingMixin:
             for option_name, option_def in global_option_def.items():
                 if option_name == "description":
                     continue
-                # 按 controller 字段过滤
-                if isinstance(option_def, dict) and not option_service._is_option_visible_for_controller(
-                    option_def, current_controller
+                if isinstance(option_def, dict) and not option_service.is_option_visible(
+                    option_def
                 ):
                     continue
                 field_config = option_service.process_option_def(

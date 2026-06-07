@@ -76,14 +76,13 @@ class OptionService:
                     self.task_service.refresh_hidden_flags()
                 except Exception:
                     pass
-            # 控制器类型变化时，重新计算当前任务的 form_structure（按 interface.option[*].controller 过滤），并通知 UI 刷新选项表单
-            if "controller_type" in option_data and task and not task.is_base_task():
-                interface = getattr(self.task_service, "interface", None)
-                if interface:
-                    self.form_structure = self.get_form_structure_by_task_name(
-                        task.name, interface
-                    ) or {}
-                    self.signal_bus.options_loaded.emit()
+            # 资源/控制器变化时，重新计算当前任务的 form_structure（按 option.controller/resource 过滤）
+            if (
+                ("controller_type" in option_data or "resource" in option_data)
+                and task
+                and not task.is_base_task()
+            ):
+                self._refresh_current_task_form_structure()
             self.signal_bus.option_updated.emit(option_data)
 
         return success
@@ -333,6 +332,49 @@ class OptionService:
 
         return field_config
 
+    @staticmethod
+    def _is_allowed_by_name_list(value: Any, current: str) -> bool:
+        """resource/controller 字段的通用判断：缺省/空 => 允许；否则 current 必须命中（不区分大小写）。"""
+        if value in (None, "", [], {}):
+            return True
+        current_norm = (current or "").strip().lower()
+        if not current_norm:
+            return True
+        allowed: list[str] = []
+        if isinstance(value, str):
+            if value.strip():
+                allowed = [value.strip()]
+        elif isinstance(value, list):
+            allowed = [
+                str(x).strip()
+                for x in value
+                if x is not None and str(x).strip()
+            ]
+        else:
+            return True
+        allowed_norm = {s.lower() for s in allowed if s}
+        return current_norm in allowed_norm
+
+    def get_current_controller_name(self) -> str:
+        """当前选中的控制器 name（interface.controller[].name）。"""
+        from app.common.constants import _CONTROLLER_
+
+        controller_task = self.task_service.get_task(_CONTROLLER_)
+        if controller_task and isinstance(controller_task.task_option, dict):
+            return str(
+                controller_task.task_option.get("controller_type", "") or ""
+            ).strip()
+        return ""
+
+    def get_current_resource_name(self) -> str:
+        """当前选中的资源 name（interface.resource[].name）。"""
+        from app.common.constants import _RESOURCE_
+
+        resource_task = self.task_service.get_task(_RESOURCE_)
+        if resource_task and isinstance(resource_task.task_option, dict):
+            return str(resource_task.task_option.get("resource", "") or "").strip()
+        return ""
+
     def _is_option_visible_for_controller(
         self, option_def: Dict[str, Any], current_controller: str
     ) -> bool:
@@ -344,26 +386,52 @@ class OptionService:
         - 字符串：仅当当前 controller 与该字符串匹配时显示
         - 列表：仅当当前 controller 在列表中时显示（不区分大小写）
         """
-        controllers = option_def.get("controller", None)
-        if controllers in (None, "", [], {}):
-            return True
-        current_norm = (current_controller or "").strip().lower()
-        if not current_norm:
-            return True
-        allowed: list = []
-        if isinstance(controllers, str):
-            if controllers.strip():
-                allowed = [controllers.strip()]
-        elif isinstance(controllers, list):
-            allowed = [
-                str(x).strip()
-                for x in controllers
-                if x is not None and str(x).strip()
-            ]
-        else:
-            return True
-        allowed_norm = {s.lower() for s in allowed if s}
-        return current_norm in allowed_norm
+        return self._is_allowed_by_name_list(
+            option_def.get("controller"), current_controller
+        )
+
+    def _is_option_visible_for_resource(
+        self, option_def: Dict[str, Any], current_resource: str
+    ) -> bool:
+        """
+        根据 interface.option[*].resource 判断当前资源下是否应显示该选项。
+
+        规则与 controller 一致：缺省/空=全部显示；字符串或列表为白名单（不区分大小写）。
+        """
+        return self._is_allowed_by_name_list(
+            option_def.get("resource"), current_resource
+        )
+
+    def is_option_visible(
+        self,
+        option_def: Dict[str, Any],
+        *,
+        current_controller: str | None = None,
+        current_resource: str | None = None,
+    ) -> bool:
+        """同时按 controller 与 resource 白名单判断选项是否应显示。"""
+        if current_controller is None:
+            current_controller = self.get_current_controller_name()
+        if current_resource is None:
+            current_resource = self.get_current_resource_name()
+        return self._is_option_visible_for_controller(
+            option_def, current_controller
+        ) and self._is_option_visible_for_resource(option_def, current_resource)
+
+    def _refresh_current_task_form_structure(self) -> None:
+        """资源/控制器变化后，为当前选中的普通任务重算表单结构并通知 UI。"""
+        if not self.current_task_id:
+            return
+        task = self.task_service.get_task(self.current_task_id)
+        if not task or task.is_base_task():
+            return
+        interface = getattr(self.task_service, "interface", None)
+        if not interface:
+            return
+        self.form_structure = (
+            self.get_form_structure_by_task_name(task.name, interface) or {}
+        )
+        self.signal_bus.options_loaded.emit()
 
     def get_form_structure_by_task_name(
         self, task_name: str, interface: dict
@@ -398,23 +466,18 @@ class OptionService:
                 # 获取顶层的option定义
                 all_options = interface.get("option", {})
 
-                # 当前选中的控制器类型（用于按 interface.option[*].controller 过滤）
-                current_controller = ""
-                from app.common.constants import _CONTROLLER_
-
-                controller_task = self.task_service.get_task(_CONTROLLER_)
-                if controller_task and isinstance(controller_task.task_option, dict):
-                    current_controller = (
-                        controller_task.task_option.get("controller_type") or ""
-                    )
+                current_controller = self.get_current_controller_name()
+                current_resource = self.get_current_resource_name()
 
                 # 遍历任务需要的每个选项
                 for option_name in task_option_names:
                     if option_name not in all_options:
                         continue
                     option_def = all_options[option_name]
-                    if not self._is_option_visible_for_controller(
-                        option_def, current_controller
+                    if not self.is_option_visible(
+                        option_def,
+                        current_controller=current_controller,
+                        current_resource=current_resource,
                     ):
                         continue
                     # 使用process_option_def方法递归处理选项定义，传入option_name作为键名
