@@ -2999,8 +2999,12 @@ Supported controllers in the current resource: {controllers}</source>
         </message>
         <message>
             <location filename="../view/task_interface/components/option_widget.py" line="318" />
+            <source>Conditions</source>
+            <translation>条件</translation>
+        </message>
+        <message>
             <source>Speedrun</source>
-            <translation>スピードラン</translation>
+            <translation type="vanished">スピードラン</translation>
         </message>
         <message>
             <location filename="../view/task_interface/components/option_widget.py" line="334" />
@@ -4535,127 +4539,208 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <context>
         <name>SpeedrunConfigWidget</name>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="40" />
             <source>Speedrun Configuration</source>
-            <translation>スピードラン設定</translation>
+            <translation type="vanished">スピードラン設定</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="51" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="79" />
             <source>Daily</source>
             <translation>日次</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="52" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="80" />
             <source>Weekly</source>
             <translation>週次</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="53" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="81" />
             <source>Monthly</source>
             <translation>月次</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="54" />
             <source>Mode</source>
-            <translation>モード</translation>
+            <translation type="vanished">モード</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="61" />
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="82" />
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="94" />
             <source>Refresh Hour</source>
-            <translation>更新時刻</translation>
+            <translation type="vanished">更新時刻</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="70" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="100" />
             <source>Monday</source>
             <translation>月曜日</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="71" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="101" />
             <source>Tuesday</source>
             <translation>火曜日</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="72" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="102" />
             <source>Wednesday</source>
             <translation>水曜日</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="73" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="103" />
             <source>Thursday</source>
             <translation>木曜日</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="74" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="104" />
             <source>Friday</source>
             <translation>金曜日</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="75" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="105" />
             <source>Saturday</source>
             <translation>土曜日</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="76" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="106" />
             <source>Sunday</source>
             <translation>日曜日</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="81" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="64" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="110" />
             <source>Weekday</source>
             <translation>平日</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="93" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="37" />
+            <source>Condition Execution</source>
+            <translation>条件実行</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="53" />
+            <source>Condition</source>
+            <translation>条件</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="62" />
+            <source>Always</source>
+            <translation>常に</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="63" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="87" />
+            <source>Run Count</source>
+            <translation>実行回数</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="65" />
+            <source>Month Day</source>
+            <translation>月日</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="66" />
+            <source>After Time</source>
+            <translation>時間後</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="67" />
+            <source>Condition Type</source>
+            <translation>条件タイプ</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="70" />
+            <source>Condition Configuration</source>
+            <translation>条件設定</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="82" />
+            <source>Period</source>
+            <translation>期間</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="90" />
+            <source>Refresh Timeline</source>
+            <translation>タイムラインを更新</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="120" />
             <source>Day</source>
             <translation>日</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="99" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="128" />
+            <source>Hour</source>
+            <translation>時</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="135" />
+            <source>Execution</source>
+            <translation>実行</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="144" />
+            <source>Run</source>
+            <translation>実行</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="145" />
+            <source>Skip</source>
+            <translation>スキップ</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="146" />
+            <source>Execution Type</source>
+            <translation>実行タイプ</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="149" />
+            <source>Execution Configuration</source>
+            <translation>実行設定</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="157" />
+            <source>Notify</source>
+            <translation>通知</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="162" />
+            <source>External Notify</source>
+            <translation>外部通知</translation>
+        </message>
+        <message>
             <source>General</source>
-            <translation>一般</translation>
+            <translation type="vanished">一般</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="110" />
             <source>Refresh Count</source>
-            <translation>更新回数</translation>
+            <translation type="vanished">更新回数</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="116" />
             <source>Min Interval (hours)</source>
-            <translation>最小間隔（時間）</translation>
+            <translation type="vanished">最小間隔（時間）</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="120" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="155" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="160" />
             <source>Enabled</source>
             <translation>有効</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="121" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="156" />
+            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="161" />
             <source>Disabled</source>
             <translation>無効</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="122" />
             <source>Enable Speedrun</source>
-            <translation>スピードランを有効にする</translation>
+            <translation type="vanished">スピードランを有効にする</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="134" />
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="139" />
             <source>N/A</source>
-            <translation>該当なし</translation>
+            <translation type="vanished">該当なし</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="135" />
             <source>Current Count</source>
-            <translation>現在のカウント</translation>
+            <translation type="vanished">現在のカウント</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_framework/speedrun_config_widget.py" line="140" />
             <source>Last Run Time</source>
-            <translation>最終実行時刻</translation>
+            <translation type="vanished">最終実行時刻</translation>
         </message>
     </context>
     <context>
@@ -4898,8 +4983,8 @@ You can copy the detailed stack trace below and report it to the developer.</sou
         </message>
         <message>
             <location filename="../core/runner/task_flow.py" line="696" />
-            <location filename="../core/runner/task_flow.py" line="2701" />
-            <location filename="../core/runner/task_flow.py" line="2713" />
+            <location filename="../core/runner/task_flow.py" line="2711" />
+            <location filename="../core/runner/task_flow.py" line="2723" />
             <source>Device connected successfully</source>
             <translation>デバイスが正常に接続されました</translation>
         </message>
@@ -4917,7 +5002,7 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <location filename="../core/runner/task_flow.py" line="753" />
             <location filename="../core/runner/task_flow.py" line="776" />
             <location filename="../core/runner/task_flow.py" line="805" />
-            <location filename="../core/runner/task_flow.py" line="1602" />
+            <location filename="../core/runner/task_flow.py" line="1612" />
             <source>Task Failed</source>
             <translation>タスク失敗</translation>
         </message>
@@ -5056,73 +5141,73 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation> はバンドル内に見つかりません: </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1563" />
+            <location filename="../core/runner/task_flow.py" line="1573" />
             <source>Task </source>
             <translation>タスク </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1565" />
+            <location filename="../core/runner/task_flow.py" line="1575" />
             <source> follows speedrun limit, skipping this run: </source>
             <translation> はスピードラン制限に従います。この実行をスキップします: </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1603" />
+            <location filename="../core/runner/task_flow.py" line="1613" />
             <source>Task '{}' execution failed.</source>
             <translation>タスク '{}' の実行に失敗しました。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1629" />
+            <location filename="../core/runner/task_flow.py" line="1639" />
             <source>Builtin task failed: </source>
             <translation>組み込みタスクが失敗しました: </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1716" />
+            <location filename="../core/runner/task_flow.py" line="1726" />
             <source>Stopping task...</source>
             <translation>タスクを停止中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1743" />
-            <location filename="../core/runner/task_flow.py" line="1826" />
+            <location filename="../core/runner/task_flow.py" line="1753" />
+            <location filename="../core/runner/task_flow.py" line="1836" />
             <source>Unknown Task Entry</source>
             <translation>不明なタスクエントリ</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1832" />
+            <location filename="../core/runner/task_flow.py" line="1842" />
             <source>{} hours {} minutes</source>
             <translation>{} 時間 {} 分</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1834" />
+            <location filename="../core/runner/task_flow.py" line="1844" />
             <source>{} minutes</source>
             <translation>{} 分</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1837" />
+            <location filename="../core/runner/task_flow.py" line="1847" />
             <source>Task entry '{}' has been running for {}. This may indicate a problem. Please check the task status.</source>
             <translation>タスクエントリ '{}' は {} 実行中です。問題が発生している可能性があります。タスクステータスを確認してください。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1851" />
+            <location filename="../core/runner/task_flow.py" line="1861" />
             <source>Task running time too long</source>
             <translation>タスクの実行時間が長すぎます</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1905" />
+            <location filename="../core/runner/task_flow.py" line="1915" />
             <source>Auto searching ADB devices...</source>
             <translation>ADB デバイスを自動検索中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2443" />
+            <location filename="../core/runner/task_flow.py" line="2453" />
             <source>ADB path is empty, please configure ADB path in settings</source>
             <translation>ADB パスが空です。設定で ADB パスを構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2462" />
+            <location filename="../core/runner/task_flow.py" line="2472" />
             <source>ADB connection address is empty, please configure device connection in settings</source>
             <translation>ADB 接続アドレスが空です。設定でデバイス接続を構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1921" />
+            <location filename="../core/runner/task_flow.py" line="1931" />
             <source>try to start emulator</source>
             <translation>エミュレータを起動してみる</translation>
         </message>
@@ -5132,119 +5217,116 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation>カスタムコンポーネントの読み込みに失敗したため、フローを終了します。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1931" />
+            <location filename="../core/runner/task_flow.py" line="1941" />
             <source>waiting for emulator start...</source>
             <translation>エミュレータの起動を待機中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1961" />
-            <location filename="../core/runner/task_flow.py" line="2075" />
-            <location filename="../core/runner/task_flow.py" line="2082" />
-            <location filename="../core/runner/task_flow.py" line="2130" />
-            <location filename="../core/runner/task_flow.py" line="2218" />
-            <location filename="../core/runner/task_flow.py" line="2225" />
-            <location filename="../core/runner/task_flow.py" line="2268" />
+            <location filename="../core/runner/task_flow.py" line="1971" />
+            <location filename="../core/runner/task_flow.py" line="2085" />
+            <location filename="../core/runner/task_flow.py" line="2092" />
+            <location filename="../core/runner/task_flow.py" line="2140" />
+            <location filename="../core/runner/task_flow.py" line="2228" />
+            <location filename="../core/runner/task_flow.py" line="2235" />
+            <location filename="../core/runner/task_flow.py" line="2278" />
             <source>Device connection failed</source>
             <translation>デバイス接続に失敗しました</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1968" />
+            <location filename="../core/runner/task_flow.py" line="1978" />
             <source>Win32 controller is only supported on Windows</source>
             <translation>Win32コントローラーはWindowsでのみサポートされています</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2044" />
+            <location filename="../core/runner/task_flow.py" line="2054" />
             <source>Auto searching Win32 windows...</source>
             <translation>Win32ウィンドウを自動検索中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2057" />
-            <location filename="../core/runner/task_flow.py" line="2204" />
+            <location filename="../core/runner/task_flow.py" line="2067" />
+            <location filename="../core/runner/task_flow.py" line="2214" />
             <source>Window handle (hwnd) is empty, please configure window connection in settings</source>
             <translation>ウィンドウハンドル（hwnd）が空です。設定でウィンドウ接続を構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2090" />
-            <location filename="../core/runner/task_flow.py" line="2232" />
+            <location filename="../core/runner/task_flow.py" line="2100" />
+            <location filename="../core/runner/task_flow.py" line="2242" />
             <source>try to start program</source>
             <translation>プログラムを起動してみる</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2118" />
-            <location filename="../core/runner/task_flow.py" line="2256" />
+            <location filename="../core/runner/task_flow.py" line="2128" />
+            <location filename="../core/runner/task_flow.py" line="2266" />
             <source>waiting for program start...</source>
             <translation>プログラムの起動を待機中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2137" />
+            <location filename="../core/runner/task_flow.py" line="2147" />
             <source>Gamepad controller is only supported on Windows</source>
             <translation>ゲームパッドコントローラーはWindowsでのみサポートされています</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2194" />
+            <location filename="../core/runner/task_flow.py" line="2204" />
             <source>Auto searching desktop windows...</source>
             <translation>デスクトップウィンドウを自動検索中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2275" />
+            <location filename="../core/runner/task_flow.py" line="2285" />
             <source>PlayCover controller is only supported on macOS</source>
             <translation>PlayCoverコントローラーはmacOSでのみサポートされています</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2313" />
+            <location filename="../core/runner/task_flow.py" line="2323" />
             <source>PlayCover UUID is empty, please configure UUID in settings</source>
             <translation>PlayCover UUIDが空です。設定でUUIDを構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2325" />
+            <location filename="../core/runner/task_flow.py" line="2335" />
             <source>PlayCover connection address is empty, please configure address in settings</source>
             <translation>PlayCover接続アドレスが空です。設定でアドレスを構成してください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2338" />
+            <location filename="../core/runner/task_flow.py" line="2348" />
             <source>Connecting to PlayCover: {address} (UUID: {uuid})</source>
             <translation>PlayCoverに接続中: {address} (UUID: {uuid})</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2347" />
+            <location filename="../core/runner/task_flow.py" line="2357" />
             <source>PlayCover connected successfully</source>
             <translation>PlayCoverへの接続に成功しました</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2351" />
+            <location filename="../core/runner/task_flow.py" line="2361" />
             <source>Failed to connect to PlayCover</source>
             <translation>PlayCoverへの接続に失敗しました</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2471" />
+            <location filename="../core/runner/task_flow.py" line="2481" />
             <source>ADB connection port is empty; use host:port (for example 127.0.0.1:5555) or pick a device after starting the emulator.</source>
             <translation>ADB接続ポートが空です。host:port（例：127.0.0.1:5555）を使用するか、エミュレータ起動後にデバイスを選択してください。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2690" />
-            <location filename="../core/runner/task_flow.py" line="2737" />
+            <location filename="../core/runner/task_flow.py" line="2700" />
+            <location filename="../core/runner/task_flow.py" line="2747" />
             <source> seconds</source>
             <translation> 秒</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3081" />
+            <location filename="../core/runner/task_flow.py" line="3091" />
             <source>Notifications are being sent, please wait up to {} seconds</source>
             <translation>通知を送信中です。最大 {} 秒お待ちください</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3382" />
             <source>This period's remaining execution count is 0</source>
-            <translation>今月の残り実行回数は0です</translation>
+            <translation type="vanished">今月の残り実行回数は0です</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3394" />
             <source>Not enough time passed since last run. Minimum interval is </source>
-            <translation>前回の実行から十分な時間が経過していません。最小間隔は </translation>
+            <translation type="vanished">前回の実行から十分な時間が経過していません。最小間隔は </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3397" />
             <source> hours.</source>
-            <translation> 時間です。</translation>
+            <translation type="vanished"> 時間です。</translation>
         </message>
     </context>
     <context>
