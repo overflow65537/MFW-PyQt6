@@ -81,6 +81,8 @@ class MonitorWidget(QWidget):
         # 预览区域（使用透明容器包裹，避免不透明背景遮挡父级）
         # 默认横向：16:9比例，宽度344px，高度 = 344 * 9 / 16 = 194px
         # 纵向：9:16比例，宽度194px，高度 = 194 * 16 / 9 = 344px
+        self._layout_width = 344
+        self._layout_height = 194
         self._monitor_width = 344
         self._monitor_height = 194
         self._is_landscape = True  # 默认横向
@@ -132,10 +134,17 @@ class MonitorWidget(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
     def set_preview_bounds(self, width: int, height: int) -> None:
-        """按父级布局宽度同步横向预览区域尺寸。"""
+        """按父级布局尺寸同步预览区域大小。"""
         if width <= 0 or height <= 0:
             return
-        if not getattr(self, "_is_landscape", True):
+        self._layout_width = width
+        self._layout_height = height
+        self._apply_bounds_from_layout()
+
+    def _apply_bounds_from_layout(self) -> None:
+        width = getattr(self, "_layout_width", 0)
+        height = getattr(self, "_layout_height", 0)
+        if width <= 0 or height <= 0:
             return
         if self._monitor_width == width and self._monitor_height == height:
             return
@@ -271,41 +280,9 @@ class MonitorWidget(QWidget):
         self.preview_label.setPixmap(scaled)
 
     def _update_component_size(self, image_width: int, image_height: int) -> None:
-        """根据图片尺寸更新组件大小"""
-        # 判断是横向还是纵向
-        is_landscape = image_width >= image_height
-        
-        # 如果方向没有变化，不需要更新
-        if hasattr(self, '_is_landscape') and self._is_landscape == is_landscape:
-            # 检查尺寸是否匹配
-            if is_landscape:
-                if self._monitor_width == 344 and self._monitor_height == 194:
-                    return
-            else:
-                if self._monitor_width == 194 and self._monitor_height == 344:
-                    return
-        
-        # 更新方向标志
-        self._is_landscape = is_landscape
-        
-        # 根据方向设置预览尺寸
-        if is_landscape:
-            # 横向：1280x720 -> 344x194 (16:9)
-            self._monitor_width = 344
-            self._monitor_height = 194
-        else:
-            # 纵向：720x1280 -> 194x344 (9:16)
-            self._monitor_width = 194
-            self._monitor_height = 344
-        
-        # 更新组件尺寸
-        self.preview_card.setFixedSize(self._monitor_width, self._monitor_height)
-        self.preview_label.setFixedSize(self._monitor_width, self._monitor_height)
-        self.setFixedSize(self._monitor_width, self._monitor_height)
-        
-        # 更新加载覆盖层位置
-        if hasattr(self, '_loading_overlay') and self._loading_overlay.isVisible():
-            self._loading_overlay.setGeometry(0, 0, self._monitor_width, self._monitor_height)
+        """根据图片方向刷新预览，尺寸由父级布局决定。"""
+        self._is_landscape = image_width >= image_height
+        self._apply_bounds_from_layout()
 
     def _apply_preview_from_pil(self, pil_image: Image.Image) -> None:
         """从 PIL 图像应用预览（支持 1280x720 和 720x1280 两种尺寸）"""

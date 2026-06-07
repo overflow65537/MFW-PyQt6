@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import QSplitter, QWidget
 from qfluentwidgets import isDarkTheme, qconfig
@@ -8,10 +8,14 @@ from app.common.config import cfg
 PANEL_UNIT_WIDTH = 344
 MAX_SIDE_PANEL_WIDTH = PANEL_UNIT_WIDTH * 2
 MIN_OPTION_PANEL_WIDTH = PANEL_UNIT_WIDTH
+LOG_PANEL_MIN_WIDTH = 320
 PANEL_SPLITTER_GUTTER = 10
 PANEL_EDGE_MARGIN = 20
 PANEL_SECTION_SPACING = 8
+START_BAR_TOP_MARGIN = 5
 HANDLE_LINE_MARGIN = 60
+MAIN_SPLITTER_HANDLE_WIDTH = 8
+MAIN_SPLITTER_LINE_WIDTH = 2
 DEFAULT_PANEL_RATIOS = [1 / 3, 1 / 3, 1 / 3]
 
 
@@ -33,59 +37,93 @@ def panel_column_margins(column: str) -> tuple[int, int, int, int]:
     raise ValueError(f"unknown panel column: {column}")
 
 
-def _splitter_line_color() -> str:
-    return "rgba(255, 255, 255, 0.25)" if isDarkTheme() else "rgba(0, 0, 0, 0.25)"
+def _splitter_line_color(*, prominent: bool = False) -> str:
+    if isDarkTheme():
+        return (
+            "rgba(255, 255, 255, 0.42)"
+            if prominent
+            else "rgba(255, 255, 255, 0.25)"
+        )
+    return (
+        "rgba(0, 0, 0, 0.35)" if prominent else "rgba(0, 0, 0, 0.25)"
+    )
 
 
-def splitter_handle_stylesheet(orientation: Qt.Orientation) -> str:
-    line_color = _splitter_line_color()
+def _splitter_hover_line_color(*, prominent: bool = False) -> str:
+    alpha = 0.72 if prominent else 0.55
+    return f"rgba(128, 128, 128, {alpha})"
+
+
+def _centered_line_gradient(
+    line_color: str,
+    *,
+    horizontal: bool,
+    hit_size: int,
+    line_width: int,
+) -> str:
+    start = (hit_size - line_width) / 2 / hit_size
+    end = (hit_size + line_width) / 2 / hit_size
+    if horizontal:
+        return (
+            f"qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+            f"stop:0 transparent, "
+            f"stop:{start:.4f} transparent, "
+            f"stop:{start:.4f} {line_color}, "
+            f"stop:{end:.4f} {line_color}, "
+            f"stop:{end:.4f} transparent, "
+            f"stop:1 transparent)"
+        )
+    return (
+        f"qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        f"stop:0 transparent, "
+        f"stop:{start:.4f} transparent, "
+        f"stop:{start:.4f} {line_color}, "
+        f"stop:{end:.4f} {line_color}, "
+        f"stop:{end:.4f} transparent, "
+        f"stop:1 transparent)"
+    )
+
+
+def splitter_handle_stylesheet(
+    orientation: Qt.Orientation,
+    *,
+    prominent: bool = False,
+) -> str:
+    hit_size = MAIN_SPLITTER_HANDLE_WIDTH if prominent else 6
+    line_width = MAIN_SPLITTER_LINE_WIDTH if prominent else 1
+    line_color = _splitter_line_color(prominent=prominent)
+    hover_color = _splitter_hover_line_color(prominent=prominent)
+    line_gradient = _centered_line_gradient(
+        line_color,
+        horizontal=orientation == Qt.Orientation.Horizontal,
+        hit_size=hit_size,
+        line_width=line_width,
+    )
+    hover_gradient = _centered_line_gradient(
+        hover_color,
+        horizontal=orientation == Qt.Orientation.Horizontal,
+        hit_size=hit_size,
+        line_width=line_width,
+    )
     if orientation == Qt.Orientation.Horizontal:
         return f"""
             QSplitter::handle:horizontal {{
-                width: 6px;
+                width: {hit_size}px;
                 margin: {HANDLE_LINE_MARGIN}px 0px;
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 transparent,
-                    stop:0.45 transparent,
-                    stop:0.5 {line_color},
-                    stop:0.55 transparent,
-                    stop:1 transparent
-                );
+                background: {line_gradient};
             }}
             QSplitter::handle:horizontal:hover {{
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 transparent,
-                    stop:0.42 transparent,
-                    stop:0.5 rgba(128, 128, 128, 0.55),
-                    stop:0.58 transparent,
-                    stop:1 transparent
-                );
+                background: {hover_gradient};
             }}
         """
     return f"""
         QSplitter::handle:vertical {{
-            height: 6px;
+            height: {hit_size}px;
             margin: 0px {HANDLE_LINE_MARGIN}px;
-            background: qlineargradient(
-                x1:0, y1:0, x2:0, y2:1,
-                stop:0 transparent,
-                stop:0.45 transparent,
-                stop:0.5 {line_color},
-                stop:0.55 transparent,
-                stop:1 transparent
-            );
+            background: {line_gradient};
         }}
         QSplitter::handle:vertical:hover {{
-            background: qlineargradient(
-                x1:0, y1:0, x2:0, y2:1,
-                stop:0 transparent,
-                stop:0.42 transparent,
-                stop:0.5 rgba(128, 128, 128, 0.55),
-                stop:0.58 transparent,
-                stop:1 transparent
-            );
+            background: {hover_gradient};
         }}
     """
 
@@ -93,13 +131,15 @@ def splitter_handle_stylesheet(orientation: Qt.Orientation) -> str:
 class TaskInterfacePanelSplitter(QSplitter):
     """任务页三栏水平分割器。
 
-    以 344px 为一格，任务/日志最多占 2 格并向选项区单侧扩展，选项区至少 1 格且可向左右扩展。
+    任务/日志最多占 2/3 宽度，选项区至少 1/3，拖动时可连续调整。
     """
+
+    panel_geometry_changed = Signal()
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(Qt.Orientation.Horizontal, parent)
         self.setChildrenCollapsible(True)
-        self.setHandleWidth(6)
+        self.setHandleWidth(MAIN_SPLITTER_HANDLE_WIDTH)
         self._apply_handle_style()
         qconfig.themeChanged.connect(self._apply_handle_style)
         self._layout_ratios = list(DEFAULT_PANEL_RATIOS)
@@ -112,12 +152,18 @@ class TaskInterfacePanelSplitter(QSplitter):
         self.splitterMoved.connect(self._on_splitter_moved)
 
     def _apply_handle_style(self) -> None:
-        self.setStyleSheet(splitter_handle_stylesheet(Qt.Orientation.Horizontal))
+        self.setStyleSheet(
+            splitter_handle_stylesheet(
+                Qt.Orientation.Horizontal,
+                prominent=True,
+            )
+        )
 
     def _on_splitter_moved(self, _pos: int, _index: int) -> None:
         self._clamp_panel_sizes()
         self._sync_layout_ratios_from_sizes()
         self._schedule_save_layout()
+        self.panel_geometry_changed.emit()
 
     def _schedule_save_layout(self) -> None:
         self._save_timer.start(300)
@@ -146,6 +192,7 @@ class TaskInterfacePanelSplitter(QSplitter):
             return
         self._apply_ratio_sizes(self._layout_ratios, total)
         self._layout_restored = True
+        self.panel_geometry_changed.emit()
 
     def restore_layout_from_config(self) -> bool:
         value = cfg.get(cfg.task_interface_panel_layout)
@@ -177,13 +224,29 @@ class TaskInterfacePanelSplitter(QSplitter):
             return
         self._layout_ratios = [size / total for size in sizes]
 
+    def _is_equal_ratios(self, ratios: list[float]) -> bool:
+        if len(ratios) != 3:
+            return False
+        return (
+            abs(ratios[0] - ratios[1]) < 1e-6
+            and abs(ratios[1] - ratios[2]) < 1e-6
+        )
+
+    def _equal_panel_sizes(self, total: int) -> list[int]:
+        base = total // 3
+        remainder = total % 3
+        return [base + (1 if index < remainder else 0) for index in range(3)]
+
     def _apply_ratio_sizes(self, ratios: list[float], total: int) -> None:
         ratio_sum = sum(ratios)
         if ratio_sum <= 0 or total <= 0:
             return
 
-        sizes = [int(total * ratio / ratio_sum) for ratio in ratios]
-        sizes[1] += total - sum(sizes)
+        if self._is_equal_ratios(ratios):
+            sizes = self._equal_panel_sizes(total)
+        else:
+            sizes = [int(total * ratio / ratio_sum) for ratio in ratios]
+            sizes[1] += total - sum(sizes)
 
         self._applying_layout = True
         self.blockSignals(True)
@@ -201,27 +264,39 @@ class TaskInterfacePanelSplitter(QSplitter):
         if total <= 0:
             return
 
-        task = max(0, sizes[0])
-        log = max(0, sizes[2])
+        min_option = max(1, total // 3)
+        max_task = max(0, total * 2 // 3)
+        max_log = max(0, total * 2 // 3)
 
-        task = min(task, MAX_SIDE_PANEL_WIDTH)
-        log = min(log, MAX_SIDE_PANEL_WIDTH)
+        task = min(max(0, sizes[0]), max_task)
+        raw_log = max(0, sizes[2])
+        if raw_log == 0:
+            log = 0
+        else:
+            log = min(max(LOG_PANEL_MIN_WIDTH, raw_log), max_log)
 
         option = total - task - log
-        if option < MIN_OPTION_PANEL_WIDTH:
-            deficit = MIN_OPTION_PANEL_WIDTH - option
-            log_reduce = min(deficit, log)
+        if option < min_option:
+            deficit = min_option - option
+            log_floor = LOG_PANEL_MIN_WIDTH if log > 0 else 0
+            log_reduce = min(deficit, max(0, log - log_floor))
             log -= log_reduce
             deficit -= log_reduce
             if deficit > 0:
                 task -= min(deficit, task)
             option = total - task - log
 
-        task = min(max(0, task), MAX_SIDE_PANEL_WIDTH)
-        log = min(max(0, log), MAX_SIDE_PANEL_WIDTH)
-        option = total - task - log
-
         new_sizes = [task, option, log]
+        if (
+            self._is_equal_ratios(self._layout_ratios)
+            and new_sizes == self._equal_panel_sizes(total)
+        ):
+            if sizes != new_sizes:
+                self.blockSignals(True)
+                self.setSizes(new_sizes)
+                self.blockSignals(False)
+            return
+
         if new_sizes != sizes:
             self.blockSignals(True)
             self.setSizes(new_sizes)
@@ -240,9 +315,11 @@ class TaskInterfacePanelSplitter(QSplitter):
             self._apply_ratio_sizes(self._layout_ratios, total)
             self._pending_ratios = None
             self._layout_restored = True
+            self.panel_geometry_changed.emit()
             return
 
         total = sum(self.sizes())
         if total <= 0:
             return
         self._apply_ratio_sizes(self._layout_ratios, total)
+        self.panel_geometry_changed.emit()

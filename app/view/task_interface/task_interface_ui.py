@@ -16,7 +16,7 @@ from app.view.task_interface.components.list_tool_bar_widget import (
 )
 from app.view.task_interface.components.option_widget import OptionWidget
 from app.view.task_interface.components.panel_splitter import (
-    MIN_OPTION_PANEL_WIDTH,
+    LOG_PANEL_MIN_WIDTH,
     PANEL_SECTION_SPACING,
     TaskInterfacePanelSplitter,
     panel_column_margins,
@@ -37,9 +37,9 @@ class UI_TaskInterface(object):
         self.main_layout.setSpacing(0)
 
         self.log_output_widget = LogoutputWidget(service_coordinator=self.service_coordinator)
-        log_policy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        log_policy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.log_output_widget.setSizePolicy(log_policy)
-        self.log_output_widget.setMinimumWidth(0)
+        self.log_output_widget.setMinimumWidth(LOG_PANEL_MIN_WIDTH)
 
         self._init_control_panel()
         self._init_option_panel()
@@ -66,12 +66,12 @@ class UI_TaskInterface(object):
         self.option_panel_widget = QWidget()
         self.option_panel_layout = QVBoxLayout(self.option_panel_widget)
         self.option_panel = OptionWidget(service_coordinator=self.service_coordinator)
-        self.option_panel.setMinimumWidth(MIN_OPTION_PANEL_WIDTH)
         option_policy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.option_panel.setSizePolicy(option_policy)
+        self.option_panel.setMinimumWidth(0)
         self.option_panel_layout.setContentsMargins(0, 0, 0, 0)
         self.option_panel_layout.addWidget(self.option_panel)
-        self.option_panel_widget.setMinimumWidth(MIN_OPTION_PANEL_WIDTH)
+        self.option_panel_widget.setMinimumWidth(0)
 
     def _init_control_panel(self):
         """初始化控制面板"""

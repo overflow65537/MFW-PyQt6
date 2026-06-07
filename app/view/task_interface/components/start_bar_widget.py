@@ -1,5 +1,6 @@
 from PySide6.QtCore import QPoint
 from PySide6.QtWidgets import QWidget, QHBoxLayout
+from app.view.task_interface.components.panel_splitter import START_BAR_TOP_MARGIN
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
@@ -18,7 +19,7 @@ class StartBarWidget(QWidget):
         super().__init__(parent)
         self._init_start_bar()
         self.start_bar_main_layout = QHBoxLayout(self)
-        self.start_bar_main_layout.setContentsMargins(0, 0, 0, 0)
+        self.start_bar_main_layout.setContentsMargins(0, START_BAR_TOP_MARGIN, 0, 0)
         self.start_bar_main_layout.setSpacing(0)
         self.start_bar_main_layout.addWidget(self.start_bar)
 

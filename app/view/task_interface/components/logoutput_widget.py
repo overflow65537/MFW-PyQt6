@@ -91,7 +91,6 @@ class LogoutputWidget(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(*panel_column_margins("log"))
         self.main_layout.setSpacing(PANEL_SECTION_SPACING)
-        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # 添加监控组件（如果有 service_coordinator）
         if self.service_coordinator:
@@ -121,11 +120,11 @@ class LogoutputWidget(QWidget):
             self.monitor_card = SimpleCardWidget()
             self.monitor_card.setClickEnabled(False)
             self.monitor_card.setBorderRadius(8)
-            monitor_card_policy = QSizePolicy(
+            self.monitor_card.setSizePolicy(
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
             )
-            self.monitor_card.setSizePolicy(monitor_card_policy)
             self.monitor_card.setMinimumWidth(0)
+            self.monitor_card.setMaximumHeight(16777215)
 
             # 创建监控组件
             self.monitor_widget = MonitorWidget(self.service_coordinator, self)
@@ -133,14 +132,23 @@ class LogoutputWidget(QWidget):
             # 将监控组件添加到卡片中
             monitor_card_layout = QVBoxLayout(self.monitor_card)
             monitor_card_layout.setContentsMargins(0, 0, 0, 0)
-            monitor_card_layout.addWidget(self.monitor_widget)
+            monitor_card_layout.addWidget(
+                self.monitor_widget, 0, Qt.AlignmentFlag.AlignTop
+            )
 
             self.main_layout.addWidget(self.monitor_card, 0)
             self._sync_monitor_card_size()
 
         self.main_layout.addLayout(self.log_output_title_layout)
-        # 日志区域占据较少空间（拉伸因子为 1）
         self.main_layout.addWidget(self.log_output_widget, 1)
+        if self.service_coordinator:
+            self.main_layout.setStretch(0, 0)
+            self.main_layout.setStretch(1, 0)
+            self.main_layout.setStretch(2, 0)
+            self.main_layout.setStretch(3, 1)
+        else:
+            self.main_layout.setStretch(0, 0)
+            self.main_layout.setStretch(1, 1)
 
         # 连接日志输出信号
         signalBus.log_output.connect(self._on_log_output)
@@ -155,13 +163,21 @@ class LogoutputWidget(QWidget):
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
+        self.sync_panel_geometry()
+
+    def sync_panel_geometry(self) -> None:
+        """在分割条拖动或窗口尺寸变化后，同步监控与日志区域布局。"""
         self._sync_monitor_card_size()
+
+    def _content_available_width(self) -> int:
+        left_margin, _, right_margin, _ = panel_column_margins("log")
+        content_width = self.contentsRect().width()
+        return max(content_width - left_margin - right_margin, 0)
 
     def _sync_monitor_card_size(self) -> None:
         if not getattr(self, "monitor_card", None):
             return
-        left_margin, _, right_margin, _ = panel_column_margins("log")
-        available_width = max(self.width() - left_margin - right_margin, 0)
+        available_width = self._content_available_width()
         if available_width <= 0:
             return
         height = max(int(available_width * 9 / 16), 1)
@@ -172,8 +188,7 @@ class LogoutputWidget(QWidget):
             return
         self._monitor_width = available_width
         self._monitor_height = height
-        self.monitor_card.setFixedHeight(height)
-        self.monitor_card.setFixedWidth(available_width)
+        self.monitor_card.setFixedSize(available_width, height)
         if hasattr(self, "monitor_widget"):
             self.monitor_widget.set_preview_bounds(available_width, height)
 
@@ -250,18 +265,27 @@ class LogoutputWidget(QWidget):
         self.log_output_widget = SimpleCardWidget()
         self.log_output_widget.setClickEnabled(False)
         self.log_output_widget.setBorderRadius(8)
+        self.log_output_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        self.log_output_widget.setMinimumWidth(0)
 
         # 卡片内容布局（含标题与滚动区域）
         content_widget = QWidget()
+        content_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self.log_output_layout = QVBoxLayout(content_widget)
         self.log_output_layout.setContentsMargins(10, 10, 10, 10)
         self.log_output_layout.setSpacing(8)
-        self.log_output_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.log_output_layout.addWidget(self.log_scroll_area)
+        self.log_scroll_area.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        self.log_output_layout.addWidget(self.log_scroll_area, 1)
 
         card_layout = QVBoxLayout(self.log_output_widget)
         card_layout.setContentsMargins(0, 0, 0, 0)
-        card_layout.addWidget(content_widget)
+        card_layout.addWidget(content_widget, 1)
 
     def _log_output_title(self):
         """初始化日志输出标题"""

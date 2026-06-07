@@ -41,6 +41,10 @@ class TaskInterface(UI_TaskInterface, QWidget):
         self._restore_layout_timer.setSingleShot(True)
         self._restore_layout_timer.timeout.connect(self._restore_panel_layout)
 
+        self.main_splitter.panel_geometry_changed.connect(
+            self._on_panel_geometry_changed
+        )
+
     def _show_reset_delay_ms(self) -> int:
         win = self.window()
         stacked = getattr(win, "stackedWidget", None) if win is not None else None
@@ -54,6 +58,15 @@ class TaskInterface(UI_TaskInterface, QWidget):
         if hasattr(self, "main_splitter"):
             if not self.main_splitter.restore_layout_from_config():
                 self.main_splitter.apply_default_layout()
+        QTimer.singleShot(0, self._sync_log_panel_geometry)
+
+    def _on_panel_geometry_changed(self) -> None:
+        QTimer.singleShot(0, self._sync_log_panel_geometry)
+
+    def _sync_log_panel_geometry(self) -> None:
+        log_panel = getattr(self, "log_output_widget", None)
+        if log_panel is not None and hasattr(log_panel, "sync_panel_geometry"):
+            log_panel.sync_panel_geometry()
 
     def _on_deferred_show_reset(self) -> None:
         if not self.isVisible():
