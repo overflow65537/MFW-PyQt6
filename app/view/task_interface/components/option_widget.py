@@ -277,7 +277,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.option_area_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.option_area_layout.setContentsMargins(10, 10, 10, 10)  # 添加内边距
 
-        # 堆叠页面：0 选项；1 速通规则
+        # 堆叠页面：0 选项；1 条件执行
         self.option_stack = QStackedWidget()
         self.option_area_layout.addWidget(self.option_stack)
 
@@ -294,7 +294,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.option_form_widget = OptionFormWidget()
         self.option_page_layout.addWidget(self.option_form_widget)
 
-        # 速通配置页
+        # 条件执行配置页
         self.speedrun_widget = SpeedrunConfigWidget()
         speedrun_page = QWidget()
         speedrun_layout = QVBoxLayout(speedrun_page)
@@ -315,7 +315,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 底部分段切换（固定在卡片底部，不随滚动）
         self.segmented_switcher = SegmentedWidget(self)
         self.segmented_switcher.addItem(routeKey="options", text=self.tr("Options"))
-        self.segmented_switcher.addItem(routeKey="speedrun", text=self.tr("Speedrun"))
+        self.segmented_switcher.addItem(routeKey="speedrun", text=self.tr("Conditions"))
         self.segmented_switcher.currentItemChanged.connect(self._on_segmented_changed)
         self.segmented_switcher.setCurrentItem("options")
         # 初始化时隐藏，待任务加载后按需显示
@@ -433,14 +433,14 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
     # ==================== UI 辅助方法 ==================== #
 
     def _on_segmented_changed(self, key: str) -> None:
-        """通过分段控件切换主选项/速通页"""
+        """通过分段控件切换主选项/条件执行页"""
         if key == "speedrun":
             self.option_stack.setCurrentIndex(1)
         else:
             self.option_stack.setCurrentIndex(0)
 
     def _set_speedrun_visible(self, visible: bool) -> None:
-        """控制速通页显隐（资源/完成后任务隐藏）"""
+        """控制条件执行页显隐（资源/完成后任务隐藏）"""
         self.segmented_switcher.setVisible(visible)
         if not visible:
             # 只显示常规选项页
@@ -449,7 +449,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             self.speedrun_widget.set_config(None, emit=False)
 
     def _apply_speedrun_config(self) -> None:
-        """加载当前任务的速通配置到 UI"""
+        """加载当前任务的条件执行配置到 UI"""
         option_service = self.service_coordinator.option
         task_service = self.service_coordinator.task
         task_id = getattr(option_service, "current_task_id", None)
@@ -488,11 +488,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             logger.warning(f"设置速通运行时信息失败: {exc}")
 
     def _on_speedrun_changed(self, config: Dict[str, Any]) -> None:
-        """速通配置修改后立即保存到当前任务"""
+        """条件执行配置修改后立即保存到当前任务"""
         try:
             self.service_coordinator.option.update_option("_speedrun_config", config)
         except Exception as exc:
-            logger.error(f"保存速通配置失败: {exc}")
+            logger.error(f"保存条件执行配置失败: {exc}")
 
     def set_description(self, description: str, has_options: bool = True):
         """设置描述内容
@@ -902,7 +902,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             self.reset()
             logger.info("没有提供form_structure，已清除界面")
 
-        # 同步速通配置到堆叠页（资源/完成后隐藏速通页）
+        # 同步条件执行配置到堆叠页（资源/完成后隐藏条件执行页）
         speedrun_visible = not (
             form_structure
             and form_structure.get("type")
@@ -910,7 +910,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         )
 
         if not speedrun_visible:
-            # 资源/完成后：隐藏分段与速通
+            # 资源/完成后：隐藏分段与条件执行页
             self._set_speedrun_visible(False)
             self.segmented_switcher.setVisible(False)
             self.option_stack.setCurrentIndex(0)
@@ -935,7 +935,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             self.option_stack.setCurrentIndex(0)
             self.segmented_switcher.setCurrentItem("options")
         else:
-            # 无选项：隐藏分段，直接展示速通配置
+            # 无选项：隐藏分段，直接展示条件执行配置
             self.segmented_switcher.setVisible(False)
             self.option_stack.setCurrentIndex(1)
             self._apply_speedrun_config()
@@ -1132,7 +1132,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         if getattr(self, 'global_option_form_widget', None):
             self._set_widget_enabled(self.global_option_form_widget, enabled)
         
-        # 禁用/启用速通配置控件
+        # 禁用/启用条件执行配置控件
         if hasattr(self, 'speedrun_widget'):
             self._set_widget_enabled(self.speedrun_widget, enabled)
 

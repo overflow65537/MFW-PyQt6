@@ -12,6 +12,11 @@ from app.core.builtin_task_loader import (
     BuiltinTaskDefinition,
     BuiltinTaskLoader,
 )
+from app.core.speedrun.config import (
+    DEFAULT_ACTION,
+    DEFAULT_CONDITION,
+    normalize_speedrun_config,
+)
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.core.utils.option_branches_compat import get_option_branches, set_option_branches
 
@@ -19,6 +24,8 @@ from app.core.utils.option_branches_compat import get_option_branches, set_optio
 DEFAULT_SPEEDRUN_CONFIG: Dict[str, Any] = {
     "enabled": False,
     "force": False,
+    "condition": deepcopy(DEFAULT_CONDITION),
+    "action": deepcopy(DEFAULT_ACTION),
     "mode": "daily",
     "trigger": {
         "daily": {"hour_start": 0},
@@ -760,11 +767,16 @@ class TaskService:
         """
         config: Dict[str, Any] = deepcopy(DEFAULT_SPEEDRUN_CONFIG)
         interface_cfg = self._get_interface_speedrun(task_name)
+        interface_has_legacy_condition = bool(interface_cfg) and not isinstance(
+            interface_cfg.get("condition"), dict
+        )
         if interface_cfg:
             self._deep_merge_dict(config, interface_cfg)
         if isinstance(existing, dict):
             self._deep_merge_dict(config, deepcopy(existing))
-        return config
+        return normalize_speedrun_config(
+            config, force_legacy_condition=interface_has_legacy_condition
+        )
 
     def ensure_speedrun_config_for_task(
         self, task: TaskItem, persist: bool = False
