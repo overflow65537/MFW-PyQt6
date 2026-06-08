@@ -4,8 +4,9 @@ Checkbox 选项项
 """
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtWidgets import QVBoxLayout, QWidget
-from qfluentwidgets import CheckBox
+from PySide6.QtCore import QEasingCurve
+from PySide6.QtWidgets import QWidget
+from qfluentwidgets import FlowLayout, TogglePushButton
 
 from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.core.utils.option_branches_compat import set_option_branches
@@ -24,8 +25,8 @@ class CheckBoxOptionItem(OptionItemBase):
         self, key: str, config: Dict[str, Any], parent: Optional["OptionItemBase"] = None
     ):
         super().__init__(key, config, parent)
-        self._checkbox_widgets: List[CheckBox] = []
-        self._checkbox_name_map: Dict[CheckBox, str] = {}  # checkbox -> case name
+        self._toggle_buttons: List[TogglePushButton] = []
+        self._button_name_map: Dict[TogglePushButton, str] = {}
         self.current_value: List[str] = []  # 当前选中的 case name 列表
         self.init_ui()
         self.init_config()
@@ -33,8 +34,7 @@ class CheckBoxOptionItem(OptionItemBase):
         self._animation_enabled = True
 
     def init_ui(self):
-        """初始化 Checkbox UI"""
-        # 创建标签
+        """初始化多选 UI（流式布局 + 可切换按钮）"""
         label_text = self.config.get("label", self.key)
         self.label = self._create_label_with_optional_icon(
             label_text,
@@ -43,40 +43,58 @@ class CheckBoxOptionItem(OptionItemBase):
             self.config.get("description"),
         )
 
-        # 创建多选框容器
-        checkbox_container = QWidget()
-        checkbox_layout = QVBoxLayout(checkbox_container)
-        checkbox_layout.setContentsMargins(10, 0, 0, 0)
-        checkbox_layout.setSpacing(4)
+        flow_container = QWidget()
+        flow_container.setObjectName("checkboxFlowContainer")
+        flow_container.setStyleSheet(
+            "QWidget#checkboxFlowContainer { background: transparent; }"
+        )
+        flow_layout = FlowLayout(flow_container, needAni=True)
+        flow_layout.setAnimation(250, QEasingCurve.Type.OutQuad)
+        flow_layout.setContentsMargins(0, 2, 0, 0)
+        flow_layout.setHorizontalSpacing(10)
+        flow_layout.setVerticalSpacing(10)
 
-        # 为每个 case 创建一个 CheckBox（兼容 cases 和 options 两种字段名）
         options = self.config.get("cases", self.config.get("options", []))
         for option in options:
-            if isinstance(option, dict):
-                label = option.get("label", option.get("name", ""))
-                name = option.get("name", label)
-                description = option.get("description")
-            else:
-                label = str(option)
-                name = label
-                description = None
+            toggle_button = self._create_option_button(option)
+            flow_layout.addWidget(toggle_button)
+            self._toggle_buttons.append(toggle_button)
 
-            cb = CheckBox(label)
-            if description:
-                apply_fluent_tooltip(cb, description)
-
-            cb.stateChanged.connect(self._on_checkbox_changed)
-            checkbox_layout.addWidget(cb)
-
-            self._checkbox_widgets.append(cb)
-            self._checkbox_name_map[cb] = name
-            self._option_map[label] = name
-            self._reverse_option_map[name] = label
-
-        self.main_option_layout.addWidget(checkbox_container)
+        self.main_option_layout.addWidget(flow_container)
 
         # 预加载子选项
         self._preload_child_options()
+
+    def _create_option_button(self, option: Any) -> TogglePushButton:
+        """创建单个可切换选项按钮。"""
+        if isinstance(option, dict):
+            label = option.get("label", option.get("name", ""))
+            name = option.get("name", label)
+            description = option.get("description")
+            option_icon = option.get("icon")
+        else:
+            label = str(option)
+            name = label
+            description = None
+            option_icon = None
+
+        toggle_button = TogglePushButton(label, self)
+        toggle_button.setCheckable(True)
+        toggle_button.setMinimumHeight(38)
+        toggle_button.setMinimumWidth(116)
+
+        icon = self._resolve_icon(option_icon)
+        if icon:
+            toggle_button.setIcon(icon)
+
+        if description:
+            apply_fluent_tooltip(toggle_button, description)
+
+        toggle_button.toggled.connect(self._on_toggle_changed)
+        self._button_name_map[toggle_button] = name
+        self._option_map[label] = name
+        self._reverse_option_map[name] = label
+        return toggle_button
 
     def init_config(self):
         """初始化配置值（应用 default_case）"""
@@ -84,18 +102,18 @@ class CheckBoxOptionItem(OptionItemBase):
         if isinstance(default_case, str):
             default_case = [default_case]
 
-        for cb in self._checkbox_widgets:
-            name = self._checkbox_name_map[cb]
-            cb.blockSignals(True)
-            cb.setChecked(name in default_case)
-            cb.blockSignals(False)
+        for toggle_button in self._toggle_buttons:
+            name = self._button_name_map[toggle_button]
+            toggle_button.blockSignals(True)
+            toggle_button.setChecked(name in default_case)
+            toggle_button.blockSignals(False)
 
         self.current_value = list(default_case)
         # 触发初始子选项显示（跳过动画）
         self._update_children_for_checkbox(skip_animation=True)
 
-    def _on_checkbox_changed(self, _state: int):
-        """任一多选框状态改变"""
+    def _on_toggle_changed(self, _checked: bool):
+        """任一选项按钮状态改变"""
         self.current_value = self._collect_selected_names()
         self._update_children_for_checkbox()
         self.option_changed.emit(self.key, self.current_value)
@@ -103,9 +121,9 @@ class CheckBoxOptionItem(OptionItemBase):
     def _collect_selected_names(self) -> List[str]:
         """收集所有选中的 case name，按 cases 定义顺序"""
         selected = []
-        for cb in self._checkbox_widgets:
-            if cb.isChecked():
-                selected.append(self._checkbox_name_map[cb])
+        for toggle_button in self._toggle_buttons:
+            if toggle_button.isChecked():
+                selected.append(self._button_name_map[toggle_button])
         return selected
 
     def _update_children_for_checkbox(self, skip_animation: bool = False):
@@ -171,16 +189,16 @@ class CheckBoxOptionItem(OptionItemBase):
 
         value_set = set(str(v) for v in value)
 
-        for cb in self._checkbox_widgets:
-            name = self._checkbox_name_map[cb]
-            cb.blockSignals(True)
-            cb.setChecked(name in value_set)
-            cb.blockSignals(False)
+        for toggle_button in self._toggle_buttons:
+            name = self._button_name_map[toggle_button]
+            toggle_button.blockSignals(True)
+            toggle_button.setChecked(name in value_set)
+            toggle_button.blockSignals(False)
 
         self.current_value = [
-            self._checkbox_name_map[cb]
-            for cb in self._checkbox_widgets
-            if cb.isChecked()
+            self._button_name_map[toggle_button]
+            for toggle_button in self._toggle_buttons
+            if toggle_button.isChecked()
         ]
         self._update_children_for_checkbox(skip_animation=skip_animation)
 

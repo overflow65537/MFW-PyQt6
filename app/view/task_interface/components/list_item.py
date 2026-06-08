@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from typing import Any
 
 import shiboken6
 
@@ -465,6 +466,57 @@ class TaskListItem(BaseListItem):
 
         return label
 
+    def _resolve_option_display_label(
+        self, option_def: dict | None, raw_value: Any
+    ) -> str:
+        """从 interface 选项定义中解析 case 的显示 label。"""
+        if raw_value is None:
+            return ""
+        raw_str = str(raw_value)
+        if not isinstance(option_def, dict):
+            return raw_str
+
+        for field in ("cases", "options"):
+            entries = option_def.get(field, [])
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                if isinstance(entry, dict):
+                    name = str(entry.get("name", ""))
+                    label = str(entry.get("label", name))
+                    if name == raw_str or label == raw_str:
+                        return label
+                elif str(entry) == raw_str:
+                    return raw_str
+        return raw_str
+
+    def _build_child_interface_options(
+        self, child_option_structure: Any
+    ) -> dict | None:
+        """从表单 children 结构构建子选项 interface 映射。"""
+        if isinstance(child_option_structure, list) and child_option_structure:
+            child_interface_options = {}
+            for child_opt in child_option_structure:
+                if isinstance(child_opt, dict) and "name" in child_opt:
+                    child_interface_options[child_opt["name"]] = child_opt
+            return child_interface_options or None
+        return None
+
+    def _collect_active_branch_payload(
+        self, branches: dict, selected_cases: list[Any]
+    ) -> dict:
+        """合并 checkbox 已选中分支下的可见子选项。"""
+        active_branches: dict = {}
+        for selected_case in selected_cases:
+            branch_group = branches.get(str(selected_case))
+            if not isinstance(branch_group, dict):
+                continue
+            for child_key, child_value in branch_group.items():
+                if isinstance(child_value, dict) and child_value.get("hidden"):
+                    continue
+                active_branches[child_key] = child_value
+        return active_branches
+
     def _extract_option_values(
         self,
         task_option: dict,
@@ -505,78 +557,64 @@ class TaskListItem(BaseListItem):
                 # 只提取当前选择的选项值（必须有 value 字段）
                 option_value = value.get("value")
                 if option_value is not None:
-                    # 尝试从 interface 获取选项的 label（用于显示）
-                    display_value = None
-                    if interface_options and key in interface_options:
-                        option_def = interface_options[key]
-                        # 如果是 combobox 类型，尝试根据 value 找到对应的 label
-                        if option_def.get("type", "").lower() == "combobox":
-                            options = option_def.get("options", [])
-                            for opt in options:
-                                if isinstance(opt, dict):
-                                    opt_name = opt.get("name", "")
-                                    opt_label = opt.get("label", opt_name)
-                                    if opt_name == str(
-                                        option_value
-                                    ) or opt_label == str(option_value):
-                                        display_value = str(opt_label)
-                                        break
-                                elif str(opt) == str(option_value):
-                                    display_value = str(opt)
-                                    break
+                    option_def = (
+                        interface_options.get(key)
+                        if interface_options and key in interface_options
+                        else None
+                    )
 
-                    # 如果没找到 label，使用原始值
-                    if display_value is None:
-                        display_value = str(option_value)
-
-                    # 如果 value 是字典（如 {"角色名": "破晓"}），提取其中的值
-                    if isinstance(option_value, dict):
+                    if isinstance(option_value, list):
+                        labels = [
+                            self._resolve_option_display_label(option_def, item)
+                            for item in option_value
+                        ]
+                        labels = [
+                            label.strip() for label in labels if label and label.strip()
+                        ]
+                        if labels:
+                            result.append("、".join(labels))
+                    elif isinstance(option_value, dict):
                         for sub_value in option_value.values():
                             if sub_value and str(sub_value).strip():
                                 result.append(str(sub_value).strip())
                     else:
-                        # 普通值，使用 display_value（可能是 label）
+                        display_value = self._resolve_option_display_label(
+                            option_def, option_value
+                        )
                         if display_value and display_value.strip():
                             result.append(display_value.strip())
 
                 # 递归处理 branches（兼容历史 children）
                 branches = get_option_branches(value)
                 if branches and option_value is not None:
-                    # 获取当前选项值的子选项定义（children 中的选项定义）
                     child_interface_options = None
-                    if interface_options and key in interface_options:
+                    if (
+                        interface_options
+                        and key in interface_options
+                        and not isinstance(option_value, list)
+                    ):
                         option_def = interface_options[key]
                         children_def = option_def.get("children", {})
                         if (
                             isinstance(children_def, dict)
                             and option_value in children_def
                         ):
-                            # children_def[option_value] 可能是一个选项定义列表或字典
-                            child_option_structure = children_def[option_value]
-                            # 如果是一个列表，提取其中的选项定义
-                            if (
-                                isinstance(child_option_structure, list)
-                                and child_option_structure
-                            ):
-                                # 从列表中提取选项定义，构建一个字典
-                                child_interface_options = {}
-                                for child_opt in child_option_structure:
-                                    if (
-                                        isinstance(child_opt, dict)
-                                        and "name" in child_opt
-                                    ):
-                                        child_interface_options[child_opt["name"]] = (
-                                            child_opt
-                                        )
-                            elif isinstance(child_option_structure, dict):
-                                # 如果直接是字典，可能需要进一步处理
-                                # 这里假设子选项的结构与主选项类似
-                                pass
+                            child_interface_options = self._build_child_interface_options(
+                                children_def[option_value]
+                            )
 
-                    # 递归处理子选项
-                    self._extract_option_values(
-                        branches, result, child_interface_options
-                    )
+                    if isinstance(option_value, list):
+                        active_branches = self._collect_active_branch_payload(
+                            branches, option_value
+                        )
+                        if active_branches:
+                            self._extract_option_values(
+                                active_branches, result, interface_options
+                            )
+                    else:
+                        self._extract_option_values(
+                            branches, result, child_interface_options
+                        )
             else:
                 # 直接是值的情况（简单格式）- 这种情况表示当前选择的选项
                 if value and str(value).strip():
