@@ -34,6 +34,7 @@ from app.utils.logger import (
     suppress_qasync_logging,
 )
 from app.common.signal_bus import signalBus
+from app.common.config import cfg
 
 
 class _ClickablePreviewLabel(PixmapLabel):
@@ -70,7 +71,6 @@ class MonitorInterface(QWidget):
         self._monitor_loop_task: Optional[asyncio.Task] = None
         self._image_processing_task: Optional[asyncio.Task] = None
         self._monitoring_active = False
-        self._target_interval = 1.0 / 120  # 120 FPS
         self._image_queue: Optional[asyncio.Queue] = None
         self._max_queue_size = 2  # 限制队列大小，避免内存占用过大
 
@@ -321,7 +321,8 @@ class MonitorInterface(QWidget):
         return Image.fromarray(raw_frame[..., ::-1])
 
     def _get_target_interval(self) -> float:
-        return self._target_interval
+        fps = max(1, int(cfg.get(cfg.monitor_capture_fps)))
+        return 1.0 / fps
 
     def _start_monitor_loop(self) -> None:
         if self._monitor_loop_task and not self._monitor_loop_task.done():

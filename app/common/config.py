@@ -184,9 +184,9 @@ class Config(QConfig):
     )
 
     # ===== 任务设置 =====
-    low_power_monitoring_mode = ConfigItem(
-        "Task", "low_power_monitoring_mode", True, BoolValidator()
-    )  # 低功耗监控模式：使用缓存的图像而不是专用监控线程
+    monitor_capture_fps = RangeConfigItem(
+        "Task", "monitor_capture_fps", 30, RangeValidator(1, 120)
+    )  # 监控截图帧率（独立控制器连接，类型跟随主配置）
     enable_gpu_acceleration = ConfigItem(
         "Task", "enable_gpu_acceleration", True, BoolValidator()
     )  # GPU 硬件加速开关（关闭时强制 CPU 推理）

@@ -1350,18 +1350,22 @@ class SettingInterface(QWidget):
             self.tr("Task Settings"), self.Setting_scroll_widget
         )
 
-        # 低功耗监控模式
-        self.low_power_monitoring_mode_card = SwitchSettingCard(
-            FIF.POWER_BUTTON,
-            self.tr("Low Power Monitoring Mode"),
+        self.monitor_capture_fps_card = SliderSettingCard(
+            FIF.CAMERA,
+            self.tr("Monitor capture rate"),
             self.tr(
-                "Use cached images instead of dedicated monitoring thread, refresh rate: 24 FPS"
+                "Screenshot frames per second for the monitoring preview "
+                "(uses a separate controller connection based on your controller settings)"
             ),
-            configItem=cfg.low_power_monitoring_mode,
             parent=self.taskGroup,
+            minimum=1,
+            maximum=120,
+            step=1,
+            suffix=" FPS",
+            config_item=cfg.monitor_capture_fps,
         )
 
-        self.taskGroup.addSettingCard(self.low_power_monitoring_mode_card)
+        self.taskGroup.addSettingCard(self.monitor_capture_fps_card)
 
         self.gpu_acceleration_card = SwitchSettingCard(
             FIF.SPEED_HIGH,
