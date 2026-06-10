@@ -1176,37 +1176,37 @@ The following configurations using this bundle will also be deleted:
     <context>
         <name>CallbackLogProcessor</name>
         <message>
-            <location filename="../core/log_processor.py" line="37" />
+            <location filename="../core/log_processor.py" line="38" />
             <source>screenshot test success, time: </source>
             <translation>スクリーンショットテスト成功、時間: </translation>
         </message>
         <message>
-            <location filename="../core/log_processor.py" line="70" />
+            <location filename="../core/log_processor.py" line="76" />
             <source>Resource Loading Failed</source>
             <translation>リソース読み込み失敗</translation>
         </message>
         <message>
-            <location filename="../core/log_processor.py" line="77" />
+            <location filename="../core/log_processor.py" line="83" />
             <source>Controller Started Connect</source>
             <translation>コントローラー接続開始</translation>
         </message>
         <message>
-            <location filename="../core/log_processor.py" line="80" />
+            <location filename="../core/log_processor.py" line="86" />
             <source>Controller Connect Failed</source>
             <translation>コントローラー接続失敗</translation>
         </message>
         <message>
-            <location filename="../core/log_processor.py" line="86" />
+            <location filename="../core/log_processor.py" line="92" />
             <source>Unknown Task</source>
             <translation>不明なタスク</translation>
         </message>
         <message>
-            <location filename="../core/log_processor.py" line="91" />
+            <location filename="../core/log_processor.py" line="97" />
             <source>Task started execution: </source>
             <translation>タスク実行開始: </translation>
         </message>
         <message>
-            <location filename="../core/log_processor.py" line="94" />
+            <location filename="../core/log_processor.py" line="100" />
             <source>Task execution failed: </source>
             <translation>タスク実行失敗: </translation>
         </message>
@@ -2326,27 +2326,27 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <context>
         <name>LogoutputWidget</name>
         <message>
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="105" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="108" />
             <source>Monitor</source>
             <translation>モニター</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="297" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="300" />
             <source>Log Output</source>
             <translation>ログ出力</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="303" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="306" />
             <source>generate log zip</source>
             <translation>ログZIPを生成</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="507" />
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="849" />
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="854" />
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="859" />
-            <location filename="../view/task_interface/components/logoutput_widget.py" line="861" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="510" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="852" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="857" />
             <location filename="../view/task_interface/components/logoutput_widget.py" line="862" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="864" />
+            <location filename="../view/task_interface/components/logoutput_widget.py" line="865" />
             <source>System</source>
             <translation>システム</translation>
         </message>
@@ -2359,104 +2359,104 @@ Please check for updates first, or visit the GitHub releases page.</source>
             <translation>ホーム</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="360" />
+            <location filename="../view/main_window/main_window.py" line="364" />
             <source>Task</source>
             <translation>タスク</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="371" />
+            <location filename="../view/main_window/main_window.py" line="369" />
             <source>Monitor</source>
             <translation>モニター</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="377" />
+            <location filename="../view/main_window/main_window.py" line="375" />
             <source>Schedule</source>
             <translation>スケジュール</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="385" />
+            <location filename="../view/main_window/main_window.py" line="383" />
             <source>test_interface</source>
             <translation>テストインターフェース</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="414" />
-            <location filename="../view/main_window/main_window.py" line="687" />
-            <location filename="../view/main_window/main_window.py" line="699" />
+            <location filename="../view/main_window/main_window.py" line="412" />
+            <location filename="../view/main_window/main_window.py" line="685" />
+            <location filename="../view/main_window/main_window.py" line="697" />
             <source>Bundle</source>
             <translation>バンドル</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="428" />
+            <location filename="../view/main_window/main_window.py" line="426" />
             <source>Setting</source>
             <translation>設定</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="544" />
+            <location filename="../view/main_window/main_window.py" line="542" />
             <source>Show</source>
             <translation>表示</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="545" />
+            <location filename="../view/main_window/main_window.py" line="543" />
             <source>Hide</source>
             <translation>非表示</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="546" />
+            <location filename="../view/main_window/main_window.py" line="544" />
             <source>Quit</source>
             <translation>終了</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="832" />
+            <location filename="../view/main_window/main_window.py" line="833" />
             <source>Task flow is already running</source>
             <translation>タスクフローは既に実行中です</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="844" />
+            <location filename="../view/main_window/main_window.py" line="845" />
             <source>Failed to start task flow</source>
             <translation>タスクフローの開始に失敗しました</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1168" />
+            <location filename="../view/main_window/main_window.py" line="1169" />
             <source>Config load failed, automatically reset to default. Backup of corrupted config file completed. Error details:</source>
             <translation>設定の読み込みに失敗しました。自動的にデフォルトにリセットされました。破損した設定ファイルのバックアップが完了しました。エラーの詳細:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1172" />
+            <location filename="../view/main_window/main_window.py" line="1173" />
             <source>Config load failed, automatically reset to default. Backup of corrupted config file completed.</source>
             <translation>設定の読み込みに失敗しました。自動的にデフォルトにリセットされました。破損した設定ファイルのバックアップが完了しました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1179" />
+            <location filename="../view/main_window/main_window.py" line="1180" />
             <source>Config load failed, automatically reset to default. Failed to backup corrupted config file. Error details:</source>
             <translation>設定ファイルの読み込みに失敗しました。自動的にデフォルト設定にリセットします。破損した設定ファイルのバックアップに失敗しました。エラーの詳細:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1183" />
+            <location filename="../view/main_window/main_window.py" line="1184" />
             <source>Config load failed, automatically reset to default. Failed to backup corrupted config file.</source>
             <translation>設定ファイルの読み込みに失敗しました。自動的にデフォルト設定にリセットします。破損した設定ファイルのバックアップに失敗しました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1189" />
+            <location filename="../view/main_window/main_window.py" line="1190" />
             <source>Config load failed and error occurred while resetting config:</source>
             <translation>設定ファイルの読み込みに失敗し、設定のリセット中にエラーが発生しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1193" />
+            <location filename="../view/main_window/main_window.py" line="1194" />
             <source>Config load failed and error occurred while resetting config.</source>
             <translation>設定ファイルの読み込みに失敗し、設定のリセット中にエラーが発生しました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1270" />
+            <location filename="../view/main_window/main_window.py" line="1272" />
             <source>(empty)</source>
             <translation>(空)</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1283" />
+            <location filename="../view/main_window/main_window.py" line="1285" />
             <source>(none)</source>
             <translation>(なし)</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1286" />
+            <location filename="../view/main_window/main_window.py" line="1288" />
             <source>Controller information is missing. Verify that {controller} is the expected controller.
 Supported controllers in the current resource: {controllers}</source>
             <translation>コントローラー情報がありません。{controller}が期待されるコントローラーであることを確認してください。
@@ -2479,31 +2479,31 @@ Supported controllers in the current resource: {controllers}</source>
             <translation type="vanished">コントローラーのADB設定が不完全です。ここをタップしてコントローラーを開き、パス/アドレス/ポートを修正してください。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1361" />
-            <location filename="../view/main_window/main_window.py" line="1367" />
+            <location filename="../view/main_window/main_window.py" line="1363" />
+            <location filename="../view/main_window/main_window.py" line="1369" />
             <source>hotkey disabled due to permission issue</source>
             <translation>権限の問題によりホットキーが無効化されています</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1386" />
+            <location filename="../view/main_window/main_window.py" line="1388" />
             <source>Log is being packaged, please wait...</source>
             <translation>ログをパッケージ化中です。お待ちください...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1407" />
-            <location filename="../view/main_window/main_window.py" line="1457" />
+            <location filename="../view/main_window/main_window.py" line="1409" />
+            <location filename="../view/main_window/main_window.py" line="1459" />
             <source>Preparing files...</source>
             <translation>ファイルを準備中...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1429" />
-            <location filename="../view/main_window/main_window.py" line="1433" />
+            <location filename="../view/main_window/main_window.py" line="1431" />
+            <location filename="../view/main_window/main_window.py" line="1435" />
             <source>Debug directory not found, cannot package logs.</source>
             <translation>デバッグディレクトリが見つかりません。ログをパッケージ化できません。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1448" />
-            <location filename="../view/main_window/main_window.py" line="1453" />
+            <location filename="../view/main_window/main_window.py" line="1450" />
+            <location filename="../view/main_window/main_window.py" line="1455" />
             <source>No matching files were found for the selected options.</source>
             <translation>選択されたオプションに一致するファイルが見つかりませんでした。</translation>
         </message>
@@ -2516,88 +2516,88 @@ Supported controllers in the current resource: {controllers}</source>
             <translation type="vanished">選択した実行記録に一致するファイルが見つかりませんでした。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1466" />
-            <location filename="../view/main_window/main_window.py" line="1481" />
+            <location filename="../view/main_window/main_window.py" line="1468" />
+            <location filename="../view/main_window/main_window.py" line="1483" />
             <source>Packing:</source>
             <translation>パッケージ化中:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1499" />
-            <location filename="../view/main_window/main_window.py" line="1500" />
+            <location filename="../view/main_window/main_window.py" line="1501" />
+            <location filename="../view/main_window/main_window.py" line="1502" />
             <source>Log packaging cancelled.</source>
             <translation>ログのパッケージ化がキャンセルされました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="1504" />
-            <location filename="../view/main_window/main_window.py" line="1508" />
+            <location filename="../view/main_window/main_window.py" line="1506" />
+            <location filename="../view/main_window/main_window.py" line="1510" />
             <source>Log packaging failed:</source>
             <translation>ログのパッケージ化に失敗しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2069" />
+            <location filename="../view/main_window/main_window.py" line="2071" />
             <source>, there are </source>
             <translation>、</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2071" />
+            <location filename="../view/main_window/main_window.py" line="2073" />
             <source> files not added</source>
             <translation> 個のファイルが追加されていません</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2075" />
+            <location filename="../view/main_window/main_window.py" line="2077" />
             <source>Log has been packaged, but some files failed to read:</source>
             <translation>ログはパッケージ化されましたが、一部のファイルの読み込みに失敗しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2082" />
+            <location filename="../view/main_window/main_window.py" line="2084" />
             <source>Log has been packaged:</source>
             <translation>ログはパッケージ化されました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2087" />
+            <location filename="../view/main_window/main_window.py" line="2089" />
             <source>Packaging completed, but some files were skipped.</source>
             <translation>パッケージ化は完了しましたが、一部のファイルはスキップされました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2088" />
+            <location filename="../view/main_window/main_window.py" line="2090" />
             <source>Packaging completed:</source>
             <translation>パッケージ化完了:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2135" />
-            <location filename="../view/main_window/main_window.py" line="2302" />
-            <location filename="../view/main_window/main_window.py" line="2731" />
+            <location filename="../view/main_window/main_window.py" line="2137" />
+            <location filename="../view/main_window/main_window.py" line="2304" />
+            <location filename="../view/main_window/main_window.py" line="2733" />
             <source>Announcement</source>
             <translation>お知らせ</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2138" />
+            <location filename="../view/main_window/main_window.py" line="2140" />
             <source>There is no announcement at the moment.</source>
             <translation>現在、お知らせはありません。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2245" />
-            <location filename="../view/main_window/main_window.py" line="2255" />
+            <location filename="../view/main_window/main_window.py" line="2247" />
+            <location filename="../view/main_window/main_window.py" line="2257" />
             <source>Welcome</source>
             <translation>ようこそ</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2358" />
+            <location filename="../view/main_window/main_window.py" line="2360" />
             <source>This is the configuration area. Each configuration maps to different task sets.</source>
             <translation>ここは設定エリアです。各設定は異なるタスクセットに対応しています。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2364" />
+            <location filename="../view/main_window/main_window.py" line="2366" />
             <source>This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running.</source>
             <translation>ここはタスクエリアです。まずコントローラーとリソース設定を設定してください。それら以外のすべてのタスクは、実行前にドラッグして順序を変更できます。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2370" />
+            <location filename="../view/main_window/main_window.py" line="2372" />
             <source>The monitor area displays live footage once tasks are running.</source>
             <translation>モニターエリアは、タスク実行時にライブ映像を表示します。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2376" />
+            <location filename="../view/main_window/main_window.py" line="2378" />
             <source>When you encounter issues while running, click this button and send the generated log zip file in the debug folder to the developers.</source>
             <translation>実行中に問題が発生した場合は、このボタンをクリックし、debug フォルダ内に生成されたログ ZIP を開発者に送信してください。</translation>
         </message>
@@ -2606,54 +2606,54 @@ Supported controllers in the current resource: {controllers}</source>
             <translation type="vanished">このボタンをクリックして特殊タスクに切り替えます。特殊とマークされたタスクのみが実行されます。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2712" />
+            <location filename="../view/main_window/main_window.py" line="2714" />
             <source>Close</source>
             <translation>閉じる</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2748" />
+            <location filename="../view/main_window/main_window.py" line="2750" />
             <source>Item </source>
             <translation>項目 </translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2752" />
+            <location filename="../view/main_window/main_window.py" line="2754" />
             <source>Detail</source>
             <translation>詳細</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2763" />
-            <location filename="../view/main_window/main_window.py" line="2766" />
-            <location filename="../view/main_window/main_window.py" line="2822" />
+            <location filename="../view/main_window/main_window.py" line="2765" />
+            <location filename="../view/main_window/main_window.py" line="2768" />
+            <location filename="../view/main_window/main_window.py" line="2824" />
             <source>Info</source>
             <translation>情報</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2764" />
+            <location filename="../view/main_window/main_window.py" line="2766" />
             <source>Warning</source>
             <translation>警告</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2765" />
+            <location filename="../view/main_window/main_window.py" line="2767" />
             <source>Error</source>
             <translation>エラー</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2830" />
+            <location filename="../view/main_window/main_window.py" line="2832" />
             <source>Confirm</source>
             <translation>確認</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2873" />
+            <location filename="../view/main_window/main_window.py" line="2875" />
             <source>admin</source>
             <translation>管理者</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2906" />
+            <location filename="../view/main_window/main_window.py" line="2908" />
             <source>Stopping task...</source>
             <translation>タスクを停止中...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2914" />
+            <location filename="../view/main_window/main_window.py" line="2916" />
             <source>Please wait...</source>
             <translation>お待ちください...</translation>
         </message>
@@ -2714,140 +2714,129 @@ Supported controllers in the current resource: {controllers}</source>
     <context>
         <name>MonitorDialog</name>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="680" />
             <source>Monitor</source>
-            <translation>モニター</translation>
+            <translation type="vanished">モニター</translation>
         </message>
     </context>
     <context>
         <name>MonitorInterface</name>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="105" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="156" />
             <source>Click to sync this frame to the device</source>
             <translation>このフレームをデバイスに同期するにはクリックしてください</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="107" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="158" />
             <source>FPS: --</source>
             <translation>FPS: --</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="136" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="187" />
             <source>Save Screenshot</source>
             <translation>スクリーンショットを保存</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="142" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="193" />
             <source>Capture the current preview and store it on disk</source>
             <translation>現在のプレビューをキャプチャしてディスクに保存</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="146" />
-            <location filename="../view/monitor_interface/monitor_interface.py" line="466" />
-            <location filename="../view/monitor_interface/monitor_interface.py" line="660" />
-            <location filename="../view/monitor_interface/monitor_interface.py" line="685" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="198" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="402" />
             <source>Start Monitoring</source>
             <translation>監視を開始</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="152" />
-            <location filename="../view/monitor_interface/monitor_interface.py" line="468" />
-            <location filename="../view/monitor_interface/monitor_interface.py" line="662" />
-            <location filename="../view/monitor_interface/monitor_interface.py" line="687" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="205" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="404" />
             <source>Start monitoring task</source>
             <translation>監視タスクを開始</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="505" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="486" />
             <source>Screenshot saved to </source>
             <translation>スクリーンショットを保存しました: </translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="595" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="598" />
             <source>Device connection failed, cannot start monitoring</source>
             <translation>デバイス接続に失敗しました。監視を開始できません</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="603" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="398" />
             <source>Stop Monitoring</source>
             <translation>監視を停止</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="605" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="400" />
             <source>Stop monitoring task</source>
             <translation>監視タスクを停止</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="607" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="606" />
             <source>Monitoring started</source>
             <translation>監視を開始しました</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="623" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="612" />
             <source>Failed to start monitoring: </source>
             <translation>監視の開始に失敗しました: </translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="664" />
             <source>Monitoring stopped</source>
-            <translation>監視を停止しました</translation>
+            <translation type="vanished">監視を停止しました</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="668" />
             <source>Failed to stop monitoring: </source>
-            <translation>監視の停止に失敗しました: </translation>
+            <translation type="vanished">監視の停止に失敗しました: </translation>
         </message>
     </context>
     <context>
         <name>MonitorWidget</name>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="499" />
             <source>No screenshot available to save</source>
-            <translation>保存可能なスクリーンショットがありません</translation>
+            <translation type="vanished">保存可能なスクリーンショットがありません</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="507" />
             <source>Screenshot saved to </source>
-            <translation>スクリーンショットを保存しました: </translation>
+            <translation type="vanished">スクリーンショットを保存しました: </translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="510" />
             <source>Failed to save screenshot: </source>
-            <translation>スクリーンショットの保存に失敗しました: </translation>
+            <translation type="vanished">スクリーンショットの保存に失敗しました: </translation>
         </message>
         <message>
             <source>Controller not ready. Please ensure the device is connected.</source>
             <translation type="vanished">コントローラーが準備できていません。デバイスが接続されていることを確認してください。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="552" />
             <source>Device connection failed, cannot start monitoring</source>
-            <translation>デバイス接続に失敗しました。監視を開始できません。</translation>
+            <translation type="vanished">デバイス接続に失敗しました。監視を開始できません。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="572" />
             <source>Failed to start monitoring loop</source>
-            <translation>監視ループの開始に失敗しました</translation>
+            <translation type="vanished">監視ループの開始に失敗しました</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="580" />
             <source>Monitoring started</source>
-            <translation>監視を開始しました</translation>
+            <translation type="vanished">監視を開始しました</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="596" />
             <source>Failed to start monitoring: </source>
-            <translation>監視の開始に失敗しました: </translation>
+            <translation type="vanished">監視の開始に失敗しました: </translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="655" />
             <source>Monitoring stopped</source>
-            <translation>監視を停止しました</translation>
+            <translation type="vanished">監視を停止しました</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/monitor_widget.py" line="659" />
             <source>Failed to stop monitoring: </source>
-            <translation>監視の停止に失敗しました: </translation>
+            <translation type="vanished">監視の停止に失敗しました: </translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/monitor_widget.py" line="97" />
+            <source>Click to open the monitor page</source>
+            <translation>クリックしてモニターページを開く</translation>
         </message>
     </context>
     <context>
@@ -3662,15 +3651,15 @@ Supported controllers in the current resource: {controllers}</source>
         <name>SettingInterface</name>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="437" />
-            <location filename="../view/setting_interface/setting_interface.py" line="1714" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1726" />
             <source>ChainFlow Assistant</source>
             <translation>ChainFlow アシスタント</translation>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="510" />
             <location filename="../view/setting_interface/setting_interface.py" line="599" />
-            <location filename="../view/setting_interface/setting_interface.py" line="1738" />
-            <location filename="../view/setting_interface/setting_interface.py" line="1788" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1750" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1800" />
             <source>License</source>
             <translation>ライセンス</translation>
         </message>
@@ -3682,7 +3671,7 @@ Supported controllers in the current resource: {controllers}</source>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="515" />
             <location filename="../view/setting_interface/setting_interface.py" line="714" />
-            <location filename="../view/setting_interface/setting_interface.py" line="1399" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1411" />
             <source>Update</source>
             <translation>更新</translation>
         </message>
@@ -4033,13 +4022,13 @@ Please check for updates first, or visit the GitHub releases page.</source>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1234" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2427" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2439" />
             <source>DingTalk Notification Enabled</source>
             <translation>DingTalk通知が有効</translation>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1236" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2429" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2441" />
             <source>DingTalk Notification Disabled</source>
             <translation>DingTalk通知が無効</translation>
         </message>
@@ -4060,13 +4049,13 @@ Please check for updates first, or visit the GitHub releases page.</source>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1246" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2433" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2445" />
             <source>Lark Notification Enabled</source>
             <translation>Lark通知が有効</translation>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1248" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2435" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2447" />
             <source>Lark Notification Disabled</source>
             <translation>Lark通知が無効</translation>
         </message>
@@ -4077,13 +4066,13 @@ Please check for updates first, or visit the GitHub releases page.</source>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1257" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2439" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2451" />
             <source>SMTP Notification Enabled</source>
             <translation>SMTP通知が有効</translation>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1259" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2441" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2453" />
             <source>SMTP Notification Disabled</source>
             <translation>SMTP通知が無効</translation>
         </message>
@@ -4094,13 +4083,13 @@ Please check for updates first, or visit the GitHub releases page.</source>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1268" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2445" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2457" />
             <source>WxPusher Notification Enabled</source>
             <translation>WxPusher通知が有効</translation>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1270" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2447" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2459" />
             <source>WxPusher Notification Disabled</source>
             <translation>WxPusher通知が無効</translation>
         </message>
@@ -4111,13 +4100,13 @@ Please check for updates first, or visit the GitHub releases page.</source>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1280" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2451" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2463" />
             <source>QYWX Notification Enabled</source>
             <translation>QYWX通知有効</translation>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1282" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2453" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2465" />
             <source>QYWX Notification Disabled</source>
             <translation>QYWX通知無効</translation>
         </message>
@@ -4128,13 +4117,13 @@ Please check for updates first, or visit the GitHub releases page.</source>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1293" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2457" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2469" />
             <source>Gotify Notification Enabled</source>
             <translation>Gotify通知有効</translation>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1295" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2459" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2471" />
             <source>Gotify Notification Disabled</source>
             <translation>Gotify通知無効</translation>
         </message>
@@ -4219,349 +4208,349 @@ Please check for updates first, or visit the GitHub releases page.</source>
             <translation>GPUアクセラレーション</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1373" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1385" />
             <source>Enable GPU hardware acceleration for resource inference</source>
             <translation>リソース推論にGPUハードウェアアクセラレーションを有効化</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1383" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1395" />
             <source>Reset task page layout</source>
             <translation>タスクページのレイアウトをリセット</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1385" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1397" />
             <source>Restore the task, option, and log columns to equal width (1:1:1)</source>
             <translation>タスク、オプション、ログの列を均等幅（1:1:1）に戻す</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1404" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1416" />
             <source>mirrorchyan CDK</source>
             <translation>mirrorchyan CDK</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1405" />
-            <location filename="../view/setting_interface/setting_interface.py" line="1586" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1417" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1598" />
             <source>Enter mirrorchyan CDK for stable update path</source>
             <translation>安定した更新パスのためのmirrorchyan CDKを入力</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1407" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1419" />
             <source>About Mirror</source>
             <translation>Mirrorについて</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1413" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1425" />
             <source>Automatically update after startup</source>
             <translation>起動後自動更新</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1414" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1426" />
             <source>Automatically download and apply updates once available</source>
             <translation>利用可能になると自動的にダウンロードして適用</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1423" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1435" />
             <source>select update channel for resource</source>
             <translation>リソースの更新チャンネルを選択</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1424" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1436" />
             <source>select the update channel for the resource</source>
             <translation>リソースの更新チャンネルを選択</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1431" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1443" />
             <source>Force use GitHub</source>
             <translation>GitHubを強制使用</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1432" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1444" />
             <source>Force use GitHub for resource update</source>
             <translation>リソース更新にGitHubを強制使用</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1381" />
-            <location filename="../view/setting_interface/setting_interface.py" line="1438" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1393" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1450" />
             <source>Reset</source>
             <translation>リセット</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1440" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1452" />
             <source>Reset resource</source>
             <translation>リソースをリセット</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1441" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1453" />
             <source>Redownload resource package without version/tag check</source>
             <translation>バージョン/タグチェックなしでリソースパッケージを再ダウンロード</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1447" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1459" />
             <source>GitHub API Key</source>
             <translation>GitHub APIキー</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1449" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1461" />
             <source>Personal access tokens increase GitHub API rate limits for update checks.</source>
             <translation>個人アクセストークンは、更新チェックのGitHub APIレート制限を増やします。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1456" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1468" />
             <source>Optional token for authenticated GitHub requests</source>
             <translation>認証済みGitHubリクエスト用のオプショナルトークン</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1465" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1477" />
             <source>Use Proxy</source>
             <translation>プロキシを使用</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1467" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1479" />
             <source>After filling in the proxy settings, all traffic except that to the Mirror will be proxied.</source>
             <translation>プロキシ設定を入力後、ミラーへのトラフィックを除くすべてのトラフィックがプロキシされます。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1491" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1503" />
             <source>Experimental / Compatibility</source>
             <translation>実験的 / 互換性</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1495" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1507" />
             <source>Multi-resource adaptation</source>
             <translation>マルチリソース適応</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1497" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1509" />
             <source>Experimental. Enable loading multiple resource bundles; may impact stability.</source>
             <translation>実験的。複数のリソースバンドルの読み込みを有効化；安定性に影響する可能性があります。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1505" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1517" />
             <source>Save screenshot</source>
             <translation>スクリーンショットを保存</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1506" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1518" />
             <source>Save a screenshot when experimental features run</source>
             <translation>実験的機能実行時にスクリーンショットを保存</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1513" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1525" />
             <source>Include images in log zip</source>
             <translation>ログZIPに画像を含める</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1515" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1527" />
             <source>Include log images when generating log zip package. The number of images included equals the number displayed in the log interface.</source>
             <translation>ログZIPパッケージ生成時にログ画像を含める。含まれる画像数は、ログインターフェースに表示される数と等しいです。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1533" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2413" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1545" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2425" />
             <source>Set cache image count, current cache usage: {}</source>
             <translation>キャッシュ画像数を設定、現在のキャッシュ使用量: {}</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1538" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1550" />
             <source>Max log images</source>
             <translation>最大ログ画像数</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1592" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1604" />
             <source>Resource does not support Mirrorchyan, right-click about mirror to unlock input</source>
             <translation>リソースはMirrorchyanをサポートしていません、ミラーについて右クリックで入力を解除</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1615" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1627" />
             <source>decrypt Mirror CDK failed, please fill in again and save.</source>
             <translation>Mirror CDKの復号に失敗しました、再度入力して保存してください。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1646" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1658" />
             <source>Failed to save Mirror CDK: {}</source>
             <translation>Mirror CDKの保存に失敗しました: {}</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1665" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1677" />
             <source>Failed to read GitHub token, please save it again.</source>
             <translation>GitHubトークンの読み込みに失敗しました。もう一度保存してください。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1690" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1702" />
             <source>Failed to save GitHub token: {}.</source>
             <translation>GitHubトークンの保存に失敗しました: {}。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1720" />
-            <location filename="../view/setting_interface/setting_interface.py" line="1776" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1732" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1788" />
             <source>Current version: </source>
             <translation>現在のバージョン: </translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1723" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1735" />
             <source>Latest version: </source>
             <translation>最新バージョン：</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1726" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1738" />
             <source>UI version: </source>
             <translation>UIバージョン：</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1729" />
-            <location filename="../view/setting_interface/setting_interface.py" line="1779" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1741" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1791" />
             <source>MaaFW version: </source>
             <translation>MaaFWバージョン：</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1746" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1758" />
             <source>MFW-ChainFlow Assistant</source>
             <translation>MFW-ChainFlow アシスタント</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1759" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1771" />
             <source>MFW-ChainFlow Assistant provides a visual orchestrator for MaaFramework users, covering configuration management, scheduling, notifications and custom extensions.</source>
             <translation>MFW-ChainFlow アシスタントは、MaaFrameworkユーザー向けの視覚的オーケストレーターを提供し、設定管理、スケジューリング、通知、カスタム拡張機能をカバーします。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1853" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1865" />
             <source>Select background image</source>
             <translation>背景画像を選択</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1855" />
-            <location filename="../view/setting_interface/setting_interface.py" line="1873" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1867" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1885" />
             <source>Images (*.png *.jpg *.jpeg *.bmp *.webp)</source>
             <translation>画像ファイル (*.png *.jpg *.jpeg *.bmp *.webp)</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1871" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1883" />
             <source>Select home cover image</source>
             <translation>ホームカバー画像を選択</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="1890" />
+            <location filename="../view/setting_interface/setting_interface.py" line="1902" />
             <source>UI update feature is not implemented yet.</source>
             <translation>UI更新機能はまだ実装されていません。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2262" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2274" />
             <source>Enable multi-resource adaptation?</source>
             <translation>マルチリソース適応を有効にしますか？</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2266" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2278" />
             <source>After enabling the multi-configuration feature, the resource directories will be reconfigured. This operation is irreversible; please proceed with caution.</source>
             <translation>マルチ設定機能を有効にすると、リソースディレクトリが再構成されます。この操作は元に戻せませんので、ご注意ください。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2279" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2291" />
             <source>Enable</source>
             <translation>有効にする</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2281" />
-            <location filename="../view/setting_interface/setting_interface.py" line="3046" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2293" />
+            <location filename="../view/setting_interface/setting_interface.py" line="3058" />
             <source>Cancel</source>
             <translation>キャンセル</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2328" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2347" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2340" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2359" />
             <source>Image file does not exist</source>
             <translation>画像ファイルが存在しません</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2514" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2526" />
             <source>Configuration takes effect after restart</source>
             <translation>設定は再起動後に有効になります</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2616" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2628" />
             <source>Auto update is disabled for CI/Alpha resource versions. Please update manually.</source>
             <translation>CI/Alphaリソースバージョンでは自動更新が無効です。手動で更新してください。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2700" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2712" />
             <source>Update failed too many times, local update package has been cleared.</source>
             <translation>更新失敗が多すぎるため、ローカルの更新パッケージがクリアされました。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2776" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2819" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2869" />
-            <location filename="../view/setting_interface/setting_interface.py" line="2920" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2788" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2831" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2881" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2932" />
             <source>Stop update</source>
             <translation>更新を停止</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2840" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2852" />
             <source>New version available: </source>
             <translation>新しいバージョンが利用可能：</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2901" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2913" />
             <source>Task page layout has been reset</source>
             <translation>タスクページのレイアウトがリセットされました</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2908" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2920" />
             <source>Update is already running</source>
             <translation>更新は既に実行中です</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2914" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2926" />
             <source>Service is not ready, cannot reset resource</source>
             <translation>サービスが準備できていないため、リソースをリセットできません</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2923" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2935" />
             <source>Starting Reset Resource</source>
             <translation>リソースリセットを開始中</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2973" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2985" />
             <source>Failed to rename updater: {}</source>
             <translation>アップデータの名前変更に失敗しました: {}</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="2985" />
-            <location filename="../view/setting_interface/setting_interface.py" line="3118" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2997" />
+            <location filename="../view/setting_interface/setting_interface.py" line="3130" />
             <source>Failed to start updater: {}</source>
             <translation>アップデータの起動に失敗しました: {}</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="3028" />
+            <location filename="../view/setting_interface/setting_interface.py" line="3040" />
             <source>Update package not found, please try updating again.</source>
             <translation>更新パッケージが見つかりません。再度更新をお試しください。</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="3045" />
+            <location filename="../view/setting_interface/setting_interface.py" line="3057" />
             <source>Update now</source>
             <translation>今すぐ更新</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="3049" />
+            <location filename="../view/setting_interface/setting_interface.py" line="3061" />
             <source>Restart required to update</source>
             <translation>更新には再起動が必要です</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="3051" />
+            <location filename="../view/setting_interface/setting_interface.py" line="3063" />
             <source>Update package detected</source>
             <translation>更新パッケージを検出しました</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="3054" />
+            <location filename="../view/setting_interface/setting_interface.py" line="3066" />
             <source>Hot update is unavailable. A restart update is required. Proceed?</source>
             <translation>ホットアップデートは利用できません。再起動によるアップデートが必要です。実行しますか？</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="3057" />
+            <location filename="../view/setting_interface/setting_interface.py" line="3069" />
             <source>Found a downloaded update package. Do you want to launch the updater now?</source>
             <translation>ダウンロード済みのアップデートパッケージが見つかりました。アップデータを今すぐ起動しますか？</translation>
         </message>
         <message>
-            <location filename="../view/setting_interface/setting_interface.py" line="3080" />
+            <location filename="../view/setting_interface/setting_interface.py" line="3092" />
             <source>Auto updating in %1 s</source>
             <translation>%1 秒後に自動アップデート</translation>
         </message>
@@ -5399,18 +5388,18 @@ You can copy the detailed stack trace below and report it to the developer.</sou
     <context>
         <name>TaskInterface</name>
         <message>
-            <location filename="../view/task_interface/task_interface_logic.py" line="25" />
+            <location filename="../view/task_interface/task_interface_logic.py" line="28" />
             <source>Task Information</source>
             <translation>タスク情報</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/task_interface_logic.py" line="26" />
+            <location filename="../view/task_interface/task_interface_logic.py" line="29" />
             <source>Configuration Selection</source>
             <translation>構成選択</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/task_interface_logic.py" line="109" />
-            <location filename="../view/task_interface/task_interface_logic.py" line="144" />
+            <location filename="../view/task_interface/task_interface_logic.py" line="112" />
+            <location filename="../view/task_interface/task_interface_logic.py" line="147" />
             <source>Start</source>
             <translation>開始</translation>
         </message>
@@ -5419,7 +5408,7 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation type="vanished">特殊タスクを選択して実行してください。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/task_interface_logic.py" line="139" />
+            <location filename="../view/task_interface/task_interface_logic.py" line="142" />
             <source>Stop</source>
             <translation>停止</translation>
         </message>
