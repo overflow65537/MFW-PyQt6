@@ -26,8 +26,9 @@ from app.view.task_interface.components.start_bar_widget import StartBarWidget
 
 
 class UI_TaskInterface(object):
-    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
+    def __init__(self, service_coordinator: ServiceCoordinator, monitor_interface=None, parent=None):
         self.service_coordinator = service_coordinator
+        self.monitor_interface = monitor_interface
         self.parent = parent
 
     def setupUi(self, TaskInterface):
@@ -36,7 +37,10 @@ class UI_TaskInterface(object):
         self.main_layout.setContentsMargins(*panel_outer_margins())
         self.main_layout.setSpacing(0)
 
-        self.log_output_widget = LogoutputWidget(service_coordinator=self.service_coordinator)
+        self.log_output_widget = LogoutputWidget(
+            service_coordinator=self.service_coordinator,
+            monitor_interface=self.monitor_interface,
+        )
         log_policy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.log_output_widget.setSizePolicy(log_policy)
         self.log_output_widget.setMinimumWidth(LOG_PANEL_MIN_WIDTH)

@@ -14,10 +14,13 @@ from app.common.signal_bus import signalBus
 from app.view.task_interface.task_interface_ui import UI_TaskInterface
 class TaskInterface(UI_TaskInterface, QWidget):
 
-    def __init__(self, service_coordinator=None, parent=None):
+    def __init__(self, service_coordinator=None, monitor_interface=None, parent=None):
         QWidget.__init__(self, parent=parent)
         UI_TaskInterface.__init__(
-            self, service_coordinator=service_coordinator, parent=parent
+            self,
+            service_coordinator=service_coordinator,
+            monitor_interface=monitor_interface,
+            parent=parent,
         )
         self.setupUi(self)
         self.service_coordinator = service_coordinator

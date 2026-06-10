@@ -355,16 +355,14 @@ class MainWindow(MSFluentWindow):
         )
         self.addSubInterface(self.DashboardInterface, FIF.HOME, self.tr("Home"))
 
-        # 创建子界面
-        self.TaskInterface = TaskInterface(self.service_coordinator)
-        self.addSubInterface(self.TaskInterface, FIF.CHECKBOX, self.tr("Task"))
-        """self.SpecialTaskInterface = SpecialTaskInterface(self.service_coordinator)
-        self.addSubInterface(
-            self.SpecialTaskInterface,
-            FIF.TILES,
-            self.tr("Special Task"),
-        )"""
         self.MonitorInterface = MonitorInterface(self.service_coordinator)
+
+        self.TaskInterface = TaskInterface(
+            self.service_coordinator,
+            monitor_interface=self.MonitorInterface,
+        )
+        self.addSubInterface(self.TaskInterface, FIF.CHECKBOX, self.tr("Task"))
+
         self.addSubInterface(
             self.MonitorInterface,
             FIF.PROJECTOR,
@@ -826,6 +824,9 @@ class MainWindow(MSFluentWindow):
                 )
                 self.stackedWidget.setCurrentWidget(interface)
 
+    def _on_monitor_page_requested(self) -> None:
+        self._switch_to_interface(getattr(self, "MonitorInterface", None))
+
     def _start_tasks_from_dashboard(self) -> None:
         if self.service_coordinator.run_manager.is_running:
             signalBus.info_bar_requested.emit(
@@ -1216,6 +1217,7 @@ class MainWindow(MSFluentWindow):
         signalBus.focus_dialog.connect(self._on_focus_dialog)
         signalBus.focus_modal.connect(self._on_focus_modal)
         signalBus.task_flow_finished.connect(self._on_task_flow_finished)
+        signalBus.monitor_page_requested.connect(self._on_monitor_page_requested)
         signalBus.controller_setup_hint_requested.connect(
             self._on_controller_setup_hint_requested
         )

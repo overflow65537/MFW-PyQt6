@@ -53,7 +53,10 @@ class LogoutputWidget(QWidget):
     )
 
     def __init__(
-        self, service_coordinator: ServiceCoordinator | None = None, parent=None
+        self,
+        service_coordinator: ServiceCoordinator | None = None,
+        monitor_interface=None,
+        parent=None,
     ):
         super().__init__(parent)
         self.service_coordinator = service_coordinator
@@ -93,8 +96,8 @@ class LogoutputWidget(QWidget):
         self.main_layout.setContentsMargins(*panel_column_margins("log"))
         self.main_layout.setSpacing(PANEL_SECTION_SPACING)
 
-        # 添加监控组件（如果有 service_coordinator）
-        if self.service_coordinator:
+        # 添加监控预览（镜像主监控页画面）
+        if self.service_coordinator and monitor_interface is not None:
             # 监控标题栏
             monitor_title_layout = QHBoxLayout()
             monitor_title_layout.setContentsMargins(0, 0, 0, 0)
@@ -128,7 +131,7 @@ class LogoutputWidget(QWidget):
             self.monitor_card.setMaximumHeight(16777215)
 
             # 创建监控组件
-            self.monitor_widget = MonitorWidget(self.service_coordinator, self)
+            self.monitor_widget = MonitorWidget(monitor_interface, self)
 
             # 将监控组件添加到卡片中
             monitor_card_layout = QVBoxLayout(self.monitor_card)
