@@ -76,6 +76,10 @@ class _RunnerUiSignalBridge(QObject):
     def forward_controller_setup_hint_requested(self, payload: dict):
         signalBus.controller_setup_hint_requested.emit(payload)
 
+    @Slot(dict)
+    def forward_monitor_recognition_roi(self, payload: dict):
+        signalBus.monitor_recognition_roi.emit(payload)
+
 
 class ServiceCoordinator:
     """服务协调器，整合配置、任务和选项服务"""
@@ -884,6 +888,10 @@ class ServiceCoordinator:
         )
         self.runner_events.controller_setup_hint_requested.connect(
             self._runner_ui_bridge.forward_controller_setup_hint_requested,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.monitor_recognition_roi.connect(
+            self._runner_ui_bridge.forward_monitor_recognition_roi,
             Qt.ConnectionType.QueuedConnection,
         )
 

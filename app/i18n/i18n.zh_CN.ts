@@ -4550,6 +4550,16 @@ Please check for updates first, or visit the GitHub releases page.</source>
     </message>
     <message>
         <location filename="../view/setting_interface/setting_interface.py" line="1372"/>
+        <source>Recognition ROI overlay</source>
+        <translation>识别框叠加</translation>
+    </message>
+    <message>
+        <location filename="../view/setting_interface/setting_interface.py" line="1374"/>
+        <source>Draw recognition hit boxes on the monitoring preview during tasks. This feature consumes significant system resources.</source>
+        <translation>任务运行时在监控预览上绘制识别命中框。本功能会占用大量系统资源。</translation>
+    </message>
+    <message>
+        <location filename="../view/setting_interface/setting_interface.py" line="1384"/>
         <source>GPU Acceleration</source>
         <translation>GPU 硬件加速</translation>
     </message>

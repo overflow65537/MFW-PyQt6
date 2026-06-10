@@ -4205,6 +4205,16 @@ Please check for updates first, or visit the GitHub releases page.</source>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1372" />
+            <source>Recognition ROI overlay</source>
+            <translation>認識枠オーバーレイ</translation>
+        </message>
+        <message>
+            <location filename="../view/setting_interface/setting_interface.py" line="1374" />
+            <source>Draw recognition hit boxes on the monitoring preview during tasks. This feature consumes significant system resources.</source>
+            <translation>タスク実行中に監視プレビューへ認識ヒット枠を描画します。この機能は大量のシステムリソースを消費します。</translation>
+        </message>
+        <message>
+            <location filename="../view/setting_interface/setting_interface.py" line="1384" />
             <source>GPU Acceleration</source>
             <translation>GPUアクセラレーション</translation>
         </message>

@@ -22,9 +22,12 @@ from qfluentwidgets import (
 )
 
 from app.common.fluent_tooltip import apply_fluent_tooltip
+from app.common.config import cfg
 from app.core.core import ServiceCoordinator
 from app.core.runner.monitor_task import MonitorTask
 from app.view.monitor import MonitorSession
+from app.view.monitor.recognition_roi_store import RecognitionRoiStore
+from app.view.monitor.roi_overlay import draw_roi_on_pixmap
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 
@@ -59,6 +62,7 @@ class MonitorInterface(QWidget):
         self._image_width: Optional[int] = None
         self._image_height: Optional[int] = None
         self._is_landscape: Optional[bool] = None
+        self._roi_store = RecognitionRoiStore()
 
         self._starting_monitoring = False
         self._stopping_monitoring = False
@@ -83,6 +87,32 @@ class MonitorInterface(QWidget):
             on_controller_disconnected=self._on_session_controller_disconnected,
         )
         self._bind_auto_task_monitoring()
+        self._bind_roi_signals()
+
+    def _bind_roi_signals(self) -> None:
+        signalBus.monitor_recognition_roi.connect(self._on_recognition_roi)
+        cfg.monitor_recognition_roi_enabled.valueChanged.connect(
+            self._on_recognition_roi_setting_changed
+        )
+
+    def _is_recognition_roi_enabled(self) -> bool:
+        return bool(cfg.get(cfg.monitor_recognition_roi_enabled))
+
+    def _on_recognition_roi_setting_changed(self, enabled: bool) -> None:
+        if enabled:
+            return
+        self._roi_store.clear()
+        if self._current_pil_image is not None:
+            self._render_preview_from_current_frame()
+
+    def _clear_recognition_roi(self) -> None:
+        self._roi_store.clear()
+
+    def _on_recognition_roi(self, payload: dict) -> None:
+        """仅缓存最新 ROI，不在此处触发重绘；出图时由 _render_preview_from_current_frame 读取。"""
+        if not self._is_recognition_roi_enabled():
+            return
+        self._roi_store.update(payload)
 
     @property
     def source_preview_pixmap(self) -> Optional[QPixmap]:
@@ -197,6 +227,7 @@ class MonitorInterface(QWidget):
     def _emit_preview_cleared(self) -> None:
         self._preview_pixmap = None
         self._current_pil_image = None
+        self._roi_store.clear()
         self.preview_label.clear()
         self._update_fps_overlay(None)
         self.preview_cleared.emit()
@@ -287,19 +318,8 @@ class MonitorInterface(QWidget):
         self._update_preview_size_policy(image_width, image_height)
 
         rgb_image = pil_image.convert("RGB")
-        bytes_per_line = image_width * 3
-        buffer = rgb_image.tobytes("raw", "RGB")
-        qimage = QImage(
-            buffer,
-            image_width,
-            image_height,
-            bytes_per_line,
-            QImage.Format.Format_RGB888,
-        )
-        self._preview_pixmap = QPixmap.fromImage(qimage)
         self._current_pil_image = rgb_image.copy()
-        self._refresh_preview_image()
-        self.preview_pixmap_changed.emit(self._preview_pixmap)
+        self._render_preview_from_current_frame()
 
         current_timestamp = time()
         fps_value: Optional[float] = None
@@ -309,6 +329,29 @@ class MonitorInterface(QWidget):
                 fps_value = 1.0 / interval
         self._last_frame_timestamp = current_timestamp
         self._update_fps_overlay(fps_value)
+
+    def _render_preview_from_current_frame(self) -> None:
+        if self._current_pil_image is None:
+            return
+        image_width, image_height = self._current_pil_image.size
+        bytes_per_line = image_width * 3
+        buffer = self._current_pil_image.tobytes("raw", "RGB")
+        qimage = QImage(
+            buffer,
+            image_width,
+            image_height,
+            bytes_per_line,
+            QImage.Format.Format_RGB888,
+        )
+        pixmap = QPixmap.fromImage(qimage)
+        if self._is_recognition_roi_enabled():
+            active_roi = self._roi_store.peek()
+            if active_roi and active_roi.get("box"):
+                label = active_roi.get("node", "")
+                pixmap = draw_roi_on_pixmap(pixmap, active_roi["box"], label=label)
+        self._preview_pixmap = pixmap
+        self._refresh_preview_image()
+        self.preview_pixmap_changed.emit(self._preview_pixmap)
 
     def _update_fps_overlay(self, fps_value: Optional[float]) -> None:
         if fps_value is None:
@@ -377,6 +420,7 @@ class MonitorInterface(QWidget):
             loop.create_task(self._on_session_controller_disconnected())
 
     def _on_task_flow_finished(self, payload: dict) -> None:
+        self._clear_recognition_roi()
         if self._session.monitoring_active or self._starting_monitoring:
             logger.debug(f"[Monitor] 收到 task_flow_finished: {payload}，请求停止监控")
             self._request_stop_monitoring(reason="task_flow_finished")

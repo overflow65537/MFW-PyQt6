@@ -7,6 +7,7 @@ MFW-ChainFlow Assistant
 from PySide6.QtCore import QObject
 from app.core.item import RunnerEvents
 from app.core.service.interface_manager import get_interface_manager
+from app.common.config import cfg
 
 
 class CallbackLogProcessor(QObject):
@@ -62,6 +63,11 @@ class CallbackLogProcessor(QObject):
             if isinstance(display_channels, str):
                 display_channels = [display_channels]
             self._dispatch_display(details, display_channels)
+
+        elif signal_name == "recognition_roi":
+            if not cfg.get(cfg.monitor_recognition_roi_enabled):
+                return
+            self.runner_events.monitor_recognition_roi.emit(signal)
 
     def _handle_resource_signal(self, status: int):
         """处理资源加载信号 - 只输出失败"""

@@ -187,6 +187,9 @@ class Config(QConfig):
     monitor_capture_fps = RangeConfigItem(
         "Task", "monitor_capture_fps", 30, RangeValidator(1, 120)
     )  # 监控截图帧率（独立控制器连接，类型跟随主配置）
+    monitor_recognition_roi_enabled = ConfigItem(
+        "Task", "monitor_recognition_roi_enabled", False, BoolValidator()
+    )  # 监控预览叠加识别命中框（占用较多资源）
     enable_gpu_acceleration = ConfigItem(
         "Task", "enable_gpu_acceleration", True, BoolValidator()
     )  # GPU 硬件加速开关（关闭时强制 CPU 推理）

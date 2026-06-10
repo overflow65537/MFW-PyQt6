@@ -1367,6 +1367,18 @@ class SettingInterface(QWidget):
 
         self.taskGroup.addSettingCard(self.monitor_capture_fps_card)
 
+        self.monitor_recognition_roi_card = SwitchSettingCard(
+            FIF.SEARCH,
+            self.tr("Recognition ROI overlay"),
+            self.tr(
+                "Draw recognition hit boxes on the monitoring preview during tasks. "
+                "This feature consumes significant system resources."
+            ),
+            configItem=cfg.monitor_recognition_roi_enabled,
+            parent=self.taskGroup,
+        )
+        self.taskGroup.addSettingCard(self.monitor_recognition_roi_card)
+
         self.gpu_acceleration_card = SwitchSettingCard(
             FIF.SPEED_HIGH,
             self.tr("GPU Acceleration"),

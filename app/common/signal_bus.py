@@ -100,5 +100,8 @@ class SignalBus(QObject):
     # 请求切换到监控页面（任务页预览点击等）
     monitor_page_requested = Signal()
 
+    # 任务识别命中 ROI（供监控预览叠加）
+    monitor_recognition_roi = Signal(dict)
+
 
 signalBus = SignalBus()

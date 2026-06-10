@@ -57,6 +57,7 @@ class RunnerEvents(QObject):
     focus_notification = Signal(str)
     focus_dialog = Signal(str)
     focus_modal = Signal(str)
+    monitor_recognition_roi = Signal(dict)
     # 控制器配置不完整时请求主界面遮罩引导；载荷包含当前控制器和资源支持控制器列表
     controller_setup_hint_requested = Signal(dict)
 
