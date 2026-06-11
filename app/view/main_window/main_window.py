@@ -2048,17 +2048,23 @@ class MainWindow(MSFluentWindow):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         return f"{resource_name}-{resource_version}-{timestamp}.zip"
 
+    def _cleanup_previous_log_zips(self, debug_dir: Path) -> None:
+        """删除 debug 目录内上一次（及更早）生成的日志压缩包。"""
+        for path in debug_dir.glob("*.zip"):
+            if not path.is_file():
+                continue
+            try:
+                path.unlink()
+                logger.info("删除旧日志压缩包：%s", path.name)
+            except Exception as exc:
+                logger.warning("删除旧日志压缩包失败：%s (%s)", path.name, exc)
+
     def _build_log_zip_path(self) -> Path:
-        """生成日志压缩包路径（放在 debug 目录内），如已存在则删除后重建。"""
+        """生成日志压缩包路径（放在 debug 目录内），并删除旧压缩包。"""
         debug_dir = Path.cwd() / "debug"
         debug_dir.mkdir(parents=True, exist_ok=True)
-        zip_path = debug_dir / self._build_log_zip_filename()
-        try:
-            if zip_path.exists():
-                zip_path.unlink()
-        except Exception as exc:
-            logger.warning("删除已有日志压缩包失败：%s (%s)", zip_path.name, exc)
-        return zip_path
+        self._cleanup_previous_log_zips(debug_dir)
+        return debug_dir / self._build_log_zip_filename()
 
     def _notify_log_zip_result(self, zip_path: Path, errors: list[str]) -> None:
         """汇报日志打包结果并提示可能跳过的文件。"""
