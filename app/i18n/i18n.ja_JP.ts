@@ -2534,70 +2534,70 @@ Supported controllers in the current resource: {controllers}</source>
             <translation>ログのパッケージ化に失敗しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2071" />
+            <location filename="../view/main_window/main_window.py" line="2077" />
             <source>, there are </source>
             <translation>、</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2073" />
+            <location filename="../view/main_window/main_window.py" line="2079" />
             <source> files not added</source>
             <translation> 個のファイルが追加されていません</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2077" />
+            <location filename="../view/main_window/main_window.py" line="2083" />
             <source>Log has been packaged, but some files failed to read:</source>
             <translation>ログはパッケージ化されましたが、一部のファイルの読み込みに失敗しました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2084" />
+            <location filename="../view/main_window/main_window.py" line="2090" />
             <source>Log has been packaged:</source>
             <translation>ログはパッケージ化されました:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2089" />
+            <location filename="../view/main_window/main_window.py" line="2095" />
             <source>Packaging completed, but some files were skipped.</source>
             <translation>パッケージ化は完了しましたが、一部のファイルはスキップされました。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2090" />
+            <location filename="../view/main_window/main_window.py" line="2096" />
             <source>Packaging completed:</source>
             <translation>パッケージ化完了:</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2137" />
-            <location filename="../view/main_window/main_window.py" line="2304" />
-            <location filename="../view/main_window/main_window.py" line="2733" />
+            <location filename="../view/main_window/main_window.py" line="2143" />
+            <location filename="../view/main_window/main_window.py" line="2310" />
+            <location filename="../view/main_window/main_window.py" line="2739" />
             <source>Announcement</source>
             <translation>お知らせ</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2140" />
+            <location filename="../view/main_window/main_window.py" line="2146" />
             <source>There is no announcement at the moment.</source>
             <translation>現在、お知らせはありません。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2247" />
-            <location filename="../view/main_window/main_window.py" line="2257" />
+            <location filename="../view/main_window/main_window.py" line="2253" />
+            <location filename="../view/main_window/main_window.py" line="2263" />
             <source>Welcome</source>
             <translation>ようこそ</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2360" />
+            <location filename="../view/main_window/main_window.py" line="2366" />
             <source>This is the configuration area. Each configuration maps to different task sets.</source>
             <translation>ここは設定エリアです。各設定は異なるタスクセットに対応しています。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2366" />
+            <location filename="../view/main_window/main_window.py" line="2372" />
             <source>This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running.</source>
             <translation>ここはタスクエリアです。まずコントローラーとリソース設定を設定してください。それら以外のすべてのタスクは、実行前にドラッグして順序を変更できます。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2372" />
+            <location filename="../view/main_window/main_window.py" line="2378" />
             <source>The monitor area displays live footage once tasks are running.</source>
             <translation>モニターエリアは、タスク実行時にライブ映像を表示します。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2378" />
+            <location filename="../view/main_window/main_window.py" line="2384" />
             <source>When you encounter issues while running, click this button and send the generated log zip file in the debug folder to the developers.</source>
             <translation>実行中に問題が発生した場合は、このボタンをクリックし、debug フォルダ内に生成されたログ ZIP を開発者に送信してください。</translation>
         </message>
@@ -2606,54 +2606,54 @@ Supported controllers in the current resource: {controllers}</source>
             <translation type="vanished">このボタンをクリックして特殊タスクに切り替えます。特殊とマークされたタスクのみが実行されます。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2714" />
+            <location filename="../view/main_window/main_window.py" line="2720" />
             <source>Close</source>
             <translation>閉じる</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2750" />
+            <location filename="../view/main_window/main_window.py" line="2756" />
             <source>Item </source>
             <translation>項目 </translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2754" />
+            <location filename="../view/main_window/main_window.py" line="2760" />
             <source>Detail</source>
             <translation>詳細</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2765" />
-            <location filename="../view/main_window/main_window.py" line="2768" />
-            <location filename="../view/main_window/main_window.py" line="2824" />
+            <location filename="../view/main_window/main_window.py" line="2771" />
+            <location filename="../view/main_window/main_window.py" line="2774" />
+            <location filename="../view/main_window/main_window.py" line="2830" />
             <source>Info</source>
             <translation>情報</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2766" />
+            <location filename="../view/main_window/main_window.py" line="2772" />
             <source>Warning</source>
             <translation>警告</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2767" />
+            <location filename="../view/main_window/main_window.py" line="2773" />
             <source>Error</source>
             <translation>エラー</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2832" />
+            <location filename="../view/main_window/main_window.py" line="2838" />
             <source>Confirm</source>
             <translation>確認</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2875" />
+            <location filename="../view/main_window/main_window.py" line="2881" />
             <source>admin</source>
             <translation>管理者</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2908" />
+            <location filename="../view/main_window/main_window.py" line="2914" />
             <source>Stopping task...</source>
             <translation>タスクを停止中...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2916" />
+            <location filename="../view/main_window/main_window.py" line="2922" />
             <source>Please wait...</source>
             <translation>お待ちください...</translation>
         </message>
@@ -2721,64 +2721,116 @@ Supported controllers in the current resource: {controllers}</source>
     <context>
         <name>MonitorInterface</name>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="156" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="204" />
             <source>Click to sync this frame to the device</source>
             <translation>このフレームをデバイスに同期するにはクリックしてください</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="158" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="222" />
             <source>FPS: --</source>
             <translation>FPS: --</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="187" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="273" />
             <source>Save Screenshot</source>
             <translation>スクリーンショットを保存</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="193" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="279" />
             <source>Capture the current preview and store it on disk</source>
             <translation>現在のプレビューをキャプチャしてディスクに保存</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="198" />
-            <location filename="../view/monitor_interface/monitor_interface.py" line="402" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="263" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="616" />
             <source>Start Monitoring</source>
             <translation>監視を開始</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="205" />
-            <location filename="../view/monitor_interface/monitor_interface.py" line="404" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="154" />
+            <source>Monitor</source>
+            <translation>モニター</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="156" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="369" />
+            <source>Idle</source>
+            <translation>アイドル</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="164" />
+            <source>Live device preview via an independent controller connection. Click the preview to sync taps to the device.</source>
+            <translation>独立したコントローラー接続を介したライブデバイスプレビュー。プレビューをクリックしてタップをデバイスに同期します。</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="213" />
+            <source>Preview will appear when monitoring starts</source>
+            <translation>モニタリング開始時にプレビューが表示されます</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="244" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="386" />
+            <source>Resolution: --</source>
+            <translation>解像度: --</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="270" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="618" />
             <source>Start monitoring task</source>
             <translation>監視タスクを開始</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="486" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="283" />
+            <source>Monitoring starts automatically when a task runs</source>
+            <translation>タスク実行時にモニタリングが自動的に開始されます</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="363" />
+            <source>Connecting</source>
+            <translation>接続中</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="366" />
+            <source>Running</source>
+            <translation>実行中</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="375" />
+            <source>Capture rate: {} FPS</source>
+            <translation>キャプチャレート: {} FPS</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="381" />
+            <source>Resolution: {} × {}</source>
+            <translation>解像度: {} × {}</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="701" />
             <source>Screenshot saved to </source>
             <translation>スクリーンショットを保存しました: </translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="598" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="813" />
             <source>Device connection failed, cannot start monitoring</source>
             <translation>デバイス接続に失敗しました。監視を開始できません</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="398" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="612" />
             <source>Stop Monitoring</source>
             <translation>監視を停止</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="400" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="614" />
             <source>Stop monitoring task</source>
             <translation>監視タスクを停止</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="606" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="821" />
             <source>Monitoring started</source>
             <translation>監視を開始しました</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="612" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="827" />
             <source>Failed to start monitoring: </source>
             <translation>監視の開始に失敗しました: </translation>
         </message>

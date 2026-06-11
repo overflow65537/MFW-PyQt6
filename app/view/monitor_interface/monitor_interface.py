@@ -5,7 +5,7 @@ from pathlib import Path
 from time import time
 
 from PIL import Image
-from PySide6.QtCore import QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, Signal, QPoint
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -16,9 +16,16 @@ from PySide6.QtWidgets import (
 
 from qfluentwidgets import (
     BodyLabel,
+    CaptionLabel,
     FluentIcon as FIF,
+    IconWidget,
+    IndeterminateProgressRing,
     PixmapLabel,
     PrimaryPushButton,
+    PushButton,
+    SimpleCardWidget,
+    isDarkTheme,
+    qconfig,
 )
 
 from app.common.fluent_tooltip import apply_fluent_tooltip
@@ -28,6 +35,10 @@ from app.core.runner.monitor_task import MonitorTask
 from app.view.monitor import MonitorSession
 from app.view.monitor.recognition_roi_store import RecognitionRoiStore
 from app.view.monitor.roi_overlay import draw_roi_on_pixmap
+from app.view.task_interface.components.panel_splitter import (
+    PANEL_SECTION_SPACING,
+    panel_outer_margins,
+)
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 
@@ -88,6 +99,9 @@ class MonitorInterface(QWidget):
         )
         self._bind_auto_task_monitoring()
         self._bind_roi_signals()
+        self._update_monitor_status()
+        self._update_empty_state()
+        self._reposition_preview_overlays()
 
     def _bind_roi_signals(self) -> None:
         signalBus.monitor_recognition_roi.connect(self._on_recognition_roi)
@@ -128,35 +142,192 @@ class MonitorInterface(QWidget):
 
     def _setup_ui(self) -> None:
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(28, 18, 28, 18)
-        self.main_layout.setSpacing(14)
+        self.main_layout.setContentsMargins(*panel_outer_margins())
+        self.main_layout.setSpacing(PANEL_SECTION_SPACING)
 
-        self.preview_label = _ClickablePreviewLabel(self)
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(8)
+
+        self._title_icon = IconWidget(FIF.VIDEO, self)
+        self._title_icon.setFixedSize(QSize(22, 22))
+        self._title_label = BodyLabel(self.tr("Monitor"))
+        self._title_label.setStyleSheet("font-size: 20px;")
+        self._status_badge = CaptionLabel(self.tr("Idle"), self)
+        header_layout.addWidget(self._title_icon, 0, Qt.AlignmentFlag.AlignVCenter)
+        header_layout.addWidget(self._title_label, 1, Qt.AlignmentFlag.AlignVCenter)
+        header_layout.addWidget(self._status_badge, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.main_layout.addLayout(header_layout)
+
+        self._subtitle_label = CaptionLabel(
+            self.tr(
+                "Live device preview via an independent controller connection. "
+                "Click the preview to sync taps to the device."
+            ),
+            self,
+        )
+        self.main_layout.addWidget(self._subtitle_label)
+
+        self.preview_card = SimpleCardWidget(self)
+        self.preview_card.setClickEnabled(False)
+        self.preview_card.setBorderRadius(8)
+        self.preview_card.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+
+        preview_card_layout = QVBoxLayout(self.preview_card)
+        preview_card_layout.setContentsMargins(12, 12, 12, 12)
+        preview_card_layout.setSpacing(0)
+
+        self.preview_container = QWidget(self.preview_card)
+        self.preview_container.setObjectName("monitorPreviewContainer")
+        self.preview_container.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        container_layout = QVBoxLayout(self.preview_container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(0)
+        container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.preview_label = _ClickablePreviewLabel(self.preview_container)
         self.preview_label.setObjectName("monitorPreviewLabel")
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_label.setMinimumHeight(360)
         self.preview_label.setMinimumWidth(640)
         self.preview_label.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
         self.preview_label.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.preview_label.setStyleSheet(
-            """
-            QLabel#monitorPreviewLabel {
-                border-radius: 16px;
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                background-color: rgba(255, 255, 255, 0.02);
-            }
-            """
-        )
-        self.main_layout.addWidget(self.preview_label, 1)
         self.preview_label.clicked.connect(self._on_preview_clicked)
         apply_fluent_tooltip(
             self.preview_label,
             self.tr("Click to sync this frame to the device"),
         )
-        self._fps_overlay = BodyLabel(self.tr("FPS: --"), self.preview_label)
+        container_layout.addWidget(
+            self.preview_label, 0, Qt.AlignmentFlag.AlignCenter
+        )
+        preview_card_layout.addWidget(self.preview_container, 1)
+        self.main_layout.addWidget(self.preview_card, 1)
+
+        self._empty_hint = CaptionLabel(
+            self.tr("Preview will appear when monitoring starts"),
+            self.preview_container,
+        )
+        self._empty_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_hint.setWordWrap(True)
+        self._empty_hint.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
+
+        self._fps_overlay = BodyLabel(self.tr("FPS: --"), self.preview_container)
         self._fps_overlay.setObjectName("monitorFpsOverlay")
+        self._fps_overlay.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
+        self._fps_overlay.setWordWrap(False)
+
+        self._loading_overlay = QWidget(self.preview_container)
+        self._loading_overlay.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents
+        )
+        loading_layout = QHBoxLayout(self._loading_overlay)
+        loading_layout.setContentsMargins(0, 0, 0, 0)
+        loading_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._loading_indicator = IndeterminateProgressRing(self._loading_overlay)
+        self._loading_indicator.setFixedSize(36, 36)
+        loading_layout.addWidget(self._loading_indicator)
+        self._loading_overlay.hide()
+
+        info_layout = QHBoxLayout()
+        info_layout.setContentsMargins(0, 0, 0, 0)
+        info_layout.setSpacing(12)
+        self._resolution_label = CaptionLabel(self.tr("Resolution: --"), self)
+        self._capture_rate_label = CaptionLabel("", self)
+        self._update_capture_rate_label()
+        cfg.monitor_capture_fps.valueChanged.connect(
+            lambda *_: self._update_capture_rate_label()
+        )
+        info_layout.addWidget(self._resolution_label)
+        info_layout.addStretch(1)
+        info_layout.addWidget(self._capture_rate_label)
+        self.main_layout.addLayout(info_layout)
+
+        self.control_card = SimpleCardWidget(self)
+        self.control_card.setClickEnabled(False)
+        self.control_card.setBorderRadius(8)
+        control_layout = QHBoxLayout(self.control_card)
+        control_layout.setContentsMargins(12, 10, 12, 10)
+        control_layout.setSpacing(12)
+
+        self.monitor_control_button = PrimaryPushButton(
+            self.tr("Start Monitoring"), self.control_card
+        )
+        self.monitor_control_button.setIcon(FIF.PLAY)
+        self.monitor_control_button.setIconSize(QSize(18, 18))
+        self.monitor_control_button.clicked.connect(self._on_monitor_control_clicked)
+        apply_fluent_tooltip(
+            self.monitor_control_button,
+            self.tr("Start monitoring task"),
+        )
+
+        self.save_button = PushButton(self.tr("Save Screenshot"), self.control_card)
+        self.save_button.setIcon(FIF.CAMERA)
+        self.save_button.setIconSize(QSize(18, 18))
+        self.save_button.clicked.connect(self._on_save_screenshot)
+        apply_fluent_tooltip(
+            self.save_button,
+            self.tr("Capture the current preview and store it on disk"),
+        )
+
+        self._control_hint_label = CaptionLabel(
+            self.tr("Monitoring starts automatically when a task runs"),
+            self.control_card,
+        )
+        control_layout.addWidget(self.monitor_control_button)
+        control_layout.addWidget(self.save_button)
+        control_layout.addStretch(1)
+        control_layout.addWidget(self._control_hint_label)
+        self.main_layout.addWidget(self.control_card, 0)
+
+        self.main_layout.setStretch(0, 0)
+        self.main_layout.setStretch(1, 0)
+        self.main_layout.setStretch(2, 1)
+        self.main_layout.setStretch(3, 0)
+        self.main_layout.setStretch(4, 0)
+
+        self._last_frame_timestamp: Optional[float] = None
+        self._last_fps_overlay_update: Optional[float] = None
+
+        qconfig.themeChanged.connect(self._apply_theme_styles)
+        self._apply_theme_styles()
+
+    def _apply_theme_styles(self, *_args) -> None:
+        muted = "rgba(128, 128, 128, 0.92)" if isDarkTheme() else "rgba(96, 96, 96, 0.95)"
+        for label in (
+            self._subtitle_label,
+            self._resolution_label,
+            self._capture_rate_label,
+            self._control_hint_label,
+            self._empty_hint,
+        ):
+            label.setStyleSheet(f"color: {muted};")
+
+        preview_bg = (
+            "rgba(255, 255, 255, 0.04)"
+            if isDarkTheme()
+            else "rgba(0, 0, 0, 0.03)"
+        )
+        self.preview_label.setStyleSheet(
+            f"""
+            QLabel#monitorPreviewLabel {{
+                border-radius: 8px;
+                background-color: {preview_bg};
+            }}
+            """
+        )
+        self.preview_container.setStyleSheet(
+            "QWidget#monitorPreviewContainer { background: transparent; }"
+        )
         self._fps_overlay.setStyleSheet(
             """
             QLabel#monitorFpsOverlay {
@@ -168,48 +339,89 @@ class MonitorInterface(QWidget):
             }
             """
         )
-        self._fps_overlay.setAttribute(
-            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        self._loading_overlay.setStyleSheet(
+            "background-color: rgba(0, 0, 0, 0.35); border-radius: 8px;"
         )
-        self._fps_overlay.setWordWrap(False)
-        self._fps_overlay.adjustSize()
-        self._reposition_fps_overlay()
-        self._last_frame_timestamp: Optional[float] = None
-        self._last_fps_overlay_update: Optional[float] = None
+        self._update_monitor_status()
 
-        controls_layout = QHBoxLayout()
-        controls_layout.setContentsMargins(0, 0, 0, 0)
-        controls_layout.setSpacing(18)
-        controls_layout.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+    def _apply_status_badge_style(self, state: str) -> None:
+        styles = {
+            "idle": ("rgba(128, 128, 128, 0.22)", "rgba(160, 160, 160, 0.95)"),
+            "connecting": ("rgba(227, 179, 65, 0.22)", "#e3b341"),
+            "running": ("rgba(80, 200, 120, 0.22)", "#50c878"),
+        }
+        bg, fg = styles.get(state, styles["idle"])
+        self._status_badge.setStyleSheet(
+            f"background-color: {bg}; color: {fg}; "
+            "border-radius: 10px; padding: 4px 10px;"
         )
 
-        self.save_button = PrimaryPushButton(self.tr("Save Screenshot"), self)
-        self.save_button.setIcon(FIF.CAMERA)
-        self.save_button.setIconSize(QSize(18, 18))
-        self.save_button.clicked.connect(self._on_save_screenshot)
-        apply_fluent_tooltip(
-            self.save_button,
-            self.tr("Capture the current preview and store it on disk"),
-        )
-        controls_layout.addWidget(self.save_button)
+    def _update_monitor_status(self) -> None:
+        session = getattr(self, "_session", None)
+        monitoring_active = session is not None and session.monitoring_active
+        if self._starting_monitoring:
+            self._status_badge.setText(self.tr("Connecting"))
+            self._apply_status_badge_style("connecting")
+        elif monitoring_active:
+            self._status_badge.setText(self.tr("Running"))
+            self._apply_status_badge_style("running")
+        else:
+            self._status_badge.setText(self.tr("Idle"))
+            self._apply_status_badge_style("idle")
 
-        self.monitor_control_button = PrimaryPushButton(
-            self.tr("Start Monitoring"), self
+    def _update_capture_rate_label(self) -> None:
+        fps = max(1, int(cfg.get(cfg.monitor_capture_fps)))
+        self._capture_rate_label.setText(
+            self.tr("Capture rate: {} FPS").format(fps)
         )
-        self.monitor_control_button.setIcon(FIF.PLAY)
-        self.monitor_control_button.setIconSize(QSize(18, 18))
-        self.monitor_control_button.clicked.connect(self._on_monitor_control_clicked)
-        apply_fluent_tooltip(
-            self.monitor_control_button,
-            self.tr("Start monitoring task"),
-        )
-        controls_layout.addWidget(self.monitor_control_button)
 
-        controls_layout.addStretch()
-        self.main_layout.addLayout(controls_layout)
-        self.main_layout.setStretch(0, 1)
-        self.main_layout.setStretch(1, 0)
+    def _update_resolution_label(self) -> None:
+        if self._image_width and self._image_height:
+            self._resolution_label.setText(
+                self.tr("Resolution: {} × {}").format(
+                    self._image_width, self._image_height
+                )
+            )
+        else:
+            self._resolution_label.setText(self.tr("Resolution: --"))
+
+    def _update_empty_state(self) -> None:
+        visible = self._preview_pixmap is None or self._preview_pixmap.isNull()
+        self._empty_hint.setVisible(visible)
+        if visible:
+            self._reposition_preview_overlays()
+
+    def _reposition_preview_overlays(self) -> None:
+        if not hasattr(self, "preview_container"):
+            return
+        container_size = self.preview_container.size()
+        if container_size.width() <= 0 or container_size.height() <= 0:
+            return
+
+        if self._empty_hint.isVisible():
+            hint_width = min(container_size.width() - 48, 360)
+            self._empty_hint.setFixedWidth(max(hint_width, 120))
+            hint_height = self._empty_hint.sizeHint().height()
+            self._empty_hint.move(
+                max(0, (container_size.width() - self._empty_hint.width()) // 2),
+                max(0, (container_size.height() - hint_height) // 2),
+            )
+
+        if self._loading_overlay.isVisible():
+            self._loading_overlay.setGeometry(
+                0, 0, container_size.width(), container_size.height()
+            )
+
+        if self._fps_overlay and self.preview_label.width() > 0:
+            preview_pos = self.preview_label.mapTo(self.preview_container, QPoint(0, 0))
+            margin = 12
+            self._fps_overlay.adjustSize()
+            overlay_size = self._fps_overlay.size()
+            x = preview_pos.x() + self.preview_label.width() - overlay_size.width() - margin
+            y = preview_pos.y() + margin
+            if x < preview_pos.x():
+                x = preview_pos.x()
+            self._fps_overlay.move(x, y)
 
     def _bind_auto_task_monitoring(self) -> None:
         if hasattr(self.service_coordinator, "fs_signals"):
@@ -223,13 +435,25 @@ class MonitorInterface(QWidget):
             return
         self._starting_monitoring = loading
         self.loading_changed.emit(loading)
+        if loading:
+            self._loading_overlay.show()
+            self._loading_indicator.start()
+        else:
+            self._loading_overlay.hide()
+            self._loading_indicator.stop()
+        self._update_monitor_status()
+        self._reposition_preview_overlays()
 
     def _emit_preview_cleared(self) -> None:
         self._preview_pixmap = None
         self._current_pil_image = None
+        self._image_width = None
+        self._image_height = None
         self._roi_store.clear()
         self.preview_label.clear()
         self._update_fps_overlay(None)
+        self._update_resolution_label()
+        self._update_empty_state()
         self.preview_cleared.emit()
 
     def _load_placeholder_image(self) -> None:
@@ -244,11 +468,12 @@ class MonitorInterface(QWidget):
 
     def _refresh_preview_image(self) -> None:
         if not self._preview_pixmap:
-            self._reposition_fps_overlay()
+            self._update_empty_state()
+            self._reposition_preview_overlays()
             return
         target_size = self.preview_label.size()
         if target_size.width() <= 0 or target_size.height() <= 0:
-            self._reposition_fps_overlay()
+            self._reposition_preview_overlays()
             return
         scaled = self._preview_pixmap.scaled(
             target_size,
@@ -257,7 +482,8 @@ class MonitorInterface(QWidget):
         )
         self.preview_label.setPixmap(scaled)
         self._preview_scaled_size = scaled.size()
-        self._reposition_fps_overlay()
+        self._update_empty_state()
+        self._reposition_preview_overlays()
 
     def set_preview_pixmap(self, pixmap: Optional[QPixmap]) -> None:
         self._preview_pixmap = pixmap
@@ -287,8 +513,12 @@ class MonitorInterface(QWidget):
         self._is_landscape = is_landscape
 
         aspect_ratio = image_width / image_height if image_height > 0 else 1.0
-        available_width = self.width() - 56
-        available_height = self.height() - 200
+        container_width = max(self.preview_container.width() - 24, 640)
+        container_height = max(self.preview_container.height() - 24, 360)
+        available_width = container_width if container_width > 0 else self.width() - 56
+        available_height = (
+            container_height if container_height > 0 else self.height() - 260
+        )
 
         if is_landscape:
             target_width = min(available_width, 1280)
@@ -329,6 +559,8 @@ class MonitorInterface(QWidget):
                 fps_value = 1.0 / interval
         self._last_frame_timestamp = current_timestamp
         self._update_fps_overlay(fps_value)
+        self._update_resolution_label()
+        self._update_empty_state()
 
     def _render_preview_from_current_frame(self) -> None:
         if self._current_pil_image is None:
@@ -371,28 +603,7 @@ class MonitorInterface(QWidget):
             text = f"{self.tr('FPS')}: {fps_value:.1f}"
         self._fps_overlay.setText(text)
         self._fps_overlay.adjustSize()
-        self._reposition_fps_overlay()
-
-    def _reposition_fps_overlay(self) -> None:
-        if not self._fps_overlay:
-            return
-        preview_size = self.preview_label.size()
-        margin = 12
-        max_width = max(0, preview_size.width() - margin * 2)
-        if max_width > 0:
-            self._fps_overlay.setMaximumWidth(max_width)
-        self._fps_overlay.adjustSize()
-        overlay_size = self._fps_overlay.size()
-
-        x = preview_size.width() - overlay_size.width() - margin
-        y = margin
-        if x < 0:
-            x = 0
-        if y + overlay_size.height() > preview_size.height():
-            y = max(0, preview_size.height() - overlay_size.height())
-        if x + overlay_size.width() > preview_size.width():
-            x = max(0, preview_size.width() - overlay_size.width())
-        self._fps_overlay.move(x, y)
+        self._reposition_preview_overlays()
 
     def _set_monitor_control_running(self, running: bool) -> None:
         if not hasattr(self, "monitor_control_button"):
@@ -405,6 +616,7 @@ class MonitorInterface(QWidget):
             self.monitor_control_button.setText(self.tr("Start Monitoring"))
             self.monitor_control_button.setIcon(FIF.PLAY)
             self.monitor_control_button.setToolTip(self.tr("Start monitoring task"))
+        self._update_monitor_status()
 
     async def _on_session_controller_disconnected(self) -> None:
         if not (self._session.monitoring_active or self._starting_monitoring):
@@ -470,11 +682,11 @@ class MonitorInterface(QWidget):
                 self._image_width, self._image_height, force_update=True
             )
         self._refresh_preview_image()
-        self._reposition_fps_overlay()
+        self._reposition_preview_overlays()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
-        QTimer.singleShot(0, self._reposition_fps_overlay)
+        QTimer.singleShot(0, self._reposition_preview_overlays)
 
     def _on_save_screenshot(self) -> None:
         if not self._current_pil_image:

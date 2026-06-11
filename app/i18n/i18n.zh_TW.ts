@@ -2534,70 +2534,70 @@ Supported controllers in the current resource: {controllers}</source>
             <translation>日誌封裝失敗：</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2071" />
+            <location filename="../view/main_window/main_window.py" line="2077" />
             <source>, there are </source>
             <translation>，有 </translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2073" />
+            <location filename="../view/main_window/main_window.py" line="2079" />
             <source> files not added</source>
             <translation> 個檔案未加入</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2077" />
+            <location filename="../view/main_window/main_window.py" line="2083" />
             <source>Log has been packaged, but some files failed to read:</source>
             <translation>日誌已封裝，但部分檔案讀取失敗：</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2084" />
+            <location filename="../view/main_window/main_window.py" line="2090" />
             <source>Log has been packaged:</source>
             <translation>日誌已封裝：</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2089" />
+            <location filename="../view/main_window/main_window.py" line="2095" />
             <source>Packaging completed, but some files were skipped.</source>
             <translation>封裝完成，但部分檔案已跳過。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2090" />
+            <location filename="../view/main_window/main_window.py" line="2096" />
             <source>Packaging completed:</source>
             <translation>封裝完成：</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2137" />
-            <location filename="../view/main_window/main_window.py" line="2304" />
-            <location filename="../view/main_window/main_window.py" line="2733" />
+            <location filename="../view/main_window/main_window.py" line="2143" />
+            <location filename="../view/main_window/main_window.py" line="2310" />
+            <location filename="../view/main_window/main_window.py" line="2739" />
             <source>Announcement</source>
             <translation>公告</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2140" />
+            <location filename="../view/main_window/main_window.py" line="2146" />
             <source>There is no announcement at the moment.</source>
             <translation>目前沒有公告。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2247" />
-            <location filename="../view/main_window/main_window.py" line="2257" />
+            <location filename="../view/main_window/main_window.py" line="2253" />
+            <location filename="../view/main_window/main_window.py" line="2263" />
             <source>Welcome</source>
             <translation>歡迎</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2360" />
+            <location filename="../view/main_window/main_window.py" line="2366" />
             <source>This is the configuration area. Each configuration maps to different task sets.</source>
             <translation>這是設定區域。每個設定對應不同的任務集。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2366" />
+            <location filename="../view/main_window/main_window.py" line="2372" />
             <source>This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running.</source>
             <translation>這是任務區域。請先設定控制器與資源配置；除了這兩項，每個任務在執行前都可拖曳重新排序。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2372" />
+            <location filename="../view/main_window/main_window.py" line="2378" />
             <source>The monitor area displays live footage once tasks are running.</source>
             <translation>監控區域會在任務執行時顯示即時畫面。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2378" />
+            <location filename="../view/main_window/main_window.py" line="2384" />
             <source>When you encounter issues while running, click this button and send the generated log zip file in the debug folder to the developers.</source>
             <translation>執行時若遇到問題，請點擊此按鈕，並將 debug 目錄中產生的日誌壓縮包傳送給開發者。</translation>
         </message>
@@ -2606,54 +2606,54 @@ Supported controllers in the current resource: {controllers}</source>
             <translation type="vanished">點擊此按鈕切換至特殊任務；僅標記為特殊的任務會執行。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2714" />
+            <location filename="../view/main_window/main_window.py" line="2720" />
             <source>Close</source>
             <translation>關閉</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2750" />
+            <location filename="../view/main_window/main_window.py" line="2756" />
             <source>Item </source>
             <translation>項目 </translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2754" />
+            <location filename="../view/main_window/main_window.py" line="2760" />
             <source>Detail</source>
             <translation>詳細</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2765" />
-            <location filename="../view/main_window/main_window.py" line="2768" />
-            <location filename="../view/main_window/main_window.py" line="2824" />
+            <location filename="../view/main_window/main_window.py" line="2771" />
+            <location filename="../view/main_window/main_window.py" line="2774" />
+            <location filename="../view/main_window/main_window.py" line="2830" />
             <source>Info</source>
             <translation>資訊</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2766" />
+            <location filename="../view/main_window/main_window.py" line="2772" />
             <source>Warning</source>
             <translation>警告</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2767" />
+            <location filename="../view/main_window/main_window.py" line="2773" />
             <source>Error</source>
             <translation>錯誤</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2832" />
+            <location filename="../view/main_window/main_window.py" line="2838" />
             <source>Confirm</source>
             <translation>確認</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2875" />
+            <location filename="../view/main_window/main_window.py" line="2881" />
             <source>admin</source>
             <translation>admin</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2908" />
+            <location filename="../view/main_window/main_window.py" line="2914" />
             <source>Stopping task...</source>
             <translation>正在停止任務...</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2916" />
+            <location filename="../view/main_window/main_window.py" line="2922" />
             <source>Please wait...</source>
             <translation>請稍候...</translation>
         </message>
@@ -2721,64 +2721,116 @@ Supported controllers in the current resource: {controllers}</source>
     <context>
         <name>MonitorInterface</name>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="156" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="204" />
             <source>Click to sync this frame to the device</source>
             <translation>點擊將此畫面同步至裝置</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="158" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="222" />
             <source>FPS: --</source>
             <translation>FPS：--</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="187" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="273" />
             <source>Save Screenshot</source>
             <translation>儲存截圖</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="193" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="279" />
             <source>Capture the current preview and store it on disk</source>
             <translation>擷取當前預覽畫面並儲存至磁碟</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="198" />
-            <location filename="../view/monitor_interface/monitor_interface.py" line="402" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="263" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="616" />
             <source>Start Monitoring</source>
             <translation>開始監控</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="205" />
-            <location filename="../view/monitor_interface/monitor_interface.py" line="404" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="154" />
+            <source>Monitor</source>
+            <translation>監控器</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="156" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="369" />
+            <source>Idle</source>
+            <translation>閒置</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="164" />
+            <source>Live device preview via an independent controller connection. Click the preview to sync taps to the device.</source>
+            <translation>透過獨立控制器連接進行裝置即時預覽。點擊預覽可將點擊同步至裝置。</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="213" />
+            <source>Preview will appear when monitoring starts</source>
+            <translation>監控開始時將顯示預覽</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="244" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="386" />
+            <source>Resolution: --</source>
+            <translation>解析度：--</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="270" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="618" />
             <source>Start monitoring task</source>
             <translation>開始監控任務</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="486" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="283" />
+            <source>Monitoring starts automatically when a task runs</source>
+            <translation>任務執行時自動開始監控</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="363" />
+            <source>Connecting</source>
+            <translation>連線中</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="366" />
+            <source>Running</source>
+            <translation>執行中</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="375" />
+            <source>Capture rate: {} FPS</source>
+            <translation>擷取率：{} FPS</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="381" />
+            <source>Resolution: {} × {}</source>
+            <translation>解析度：{} × {}</translation>
+        </message>
+        <message>
+            <location filename="../view/monitor_interface/monitor_interface.py" line="701" />
             <source>Screenshot saved to </source>
             <translation>螢幕截圖已儲存至 </translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="598" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="813" />
             <source>Device connection failed, cannot start monitoring</source>
             <translation>裝置連線失敗，無法開始監控</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="398" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="612" />
             <source>Stop Monitoring</source>
             <translation>停止監控</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="400" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="614" />
             <source>Stop monitoring task</source>
             <translation>停止監控任務</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="606" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="821" />
             <source>Monitoring started</source>
             <translation>監控已開始</translation>
         </message>
         <message>
-            <location filename="../view/monitor_interface/monitor_interface.py" line="612" />
+            <location filename="../view/monitor_interface/monitor_interface.py" line="827" />
             <source>Failed to start monitoring: </source>
             <translation>開始監控失敗：</translation>
         </message>
