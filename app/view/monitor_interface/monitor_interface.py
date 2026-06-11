@@ -348,7 +348,10 @@ class MonitorInterface(QWidget):
             active_roi = self._roi_store.peek()
             if active_roi and active_roi.get("box"):
                 label = active_roi.get("node", "")
-                pixmap = draw_roi_on_pixmap(pixmap, active_roi["box"], label=label)
+                phase = active_roi.get("phase", "hit")
+                pixmap = draw_roi_on_pixmap(
+                    pixmap, active_roi["box"], label=label, phase=phase
+                )
         self._preview_pixmap = pixmap
         self._refresh_preview_image()
         self.preview_pixmap_changed.emit(self._preview_pixmap)

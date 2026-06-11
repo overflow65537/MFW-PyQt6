@@ -50,7 +50,10 @@ except ImportError:  # pragma: no cover
 from PySide6.QtCore import QObject, Signal
 
 from app.utils.logger import logger
-from app.core.runner.recognition_roi import extract_recognition_box
+from app.core.runner.recognition_roi import (
+    extract_node_recognition_roi,
+    extract_recognition_box,
+)
 from app.common.config import cfg
 
 
@@ -239,6 +242,17 @@ class MaaContextSink(ContextEventSink):
             return
 
         if noti_type == NotificationType.Starting:
+            box = extract_node_recognition_roi(context, detail.name)
+            if not box:
+                return
+            self._emit(
+                {
+                    "name": "recognition_roi",
+                    "phase": "recognizing",
+                    "node": detail.name,
+                    "box": list(box),
+                }
+            )
             return
 
         if noti_type == NotificationType.Failed:
@@ -268,6 +282,7 @@ class MaaContextSink(ContextEventSink):
         self._emit(
             {
                 "name": "recognition_roi",
+                "phase": "hit",
                 "node": detail.name,
                 "reco_id": detail.reco_id,
                 "box": list(box),

@@ -13,6 +13,7 @@ def draw_roi_on_pixmap(
     box: list[int] | tuple[int, int, int, int],
     *,
     label: str = "",
+    phase: str = "hit",
 ) -> QPixmap:
     """在预览图像上绘制识别 ROI 边框。"""
     if pixmap.isNull() or not box or len(box) < 4:
@@ -27,7 +28,11 @@ def draw_roi_on_pixmap(
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
     stroke = max(2, min(result.width(), result.height()) // 240)
-    pen = QPen(QColor(80, 220, 120, 230))
+    if phase == "recognizing":
+        pen_color = QColor(240, 72, 72, 235)
+    else:
+        pen_color = QColor(80, 220, 120, 230)
+    pen = QPen(pen_color)
     pen.setWidth(stroke)
     painter.setPen(pen)
     painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -62,6 +67,7 @@ def normalize_roi_payload(payload: dict) -> Optional[dict]:
         return None
     return {
         "clear": False,
+        "phase": str(payload.get("phase", "hit")),
         "node": str(payload.get("node", "")),
         "reco_id": payload.get("reco_id"),
         "box": [int(box[0]), int(box[1]), int(box[2]), int(box[3])],
