@@ -1083,6 +1083,7 @@ class Update(BaseUpdate):
         force_full_download: bool = False,
         *,
         check_only: bool = False,
+        suppress_info_bar: bool = False,
     ):
         """
         更新器核心对象。
@@ -1099,6 +1100,7 @@ class Update(BaseUpdate):
             interface: 接口配置字典，包含项目信息（name, version, github/url, mirrorchyan_rid 等）
             force_full_download: 是否强制完整下载
             check_only: 是否仅检查更新
+            suppress_info_bar: 是否抑制 InfoBar（批量更新时由上层汇总提示）
         """
         super().__init__()
         self.service_coordinator = service_coordinator
@@ -1107,6 +1109,9 @@ class Update(BaseUpdate):
         self.info_bar_signal = info_bar_signal
         self.force_full_download = force_full_download
         self.check_only = check_only
+        self.suppress_info_bar = suppress_info_bar
+        self._last_check_error: str | None = None
+        self._check_no_update: bool = False
 
         # 从 interface 中获取参数
         self.interface = interface or {}
@@ -1137,6 +1142,28 @@ class Update(BaseUpdate):
         self.version_name: str | None = None
         # 防止重复运行的标记
         self._is_running: bool = False
+
+    def _begin_check_state(self) -> None:
+        self._last_check_error = None
+        self._check_no_update = False
+
+    def _mark_check_no_update(self) -> None:
+        self._check_no_update = True
+        self._last_check_error = None
+
+    def _record_check_error(self, message: str | None) -> None:
+        if message:
+            self._last_check_error = str(message)
+
+    def _stop_after_check_failure(self, update_info) -> None:
+        """检查阶段未拿到下载地址时，统一只弹出一条错误提示。"""
+        if update_info is False and self._check_no_update:
+            self._stop_with_notice(0, "info", self.tr("Already up to date"))
+            return
+        if self._last_check_error:
+            self._stop_with_notice(0, "error", self._last_check_error)
+            return
+        self._stop_with_notice(0, "error", self.tr("Download failed"))
 
     def _normalize_channel(self, value) -> Config.UpdateChannel:
         """Convert stored channel value into a valid UpdateChannel enum."""
@@ -1330,9 +1357,9 @@ class Update(BaseUpdate):
         if not download_url:
             if update_info is False:
                 logger.info("[步骤1] 当前已是最新版本，无需下载")
-                return self._stop_with_notice(0, "info", self.tr("Already up to date"))
+                return self._stop_after_check_failure(update_info)
             logger.error("[步骤1] 检查完成但未获取到下载地址")
-            return self._stop_with_notice(0, "error", self.tr("Download failed"))
+            return self._stop_after_check_failure(update_info)
 
         logger.info("[步骤1] 检查完成: 发现新版本 %s", self.latest_update_version)
         logger.info("[步骤1] 下载来源: %s", download_source)
@@ -1427,11 +1454,9 @@ class Update(BaseUpdate):
             if not download_url:
                 if update_info is False:
                     logger.info("[步骤1] 当前已是最新版本，无需下载")
-                    return self._stop_with_notice(
-                        0, "info", self.tr("Already up to date")
-                    )
+                    return self._stop_after_check_failure(update_info)
                 logger.error("[步骤1] 检查完成但未获取到下载地址")
-                return self._stop_with_notice(0, "error", self.tr("Download failed"))
+                return self._stop_after_check_failure(update_info)
 
             logger.info("[步骤1] 检查完成: 发现新版本 %s", self.latest_update_version)
             logger.info("[步骤1] 下载来源: %s", download_source)
@@ -1642,6 +1667,7 @@ class Update(BaseUpdate):
     def check_update(self, fetch_download_url: bool = True) -> dict | bool:
         # 防止外部直接调用 check_update 时上下文未初始化
         self._init_run_context()
+        self._begin_check_state()
         logger.info("  [检查更新] 开始检查...")
         logger.debug(
             "  [检查更新] 资源ID: %s, CDK: %s",
@@ -1704,12 +1730,13 @@ class Update(BaseUpdate):
                     logger.info("  [检查更新] Mirror: 当前已是最新版本")
                     self.latest_update_version = self.current_version
                     cfg.set(cfg.latest_update_version, self.latest_update_version)
+                    self._mark_check_no_update()
                     return False
             elif mirror_status == "failed_info":
                 logger.info(
-                    "  [检查更新] Mirror 检查失败: %s", mirror_result.get("msg")
+                    "  [检查更新] Mirror 检查失败: %s，将继续尝试 GitHub",
+                    mirror_result.get("msg"),
                 )
-                self._emit_info_bar("warning", mirror_result.get("msg"))
 
             # 记录 Mirror 返回的版本，用于后续逻辑或 GitHub 回退
             if mirror_version:
@@ -1773,6 +1800,7 @@ class Update(BaseUpdate):
         logger.info("  [检查更新] 切换到 GitHub 源...")
         if not self.url:
             logger.warning("  [检查更新] GitHub: 未配置项目地址")
+            self._record_check_error(self.tr("GitHub update check failed"))
             return False
 
         if self.version_name and not self.force_full_download:
@@ -1783,6 +1811,7 @@ class Update(BaseUpdate):
             github_api_url = self._form_github_url(self.url, "download")
         if not github_api_url:
             logger.warning("  [检查更新] GitHub: API 地址解析失败")
+            self._record_check_error(self.tr("GitHub update check failed"))
             return False
 
         logger.debug("  [检查更新] GitHub API: %s", github_api_url)
@@ -1794,7 +1823,7 @@ class Update(BaseUpdate):
         )
 
         if not isinstance(github_result, dict):
-            self._emit_info_bar("warning", self.tr("GitHub update check failed"))
+            self._record_check_error(self.tr("GitHub update check failed"))
             return False
 
         if github_result.get("status"):
@@ -1807,12 +1836,13 @@ class Update(BaseUpdate):
                     if raw_msg is not None
                     else self.tr("GitHub update check failed")
                 )
-                self._emit_info_bar("error", msg)
+                self._record_check_error(msg)
                 return False
             if status == "no_need" and not self.force_full_download:
                 logger.info("  [检查更新] GitHub: 当前已是最新版本")
                 self.latest_update_version = self.current_version
                 cfg.set(cfg.latest_update_version, self.latest_update_version)
+                self._mark_check_no_update()
                 return False
 
         tag_name = github_result.get("tag_name") or github_result.get("name")
@@ -1841,12 +1871,14 @@ class Update(BaseUpdate):
         )
         if not download_asset:
             logger.warning("  [检查更新] GitHub: 未找到下载地址")
+            self._record_check_error(self.tr("GitHub update check failed"))
             return False
 
         download_url = download_asset.get("browser_download_url")
 
         if not download_url:
             logger.warning("  [检查更新] GitHub: 未找到下载地址")
+            self._record_check_error(self.tr("GitHub update check failed"))
             return False
         logger.info("  [检查更新] GitHub: 找到新版本 %s", tag_name)
         logger.debug(
@@ -2146,6 +2178,7 @@ class Update(BaseUpdate):
         """
         # 保证运行环境（os_type / arch / current_version 等）已初始化（UI 模式）
         self._init_run_context(ui_mode=True)
+        self._begin_check_state()
 
         logger.info("  [检查更新-UI] 开始检查 UI 更新...")
         from app.common.__version__ import __version__
@@ -2200,12 +2233,13 @@ class Update(BaseUpdate):
                 logger.info("  [检查更新] Mirror: 当前已是最新版本")
                 self.latest_update_version = self.current_version
                 cfg.set(cfg.latest_update_version, self.latest_update_version)
+                self._mark_check_no_update()
                 return False
             elif mirror_status == "failed_info":
                 logger.info(
-                    "  [检查更新] Mirror 检查失败: %s", mirror_result.get("msg")
+                    "  [检查更新] Mirror 检查失败: %s，将继续尝试 GitHub",
+                    mirror_result.get("msg"),
                 )
-                self._emit_info_bar("warning", mirror_result.get("msg"))
 
             # 记录 Mirror 返回的版本，用于后续逻辑或 GitHub 回退
             if mirror_version:
@@ -2262,6 +2296,7 @@ class Update(BaseUpdate):
         logger.info("  [检查更新] 切换到 GitHub 源...")
         if not url:
             logger.warning("  [检查更新] GitHub: 未配置项目地址")
+            self._record_check_error(self.tr("GitHub update check failed"))
             return False
 
         if self.version_name and not self.force_full_download:
@@ -2270,6 +2305,7 @@ class Update(BaseUpdate):
             github_api_url = self._form_github_url(url, "download")
         if not github_api_url:
             logger.warning("  [检查更新] GitHub: API 地址解析失败")
+            self._record_check_error(self.tr("GitHub update check failed"))
             return False
 
         logger.debug("  [检查更新] GitHub API: %s", github_api_url)
@@ -2281,7 +2317,7 @@ class Update(BaseUpdate):
         )
 
         if not isinstance(github_result, dict):
-            self._emit_info_bar("warning", self.tr("GitHub update check failed"))
+            self._record_check_error(self.tr("GitHub update check failed"))
             return False
 
         if github_result.get("status"):
@@ -2294,12 +2330,13 @@ class Update(BaseUpdate):
                     if raw_msg is not None
                     else self.tr("GitHub update check failed")
                 )
-                self._emit_info_bar("error", msg)
+                self._record_check_error(msg)
                 return False
             if status == "no_need" and not self.force_full_download:
                 logger.info("  [检查更新] GitHub: 当前已是最新版本")
                 self.latest_update_version = self.current_version
                 cfg.set(cfg.latest_update_version, self.latest_update_version)
+                self._mark_check_no_update()
                 return False
 
         tag_name = github_result.get("tag_name") or github_result.get("name")
@@ -2332,12 +2369,14 @@ class Update(BaseUpdate):
         )
         if not download_asset:
             logger.warning("  [检查更新] GitHub: 未找到下载地址")
+            self._record_check_error(self.tr("GitHub update check failed"))
             return False
 
         download_url = download_asset.get("browser_download_url")
 
         if not download_url:
             logger.warning("  [检查更新] GitHub: 未找到下载地址")
+            self._record_check_error(self.tr("GitHub update check failed"))
             return False
         logger.info("  [检查更新] GitHub: 找到新版本 %s", tag_name)
         logger.debug(
@@ -2365,8 +2404,8 @@ class Update(BaseUpdate):
 
     def _emit_info_bar(self, level: str, message: str | None):
         """向主界面请求显示 InfoBar 提示"""
-        # 在仅检查模式下不打扰用户界面，避免弹出 InfoBar 提示
-        if self.check_only:
+        # 在仅检查模式或批量更新抑制模式下不打扰用户界面
+        if self.check_only or self.suppress_info_bar:
             return
         if message:
             self.info_bar_signal.emit(level or "info", message)
@@ -2523,11 +2562,9 @@ class MultiResourceUpdate(Update):
             if not download_url:
                 if update_info is False:
                     logger.info("[步骤1] 当前已是最新版本，无需下载")
-                    return self._stop_with_notice(
-                        0, "info", self.tr("Already up to date")
-                    )
+                    return self._stop_after_check_failure(update_info)
                 logger.error("[步骤1] 检查完成但未获取到下载地址")
-                return self._stop_with_notice(0, "error", self.tr("Download failed"))
+                return self._stop_after_check_failure(update_info)
 
             logger.info("[步骤1] 检查完成: 发现新版本 %s", self.latest_update_version)
             logger.info("[步骤1] 下载来源: %s", download_source)

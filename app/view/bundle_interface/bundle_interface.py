@@ -415,6 +415,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self._current_bundle_name: Optional[str] = None  # 当前正在更新的bundle名称
         self._update_queue: list[str] = []  # 更新队列
         self._is_updating_all = False
+        self._bulk_update_errors: list[str] = []
         self._selected_bundle_name: Optional[str] = None  # 当前选中的 bundle 名称
 
         self._retranslate_ui()
@@ -998,6 +999,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
             # 将需要更新的bundle加入队列
             self._update_queue = bundles_to_update
             self._is_updating_all = True
+            self._bulk_update_errors = []
             self._start_next_update()
 
         except Exception as e:
@@ -1057,6 +1059,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
             # 将需要更新的bundle加入队列
             self._update_queue = bundles_to_update
             self._is_updating_all = True
+            self._bulk_update_errors = []
             self._start_next_update()
 
         except Exception as e:
@@ -1092,6 +1095,19 @@ class BundleInterface(UI_BundleInterface, QWidget):
             is_auto_update_all = self._is_updating_all  # 保存状态
             self._is_updating_all = False
             self._current_updater = None
+
+            if is_auto_update_all and self._bulk_update_errors:
+                unique_errors = list(dict.fromkeys(self._bulk_update_errors))
+                if len(unique_errors) == 1:
+                    signalBus.info_bar_requested.emit("error", unique_errors[0])
+                else:
+                    signalBus.info_bar_requested.emit(
+                        "error",
+                        self.tr("{count} bundle update(s) failed").format(
+                            count=len(self._bulk_update_errors)
+                        ),
+                    )
+            self._bulk_update_errors = []
 
             if not is_auto_update_all:
                 # 如果不是自动更新所有模式，显示通知
@@ -1140,6 +1156,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
             info_bar_signal=signalBus.info_bar_requested,
             interface=interface_data,
             force_full_download=False,
+            suppress_info_bar=self._is_updating_all,
         )
 
         # 连接更新完成信号
@@ -1178,12 +1195,18 @@ class BundleInterface(UI_BundleInterface, QWidget):
                     self.tr("Bundle '{}' updated successfully").format(bundle_name),
                 )
         elif status == 0:
-            # 用户取消
-            logger.warning(f"Bundle '{bundle_name}' 更新被取消")
-            if not is_auto_update_all:
-                signalBus.info_bar_requested.emit(
-                    "warning", self.tr("Update cancelled: {}").format(bundle_name)
-                )
+            error_msg = getattr(self._current_updater, "_last_check_error", None)
+            if is_auto_update_all and error_msg:
+                self._bulk_update_errors.append(str(error_msg))
+            elif not is_auto_update_all:
+                if error_msg:
+                    logger.error("Bundle '%s' 更新失败", bundle_name)
+                else:
+                    logger.warning("Bundle '%s' 更新被取消", bundle_name)
+                    signalBus.info_bar_requested.emit(
+                        "warning",
+                        self.tr("Update cancelled: {}").format(bundle_name),
+                    )
         elif status == 2:
             # 需要重启
             logger.info(f"Bundle '{bundle_name}' 需要重启以完成更新")
@@ -1195,7 +1218,11 @@ class BundleInterface(UI_BundleInterface, QWidget):
         else:
             # 其他错误
             logger.error(f"Bundle '{bundle_name}' 更新失败，状态码: {status}")
-            if not is_auto_update_all:
+            if is_auto_update_all:
+                error_msg = getattr(self._current_updater, "_last_check_error", None)
+                if error_msg:
+                    self._bulk_update_errors.append(str(error_msg))
+            else:
                 signalBus.info_bar_requested.emit(
                     "error", self.tr("Update failed for bundle: {}").format(bundle_name)
                 )
