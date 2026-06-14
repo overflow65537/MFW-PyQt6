@@ -344,6 +344,23 @@ class TaskFlowRunner(QObject):
                     msg = self.tr("Resource or controller not initialized")
                 case MaaFWError.AGENT_CONNECTION_FAILED:
                     msg = self.tr("Agent connection failed")
+                case MaaFWError.AGENT_CONNECTION_TIMEOUT:
+                    seconds = getattr(
+                        self.maafw, "_last_agent_connect_timeout_seconds", None
+                    )
+                    if seconds is None:
+                        seconds = MaaFW.DEFAULT_AGENT_CONNECT_TIMEOUT_SECONDS
+                    msg = self.tr("Agent connection timed out ({}s)").format(seconds)
+                case MaaFWError.AGENT_CONFIG_MISSING:
+                    msg = self.tr("Agent configuration is missing")
+                case MaaFWError.AGENT_CONFIG_EMPTY_LIST:
+                    msg = self.tr("Agent configuration list is empty")
+                case MaaFWError.AGENT_CONFIG_INVALID:
+                    msg = self.tr("Agent configuration is invalid")
+                case MaaFWError.AGENT_CHILD_EXEC_MISSING:
+                    msg = self.tr("Agent child_exec is missing")
+                case MaaFWError.AGENT_START_FAILED:
+                    msg = self.tr("Failed to start agent process")
                 case MaaFWError.TASKER_NOT_INITIALIZED:
                     msg = self.tr("Tasker not initialized")
                 case _:
@@ -568,6 +585,9 @@ class TaskFlowRunner(QObject):
                     bundle_base = (Path.cwd() / bundle_base).resolve()
                 self.maafw.agent_project_dir = bundle_base
                 self.maafw.agent_data_raw = agent_config
+                self.maafw.agent_connection_timeout_seconds = MaaFW._coerce_timeout_seconds(
+                    controller_option.get("agent_timeout")
+                )
                 # v2.5.0: 构建 PI_* 环境变量供 agent 子进程使用
                 self.maafw.agent_env_vars = self._build_agent_env_vars(
                     controller_cfg, resource_cfg

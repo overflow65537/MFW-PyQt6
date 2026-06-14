@@ -143,6 +143,7 @@ class MaaFWError(Enum):
     AGENT_CONFIG_INVALID = 6
     AGENT_CHILD_EXEC_MISSING = 7
     AGENT_START_FAILED = 8
+    AGENT_CONNECTION_TIMEOUT = 9
 
 
 from maa.controller import ControllerEventSink, Controller, NotificationType
@@ -368,6 +369,8 @@ class MaaFW(QObject):
 
     # 超时后仍未停止的 agent 进程最长等待时间
     AGENT_TERMINATE_TIMEOUT_SECONDS: float = 5.0
+    # agent 连接默认超时（秒）；interface / 控制器配置可覆盖
+    DEFAULT_AGENT_CONNECT_TIMEOUT_SECONDS: int = 30
     # post_stop 后等待 Tasker 完全空闲的最长时长（避免 CustomAction 仍在执行时销毁原生对象）
     TASKER_IDLE_TIMEOUT_SECONDS: float = 30.0
     TASKER_IDLE_POLL_INTERVAL_SECONDS: float = 0.05
@@ -411,6 +414,9 @@ class MaaFW(QObject):
         self.agent_project_dir: Path | None = None
         # v2.5.0: 启动 agent 子进程时注入的 PI_* 环境变量
         self.agent_env_vars: Dict[str, str] = {}
+        # 控制器配置中的 agent 连接超时（秒）；None 表示使用 interface 或默认值
+        self.agent_connection_timeout_seconds: int | None = None
+        self._last_agent_connect_timeout_seconds: int | None = None
         # 控制是否需要向 UI 报告自定义对象注册情况
         self.need_register_report: bool = False
         # 记录最近一次自定义对象加载的成功/失败情况
@@ -1151,6 +1157,30 @@ class MaaFW(QObject):
             socket_id = "maafw_socket_id"
         return str(socket_id)
 
+    @staticmethod
+    def _coerce_timeout_seconds(value: Any) -> int | None:
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _resolve_agent_connect_timeout_ms(self, agent_data: dict) -> int | None:
+        """解析 agent 连接超时（秒 → 毫秒）。返回 None 表示无限等待。"""
+        for value in (
+            self.agent_connection_timeout_seconds,
+            agent_data.get("timeout"),
+        ):
+            seconds = self._coerce_timeout_seconds(value)
+            if seconds is None:
+                continue
+            if seconds < 0:
+                return None
+            if seconds > 0:
+                return seconds * 1000
+        return self.DEFAULT_AGENT_CONNECT_TIMEOUT_SECONDS * 1000
+
     def _start_one_agent(self, agent_data: dict) -> bool:
         child_exec = agent_data.get("child_exec", "")
         if not child_exec:
@@ -1210,10 +1240,31 @@ class MaaFW(QObject):
         self.agent_threads.append(agent_process)
         self._watch_agent_output(agent_process)
 
-        if agent_data.get("timeout"):
-            client.set_timeout(agent_data.get("timeout"))
+        timeout_ms = self._resolve_agent_connect_timeout_ms(agent_data)
+        self._last_agent_connect_timeout_seconds = (
+            timeout_ms // 1000 if timeout_ms is not None else None
+        )
+        if timeout_ms is None:
+            logger.debug("agent 连接超时: 无限等待")
+        elif not client.set_timeout(timeout_ms):
+            logger.warning("设置 agent 连接超时失败 (%sms)", timeout_ms)
+        else:
+            logger.debug("agent 连接超时: %sms", timeout_ms)
+
         if not client.connect():
-            self._send_custom_info(MaaFWError.AGENT_CONNECTION_FAILED)
+            try:
+                client.disconnect()
+            except Exception as exc:
+                logger.debug("agent 连接失败后断开异常: %s", exc)
+            if timeout_ms is not None:
+                logger.error(
+                    "agent 连接超时 (%ss)",
+                    self._last_agent_connect_timeout_seconds,
+                )
+                self._send_custom_info(MaaFWError.AGENT_CONNECTION_TIMEOUT)
+            else:
+                logger.error("agent 连接失败")
+                self._send_custom_info(MaaFWError.AGENT_CONNECTION_FAILED)
             return False
         return True
 
@@ -1359,6 +1410,8 @@ class MaaFW(QObject):
             self.agent_data_raw = None
             self.agent_project_dir = None
             self.agent_env_vars = {}
+            self.agent_connection_timeout_seconds = None
+            self._last_agent_connect_timeout_seconds = None
             self._purge_modules_under_root(self._last_custom_root)
             self._last_custom_root = None
             self._embedded_resource_sinks.clear()

@@ -5009,6 +5009,36 @@ You can copy the detailed stack trace below and report it to the developer.</sou
         </message>
         <message>
             <location filename="../core/runner/task_flow.py" line="348" />
+            <source>Agent connection timed out ({}s)</source>
+            <translation>MAA Agent 接続がタイムアウトしました（{} 秒）</translation>
+        </message>
+        <message>
+            <location filename="../core/runner/task_flow.py" line="352" />
+            <source>Agent configuration is missing</source>
+            <translation>Agent 設定がありません</translation>
+        </message>
+        <message>
+            <location filename="../core/runner/task_flow.py" line="354" />
+            <source>Agent configuration list is empty</source>
+            <translation>Agent 設定リストが空です</translation>
+        </message>
+        <message>
+            <location filename="../core/runner/task_flow.py" line="356" />
+            <source>Agent configuration is invalid</source>
+            <translation>Agent 設定が無効です</translation>
+        </message>
+        <message>
+            <location filename="../core/runner/task_flow.py" line="358" />
+            <source>Agent child_exec is missing</source>
+            <translation>Agent の child_exec 設定がありません</translation>
+        </message>
+        <message>
+            <location filename="../core/runner/task_flow.py" line="360" />
+            <source>Failed to start agent process</source>
+            <translation>Agent プロセスの起動に失敗しました</translation>
+        </message>
+        <message>
+            <location filename="../core/runner/task_flow.py" line="348" />
             <source>Tasker not initialized</source>
             <translation>タスカーが初期化されていません</translation>
         </message>
