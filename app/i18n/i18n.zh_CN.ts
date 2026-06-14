@@ -2677,8 +2677,8 @@ Supported controllers in the current resource: {controllers}</source>
         </message>
         <message>
             <location filename="../view/main_window/main_window.py" line="2384" />
-            <source>When you encounter issues while running, click this button and send the generated log zip file in the debug folder to the developers.</source>
-            <translation>运行过程中如果遇到问题，请点击此按钮，并将 debug 目录中生成的日志压缩包发送给开发人员。</translation>
+            <source>When you encounter issues while running, click this button and send the generated log zip file in the report folder to the developers.</source>
+            <translation>运行过程中如果遇到问题，请点击此按钮，并将 report 目录中生成的日志压缩包发送给开发人员。</translation>
         </message>
         <message>
             <source>Click this button to switch to special tasks; only tasks marked as special will execute.</source>

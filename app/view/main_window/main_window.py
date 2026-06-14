@@ -1489,7 +1489,7 @@ class MainWindow(MSFluentWindow):
             message = self._build_log_zip_result_message(zip_path, errors)
             self._set_log_zip_dialog_finished(message, error=False)
             self._notify_log_zip_result(zip_path, errors)
-            self._open_debug_dir(debug_dir)
+            self._open_debug_dir(zip_path.parent)
             logger.info(" 日志压缩包生成完成：%s", zip_path)
         except LogZipCancelled:
             logger.info("日志打包已取消")
@@ -2048,9 +2048,9 @@ class MainWindow(MSFluentWindow):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         return f"{resource_name}-{resource_version}-{timestamp}.zip"
 
-    def _cleanup_previous_log_zips(self, debug_dir: Path) -> None:
-        """删除 debug 目录内上一次（及更早）生成的日志压缩包。"""
-        for path in debug_dir.glob("*.zip"):
+    def _cleanup_previous_log_zips(self, report_dir: Path) -> None:
+        """删除 report 目录内上一次（及更早）生成的日志压缩包。"""
+        for path in report_dir.glob("*.zip"):
             if not path.is_file():
                 continue
             try:
@@ -2060,11 +2060,11 @@ class MainWindow(MSFluentWindow):
                 logger.warning("删除旧日志压缩包失败：%s (%s)", path.name, exc)
 
     def _build_log_zip_path(self) -> Path:
-        """生成日志压缩包路径（放在 debug 目录内），并删除旧压缩包。"""
-        debug_dir = Path.cwd() / "debug"
-        debug_dir.mkdir(parents=True, exist_ok=True)
-        self._cleanup_previous_log_zips(debug_dir)
-        return debug_dir / self._build_log_zip_filename()
+        """生成日志压缩包路径（放在 report 目录内），并删除旧压缩包。"""
+        report_dir = Path.cwd() / "report"
+        report_dir.mkdir(parents=True, exist_ok=True)
+        self._cleanup_previous_log_zips(report_dir)
+        return report_dir / self._build_log_zip_filename()
 
     def _notify_log_zip_result(self, zip_path: Path, errors: list[str]) -> None:
         """汇报日志打包结果并提示可能跳过的文件。"""
@@ -2122,16 +2122,16 @@ class MainWindow(MSFluentWindow):
 
         self._invoke_in_ui(_finish)
 
-    def _open_debug_dir(self, debug_dir: Path):
-        """压缩完成后打开 debug 目录。"""
-        if not debug_dir.exists():
+    def _open_debug_dir(self, target_dir: Path):
+        """压缩完成后打开目标目录。"""
+        if not target_dir.exists():
             return
 
         def _open():
             try:
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(debug_dir.resolve())))
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(target_dir.resolve())))
             except Exception as exc:
-                logger.warning(" 打开 debug 目录失败：%s", exc)
+                logger.warning(" 打开目录失败：%s", exc)
 
         self._invoke_in_ui(_open)
 
@@ -2381,7 +2381,7 @@ class MainWindow(MSFluentWindow):
             TutorialStep(
                 target_getter=get_log_button,
                 message=self.tr(
-                    "When you encounter issues while running, click this button and send the generated log zip file in the debug folder to the developers."
+                    "When you encounter issues while running, click this button and send the generated log zip file in the report folder to the developers."
                 ),
             ),
         ]
