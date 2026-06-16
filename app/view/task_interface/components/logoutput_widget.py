@@ -78,6 +78,8 @@ class LogoutputWidget(QWidget):
         self._level_color: dict[str, str] = {}
         self._log_items: list[LogItemWidget] = []
         self._tail_spacer_item: QSpacerItem | None = None
+        self._pending_scroll_to_bottom = False
+        self._scroll_to_bottom_retry_count = 0
         self._error_flash_timer = QTimer(self)
         self._error_flash_timer.setInterval(40)
         self._error_flash_timer.timeout.connect(self._update_log_zip_attention_effect)
@@ -264,6 +266,9 @@ class LogoutputWidget(QWidget):
         font = QFont("Microsoft YaHei", 11)
         self.log_container.setFont(font)
         self.log_scroll_area.setWidget(self.log_container)
+        scroll_bar = self.log_scroll_area.verticalScrollBar()
+        if scroll_bar is not None:
+            scroll_bar.rangeChanged.connect(self._on_log_scroll_range_changed)
 
         # 日志卡片
         self.log_output_widget = SimpleCardWidget()
@@ -652,10 +657,39 @@ class LogoutputWidget(QWidget):
                 return escape(text), False
 
     def _scroll_to_bottom(self):
-        """自动滚动到底部"""
+        """自动滚动到底部（布局/富文本渲染完成后再滚动）。"""
+        if not self._log_items:
+            return
+        self._pending_scroll_to_bottom = True
+        self._scroll_to_bottom_retry_count = 3
+        QTimer.singleShot(0, self._perform_scroll_to_bottom)
+
+    def _perform_scroll_to_bottom(self) -> None:
+        if not self._log_items:
+            self._pending_scroll_to_bottom = False
+            return
+
+        last_item = self._log_items[-1]
+        self.log_scroll_area.ensureWidgetVisible(last_item, 0, 0)
+
         v_bar = self.log_scroll_area.verticalScrollBar()
         if v_bar:
             v_bar.setValue(v_bar.maximum())
+
+        if self._scroll_to_bottom_retry_count > 0:
+            self._scroll_to_bottom_retry_count -= 1
+            QTimer.singleShot(0, self._perform_scroll_to_bottom)
+            return
+
+        self._pending_scroll_to_bottom = False
+
+    def _on_log_scroll_range_changed(self, _minimum: int, maximum: int) -> None:
+        """滚动区域高度变化后补一次滚动，避免新日志被挡在视口外。"""
+        if not self._pending_scroll_to_bottom:
+            return
+        v_bar = self.log_scroll_area.verticalScrollBar()
+        if v_bar:
+            v_bar.setValue(maximum)
 
     def _add_tail_spacer(self):
         """在底部添加占位以吸收剩余空间"""
