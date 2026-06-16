@@ -53,6 +53,7 @@ from app.common.config import cfg, isWin11, Config
 from app.common import __version__ as version_meta
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
+from app.core.service.interface_manager import get_interface_manager
 from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
 from app.utils.update import Update, path_is_update_archive_readable
@@ -1722,8 +1723,13 @@ class SettingInterface(QWidget):
         description = metadata.get("description", "")
         contact = metadata.get("contact", "")
 
-        self.resource_name_label.setText(name)
-        self.resource_name_label.setToolTip(name or self.tr("ChainFlow Assistant"))
+        display_title = get_interface_manager().resolve_display_name(
+            self.tr("ChainFlow Assistant")
+        )
+        self.resource_name_label.setText(display_title)
+        self.resource_name_label.setToolTip(
+            display_title or self.tr("ChainFlow Assistant")
+        )
         # 当前版本 / 最新版本 / UI版本 / MaaFW版本 水平展示
         from maa.library import Library
 

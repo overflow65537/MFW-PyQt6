@@ -40,6 +40,7 @@ from app.common.signal_bus import signalBus
 from app.common import __version__ as version_meta
 
 from app.core.core import ServiceCoordinator
+from app.core.service.interface_manager import get_interface_manager
 from app.view.task_interface.components.list_item import OptionLabel
 from app.utils.markdown_helper import render_markdown
 from app.utils.rich_text_helper import apply_rich_text_html
@@ -657,17 +658,9 @@ class DashboardInterface(QWidget):
         return interface_data or {}
 
     def _get_hero_title(self) -> str:
-        metadata = self._get_interface_metadata()
-        for key in ("custom_title", "title", "name"):
-            value = str(metadata.get(key, "") or "").strip()
-            if value:
-                return value
-        concise_description = self._extract_concise_title_from_description(
-            metadata.get("description", "")
+        return get_interface_manager().resolve_display_name(
+            self.tr("ChainFlow Assistant")
         )
-        if concise_description:
-            return concise_description
-        return f"MFW {UI_VERSION}"
 
     def _get_hero_subtitle(self) -> str:
         metadata = self._get_interface_metadata()

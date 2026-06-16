@@ -9,6 +9,10 @@ from typing import Dict, Any, Optional, Sequence
 from copy import deepcopy
 
 from app.common.config import cfg
+from app.utils.interface_display import (
+    resolve_interface_display_name,
+    resolve_interface_display_title,
+)
 from app.utils.logger import logger
 from app.core.service.i18n_service import I18nService
 
@@ -386,6 +390,28 @@ class InterfaceManager:
             原始 interface 字典
         """
         return self._original_interface
+
+    def resolve_display_title(self, default_name: str = "ChainFlow Assistant") -> str:
+        """解析 interface 在 UI 中展示的标题（含 title / version）。"""
+        if not self._initialized:
+            self.initialize()
+
+        return resolve_interface_display_title(
+            self._translated_interface,
+            self._original_interface,
+            default_name,
+        )
+
+    def resolve_display_name(self, default_name: str = "ChainFlow Assistant") -> str:
+        """解析 Dashboard / 设置页等头部展示名称（仅 label 或 name）。"""
+        if not self._initialized:
+            self.initialize()
+
+        return resolve_interface_display_name(
+            self._translated_interface,
+            self._original_interface,
+            default_name,
+        )
 
     def apply_agent_customization(
         self, *, embedded_override: bool | None = None
