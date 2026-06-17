@@ -31,6 +31,8 @@ from maa.toolkit import Toolkit, AdbDevice, DesktopWindow
 from maa.define import (
     MaaAdbScreencapMethodEnum,
     MaaAdbInputMethodEnum,
+    MaaMacOSInputMethodEnum,
+    MaaMacOSScreencapMethodEnum,
     MaaWin32InputMethodEnum,
     MaaWin32ScreencapMethodEnum,
 )
@@ -160,6 +162,16 @@ try:
     from maa.controller import GamepadController
 except ImportError:
     GamepadController = None
+
+try:
+    from maa.controller import WlRootsController
+except ImportError:
+    WlRootsController = None
+
+try:
+    from maa.controller import MacOSController
+except ImportError:
+    MacOSController = None
 
 class MaaContextSink(ContextEventSink):
     def __init__(self, emit_callback=None):
@@ -1074,6 +1086,43 @@ class MaaFW(QObject):
         connected = controller.post_connection().wait().succeeded
         if not connected:
             print(f"Failed to connect {hwnd} {gamepad_type}")
+            return False
+        return True
+
+    @asyncify
+    def connect_wlroots(
+        self,
+        wlr_socket_path: str,
+        use_win32_vk_code: bool = False,
+    ) -> bool:
+        if WlRootsController is None:
+            raise RuntimeError("当前安装的 maa 版本不支持 WlRootsController")
+        controller = WlRootsController(wlr_socket_path, use_win32_vk_code)
+        controller = self._init_controller(controller)
+        connected = controller.post_connection().wait().succeeded
+        if not connected:
+            print(f"Failed to connect wlroots socket {wlr_socket_path}")
+            return False
+        return True
+
+    @asyncify
+    def connect_macos(
+        self,
+        window_id: int,
+        screencap_method: int = MaaMacOSScreencapMethodEnum.ScreenCaptureKit,
+        input_method: int = MaaMacOSInputMethodEnum.GlobalEvent,
+    ) -> bool:
+        if MacOSController is None:
+            raise RuntimeError("当前安装的 maa 版本不支持 MacOSController")
+        screencap_method = (
+            screencap_method or MaaMacOSScreencapMethodEnum.ScreenCaptureKit
+        )
+        input_method = input_method or MaaMacOSInputMethodEnum.GlobalEvent
+        controller = MacOSController(window_id, screencap_method, input_method)
+        controller = self._init_controller(controller)
+        connected = controller.post_connection().wait().succeeded
+        if not connected:
+            print(f"Failed to connect macOS window {window_id}")
             return False
         return True
 

@@ -28,6 +28,8 @@ from maa.define import (
     MaaWin32ScreencapMethodEnum,
     MaaAdbInputMethodEnum,
     MaaAdbScreencapMethodEnum,
+    MaaMacOSScreencapMethodEnum,
+    MaaMacOSInputMethodEnum,
 )
 
 
@@ -88,6 +90,14 @@ class ControllerSettingWidget(QWidget):
     ADB_INPUT_OPTIONS: Dict[str, int] = _build_method_options_from_enum(
         MaaAdbInputMethodEnum,
         include_default=True,
+    )
+    MACOS_SCREENCAP_OPTIONS: Dict[str, int] = _build_method_options_from_enum(
+        MaaMacOSScreencapMethodEnum,
+        include_default=False,
+    )
+    MACOS_INPUT_OPTIONS: Dict[str, int] = _build_method_options_from_enum(
+        MaaMacOSInputMethodEnum,
+        include_default=False,
     )
     GAMEPAD_TYPE_OPTIONS: Dict[str, int] = {
         "Xbox360": 0,
@@ -463,6 +473,83 @@ class ControllerSettingWidget(QWidget):
 
         return gamepad_mapping
 
+    def _build_macos_default_mapping(
+        self, controllers: list[dict[str, Any]]
+    ) -> dict[str, dict[str, Any]]:
+        """构建 MacOS 控制器的默认映射（title_regex 过滤 & 截图/输入方式默认值）"""
+        macos_mapping: dict[str, dict[str, Any]] = {}
+        for controller in controllers:
+            if controller.get("type", "").lower() != "macos":
+                continue
+            controller_name = controller.get("name")
+            if not controller_name:
+                continue
+            macos_config = controller.get("macos")
+            if not isinstance(macos_config, dict):
+                macos_config = {}
+            mapping_entry: dict[str, Any] = {}
+            if macos_config.get("title_regex"):
+                mapping_entry["title_regex"] = macos_config["title_regex"]
+            defaults: dict[str, Any] = {}
+            screencap_value = self._resolve_macos_method_value(
+                "screencap", macos_config.get("screencap")
+            )
+            if screencap_value is not None:
+                defaults["macos_screencap_methods"] = screencap_value
+            input_value = self._resolve_macos_method_value(
+                "input", macos_config.get("input")
+            )
+            if input_value is not None:
+                defaults["macos_input_methods"] = input_value
+            if defaults:
+                mapping_entry["defaults"] = defaults
+            if mapping_entry:
+                macos_mapping[controller_name] = mapping_entry
+        return macos_mapping
+
+    def _resolve_macos_method_value(
+        self, method_type: str, value: Any
+    ) -> int | None:
+        """解析 interface.json 中 macos.screencap / macos.input 配置值"""
+        if value is None:
+            return None
+        int_value = self._coerce_int(value)
+        if int_value is not None:
+            return int_value
+        text = str(value).strip()
+        if not text:
+            return None
+        enum_cls = (
+            MaaMacOSScreencapMethodEnum
+            if method_type == "screencap"
+            else MaaMacOSInputMethodEnum
+        )
+        members = getattr(enum_cls, "__members__", {})
+        if text in members:
+            return int(members[text].value)
+        lowered = text.lower()
+        for name, member in members.items():
+            if name.lower() == lowered:
+                return int(member.value)
+        return None
+
+    def _ensure_macos_input_defaults(self, controller_cfg: dict, controller_name: str):
+        if (
+            not self.current_controller_name
+            or controller_name != self.current_controller_name
+        ):
+            return
+        macos_defaults = self.macos_default_mapping.get(controller_name, {}).get(
+            "defaults", {}
+        )
+        for key in ("macos_screencap_methods", "macos_input_methods"):
+            controller_cfg.setdefault(key, macos_defaults.get(key, 0))
+
+    def _get_macos_title_regex(self, controller_name: str) -> str | None:
+        mapping_data = self.macos_default_mapping.get(controller_name, {})
+        title_regex = mapping_data.get("title_regex")
+        return str(title_regex) if title_regex else None
+
     def _ensure_defaults(self, controller_cfg: dict, defaults: dict):
         """确保指定键存在于控制器配置里"""
         for key, value in defaults.items():
@@ -557,6 +644,10 @@ class ControllerSettingWidget(QWidget):
             self._toggle_gamepad_children_option(True)
         elif ctrl_type == "playcover":
             self._toggle_playcover_children_option(True)
+        elif ctrl_type == "wlroots":
+            self._toggle_wlroots_children_option(True)
+        elif ctrl_type == "macos":
+            self._toggle_macos_children_option(True)
 
     def _rebuild_interface_data(self):
         """重新构建基于interface的数据结构（用于多配置模式下interface更新时）"""
@@ -577,6 +668,12 @@ class ControllerSettingWidget(QWidget):
             # Gamepad 控制器只在 Windows 上显示
             if ctrl_type == "gamepad" and sys.platform != "win32":
                 continue
+            # WlRoots 控制器只在 Linux 上显示
+            if ctrl_type == "wlroots" and not sys.platform.startswith("linux"):
+                continue
+            # MacOS 控制器只在 macOS 上显示
+            if ctrl_type == "macos" and sys.platform != "darwin":
+                continue
             # ADB 控制器在所有平台都显示（不需要过滤）
             filtered_controllers.append(ctrl)
 
@@ -593,6 +690,8 @@ class ControllerSettingWidget(QWidget):
                 "display_raw": ctrl.get("display_raw"),
                 "playcover": ctrl.get("playcover", {}),  # 保存 playcover 配置
                 "gamepad": ctrl.get("gamepad", {}),  # 保存 gamepad 配置
+                "macos": ctrl.get("macos", {}),  # 保存 macos 配置
+                "wlroots": ctrl.get("wlroots", {}),  # 保存 wlroots 配置
             }
             for ctrl in filtered_controllers
         }
@@ -601,6 +700,9 @@ class ControllerSettingWidget(QWidget):
             interface.get("controller", [])
         )
         self.gamepad_default_mapping = self._build_gamepad_default_mapping(
+            interface.get("controller", [])
+        )
+        self.macos_default_mapping = self._build_macos_default_mapping(
             interface.get("controller", [])
         )
         agent_interface_config = interface.get("agent", {})
@@ -656,11 +758,15 @@ class ControllerSettingWidget(QWidget):
             self._create_win32_children_option()
             self._create_gamepad_children_option()
             self._create_playcover_children_option()
+            self._create_wlroots_children_option()
+            self._create_macos_children_option()
             # 默认隐藏所有子选项
             self._toggle_win32_children_option(False)
             self._toggle_adb_children_option(False)
             self._toggle_gamepad_children_option(False)
             self._toggle_playcover_children_option(False)
+            self._toggle_wlroots_children_option(False)
+            self._toggle_macos_children_option(False)
             # 设置初始值为当前配置中的控制器类型
             ctrl_combo: ComboBox = self.resource_setting_widgets["ctrl_combo"]
             controller_list = list(self.controller_type_mapping)
@@ -1498,6 +1604,55 @@ class ControllerSettingWidget(QWidget):
             placeholder="host:port",
         )
 
+    def _create_wlroots_children_option(self):
+        """创建 WlRoots 子选项"""
+        self._create_resource_line_edit(
+            self.tr("Wayland Socket Path"),
+            "wlroots_socket_path",
+            lambda text: self._on_child_option_changed("wlroots_socket_path", text),
+            placeholder="/path/to/wayland-0",
+        )
+
+    def _create_macos_children_option(self):
+        """创建 MacOS 子选项"""
+        self._create_resource_line_edit(
+            self.tr("Window ID"),
+            "macos_window_id",
+            lambda text: self._on_child_option_changed("macos_window_id", text),
+        )
+        self._create_resource_line_edit(
+            self.tr("Program Path"),
+            "macos_program_path",
+            lambda text: self._on_child_option_changed("macos_program_path", text),
+            True,
+        )
+        self._create_resource_line_edit(
+            self.tr("Program Params"),
+            "macos_program_params",
+            lambda text: self._on_child_option_changed("macos_program_params", text),
+        )
+        self._create_resource_line_edit(
+            self.tr("Wait for Launch Time"),
+            "macos_wait_time",
+            lambda text: self._on_child_option_changed("macos_wait_time", text),
+            placeholder="0",
+        )
+        wait_time_edit = self.resource_setting_widgets.get("macos_wait_time")
+        if isinstance(wait_time_edit, LineEdit):
+            wait_time_edit.setValidator(QIntValidator(0, 2147483647, wait_time_edit))
+        self._create_resource_combobox(
+            self.tr("Screencap Method"),
+            "macos_screencap_methods",
+            self.MACOS_SCREENCAP_OPTIONS,
+            self._on_child_option_changed,
+        )
+        self._create_resource_combobox(
+            self.tr("Input Method"),
+            "macos_input_methods",
+            self.MACOS_INPUT_OPTIONS,
+            self._on_child_option_changed,
+        )
+
     def _on_child_option_changed(self, key: str, value: Any):
         """子选项变化处理"""
         if self._syncing:
@@ -1584,6 +1739,29 @@ class ControllerSettingWidget(QWidget):
                 current_controller_name
             ] or not self.current_config[current_controller_name].get("uuid"):
                 self.current_config[current_controller_name]["uuid"] = default_uuid
+        elif current_controller_type == "wlroots":
+            self.current_config[current_controller_name] = self.current_config.get(
+                current_controller_name,
+                {
+                    "wlr_socket_path": "",
+                },
+            )
+        elif current_controller_type == "macos":
+            self.current_config[current_controller_name] = self.current_config.get(
+                current_controller_name,
+                {
+                    "window_id": "",
+                    "program_path": "",
+                    "program_params": "",
+                    "wait_time": 30,
+                    "macos_screencap_methods": int(
+                        MaaMacOSScreencapMethodEnum.ScreenCaptureKit.value
+                    ),
+                    "macos_input_methods": int(
+                        MaaMacOSInputMethodEnum.GlobalEvent.value
+                    ),
+                },
+            )
         # Parse JSON string back to dict for "config" key
         if key == "config":
             try:
@@ -1591,7 +1769,7 @@ class ControllerSettingWidget(QWidget):
             except (jsonc.JSONDecodeError, ValueError):
                 # If parsing fails, keep the string as-is or use an empty dict
                 self.current_config[current_controller_name][key] = value
-        elif key in ("adb_wait_time", "win32_wait_time", "gamepad_wait_time"):
+        elif key in ("adb_wait_time", "win32_wait_time", "gamepad_wait_time", "macos_wait_time"):
             # 必须存在一个整数（不能为负数），空值自动回填为 0
             text = "" if value is None else str(value).strip()
             if text == "":
@@ -1626,6 +1804,14 @@ class ControllerSettingWidget(QWidget):
         elif key == "playcover_address":
             # 将 playcover_address 映射到 address
             self.current_config[current_controller_name]["address"] = value
+        elif key == "wlroots_socket_path":
+            self.current_config[current_controller_name]["wlr_socket_path"] = value
+        elif key == "macos_window_id":
+            self.current_config[current_controller_name]["window_id"] = value
+        elif key == "macos_program_path":
+            self.current_config[current_controller_name]["program_path"] = value
+        elif key == "macos_program_params":
+            self.current_config[current_controller_name]["program_params"] = value
         else:
             self.current_config[current_controller_name][key] = value
 
@@ -1839,14 +2025,29 @@ class ControllerSettingWidget(QWidget):
                 "address": "",
             }
             self._ensure_defaults(controller_cfg, playcover_defaults)
+        elif controller_type == "wlroots":
+            wlroots_defaults = {
+                "wlr_socket_path": "",
+            }
+            self._ensure_defaults(controller_cfg, wlroots_defaults)
+        elif controller_type == "macos":
+            macos_defaults = {
+                "window_id": "",
+                "program_path": "",
+                "program_params": "",
+                "wait_time": 30,
+            }
+            self._ensure_defaults(controller_cfg, macos_defaults)
+            self._ensure_macos_input_defaults(controller_cfg, controller_name)
         else:
-            raise
+            logger.warning(f"未识别的控制器类型: {controller_type}")
+            return
         for name, widget in self.resource_setting_widgets.items():
             if name.endswith("_label"):
                 continue
             elif isinstance(widget, (LineEdit, PathLineEdit)):
                 # 特殊：UI 上的 adb_wait_time/win32_wait_time 映射到配置里的 wait_time
-                if name in ("adb_wait_time", "win32_wait_time", "gamepad_wait_time"):
+                if name in ("adb_wait_time", "win32_wait_time", "gamepad_wait_time", "macos_wait_time"):
                     value = self.current_config[controller_name].get("wait_time", 0)
                     try:
                         v = int(value)
@@ -1871,6 +2072,35 @@ class ControllerSettingWidget(QWidget):
                         str(
                             self.current_config[controller_name].get(
                                 "program_params", ""
+                            )
+                        )
+                    )
+                elif name == "macos_window_id":
+                    widget.setText(
+                        str(
+                            self.current_config[controller_name].get("window_id", "")
+                            or self.current_config[controller_name].get("hwnd", "")
+                        )
+                    )
+                elif name == "macos_program_path":
+                    widget.setText(
+                        str(
+                            self.current_config[controller_name].get("program_path", "")
+                        )
+                    )
+                elif name == "macos_program_params":
+                    widget.setText(
+                        str(
+                            self.current_config[controller_name].get(
+                                "program_params", ""
+                            )
+                        )
+                    )
+                elif name == "wlroots_socket_path":
+                    widget.setText(
+                        str(
+                            self.current_config[controller_name].get(
+                                "wlr_socket_path", ""
                             )
                         )
                     )
@@ -1973,7 +2203,7 @@ class ControllerSettingWidget(QWidget):
                 message = self.tr(
                     "No ADB devices were found. Please check emulator or device connection."
                 )
-            elif controller_type.lower() in ("win32", "gamepad"):
+            elif controller_type.lower() in ("win32", "gamepad", "macos"):
                 message = self.tr(
                     "No desktop windows were found that match the filter."
                 )
@@ -2138,6 +2368,28 @@ class ControllerSettingWidget(QWidget):
         ]
         self._toggle_children_visible(playcover_widgets, visible)
 
+    def _toggle_wlroots_children_option(self, visible: bool):
+        wlroots_widgets = [
+            "wlroots_socket_path",
+        ]
+        self._toggle_children_visible(wlroots_widgets, visible)
+
+    def _toggle_macos_children_option(self, visible: bool):
+        macos_widgets = [
+            "macos_window_id",
+            "macos_program_path",
+            "macos_program_params",
+            "macos_wait_time",
+        ]
+        macos_hide_widgets = [
+            "macos_screencap_methods",
+            "macos_input_methods",
+        ]
+        self._toggle_children_visible(macos_widgets, visible)
+        self._toggle_children_visible(
+            macos_hide_widgets, (visible and self.show_hide_option)
+        )
+
     def _on_controller_type_changed(self, label: str):
         """控制器类型变化时的处理函数"""
         # 更新当前控制器信息变量
@@ -2196,8 +2448,8 @@ class ControllerSettingWidget(QWidget):
         search_option: DeviceFinderWidget = self.resource_setting_widgets[
             "search_combo"
         ]
-        if new_type == "playcover":
-            # playcover 不显示搜索设备
+        if new_type == "playcover" or new_type == "wlroots":
+            # playcover / wlroots 不显示搜索设备
             search_option.setVisible(False)
             if "search_combo_label" in self.resource_setting_widgets:
                 self.resource_setting_widgets["search_combo_label"].setVisible(False)
@@ -2219,8 +2471,15 @@ class ControllerSettingWidget(QWidget):
                         ctrl_info["name"]
                     )
                 search_option.set_win32_filters(class_regex, window_regex)
+                search_option.set_macos_filters(None)
+            elif new_type == "macos":
+                search_option.set_win32_filters(None, None)
+                search_option.set_macos_filters(
+                    self._get_macos_title_regex(ctrl_info["name"])
+                )
             else:
                 search_option.set_win32_filters(None, None)
+                search_option.set_macos_filters(None)
 
         # 填充新的信息
         self._fill_children_option(ctrl_info["name"])
@@ -2255,21 +2514,43 @@ class ControllerSettingWidget(QWidget):
             self._toggle_win32_children_option(False)
             self._toggle_gamepad_children_option(False)
             self._toggle_playcover_children_option(False)
+            self._toggle_wlroots_children_option(False)
+            self._toggle_macos_children_option(False)
         elif new_type == "win32":
             self._toggle_adb_children_option(False)
             self._toggle_win32_children_option(True)
             self._toggle_gamepad_children_option(False)
             self._toggle_playcover_children_option(False)
+            self._toggle_wlroots_children_option(False)
+            self._toggle_macos_children_option(False)
         elif new_type == "gamepad":
             self._toggle_adb_children_option(False)
             self._toggle_win32_children_option(False)
             self._toggle_gamepad_children_option(True)
             self._toggle_playcover_children_option(False)
+            self._toggle_wlroots_children_option(False)
+            self._toggle_macos_children_option(False)
         elif new_type == "playcover":
             self._toggle_adb_children_option(False)
             self._toggle_win32_children_option(False)
             self._toggle_gamepad_children_option(False)
             self._toggle_playcover_children_option(True)
+            self._toggle_wlroots_children_option(False)
+            self._toggle_macos_children_option(False)
+        elif new_type == "wlroots":
+            self._toggle_adb_children_option(False)
+            self._toggle_win32_children_option(False)
+            self._toggle_gamepad_children_option(False)
+            self._toggle_playcover_children_option(False)
+            self._toggle_wlroots_children_option(True)
+            self._toggle_macos_children_option(False)
+        elif new_type == "macos":
+            self._toggle_adb_children_option(False)
+            self._toggle_win32_children_option(False)
+            self._toggle_gamepad_children_option(False)
+            self._toggle_playcover_children_option(False)
+            self._toggle_wlroots_children_option(False)
+            self._toggle_macos_children_option(True)
 
     def _on_search_combo_changed(self, device_name):
         if self._syncing:

@@ -63,16 +63,19 @@ class DeviceFinderTask(QRunnable):
                         "emulator_params": emulator_params,
                     }
 
-            elif self.controller_type.lower() == "win32":
+            elif self.controller_type.lower() in ("win32", "macos"):
                 devices = Toolkit.find_desktop_windows()
                 for device in devices:
-                    device_mapping[
-                        f"{device.window_name or 'Unknow Window'}({device.hwnd})"
-                    ] = {
+                    entry = {
                         "window_name": device.window_name,
                         "class_name": device.class_name,
                         "hwnd": str(device.hwnd),
                     }
+                    if self.controller_type.lower() == "macos":
+                        entry["window_id"] = str(device.hwnd)
+                    device_mapping[
+                        f"{device.window_name or 'Unknow Window'}({device.hwnd})"
+                    ] = entry
         finally:
             # Convert all integer values that might exceed 64-bit signed limits to strings
             safe_mapping = {}
@@ -109,6 +112,7 @@ class DeviceFinderWidget(QWidget):
         self._init_ui()
         self._win32_class_pattern = None
         self._win32_window_pattern = None
+        self._macos_title_pattern = None
         self.current_controller_type = None
         self.device_mapping = {}
 
@@ -153,6 +157,12 @@ class DeviceFinderWidget(QWidget):
                 if self._matches_win32_filters(device):
                     filtered[key] = device
             device_mapping = filtered
+        elif controller_type.lower() == "macos":
+            filtered = {}
+            for key, device in device_mapping.items():
+                if self._matches_macos_filters(device):
+                    filtered[key] = device
+            device_mapping = filtered
 
         # 如果没有找到任何设备，仅发出信号，不清空已有下拉框内容
         if not device_mapping:
@@ -189,6 +199,15 @@ class DeviceFinderWidget(QWidget):
     def set_win32_filters(self, class_regex: str | None, window_regex: str | None):
         self._win32_class_pattern = self._compile_regex(class_regex, "class")
         self._win32_window_pattern = self._compile_regex(window_regex, "window")
+
+    def set_macos_filters(self, title_regex: str | None):
+        self._macos_title_pattern = self._compile_regex(title_regex, "title")
+
+    def _matches_macos_filters(self, device: dict) -> bool:
+        if not self._macos_title_pattern:
+            return True
+        window_name = str(device.get("window_name") or "")
+        return bool(self._macos_title_pattern.search(window_name))
 
     def _compile_regex(self, pattern: str | None, label: str):
         if not pattern:
