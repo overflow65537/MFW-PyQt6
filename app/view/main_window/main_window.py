@@ -442,7 +442,6 @@ class MainWindow(MSFluentWindow):
         # 添加导航项
         self.splashScreen.finish()
         self._maybe_show_pending_announcement()
-        QTimer.singleShot(0, self.service_coordinator.schedule_service.start)
 
         # 启动主题监听器
         self.themeListener.start()

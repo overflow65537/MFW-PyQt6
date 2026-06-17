@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import sys
 from datetime import datetime
 from functools import partial
 from typing import Any
 from uuid import uuid4
 
-from PySide6.QtCore import QDate, QDateTime, QTime, Qt
+from PySide6.QtCore import QDateTime, Qt
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
@@ -14,7 +15,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QSizePolicy,
-    QStackedLayout,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 from qfluentwidgets import (
     BodyLabel,
+    CaptionLabel,
     RadioButton,
     CheckBox,
     ComboBox,
@@ -46,6 +47,8 @@ from app.core.service.schedule_service import (
     SCHEDULE_WEEKLY,
     ScheduleEntry,
 )
+
+
 class ZhDateTimeInput(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -55,7 +58,7 @@ class ZhDateTimeInput(QWidget):
 
         self.date_picker = ZhDatePicker(self)
         self.date_picker.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
         )
 
         self.time_picker = TimePicker(self)
@@ -63,7 +66,7 @@ class ZhDateTimeInput(QWidget):
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
 
-        layout.addWidget(self.date_picker, 1)
+        layout.addWidget(self.date_picker)
         layout.addWidget(self.time_picker)
 
     def dateTime(self) -> datetime:
@@ -99,7 +102,6 @@ class ScheduleInterface(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
-        self.setLayout(main_layout)
 
         self.scroll_area = ScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -112,10 +114,10 @@ class ScheduleInterface(QWidget):
         self.scroll_layout = QVBoxLayout(self.scroll_content)
         self.scroll_layout.setContentsMargins(24, 24, 24, 24)
         self.scroll_layout.setSpacing(16)
+        self.scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.scroll_layout.addWidget(self._create_schedule_form_card())
         self.scroll_layout.addWidget(self._create_schedule_list_card())
-        self.scroll_layout.addStretch()
 
         self.scroll_area.setWidget(self.scroll_content)
         main_layout.addWidget(self.scroll_area)
@@ -128,29 +130,53 @@ class ScheduleInterface(QWidget):
         self.trigger_group.buttonClicked.connect(self._on_trigger_button_clicked)
         self.add_button.clicked.connect(self._on_add_schedule)
 
+    def _make_form_layout(self) -> QFormLayout:
+        form = QFormLayout()
+        form.setLabelAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        form.setFormAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
+        )
+        form.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.FieldsStayAtSizeHint
+        )
+        form.setHorizontalSpacing(12)
+        form.setVerticalSpacing(10)
+        return form
+
+    def _schedule_info_text(self) -> str:
+        if sys.platform == "win32":
+            return self.tr("schedule_interface_info_windows")
+        if sys.platform == "darwin":
+            return self.tr("schedule_interface_info_macos")
+        if sys.platform.startswith("linux"):
+            return self.tr("schedule_interface_info_linux")
+        return self.tr("schedule_interface_info")
+
     def _create_schedule_form_card(self) -> SimpleCardWidget:
         card = SimpleCardWidget()
         card_layout = QVBoxLayout(card)
-        card_layout.setSpacing(12)
+        card_layout.setSpacing(16)
 
-        title = BodyLabel(self.tr("Trigger"))
+        title = BodyLabel(self.tr("Add schedule"))
         title.setStyleSheet("font-weight: 600; font-size: 16px;")
         card_layout.addWidget(title)
 
-        info_label = BodyLabel(self.tr("schedule_interface_info"))
+        info_label = CaptionLabel(self._schedule_info_text())
         info_label.setWordWrap(True)
         card_layout.addWidget(info_label)
 
-        form = QFormLayout()
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        form.setFormAlignment(Qt.AlignmentFlag.AlignLeft)
+        config_form = self._make_form_layout()
         self.config_selector = ComboBox()
         self.config_selector.setPlaceholderText(self.tr("Select configuration"))
-        form.addRow(self.tr("Configuration"), self.config_selector)
-        card_layout.addLayout(form)
+        self.config_selector.setMinimumWidth(280)
+        config_form.addRow(self.tr("Configuration"), self.config_selector)
+        card_layout.addLayout(config_form)
 
-        section_layout = QHBoxLayout()
-        section_layout.setSpacing(20)
+        type_label = BodyLabel(self.tr("Trigger type"))
+        type_label.setStyleSheet("font-weight: 600;")
+        card_layout.addWidget(type_label)
 
         self.trigger_group = QButtonGroup(self)
         self._trigger_types = (
@@ -159,34 +185,41 @@ class ScheduleInterface(QWidget):
             (self.tr("Weekly"), SCHEDULE_WEEKLY),
             (self.tr("Monthly"), SCHEDULE_MONTHLY),
         )
-
-        left_column = QWidget()
-        left_layout = QVBoxLayout(left_column)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(8)
-        left_layout.addWidget(BodyLabel(self.tr("Trigger type")))
+        trigger_row = QHBoxLayout()
+        trigger_row.setSpacing(16)
         for idx, (label, _) in enumerate(self._trigger_types):
             radio = RadioButton(label)
             self.trigger_group.addButton(radio, idx)
-            left_layout.addWidget(radio)
-        left_layout.addStretch()
-        section_layout.addWidget(left_column, 0)
+            trigger_row.addWidget(radio)
+        trigger_row.addStretch()
+        card_layout.addLayout(trigger_row)
 
-        right_column = QWidget()
-        right_layout = QVBoxLayout(right_column)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(8)
-        right_layout.addWidget(BodyLabel(self.tr("Timing")))
-        right_layout.addWidget(self._build_detail_stack(), 1)
-        section_layout.addWidget(right_column, 1)
+        timing_label = BodyLabel(self.tr("Timing"))
+        timing_label.setStyleSheet("font-weight: 600;")
+        card_layout.addWidget(timing_label)
+
+        self.detail_container = QWidget()
+        self.detail_layout = QVBoxLayout(self.detail_container)
+        self.detail_layout.setContentsMargins(0, 0, 0, 0)
+        self.detail_layout.setSpacing(0)
+        self._detail_pages = [
+            self._build_single_trigger_widget(),
+            self._build_daily_trigger_widget(),
+            self._build_weekly_trigger_widget(),
+            self._build_monthly_trigger_widget(),
+        ]
+        for page in self._detail_pages:
+            self.detail_layout.addWidget(page)
+            page.hide()
+        card_layout.addWidget(self.detail_container)
+
         button = self.trigger_group.button(0)
         if button:
             button.setChecked(True)
         self._switch_schedule_detail()
 
-        card_layout.addLayout(section_layout)
-
         control_layout = QHBoxLayout()
+        control_layout.setSpacing(24)
         self.force_checkbox = CheckBox(self.tr("Force start"))
         self.enabled_checkbox = CheckBox(self.tr("Enabled"))
         self.enabled_checkbox.setChecked(True)
@@ -201,137 +234,125 @@ class ScheduleInterface(QWidget):
 
         return card
 
-    def _build_detail_stack(self) -> QWidget:
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-
-        self.detail_stack = QStackedLayout()
-        layout.addLayout(self.detail_stack)
-
-        self.detail_stack.addWidget(self._build_single_trigger_widget())
-        self.detail_stack.addWidget(self._build_daily_trigger_widget())
-        self.detail_stack.addWidget(self._build_weekly_trigger_widget())
-        self.detail_stack.addWidget(self._build_monthly_trigger_widget())
-
-        return container
-
     def _build_datetime_control(self) -> ZhDateTimeInput:
         datetime_input = ZhDateTimeInput()
         datetime_input.setDateTime(self._default_qdatetime())
-        datetime_input.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
         return datetime_input
 
     def _default_qdatetime(self) -> QDateTime:
         return QDateTime.currentDateTime().addSecs(60)
 
-    def _build_date_time_row(self, datetime_input: ZhDateTimeInput) -> QWidget:
-        container = QWidget()
-        layout = QHBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-        layout.addWidget(datetime_input)
-        layout.addStretch()
-        return container
-
     def _build_single_trigger_widget(self) -> QWidget:
         widget = QWidget()
-        layout = QFormLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout = self._make_form_layout()
+        widget.setLayout(layout)
 
         self.single_datetime = self._build_datetime_control()
-        layout.addRow(
-            self.tr("Start"),
-            self._build_date_time_row(self.single_datetime),
-        )
+        layout.addRow(self.tr("Start"), self.single_datetime)
         return widget
 
     def _build_daily_trigger_widget(self) -> QWidget:
         widget = QWidget()
-        layout = QFormLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout = self._make_form_layout()
+        widget.setLayout(layout)
 
         self.daily_datetime = self._build_datetime_control()
         self.daily_interval_spin = SpinBox()
         self.daily_interval_spin.setRange(1, 365)
         self.daily_interval_spin.setValue(1)
-        layout.addRow(
-            self.tr("Start"),
-            self._build_date_time_row(self.daily_datetime),
-        )
-        interval_layout = QHBoxLayout()
-        interval_layout.addWidget(self.daily_interval_spin)
-        interval_layout.addWidget(BodyLabel(self.tr("days")))
-        interval_layout.addStretch()
-        layout.addRow(self.tr("Every"), interval_layout)
+        self.daily_interval_spin.setFixedWidth(96)
+
+        interval_row = QHBoxLayout()
+        interval_row.setContentsMargins(0, 0, 0, 0)
+        interval_row.setSpacing(8)
+        interval_row.addWidget(self.daily_interval_spin)
+        interval_row.addWidget(BodyLabel(self.tr("days")))
+        interval_row.addStretch()
+
+        interval_widget = QWidget()
+        interval_widget.setLayout(interval_row)
+
+        layout.addRow(self.tr("Start"), self.daily_datetime)
+        layout.addRow(self.tr("Every"), interval_widget)
         return widget
 
     def _build_weekly_trigger_widget(self) -> QWidget:
         widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        outer = QVBoxLayout(widget)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(12)
 
-        form = QFormLayout()
-        form.setContentsMargins(0, 0, 0, 0)
-        form.setSpacing(8)
+        form = self._make_form_layout()
         self.weekly_datetime = self._build_datetime_control()
         self.weekly_interval_spin = SpinBox()
         self.weekly_interval_spin.setRange(1, 52)
         self.weekly_interval_spin.setValue(1)
-        form.addRow(
-            self.tr("Start"),
-            self._build_date_time_row(self.weekly_datetime),
-        )
-        interval_layout = QHBoxLayout()
-        interval_layout.addWidget(self.weekly_interval_spin)
-        interval_layout.addWidget(BodyLabel(self.tr("weeks")))
-        interval_layout.addStretch()
-        form.addRow(self.tr("Every"), interval_layout)
+        self.weekly_interval_spin.setFixedWidth(96)
 
-        layout.addLayout(form)
-        layout.addWidget(BodyLabel(self.tr("Weekdays")))
-        layout.addLayout(self._build_weekday_grid())
+        interval_row = QHBoxLayout()
+        interval_row.setContentsMargins(0, 0, 0, 0)
+        interval_row.setSpacing(8)
+        interval_row.addWidget(self.weekly_interval_spin)
+        interval_row.addWidget(BodyLabel(self.tr("weeks")))
+        interval_row.addStretch()
+        interval_widget = QWidget()
+        interval_widget.setLayout(interval_row)
+
+        form.addRow(self.tr("Start"), self.weekly_datetime)
+        form.addRow(self.tr("Every"), interval_widget)
+        outer.addLayout(form)
+
+        weekday_label = BodyLabel(self.tr("Weekdays"))
+        weekday_label.setStyleSheet("font-weight: 600;")
+        outer.addWidget(weekday_label)
+        outer.addLayout(self._build_weekday_grid())
         return widget
 
     def _build_monthly_trigger_widget(self) -> QWidget:
         widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(10)
+        outer = QVBoxLayout(widget)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(12)
 
-        form = QFormLayout()
-        form.setContentsMargins(0, 0, 0, 0)
-        form.setSpacing(8)
+        form = self._make_form_layout()
         self.monthly_datetime = self._build_datetime_control()
-        form.addRow(
-            self.tr("Start"),
-            self._build_date_time_row(self.monthly_datetime),
-        )
+        form.addRow(self.tr("Start"), self.monthly_datetime)
 
         self.monthly_month_combo = ComboBox()
         self.monthly_month_combo.addItem(self.tr("Every month"), userData=0)
         for month in range(1, 13):
-            self.monthly_month_combo.addItem(f"{month:02d}", userData=month)
+            self.monthly_month_combo.addItem(
+                self.tr(
+                    (
+                        "January",
+                        "February",
+                        "March",
+                        "April",
+                        "May",
+                        "June",
+                        "July",
+                        "August",
+                        "September",
+                        "October",
+                        "November",
+                        "December",
+                    )[month - 1]
+                ),
+                userData=month,
+            )
         form.addRow(self.tr("Month"), self.monthly_month_combo)
 
         self.monthly_day_combo = ComboBox()
         for day in range(1, 32):
             self.monthly_day_combo.addItem(str(day), userData=day)
         form.addRow(self.tr("Day"), self.monthly_day_combo)
+        outer.addLayout(form)
 
-        layout.addLayout(form)
-
-        ordinal_layout = QHBoxLayout()
-        ordinal_layout.setContentsMargins(0, 0, 0, 0)
-        ordinal_layout.setSpacing(6)
         self.monthly_use_ordinal_checkbox = CheckBox(self.tr("Use ordinal weekday"))
         self.monthly_use_ordinal_checkbox.setChecked(False)
+        outer.addWidget(self.monthly_use_ordinal_checkbox)
+
+        ordinal_form = self._make_form_layout()
         self.monthly_ordinal_combo = ComboBox()
         for label, idx in (
             (self.tr("First"), 0),
@@ -356,21 +377,25 @@ class ScheduleInterface(QWidget):
             self.monthly_weekday_combo.addItem(label, userData=idx)
         self.monthly_ordinal_combo.setEnabled(False)
         self.monthly_weekday_combo.setEnabled(False)
+
+        self._ordinal_form_widget = QWidget()
+        self._ordinal_form_widget.setLayout(ordinal_form)
+        ordinal_form.addRow(self.tr("Ordinal"), self.monthly_ordinal_combo)
+        ordinal_form.addRow(self.tr("Weekday"), self.monthly_weekday_combo)
+        self._ordinal_form_widget.setVisible(False)
+        outer.addWidget(self._ordinal_form_widget)
+
         self.monthly_use_ordinal_checkbox.stateChanged.connect(
             self._on_monthly_ordinal_toggled
         )
         self._on_monthly_ordinal_toggled(self.monthly_use_ordinal_checkbox.checkState())
-        ordinal_layout.addWidget(self.monthly_use_ordinal_checkbox)
-        ordinal_layout.addWidget(self.monthly_ordinal_combo)
-        ordinal_layout.addWidget(self.monthly_weekday_combo)
-        ordinal_layout.addStretch()
-        layout.addLayout(ordinal_layout)
-
         return widget
 
     def _build_weekday_grid(self) -> QGridLayout:
         grid = QGridLayout()
-        grid.setSpacing(6)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(8)
         self.weekday_checkboxes: list[CheckBox] = []
         weekdays = (
             self.tr("Monday"),
@@ -396,6 +421,7 @@ class ScheduleInterface(QWidget):
         self.monthly_ordinal_combo.setEnabled(use_ordinal)
         self.monthly_weekday_combo.setEnabled(use_ordinal)
         self.monthly_day_combo.setEnabled(not use_ordinal)
+        self._ordinal_form_widget.setVisible(use_ordinal)
         if use_ordinal:
             self.monthly_day_combo.setCurrentIndex(0)
         else:
@@ -406,17 +432,17 @@ class ScheduleInterface(QWidget):
         index = self.trigger_group.checkedId()
         if index < 0:
             index = 0
-        self.detail_stack.setCurrentIndex(index)
+        for page_index, page in enumerate(self._detail_pages):
+            page.setVisible(page_index == index)
 
     def _on_trigger_button_clicked(self, _: Any) -> None:
         self._switch_schedule_detail()
-        self._persist_ui_state()
-
-    def _persist_ui_state(self) -> None:
-        return
 
     def _create_schedule_list_card(self) -> SimpleCardWidget:
         card = SimpleCardWidget()
+        card.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum
+        )
         layout = QVBoxLayout(card)
         layout.setSpacing(12)
 
@@ -425,38 +451,68 @@ class ScheduleInterface(QWidget):
         layout.addWidget(title)
 
         self.schedule_table = TableWidget(self)
-        self.schedule_table.setColumnCount(6)
+        self.schedule_table.setColumnCount(7)
         self.schedule_table.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
-        self.schedule_table.setHorizontalHeaderLabels(
-            [
-                self.tr("Config"),
-                self.tr("Pattern"),
-                self.tr("Next run"),
-                self.tr("Force"),
-                self.tr("Enabled"),
-                self.tr("Action"),
-            ]
-        )
-        header = self.schedule_table.horizontalHeader()
-        for idx in range(self.schedule_table.columnCount()):
-            if idx == 1:
-                header.setSectionResizeMode(idx, QHeaderView.ResizeMode.Stretch)
-            elif idx == 5:
-                header.setSectionResizeMode(idx, QHeaderView.ResizeMode.Fixed)
-            else:
-                header.setSectionResizeMode(
-                    idx, QHeaderView.ResizeMode.ResizeToContents
+        header_labels = [
+            self.tr("Config"),
+            self.tr("Type"),
+            self.tr("Pattern"),
+            self.tr("Next run"),
+            self.tr("Force"),
+            self.tr("Enabled"),
+            self.tr("Action"),
+        ]
+        for col, label in enumerate(header_labels):
+            header_item = QTableWidgetItem(label)
+            if col in (4, 5, 6):
+                header_item.setTextAlignment(
+                    Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter
                 )
+            self.schedule_table.setHorizontalHeaderItem(col, header_item)
+        header = self.schedule_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
         header.setStretchLastSection(False)
-        self.schedule_table.setColumnWidth(5, 48)
+        self.schedule_table.setColumnWidth(5, 56)
+        self.schedule_table.setColumnWidth(6, 56)
+        self.schedule_table.verticalHeader().setDefaultSectionSize(40)
         self.schedule_table.verticalHeader().setVisible(False)
         self.schedule_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.schedule_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
-        self.empty_label = BodyLabel(self.tr("No schedules yet."))
-        layout.addWidget(self.schedule_table)
-        layout.addWidget(self.empty_label)
+
+        self.empty_label = CaptionLabel(self.tr("No schedules yet."))
+        empty_page = QWidget()
+        empty_layout = QVBoxLayout(empty_page)
+        empty_layout.setContentsMargins(0, 4, 0, 4)
+        empty_layout.setSpacing(0)
+        empty_layout.addWidget(self.empty_label)
+
+        table_page = QWidget()
+        table_layout = QVBoxLayout(table_page)
+        table_layout.setContentsMargins(0, 0, 0, 0)
+        table_layout.setSpacing(0)
+        table_layout.addWidget(self.schedule_table)
+
+        self.list_body = QWidget()
+        self.list_body.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum
+        )
+        list_layout = QVBoxLayout(self.list_body)
+        list_layout.setContentsMargins(0, 0, 0, 0)
+        list_layout.setSpacing(0)
+        list_layout.addWidget(empty_page)
+        list_layout.addWidget(table_page)
+        table_page.hide()
+        self._list_empty_page = empty_page
+        self._list_table_page = table_page
+        layout.addWidget(self.list_body)
 
         return card
 
@@ -476,56 +532,93 @@ class ScheduleInterface(QWidget):
             self._config_map[config_id] = name
         self.config_selector.blockSignals(False)
 
+    def _resize_schedule_table(self, row_count: int) -> None:
+        header_height = self.schedule_table.horizontalHeader().height()
+        if header_height <= 0:
+            header_height = 36
+        row_height = self.schedule_table.verticalHeader().defaultSectionSize()
+        frame = self.schedule_table.frameWidth() * 2
+        self.schedule_table.setFixedHeight(
+            header_height + row_count * row_height + frame + 2
+        )
+
     def _refresh_schedule_table(self, entries: list[ScheduleEntry]) -> None:
         self._schedule_entries = entries
         self.schedule_table.setRowCount(len(entries))
         for row, entry in enumerate(entries):
             self._write_schedule_row(row, entry)
         has_entries = bool(entries)
-        self.schedule_table.setVisible(has_entries)
-        self.empty_label.setVisible(not has_entries)
+        self._list_empty_page.setVisible(not has_entries)
+        self._list_table_page.setVisible(has_entries)
+        if has_entries:
+            self._resize_schedule_table(len(entries))
 
     def _write_schedule_row(self, row: int, entry: ScheduleEntry) -> None:
-        item = QTableWidgetItem(entry.name or self.tr("Unknown"))
-        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-        self.schedule_table.setItem(row, 0, item)
+        def _item(text: str) -> QTableWidgetItem:
+            item = QTableWidgetItem(text)
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            return item
 
-        pattern = QTableWidgetItem(entry.describe(self.tr))
-        pattern.setFlags(pattern.flags() & ~Qt.ItemFlag.ItemIsEditable)
-        self.schedule_table.setItem(row, 1, pattern)
+        self.schedule_table.setItem(
+            row, 0, _item(entry.name or self.tr("Unknown"))
+        )
+        self.schedule_table.setItem(
+            row,
+            1,
+            _item(self.schedule_service.format_entry_type(entry)),
+        )
+        self.schedule_table.setItem(
+            row,
+            2,
+            _item(self.schedule_service.format_entry_pattern(entry)),
+        )
 
         next_run = (
             entry.next_run.strftime("%Y-%m-%d %H:%M")
             if entry.next_run
             else self.tr("Pending")
         )
-        next_item = QTableWidgetItem(next_run)
-        next_item.setFlags(next_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-        self.schedule_table.setItem(row, 2, next_item)
+        self.schedule_table.setItem(row, 3, _item(next_run))
 
-        force_item = QTableWidgetItem(
-            self.tr("Yes") if entry.force_start else self.tr("No")
+        self.schedule_table.setItem(
+            row,
+            4,
+            _item(self.tr("Yes") if entry.force_start else self.tr("No")),
         )
-        force_item.setFlags(force_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-        self.schedule_table.setItem(row, 3, force_item)
+        force_item = self.schedule_table.item(row, 4)
+        if force_item is not None:
+            force_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter
+            )
 
         enabled_check = CheckBox()
         enabled_check.setChecked(entry.enabled)
         enabled_check.stateChanged.connect(
             partial(self._on_enabled_toggled, entry.entry_id)
         )
-        enabled_wrapper = QWidget(self.schedule_table)
-        wrapper_layout = QHBoxLayout(enabled_wrapper)
-        wrapper_layout.setContentsMargins(0, 0, 0, 0)
-        wrapper_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        wrapper_layout.addWidget(enabled_check)
-        self.schedule_table.setCellWidget(row, 4, enabled_wrapper)
+        self.schedule_table.setCellWidget(
+            row, 5, self._centered_cell_widget(enabled_check)
+        )
 
         remove_button = TransparentToolButton(FIF.DELETE, self)
-        remove_button.setFixedSize(34, 34)
+        remove_button.setFixedSize(32, 32)
         apply_fluent_tooltip(remove_button, self.tr("Delete schedule"))
         remove_button.clicked.connect(partial(self._on_remove_schedule, entry.entry_id))
-        self.schedule_table.setCellWidget(row, 5, remove_button)
+        self.schedule_table.setCellWidget(
+            row, 6, self._centered_cell_widget(remove_button)
+        )
+
+    def _centered_cell_widget(self, child: QWidget) -> QWidget:
+        wrapper = QWidget(self.schedule_table)
+        wrapper.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addStretch(1)
+        layout.addWidget(child, 0, Qt.AlignmentFlag.AlignCenter)
+        layout.addStretch(1)
+        return wrapper
 
     def _on_enabled_toggled(self, entry_id: str, state: int) -> None:
         self.schedule_service.set_schedule_enabled(entry_id, state != 0)
