@@ -1450,29 +1450,13 @@ def _backup_resources_and_cleanup_pipelines(
 
 
 def _update_interface_version(interface_paths: list[Path], version: str) -> bool:
-    update_logger.info(f"[步骤5] 开始更新 interface 配置文件中的版本号为: {version}")
-    for path in interface_paths:
-        if not path.exists():
-            continue
-        interface = _read_config_file(str(path))
-        if not interface:
-            continue
-        old_version = interface.get("version", "unknown")
-        interface["version"] = version
-        try:
-            import jsonc
+    bundle_path = interface_paths[0].parent if interface_paths else Path.cwd()
+    from hotfix_extract import sync_interface_after_hotfix
 
-            with open(path, "w", encoding="utf-8") as f:
-                jsonc.dump(interface, f, indent=4, ensure_ascii=False)
-        except ImportError:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(interface, f, indent=4, ensure_ascii=False)
-        update_logger.info(
-            f"[步骤5] 版本号更新成功: {path.name} ({old_version} -> {version})"
-        )
-        return True
-    update_logger.warning("[步骤5] 未能更新 interface 配置文件中的版本号")
-    return False
+    update_logger.info(
+        f"[步骤5] 开始更新 interface 配置文件中的版本号为: {version}"
+    )
+    return sync_interface_after_hotfix(interface_paths, version, bundle_path)
 
 
 def _rollback_resource_backups(resource_backups: list[tuple[Path, Path]]) -> None:

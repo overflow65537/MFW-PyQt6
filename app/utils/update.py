@@ -62,7 +62,15 @@ from app.utils.archive_seven import (
     import_py7zr,
     path_readable_by_py7zr,
 )
-from hotfix_extract import extract_agent_folder_from_archive
+from hotfix_extract import (
+    CFA_SETTING_FILENAME,
+    LEGACY_UPDATE_FLAG_FILENAME,
+    cfa_setting_update_flag,
+    default_cfa_setting,
+    extract_agent_folder_from_archive,
+    read_cfa_setting,
+    sync_interface_after_hotfix,
+)
 
 
 def path_is_zip_backed_archive(path: Path | str) -> bool:
@@ -989,26 +997,49 @@ class BaseUpdate(QThread):
                 )
                 raise
 
-    def _get_local_update_flag_path(self) -> str | None:
+
+    def _read_local_update_flag(self) -> str | None:
         bundle_path = self._get_bundle_path()
         if not bundle_path:
             return None
-        return os.path.join(bundle_path, "update_flag.txt")
-
-    def _read_local_update_flag(self) -> str | None:
-        flag_path = self._get_local_update_flag_path()
-        if not flag_path:
+        setting = read_cfa_setting(bundle_path)
+        if setting is None:
+            logger.warning(
+                "本地热更新配置不存在或无效（%s / %s）",
+                CFA_SETTING_FILENAME,
+                LEGACY_UPDATE_FLAG_FILENAME,
+            )
             return None
-        try:
-            with open(flag_path, "r", encoding="utf-8") as file:
-                return file.read().strip()
-        except FileNotFoundError:
-            logger.warning(f"本地 update_flag.txt 不存在: {flag_path}")
-        except Exception as exc:
-            logger.error(f"读取本地 update_flag 失败: {exc}")
-        return None
+        return cfa_setting_update_flag(setting)
 
-    def _fetch_remote_update_flag(self, url: str) -> str:
+    def _try_fetch_remote_cfa_setting(self, url: str) -> dict[str, Any] | None:
+        proxies = self.get_proxy_data()
+        response = None
+        try:
+            response = requests.get(
+                url, timeout=10, verify=self._ssl_verify(), proxies=proxies
+            )
+            response.raise_for_status()
+            data = response.json()
+            if isinstance(data, dict) and "update_flag" in data:
+                return data
+            logger.warning("远端 %s 格式无效 (%s)", CFA_SETTING_FILENAME, url)
+            return None
+        except HTTPError as exc:
+            status = exc.response.status_code if exc.response else None
+            if status == 404:
+                logger.debug("远端 %s 不存在 (%s)", CFA_SETTING_FILENAME, url)
+                return None
+            logger.error("远端 %s 获取失败 (%s): %s", CFA_SETTING_FILENAME, url, exc)
+            return None
+        except (requests.RequestException, ValueError) as exc:
+            logger.error("远端 %s 获取失败 (%s): %s", CFA_SETTING_FILENAME, url, exc)
+            return None
+        finally:
+            if response:
+                response.close()
+
+    def _try_fetch_remote_legacy_update_flag(self, url: str) -> str | None:
         proxies = self.get_proxy_data()
         response = None
         try:
@@ -1020,23 +1051,64 @@ class BaseUpdate(QThread):
         except HTTPError as exc:
             status = exc.response.status_code if exc.response else None
             if status == 404:
-                logger.warning("远端 update_flag 不存在 (%s)", url)
-                return "1"
-            logger.error(f"远端 update_flag 获取失败 ({url}): {exc}")
-            return "1"
+                logger.debug(
+                    "远端 %s 不存在 (%s)", LEGACY_UPDATE_FLAG_FILENAME, url
+                )
+                return None
+            logger.error(
+                "远端 %s 获取失败 (%s): %s", LEGACY_UPDATE_FLAG_FILENAME, url, exc
+            )
+            return None
         except requests.RequestException as exc:
-            logger.error(f"远端 update_flag 获取失败 ({url}): {exc}")
-            return "1"
+            logger.error(
+                "远端 %s 获取失败 (%s): %s", LEGACY_UPDATE_FLAG_FILENAME, url, exc
+            )
+            return None
         finally:
             if response:
                 response.close()
 
-    def check_for_hotfix(self, url: str) -> bool:
+    def _fetch_remote_update_setting(
+        self,
+        cfa_setting_url: str | None,
+        legacy_update_flag_url: str | None = None,
+    ) -> dict[str, Any]:
+        if cfa_setting_url:
+            setting = self._try_fetch_remote_cfa_setting(cfa_setting_url)
+            if setting is not None:
+                return setting
+
+        if legacy_update_flag_url:
+            legacy_flag = self._try_fetch_remote_legacy_update_flag(
+                legacy_update_flag_url
+            )
+            if legacy_flag is not None:
+                logger.info(
+                    "远端使用旧版 %s 作为热更新配置",
+                    LEGACY_UPDATE_FLAG_FILENAME,
+                )
+                return {"update_flag": legacy_flag}
+
+        logger.warning(
+            "远端热更新配置不可用（%s / %s），使用默认 update_flag",
+            CFA_SETTING_FILENAME,
+            LEGACY_UPDATE_FLAG_FILENAME,
+        )
+        return default_cfa_setting()
+
+    def check_for_hotfix(
+        self,
+        cfa_setting_url: str | None,
+        legacy_update_flag_url: str | None = None,
+    ) -> bool:
         local_flag = self._read_local_update_flag()
         if local_flag is None:
             return False
 
-        remote_flag = self._fetch_remote_update_flag(url)
+        remote_setting = self._fetch_remote_update_setting(
+            cfa_setting_url, legacy_update_flag_url
+        )
+        remote_flag = cfa_setting_update_flag(remote_setting)
         if remote_flag is None:
             return False
 
@@ -1464,20 +1536,35 @@ class Update(BaseUpdate):
 
             # 步骤2: 检查是否支持热更新
             if self.force_full_download:
-                logger.info("[步骤2] 强制下载模式，跳过 update_flag/hotfix 检查")
+                logger.info(
+                    "[步骤2] 强制下载模式，跳过 %s/%s/hotfix 检查",
+                    CFA_SETTING_FILENAME,
+                    LEGACY_UPDATE_FLAG_FILENAME,
+                )
             elif download_source == "github":
                 logger.info("[步骤2] 开始判断Github热更新支持...")
-                update_flag_url = self._form_github_url(
+                cfa_setting_url = self._form_github_url(
+                    self.url, "cfa_setting", str(self.latest_update_version)
+                )
+                legacy_update_flag_url = self._form_github_url(
                     self.url, "update_flag", str(self.latest_update_version)
                 )
-                if not update_flag_url:
-                    logger.info("[步骤2] 无法获取 update_flag URL，跳过热更新")
+                if not cfa_setting_url and not legacy_update_flag_url:
+                    logger.info("[步骤2] 无法获取热更新配置 URL，跳过热更新")
                     return self._stop_with_notice(2)
 
-                logger.debug("[步骤2] update_flag URL: %s", update_flag_url)
+                logger.debug("[步骤2] %s URL: %s", CFA_SETTING_FILENAME, cfa_setting_url)
+                logger.debug(
+                    "[步骤2] %s URL: %s",
+                    LEGACY_UPDATE_FLAG_FILENAME,
+                    legacy_update_flag_url,
+                )
 
                 # 获取更新标志位判断是否可以热更新
-                hotfix = self.check_for_hotfix(update_flag_url)
+                hotfix = self.check_for_hotfix(
+                    cfa_setting_url,
+                    legacy_update_flag_url,
+                )
                 logger.info("[步骤2]热更新支持: %s", hotfix)
                 if hotfix and download_source == "github":
                     download_url = self._form_github_url(
@@ -1590,17 +1677,12 @@ class Update(BaseUpdate):
                 bundle_path_obj / "interface.jsonc",
                 bundle_path_obj / "interface.json",
             ]
-
-            for path in interface_path:
-                if path.exists():
-                    interface = self._read_config(str(path))
-                    if interface:
-                        interface["version"] = self.latest_update_version
-                        with open(path, "w", encoding="utf-8") as f:
-                            jsonc.dump(interface, f, indent=4, ensure_ascii=False)
-                        logger.info("[步骤5] 更新 interface.jsonc 成功")
-                        break
-            logger.info("[步骤5] interface 配置同步完毕")
+            if sync_interface_after_hotfix(
+                interface_path,
+                str(self.latest_update_version or ""),
+                bundle_path_obj,
+            ):
+                logger.info("[步骤5] interface 配置同步完毕")
             # 步骤5: 完成
             logger.info("[步骤5] 热更新成功完成!")
             logger.info("=" * 50)
@@ -2425,8 +2507,8 @@ class Update(BaseUpdate):
 
         Args:
             url (str): GitHub项目的URL。
-            mode (str): 模式（"issue"、"download"、"about"或"update_flag"）。
-            version (str | None): 指定版本，仅在 update_flag 模式下使用。
+            mode (str): 模式（"issue"、"download"、"about"、"cfa_setting"或"update_flag"）。
+            version (str | None): 指定版本，仅在 cfa_setting / update_flag 模式下使用。
 
         Returns:
             str | None: 对应的链接。
@@ -2447,10 +2529,14 @@ class Update(BaseUpdate):
                 return_url = f"https://api.github.com/repos/{username}/{repository}/releases/latest"
         elif mode == "about":
             return_url = f"https://github.com/{username}/{repository}"
+        elif mode == "cfa_setting":
+            if not version:
+                return None
+            return_url = f"https://raw.githubusercontent.com/{username}/{repository}/{version}/{CFA_SETTING_FILENAME}"
         elif mode == "update_flag":
             if not version:
                 return None
-            return_url = f"https://raw.githubusercontent.com/{username}/{repository}/{version}/update_flag.txt"
+            return_url = f"https://raw.githubusercontent.com/{username}/{repository}/{version}/{LEGACY_UPDATE_FLAG_FILENAME}"
         elif mode == "hotfix":
             if not version:
                 return None
@@ -2657,17 +2743,12 @@ class MultiResourceUpdate(Update):
                 bundle_path_obj / "interface.jsonc",
                 bundle_path_obj / "interface.json",
             ]
-
-            for path in interface_path:
-                if path.exists():
-                    interface = self._read_config(str(path))
-                    if interface:
-                        interface["version"] = self.latest_update_version
-                        with open(path, "w", encoding="utf-8") as f:
-                            jsonc.dump(interface, f, indent=4, ensure_ascii=False)
-                        logger.info("[步骤5] 更新 interface.jsonc 成功")
-                        break
-            logger.info("[步骤5] interface 配置同步完毕")
+            if sync_interface_after_hotfix(
+                interface_path,
+                str(self.latest_update_version or ""),
+                bundle_path_obj,
+            ):
+                logger.info("[步骤5] interface 配置同步完毕")
 
             # 步骤5: 完成
             logger.info("[步骤5] 热更新成功完成!")

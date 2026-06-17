@@ -2937,7 +2937,9 @@ class SettingInterface(QWidget):
         self._show_progress_bar()
         self._bind_stop_button(self.tr("Stop update"), enable=False)
         self._lock_update_button_temporarily()
-        logger.info("触发资源重置，强制全量下载最新资源包（跳过 update_flag/hotfix）")
+        logger.info(
+            "触发资源重置，强制全量下载最新资源包（跳过 CFA_setting/update_flag/hotfix）"
+        )
         signalBus.info_bar_requested.emit("info", self.tr("Starting Reset Resource"))
 
         # 创建强制全量下载的更新器实例
