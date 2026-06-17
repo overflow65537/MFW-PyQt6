@@ -70,6 +70,30 @@ def cfa_setting_embedded(setting: dict[str, Any] | None) -> bool | None:
     return bool(setting["embedded"])
 
 
+def apply_cfa_embedded_to_interface(
+    interface: dict[str, Any],
+    bundle_path: Path | str,
+) -> bool:
+    """按 CFA_setting.json 的 embedded 字段更新 interface.agent.embedded。
+
+    Returns:
+        True 表示 interface 中的 embedded 值已变更。
+    """
+    embedded = cfa_setting_embedded(read_cfa_setting(bundle_path))
+    if embedded is None:
+        return False
+
+    agent = interface.get("agent")
+    if not isinstance(agent, dict):
+        agent = {}
+        interface["agent"] = agent
+    if agent.get("embedded") == embedded:
+        return False
+
+    agent["embedded"] = embedded
+    return True
+
+
 def _read_interface_config(config_path: Path) -> dict[str, Any]:
     if not config_path.is_file():
         return {}
@@ -113,10 +137,7 @@ def sync_interface_after_hotfix(
             continue
         old_version = interface.get("version", "unknown")
         interface["version"] = version
-        if embedded is not None:
-            agent = interface.setdefault("agent", {})
-            if isinstance(agent, dict):
-                agent["embedded"] = embedded
+        apply_cfa_embedded_to_interface(interface, bundle_path)
         _write_interface_config(path, interface)
         embedded_note = (
             f", agent.embedded={embedded}" if embedded is not None else ""
