@@ -151,7 +151,7 @@ jobs:
             fi
           done
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: assets/*
           tag_name: ${{ needs.meta.outputs.tag }}
