@@ -43,9 +43,9 @@ MFW-ChainFlow Assistant provides a ready-to-use visual orchestrator for MaaFrame
 - External notifications: DingTalk, Lark/Feishu, SMTP, WxPusher, WeCom bot, Gotify
 - Built-in scheduler: once / daily / weekly / monthly with queue or force run
 - Dynamic custom actions and recognizers, with Agent support for tailored flows
-- Embedded Agent: enable built-in mode in the agent field to automatically convert to custom loading, using the UI's internal environment for a smaller and lighter footprint
+- Embedded Agent: enable built-in mode via `CFA_setting.json` to automatically convert to custom loading, using the UI's internal environment for a smaller and lighter footprint
 - Speedrun mode: limit runs per day/week/month with minimal intervals to avoid repeats
-- Hot update: automatically enabled when `update_flag.txt` in resource repo matches local, faster and no restart required
+- Hot update: automatically enabled when `update_flag` in `CFA_setting.json` matches between resource repo and local, faster and no restart required
 
 ## Speedrun Mode
 
@@ -78,7 +78,21 @@ Run saved configurations on once / daily / weekly / monthly cadence. Choose forc
 
 ## Hot Update
 
-When the content of `update_flag.txt` in the resource repository matches the local `update_flag.txt`, hot update mode will be enabled, which is faster and requires no restart.
+Place `CFA_setting.json` at the resource bundle root. When the `update_flag` field matches between local and the remote repository, hot update mode is enabled—faster and requires no restart.
+
+```json
+{
+  "update_flag": "1",
+  "embedded": false
+}
+```
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `update_flag` | Yes | Hot-update identifier; enabled when local and remote values match |
+| `embedded` | No | Agent embedded mode switch; see [Embedded Agent](#embedded-agent) below |
+
+> Legacy compatibility: if `CFA_setting.json` is absent, falls back to `update_flag.txt` (`update_flag` only, no `embedded`).
 
 ## Dynamic Custom Actions/Recognizers
 
@@ -130,14 +144,22 @@ More examples: [MAA_Punish/assets](https://github.com/overflow65537/MAA_Punish/t
 
 ### Embedded Agent
 
-Set `embedded: true` in the `agent` field of `interface.json` to automatically convert the agent to custom loading mode. This approach runs within the UI's internal environment without a separate process, resulting in lower resource usage and faster startup.
+Set `"embedded": true` in `CFA_setting.json` to automatically convert the agent to custom loading mode. This approach runs within the UI's internal environment without a separate process, resulting in lower resource usage and faster startup. After a hot update, this value is synced to `agent.embedded` in `interface.json`.
 
-Example `interface.json` snippet:
+Example `CFA_setting.json`:
+
+```json
+{
+  "update_flag": "1",
+  "embedded": true
+}
+```
+
+Keep the agent entry in `interface.json`, for example:
 
 ```json
 {
   "agent": {
-    "embedded": true,
     "child_args": ["{PROJECT_DIR}/agent/main.py"]
   }
 }
