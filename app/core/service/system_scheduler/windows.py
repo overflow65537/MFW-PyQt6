@@ -18,6 +18,7 @@ from app.core.service.schedule_service import (
 from app.core.service.system_scheduler.base import SystemSchedulerBackend
 from app.utils.install_paths import resolve_schedule_launch_command
 from app.utils.logger import logger
+from app.utils.subprocess_helper import hidden_subprocess_kwargs
 
 if TYPE_CHECKING:
     from app.core.service.schedule_service import ScheduleEntry
@@ -216,6 +217,7 @@ class WindowsTaskSchedulerBackend(SystemSchedulerBackend):
                 errors="replace",
                 timeout=60,
                 check=False,
+                **hidden_subprocess_kwargs(),
             )
             if result.returncode != 0:
                 detail = (result.stderr or result.stdout or "").strip()
@@ -266,6 +268,7 @@ class WindowsTaskSchedulerBackend(SystemSchedulerBackend):
                 errors="replace",
                 timeout=30,
                 check=False,
+                **hidden_subprocess_kwargs(),
             )
         except Exception as exc:
             logger.warning("列举 Windows 计划任务失败: %s", exc)
@@ -290,6 +293,7 @@ class WindowsTaskSchedulerBackend(SystemSchedulerBackend):
                 errors="replace",
                 timeout=60,
                 check=False,
+                **hidden_subprocess_kwargs(),
             )
             if result.returncode != 0:
                 detail = (result.stderr or result.stdout or "").strip()

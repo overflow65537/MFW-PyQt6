@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from app.utils.install_paths import resolve_schedule_launch_command
 from app.utils.logger import logger
+from app.utils.subprocess_helper import hidden_subprocess_kwargs
 
 if TYPE_CHECKING:
     from app.core.service.schedule_service import ScheduleEntry
@@ -37,6 +38,7 @@ def read_user_crontab() -> str:
             errors="replace",
             timeout=30,
             check=False,
+            **hidden_subprocess_kwargs(),
         )
     except FileNotFoundError:
         logger.warning("未找到 crontab 命令，无法管理系统计划任务")
@@ -66,6 +68,7 @@ def write_user_crontab(content: str) -> bool:
             errors="replace",
             timeout=30,
             check=False,
+            **hidden_subprocess_kwargs(),
         )
     except FileNotFoundError:
         logger.warning("未找到 crontab 命令，无法写入系统计划任务")
