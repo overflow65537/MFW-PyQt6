@@ -1390,6 +1390,20 @@ class SettingInterface(QWidget):
 
         self.taskGroup.addSettingCard(self.gpu_acceleration_card)
 
+        self.multi_instance_mode_card = SwitchSettingCard(
+            FIF.ALBUM,
+            self.tr("Multi-instance mode"),
+            self.tr(
+                "Allow multiple configurations to run at the same time, "
+                "each with its own start/stop control, log, and monitor. "
+                "When off, switching the active configuration is blocked while a task is running."
+            ),
+            configItem=cfg.multi_instance_mode,
+            parent=self.taskGroup,
+        )
+
+        self.taskGroup.addSettingCard(self.multi_instance_mode_card)
+
         self.reset_task_layout_card = PrimaryPushSettingCard(
             text=self.tr("Reset"),
             icon=FIF.SYNC,
@@ -2546,7 +2560,18 @@ class SettingInterface(QWidget):
         self.save_screenshot_card.checkedChanged.connect(
             self._on_save_screenshot_changed
         )
+        self.multi_instance_mode_card.checkedChanged.connect(
+            self._on_multi_instance_mode_changed
+        )
         self._apply_theme_from_config()
+
+    def _on_multi_instance_mode_changed(self, checked: bool):
+        """多实例模式开关变更：持久化并广播给相关界面。"""
+        cfg.set(cfg.multi_instance_mode, bool(checked))
+        try:
+            signalBus.multi_instance_mode_changed.emit(bool(checked))
+        except Exception as exc:
+            logger.warning(f"发射 multi_instance_mode_changed 信号失败: {exc}")
 
     def _onRunAfterStartupCardChange(self):
         """根据输入更新启动前运行的程序脚本路径。"""

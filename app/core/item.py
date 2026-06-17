@@ -41,6 +41,9 @@ class FromeServiceCoordinator(QObject):
     fs_start_button_status = Signal(
         dict
     )  # 控制开始按钮状态和文本，载荷如 {"text": "开始", "status": "enabled"}
+    fs_start_button_status_at = Signal(
+        str, dict
+    )  # 携带 config_id 的开始按钮状态（多实例隔离用），载荷为 (config_id, {"text": ..., "status": ...})
 
 
 class RunnerEvents(QObject):

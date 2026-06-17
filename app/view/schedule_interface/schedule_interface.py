@@ -622,3 +622,6 @@ class ScheduleInterface(QWidget):
         normalized_level = (level or "info").lower()
         signalBus.info_bar_requested.emit(normalized_level, message)
         signalBus.log_output.emit(normalized_level.upper(), message)
+        # 同步发射带 config_id 的日志（空值表示归属当前显示配置），
+        # 使日志面板（按 config_id 订阅）也能显示计划任务相关日志。
+        signalBus.log_output_at.emit("", normalized_level.upper(), message)

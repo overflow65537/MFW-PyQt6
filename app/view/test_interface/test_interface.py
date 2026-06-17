@@ -99,7 +99,7 @@ class TestInterface(QWidget):
         logger.info("测试页面：切换配置 %s -> %s", current, target_id)
 
     def _test_run_tasks(self) -> None:
-        if self.service_coordinator.run_manager.is_running:
+        if self.service_coordinator.is_current_config_running():
             signalBus.info_bar_requested.emit(
                 "warning", "任务流正在运行，无法重复启动"
             )

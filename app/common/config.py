@@ -194,6 +194,9 @@ class Config(QConfig):
         "Task", "enable_gpu_acceleration", True, BoolValidator()
     )  # GPU 硬件加速开关（关闭时强制 CPU 推理）
     task_interface_panel_layout = ConfigItem("Task", "task_interface_panel_layout", "")
+    multi_instance_mode = ConfigItem(
+        "Task", "multi_instance_mode", False, BoolValidator()
+    )  # 多实例模式：开启后允许多个配置同时运行，并在运行时切换配置
 
     # ===== 日志设置 =====
     log_zip_include_images = ConfigItem(

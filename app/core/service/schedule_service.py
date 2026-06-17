@@ -500,6 +500,17 @@ class ScheduleService(QObject):
             await self._try_start_next()
 
     async def _force_start(self, entry: ScheduleEntry) -> None:
+        if self.service_coordinator.is_multi_instance_enabled():
+            # 多实例：仅停止目标配置，不影响其它正在运行的配置
+            target = (
+                entry.config_id or self.service_coordinator.config.current_config_id
+            )
+            if self.service_coordinator.is_config_running(target):
+                await self.service_coordinator.stop_task(config_id=target)
+            self._pending_queue.appendleft(entry)
+            await self._try_start_next()
+            return
+
         if self.service_coordinator.run_manager.is_running or (
             self._current_task and not self._current_task.done()
         ):
@@ -519,10 +530,15 @@ class ScheduleService(QObject):
             return
         while self._pending_queue:
             next_entry = self._pending_queue[0]
-            if (
-                self.service_coordinator.run_manager.is_running
-                and not next_entry.force_start
-            ):
+            if self.service_coordinator.is_multi_instance_enabled():
+                # 多实例：仅当目标配置自身在运行时才等待
+                busy = self.service_coordinator.is_config_running(
+                    next_entry.config_id
+                    or self.service_coordinator.config.current_config_id
+                )
+            else:
+                busy = self.service_coordinator.run_manager.is_running
+            if busy and not next_entry.force_start:
                 await asyncio.sleep(1)
                 continue
             next_entry = self._pending_queue.popleft()
@@ -530,12 +546,43 @@ class ScheduleService(QObject):
             return
 
     async def _execute_entry(self, entry: ScheduleEntry) -> None:
-        signalBus.log_clear_requested.emit()
         self._log_info(
             self.tr("Schedule: {name} ({describe}) started").format(
                 name=entry.name, describe=entry.describe(self.tr)
             )
         )
+        # 多实例模式：直接运行目标配置实例，不切换全局当前配置
+        if self.service_coordinator.is_multi_instance_enabled():
+            target_config = (
+                entry.config_id or self.service_coordinator.config.current_config_id
+            )
+            if not self.service_coordinator.config.get_config(target_config):
+                self._log_info(
+                    self.tr(
+                        "Schedule: target config {config_id} not found, skipped"
+                    ).format(config_id=target_config)
+                )
+                self._current_task = None
+                await self._try_start_next()
+                return
+            # 仅清空目标配置的日志缓冲
+            signalBus.log_clear_requested_at.emit(target_config)
+            try:
+                await self.service_coordinator.run_tasks_flow(config_id=target_config)
+            except Exception as exc:
+                logger.exception("计划任务执行失败: %s", exc)
+                self._log_info(
+                    self.tr("Schedule: {name} failed: {error}").format(
+                        name=entry.name, error=exc
+                    )
+                )
+            finally:
+                self._current_task = None
+                await self._try_start_next()
+            return
+
+        # 单实例模式：切换到目标配置、运行、再恢复
+        signalBus.log_clear_requested.emit()
         original_config = self.service_coordinator.config.current_config_id
         switched = False
         if entry.config_id and entry.config_id != original_config:

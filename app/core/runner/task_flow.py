@@ -106,6 +106,9 @@ class TaskFlowRunner(QObject):
         # 防止同一次任务流退出时重复发射“结束”信号（幂等保护）
         self._task_flow_finished_emitted: bool = False
         self._next_config_to_run: str | None = None
+        # 多实例模式下由协调器注入：完成后“运行其他配置”改为启动独立运行体，
+        # 不再篡改本运行体的当前配置。签名为 async def(config_id: str)。
+        self.run_other_config_callback = None
         self.adb_controller_raw: dict[str, Any] | None = None
         self.adb_activate_controller: str | None = None
         self.adb_controller_config: dict[str, Any] | None = None
@@ -3076,6 +3079,14 @@ class TaskFlowRunner(QObject):
         target_config = config_service.get_config(config_id)
         if not target_config:
             logger.warning(f"完成后操作指定的配置不存在: {config_id}")
+            return
+
+        # 多实例模式：交由协调器以独立运行体启动目标配置，不篡改本运行体当前配置
+        if self.run_other_config_callback is not None:
+            try:
+                await self.run_other_config_callback(config_id)
+            except Exception as exc:
+                logger.error(f"完成后启动其他配置失败: {config_id}: {exc}")
             return
 
         config_service.current_config_id = config_id

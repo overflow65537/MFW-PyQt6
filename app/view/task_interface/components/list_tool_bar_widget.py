@@ -145,11 +145,30 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
             )
         except Exception:
             pass
+        # 多实例模式切换时，重新评估是否需要锁定
+        try:
+            signalBus.multi_instance_mode_changed.connect(
+                self._on_multi_instance_mode_changed
+            )
+        except Exception:
+            pass
 
     def _on_start_button_status_changed(self, status: dict):
-        """根据任务流状态锁定/解锁配置列表。"""
+        """根据任务流状态锁定/解锁配置列表。
+
+        多实例模式下允许运行时切换/管理配置，因此不锁定列表；
+        单实例模式下保持运行中锁定的旧行为。
+        """
+        if self.service_coordinator.is_multi_instance_enabled():
+            self.set_locked(False)
+            return
         is_running = status.get("text") == "STOP"
         self.set_locked(is_running)
+
+    def _on_multi_instance_mode_changed(self, enabled: bool):
+        """多实例模式开启后立即解锁配置列表。"""
+        if enabled:
+            self.set_locked(False)
 
     def set_locked(self, locked: bool):
         """锁定后禁止新增/删除配置，并通知列表组件拦截点击切换。"""

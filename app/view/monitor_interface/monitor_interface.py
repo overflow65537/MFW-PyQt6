@@ -429,6 +429,33 @@ class MonitorInterface(QWidget):
                 self._on_task_status_changed
             )
         signalBus.task_flow_finished.connect(self._on_task_flow_finished)
+        # 多实例：切换当前配置后，监控画面应跟随新的当前配置
+        signalBus.config_changed.connect(self._on_active_config_changed)
+
+    def _on_active_config_changed(self, _config_id: str) -> None:
+        """当前激活配置变化：停止旧配置监控；若新配置在运行则自动接管画面。
+
+        监控会话基于共享的 task/config 服务（已指向新当前配置），重启后即对应新配置。
+        """
+        was_active = self._session.monitoring_active or self._starting_monitoring
+        if was_active:
+            self._request_stop_monitoring(reason="config_changed")
+            self._emit_preview_cleared()
+
+        def _maybe_restart() -> None:
+            try:
+                should_run = bool(
+                    self.service_coordinator.is_current_config_running()
+                )
+            except Exception:
+                should_run = False
+            if should_run and not (
+                self._session.monitoring_active or self._starting_monitoring
+            ):
+                self._start_monitoring(auto=True)
+
+        # 等待停止流程与防抖完成后再决定是否为新配置启动监控
+        QTimer.singleShot(2 * self._control_debounce_ms + 50, _maybe_restart)
 
     def _set_loading(self, loading: bool) -> None:
         if self._starting_monitoring == loading:
