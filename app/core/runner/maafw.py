@@ -440,6 +440,7 @@ class MaaFW(QObject):
         self._custom_sys_paths: List[str] = []
         # 记录上次加载的 custom_root，用于清理模块缓存
         self._last_custom_root: Path | None = None
+        self._last_embedded_module_keys: list[str] = []
         # 内置模式下的额外 Maa event sink。
         self._embedded_resource_sinks: List[ResourceEventSink] = []
         self._embedded_controller_sinks: List[ControllerEventSink] = []
@@ -552,6 +553,10 @@ class MaaFW(QObject):
         if recognitions:
             logger.info("成功加载内置自定义识别器: %s", ", ".join(recognitions))
 
+        self._last_embedded_module_keys = self._collect_embedded_module_keys(
+            agent_path, modules_before
+        )
+
         if not actions and not recognitions and not self._has_embedded_sinks():
             imported_modules = self._collect_imported_modules_under_root(
                 agent_path, modules_before
@@ -593,6 +598,32 @@ class MaaFW(QObject):
             ("context_sink", sink)
             for sink in self._embedded_context_sinks[counts["context_sink"] :]
         ]
+
+    @staticmethod
+    def _collect_embedded_module_keys(
+        root: Path, modules_before: set[Any]
+    ) -> list[str]:
+        """收集本次内置 agent 加载导入的模块名（字符串前缀匹配，避免 resolve 开销）。"""
+        try:
+            root_prefix = str(root.resolve()).replace("\\", "/").lower()
+        except OSError:
+            return []
+        if not root_prefix.endswith("/"):
+            root_prefix += "/"
+        keys: list[str] = []
+        for module_key in sys.modules.keys() - modules_before:
+            if not isinstance(module_key, str):
+                continue
+            module = sys.modules.get(module_key)
+            if module is None:
+                continue
+            module_file = getattr(module, "__file__", None)
+            if not module_file:
+                continue
+            normalized = str(module_file).replace("\\", "/").lower()
+            if normalized.startswith(root_prefix):
+                keys.append(module_key)
+        return sorted(keys)
 
     @staticmethod
     def _collect_imported_modules_under_root(
