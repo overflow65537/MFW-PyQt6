@@ -6,7 +6,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from PIL import Image
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtGui import QImage, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -39,6 +39,25 @@ def _pil_to_pixmap(pil_image: Image.Image) -> QPixmap:
     buffer = rgb.tobytes("raw", "RGB")
     qimage = QImage(buffer, w, h, w * 3, QImage.Format.Format_RGB888)
     return QPixmap.fromImage(qimage)
+
+
+def _scale_pixmap_centered(pixmap: QPixmap, target: QSize) -> QPixmap:
+    """等比缩放并居中绘制到目标尺寸画布上。"""
+    if pixmap.isNull() or target.width() <= 0 or target.height() <= 0:
+        return pixmap
+    scaled = pixmap.scaled(
+        target,
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
+    )
+    canvas = QPixmap(target.width(), target.height())
+    canvas.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(canvas)
+    x = max(0, (target.width() - scaled.width()) // 2)
+    y = max(0, (target.height() - scaled.height()) // 2)
+    painter.drawPixmap(x, y, scaled)
+    painter.end()
+    return canvas
 
 
 class ConfigMonitorTile(SimpleCardWidget):
@@ -262,11 +281,7 @@ class ConfigMonitorTile(SimpleCardWidget):
                 )
         target = self._preview_target_size()
         if target.width() > 0 and target.height() > 0:
-            pixmap = pixmap.scaled(
-                target,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
+            pixmap = _scale_pixmap_centered(pixmap, target)
         self._preview_label.setPixmap(pixmap)
         self._set_loading(False)
         self._idle_overlay.hide()
