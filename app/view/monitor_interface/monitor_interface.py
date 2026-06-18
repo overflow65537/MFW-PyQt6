@@ -1151,6 +1151,8 @@ class MonitorInterface(QWidget):
                 self._image_width, self._image_height, force_update=True
             )
         self._refresh_preview_image()
+        if self._multi_grid is not None and self._multi_panel.isVisible():
+            self._multi_grid.refresh_all_previews()
         self._reposition_preview_overlays()
 
     def showEvent(self, event) -> None:

@@ -56,13 +56,14 @@ class ConfigMonitorTile(SimpleCardWidget):
         self._running = False
         self._active = False
         self._loading = False
+        self._last_pil_image: Optional[Image.Image] = None
         self._roi_store = RecognitionRoiStore()
 
         self.setClickEnabled(False)
         self.setBorderRadius(8)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
         layout = QVBoxLayout(self)
@@ -84,6 +85,9 @@ class ConfigMonitorTile(SimpleCardWidget):
 
         self._preview_host = QWidget(self)
         self._preview_host.setMinimumSize(self._PREVIEW_MIN_W, self._PREVIEW_MIN_H)
+        self._preview_host.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         host_layout = QVBoxLayout(self._preview_host)
         host_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -93,7 +97,7 @@ class ConfigMonitorTile(SimpleCardWidget):
         self._preview_label.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        host_layout.addWidget(self._preview_label)
+        host_layout.addWidget(self._preview_label, 1)
 
         self._idle_overlay = QWidget(self._preview_host)
         self._idle_overlay.setAttribute(
@@ -112,7 +116,7 @@ class ConfigMonitorTile(SimpleCardWidget):
         self._loading_ring.setFixedSize(32, 32)
         self._loading_ring.hide()
 
-        layout.addWidget(self._preview_host)
+        layout.addWidget(self._preview_host, 1)
 
         self._active_border = QFrame(self)
         self._active_border.setAttribute(
@@ -141,6 +145,7 @@ class ConfigMonitorTile(SimpleCardWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._reposition_overlays()
+        self._refresh_preview()
         if hasattr(self, "_active_border"):
             self._active_border.setGeometry(self.rect())
 
@@ -206,6 +211,7 @@ class ConfigMonitorTile(SimpleCardWidget):
         else:
             self._running_ring.hide()
             self._running_ring.stop()
+            self._last_pil_image = None
             self._preview_label.clear()
             self._idle_overlay.show()
             self._set_loading(False)
@@ -225,17 +231,25 @@ class ConfigMonitorTile(SimpleCardWidget):
         self._reposition_overlays()
 
     def clear_preview(self) -> None:
+        self._last_pil_image = None
         self._preview_label.clear()
 
-    def update_preview(
-        self,
-        pil_image: Image.Image,
-        *,
-        roi_store: Optional[RecognitionRoiStore] = None,
-    ) -> None:
-        if not self._running:
+    def _preview_target_size(self) -> QSize:
+        host = self._preview_host
+        if host.width() > 0 and host.height() > 0:
+            return host.size()
+        label = self._preview_label
+        if label.width() > 0 and label.height() > 0:
+            return label.size()
+        return QSize(self._PREVIEW_MIN_W, self._PREVIEW_MIN_H)
+
+    def _refresh_preview(self) -> None:
+        if self._last_pil_image is None or not self._running:
             return
-        store = roi_store or self._roi_store
+        self._render_preview(self._last_pil_image)
+
+    def _render_preview(self, pil_image: Image.Image) -> None:
+        store = self._roi_store
         pixmap = _pil_to_pixmap(pil_image)
         if bool(cfg.get(cfg.monitor_recognition_roi_enabled)):
             active_roi = store.peek()
@@ -246,7 +260,7 @@ class ConfigMonitorTile(SimpleCardWidget):
                     label=active_roi.get("node", ""),
                     phase=active_roi.get("phase", "hit"),
                 )
-        target = self._preview_label.size()
+        target = self._preview_target_size()
         if target.width() > 0 and target.height() > 0:
             pixmap = pixmap.scaled(
                 target,
@@ -256,6 +270,19 @@ class ConfigMonitorTile(SimpleCardWidget):
         self._preview_label.setPixmap(pixmap)
         self._set_loading(False)
         self._idle_overlay.hide()
+
+    def update_preview(
+        self,
+        pil_image: Image.Image,
+        *,
+        roi_store: Optional[RecognitionRoiStore] = None,
+    ) -> None:
+        if not self._running:
+            return
+        if roi_store is not None:
+            self._roi_store = roi_store
+        self._last_pil_image = pil_image
+        self._render_preview(pil_image)
 
     def apply_theme(self) -> None:
         self._apply_mica_compat()
@@ -317,6 +344,9 @@ class MultiConfigMonitorGrid(ScrollArea):
                 tile = self._tiles.pop(cid)
                 tile.deleteLater()
 
+        cols = self._column_count(len(configs))
+        rows = max(1, (len(configs) + cols - 1) // cols)
+
         for idx, (cid, name) in enumerate(configs):
             tile = self._tiles.get(cid)
             if tile is None:
@@ -326,8 +356,13 @@ class MultiConfigMonitorGrid(ScrollArea):
             else:
                 tile.set_config_name(name)
 
-            row, col = divmod(idx, self._column_count(len(configs)))
+            row, col = divmod(idx, cols)
             self._grid.addWidget(tile, row, col)
+
+        for col_idx in range(cols):
+            self._grid.setColumnStretch(col_idx, 1)
+        for row_idx in range(rows):
+            self._grid.setRowStretch(row_idx, 1)
 
         for cid in keep_ids:
             tile = self._tiles.get(cid)
@@ -391,6 +426,17 @@ class MultiConfigMonitorGrid(ScrollArea):
         tile.clear_preview()
         if not self._is_config_running(config_id):
             tile.set_running(False)
+
+    def refresh_all_previews(self) -> None:
+        for tile in self._tiles.values():
+            tile._refresh_preview()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        viewport = self.viewport()
+        if viewport is not None:
+            self._container.setMinimumSize(viewport.size())
+        self.refresh_all_previews()
 
     def apply_theme(self) -> None:
         _apply_scroll_mica_compat(self, self._container)
