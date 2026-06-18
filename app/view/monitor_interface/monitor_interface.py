@@ -788,7 +788,7 @@ class MonitorInterface(QWidget):
         if self._pool is not None:
             if config_id != self._current_config_id():
                 return
-            is_running = status.get("text") == "STOP"
+            is_running = self._is_task_flow_running(status)
             self._set_monitor_control_running(
                 self._pool.is_display_monitoring() if is_running else False
             )
@@ -1100,10 +1100,19 @@ class MonitorInterface(QWidget):
             logger.debug(f"[Monitor] 收到 task_flow_finished: {payload}，请求停止监控")
             self._request_stop_monitoring(reason="task_flow_finished")
 
+    @staticmethod
+    def _is_task_flow_running(status: dict) -> bool:
+        """任务流是否处于运行中。STOP+disabled 为启动/停止过渡态，不应视为运行中。"""
+        return (
+            isinstance(status, dict)
+            and status.get("text") == "STOP"
+            and status.get("status") == "enabled"
+        )
+
     def _on_task_status_changed(self, status: dict) -> None:
         if self._pool is not None:
             return
-        is_running = status.get("text") == "STOP"
+        is_running = self._is_task_flow_running(status)
         current_id = self._current_config_id()
         if is_running:
             if (
