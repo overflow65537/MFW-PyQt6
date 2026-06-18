@@ -21,12 +21,23 @@ from app.core.service.option_service import OptionService
 from app.core.service.interface_manager import get_interface_manager, InterfaceManager
 from app.core.runner.task_flow import TaskFlowRunner
 from app.core.log_processor import CallbackLogProcessor
+from app.core.runtime_manager import RuntimeInstanceManager, RuntimeInstance, _TaggedRunnerBridge
 from app.utils.logger import logger
+from app.common.config import cfg
 from app.common.signal_bus import signalBus
 
 
 class _RunnerUiSignalBridge(QObject):
-    """将 Runner 信号安全转发到全局 signalBus。"""
+    """将 Runner 信号安全转发到全局 signalBus。
+
+    同时发射「无 config_id」（兼容旧视图，代表当前激活配置）与「带 config_id」
+    （多实例隔离用）两套信号。``config_id`` 在任务流开始时由协调器设置为本次运行的配置。
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # 本桥关联的配置 ID（单实例主运行器在每次启动时更新为当前配置）
+        self.config_id: str = ""
 
     @Slot(dict)
     def forward_callback(self, payload: dict):
@@ -35,6 +46,7 @@ class _RunnerUiSignalBridge(QObject):
     @Slot(str, str)
     def forward_log_output(self, level: str, text: str):
         signalBus.log_output.emit(level, text)
+        signalBus.log_output_at.emit(self.config_id, level, text)
 
     @Slot(str)
     def forward_set_window_title(self, title: str):
@@ -43,14 +55,17 @@ class _RunnerUiSignalBridge(QObject):
     @Slot(str, str)
     def forward_task_status_changed(self, task_id: str, status: str):
         signalBus.task_status_changed.emit(task_id, status)
+        signalBus.task_status_changed_at.emit(self.config_id, task_id, status)
 
     @Slot(dict)
     def forward_task_flow_finished(self, payload: dict):
         signalBus.task_flow_finished.emit(payload)
+        signalBus.task_flow_finished_at.emit(self.config_id, payload)
 
     @Slot()
     def forward_log_clear_requested(self):
         signalBus.log_clear_requested.emit()
+        signalBus.log_clear_requested_at.emit(self.config_id)
 
     @Slot(str, str)
     def forward_info_bar_requested(self, level: str, message: str):
@@ -79,6 +94,7 @@ class _RunnerUiSignalBridge(QObject):
     @Slot(dict)
     def forward_monitor_recognition_roi(self, payload: dict):
         signalBus.monitor_recognition_roi.emit(payload)
+        signalBus.monitor_recognition_roi_at.emit(self.config_id, payload)
 
 
 class ServiceCoordinator:
@@ -163,6 +179,9 @@ class ServiceCoordinator:
         # 初始化日志处理器（将 callback 信号转换为 log_output 信号）
         self.log_processor = CallbackLogProcessor(self.runner_events)
         self._runner_ui_bridge = _RunnerUiSignalBridge()
+
+        # 多实例运行时管理器：仅在多实例模式开启时用于创建独立运行体
+        self.runtime_manager = RuntimeInstanceManager(self)
 
         # 连接信号
         self._connect_signals()
@@ -843,56 +862,28 @@ class ServiceCoordinator:
         # 热更新完成后重新初始化
         signalBus.fs_reinit_requested.connect(self.reinit)
         # 使用 QObject 槽转发，确保来自 runner/底层回调线程的信号稳定回到 UI 线程。
-        self.runner_events.callback.connect(
-            self._runner_ui_bridge.forward_callback, Qt.ConnectionType.QueuedConnection
+        self._wire_runner_events(self.runner_events, self._runner_ui_bridge)
+
+    @staticmethod
+    def _wire_runner_events(runner_events, bridge) -> None:
+        """将一个 RunnerEvents 的全部事件以队列连接方式接到对应的桥接对象。"""
+        conn = Qt.ConnectionType.QueuedConnection
+        runner_events.callback.connect(bridge.forward_callback, conn)
+        runner_events.log_output.connect(bridge.forward_log_output, conn)
+        runner_events.set_window_title.connect(bridge.forward_set_window_title, conn)
+        runner_events.task_status_changed.connect(bridge.forward_task_status_changed, conn)
+        runner_events.task_flow_finished.connect(bridge.forward_task_flow_finished, conn)
+        runner_events.log_clear_requested.connect(bridge.forward_log_clear_requested, conn)
+        runner_events.info_bar_requested.connect(bridge.forward_info_bar_requested, conn)
+        runner_events.focus_toast.connect(bridge.forward_focus_toast, conn)
+        runner_events.focus_notification.connect(bridge.forward_focus_notification, conn)
+        runner_events.focus_dialog.connect(bridge.forward_focus_dialog, conn)
+        runner_events.focus_modal.connect(bridge.forward_focus_modal, conn)
+        runner_events.controller_setup_hint_requested.connect(
+            bridge.forward_controller_setup_hint_requested, conn
         )
-        self.runner_events.log_output.connect(
-            self._runner_ui_bridge.forward_log_output,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.set_window_title.connect(
-            self._runner_ui_bridge.forward_set_window_title,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.task_status_changed.connect(
-            self._runner_ui_bridge.forward_task_status_changed,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.task_flow_finished.connect(
-            self._runner_ui_bridge.forward_task_flow_finished,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.log_clear_requested.connect(
-            self._runner_ui_bridge.forward_log_clear_requested,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.info_bar_requested.connect(
-            self._runner_ui_bridge.forward_info_bar_requested,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.focus_toast.connect(
-            self._runner_ui_bridge.forward_focus_toast,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.focus_notification.connect(
-            self._runner_ui_bridge.forward_focus_notification,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.focus_dialog.connect(
-            self._runner_ui_bridge.forward_focus_dialog,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.focus_modal.connect(
-            self._runner_ui_bridge.forward_focus_modal,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.controller_setup_hint_requested.connect(
-            self._runner_ui_bridge.forward_controller_setup_hint_requested,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.monitor_recognition_roi.connect(
-            self._runner_ui_bridge.forward_monitor_recognition_roi,
-            Qt.ConnectionType.QueuedConnection,
+        runner_events.monitor_recognition_roi.connect(
+            bridge.forward_monitor_recognition_roi, conn
         )
 
     def _on_config_changed(self, config_id: str):
@@ -905,6 +896,25 @@ class ServiceCoordinator:
 
         self.task_service.on_config_changed(config_id)
         self.option_service.clear_selection()
+
+        # 同步到全局 signalBus，供监控页、日志面板等订阅方感知当前配置切换
+        try:
+            signalBus.config_changed.emit(config_id)
+        except Exception as exc:
+            logger.debug("转发 config_changed 到 signalBus 失败: %s", exc)
+
+        # 多实例模式下：切换当前配置后，同步主开始按钮以反映新当前配置的运行态
+        try:
+            if cfg.get(cfg.multi_instance_mode):
+                running = self.runtime_manager.is_running(config_id)
+                payload = (
+                    {"text": "STOP", "status": "enabled"}
+                    if running
+                    else {"text": "START", "status": "enabled"}
+                )
+                self.fs_signal_bus.fs_start_button_status.emit(payload)
+        except Exception as exc:
+            logger.debug(f"切换配置后同步开始按钮失败: {exc}")
 
     # region 配置相关方法
     def update_bundle_path(
@@ -1168,6 +1178,16 @@ class ServiceCoordinator:
 
     def delete_config(self, config_id: str) -> bool:
         """删除配置，传入 config id"""
+        # 运行中的配置不允许删除（多实例与单实例通用）
+        if self.is_config_running(config_id):
+            logger.info("配置 %s 正在运行，拒绝删除", config_id)
+            try:
+                signalBus.info_bar_requested.emit(
+                    "warning", "Cannot delete a configuration while it is running"
+                )
+            except Exception:
+                pass
+            return False
         ok = self.config_service.delete_config(config_id)
         if ok:
             # notify UI incremental removal
@@ -1175,14 +1195,83 @@ class ServiceCoordinator:
         return ok
 
     def select_config(self, config_id: str) -> bool:
-        """选择配置，传入 config id"""
+        """选择配置，传入 config id。
+
+        多实例模式关闭时：若有任务正在运行，则禁止在运行时切换当前配置。
+        多实例模式开启时：始终允许切换（各配置独立运行，互不影响）。
+        """
         # 验证配置存在
         if not self.config_service.get_config(config_id):
+            return False
+
+        if config_id == self.config_service.current_config_id:
+            return True
+
+        if not self.is_switch_config_allowed():
+            logger.info("多实例模式关闭且有任务运行中，已拒绝切换配置: %s", config_id)
+            self.fs_signal_bus.fs_start_button_status.emit(
+                {"text": "STOP", "status": "enabled"}
+            )
+            try:
+                signalBus.info_bar_requested.emit(
+                    "warning",
+                    "Cannot switch configuration while a task is running",
+                )
+            except Exception:
+                pass
             return False
 
         # 使用 ConfigService setter，回调将同步任务和选项
         self.config_service.current_config_id = config_id
         return self.config_service.current_config_id == config_id
+
+    # region 多实例运行状态查询
+    def is_multi_instance_enabled(self) -> bool:
+        """读取多实例模式开关。"""
+        try:
+            return bool(cfg.get(cfg.multi_instance_mode))
+        except Exception:
+            return False
+
+    def is_switch_config_allowed(self) -> bool:
+        """是否允许在当前状态下切换激活配置。
+
+        多实例开启时始终允许；关闭时仅在没有任何任务运行时允许。
+        """
+        if self.is_multi_instance_enabled():
+            return True
+        return not self.any_config_running()
+
+    def is_config_running(self, config_id: str) -> bool:
+        """指定配置是否正在运行。"""
+        if not config_id:
+            return False
+        if self.is_multi_instance_enabled():
+            return self.runtime_manager.is_running(config_id)
+        # 单实例模式：主运行器运行的即当前配置
+        if config_id == self.config_service.current_config_id:
+            return bool(self.task_runner.is_running)
+        return False
+
+    def is_current_config_running(self) -> bool:
+        """当前激活配置是否正在运行。"""
+        return self.is_config_running(self.config_service.current_config_id)
+
+    def any_config_running(self) -> bool:
+        """是否有任意配置正在运行。"""
+        if self.runtime_manager.any_running():
+            return True
+        return bool(self.task_runner.is_running)
+
+    def running_config_ids(self) -> List[str]:
+        """返回正在运行的配置 ID 列表。"""
+        ids = list(self.runtime_manager.running_config_ids())
+        if self.task_runner.is_running:
+            curr = self.config_service.current_config_id
+            if curr and curr not in ids:
+                ids.append(curr)
+        return ids
+    # endregion
 
     # endregion
 
@@ -1293,12 +1382,27 @@ class ServiceCoordinator:
             logger.error(f"重新初始化服务协调器失败: {e}")
 
     async def run_tasks_flow(
-        self, task_id: str | None = None
+        self,
+        task_id: str | None = None,
+        *,
+        config_id: str | None = None,
+        start_task_id: str | None = None,
     ):
         """运行任务流的对外封装。
 
         :param task_id: 指定只运行某个任务（可选）
+        :param config_id: 指定运行的配置（可选，默认当前激活配置）。多实例模式下用于并行运行。
+        :param start_task_id: 从指定任务开始执行（可选）。
         """
+        target_config_id = config_id or self.config_service.current_config_id
+
+        # 多实例模式：通过运行时管理器为目标配置创建/复用独立运行体
+        if self.is_multi_instance_enabled():
+            return await self.runtime_manager.run(
+                target_config_id, task_id, start_task_id=start_task_id
+            )
+
+        # 单实例模式：沿用主运行器（仅当前配置）
         restore_checked = False
         if task_id:
             task = self.task_service.get_task(task_id)
@@ -1310,19 +1414,132 @@ class ServiceCoordinator:
             self.task_service.refresh_hidden_flags()
         except Exception:
             pass
+        # 标记主桥接当前运行的配置，使带 config_id 的信号正确归属
+        self._runner_ui_bridge.config_id = target_config_id
         try:
-            return await self.task_runner.run_tasks_flow(task_id)
+            return await self.task_runner.run_tasks_flow(
+                task_id, start_task_id=start_task_id
+            )
         finally:
             if restore_checked:
                 self.update_task_checked(task_id, False)
 
-    async def stop_task_flow(self):
-        """停止当前任务流（UI/外部调用，视为手动停止）。"""
+    @property
+    def current_runner(self) -> TaskFlowRunner:
+        """返回当前激活配置正在使用的运行器。
+
+        多实例模式下若当前配置存在独立运行体则返回之，否则回退到主运行器。
+        """
+        if self.is_multi_instance_enabled():
+            inst = self.runtime_manager.get_instance(
+                self.config_service.current_config_id
+            )
+            if inst is not None:
+                return inst.runner
+        return self.task_runner
+
+    async def stop_task_flow(self, *, config_id: str | None = None):
+        """停止任务流（UI/外部调用，视为手动停止）。
+
+        :param config_id: 多实例模式下指定停止的配置，默认当前激活配置。
+        """
+        if self.is_multi_instance_enabled():
+            target = config_id or self.config_service.current_config_id
+            return await self.runtime_manager.stop(target, manual=True)
         return await self.task_runner.stop_task(manual=True)
 
-    async def stop_task(self, *, manual: bool = False):
-        """停止当前任务流（供内部/调度等模块调用，可指定是否视为手动停止）。"""
+    async def stop_task(self, *, manual: bool = False, config_id: str | None = None):
+        """停止任务流（供内部/调度等模块调用，可指定是否视为手动停止）。"""
+        if self.is_multi_instance_enabled():
+            target = config_id or self.config_service.current_config_id
+            return await self.runtime_manager.stop(target, manual=manual)
         return await self.task_runner.stop_task(manual=manual)
+
+    async def stop_all_tasks(self, *, manual: bool = True):
+        """停止所有正在运行的配置（应用退出/全局停止用）。"""
+        if self.runtime_manager.any_running():
+            await self.runtime_manager.stop_all(manual=manual)
+        if self.task_runner.is_running:
+            await self.task_runner.stop_task(manual=manual)
+
+    # region 多实例运行体构建
+    def _build_interface_for_config(self, config_id: str) -> Dict[str, Any]:
+        """为指定配置解析其 bundle 对应的 interface（与当前 bundle 相同则复用）。"""
+        try:
+            config = self.config_service.get_config(config_id)
+        except Exception:
+            config = None
+        bundle_name = getattr(config, "bundle", None) if config else None
+        if bundle_name:
+            try:
+                path = self._resolve_interface_path_from_bundle(bundle_name)
+                if path and path != self._interface_path:
+                    previewed = self.interface_manager.preview_interface(path)
+                    if previewed:
+                        return previewed
+            except Exception as exc:
+                logger.debug(f"为配置 {config_id} 解析独立 interface 失败，复用当前: {exc}")
+        return self._interface
+
+    def _build_runtime_instance(self, config_id: str) -> RuntimeInstance:
+        """为指定配置构建独立运行体（独立 Config/Task 服务栈 + Runner + MaaFW）。"""
+        repo = JsonConfigRepository(
+            self.config_repo.main_config_path,
+            self.config_repo.configs_dir,
+            interface=self._interface,
+        )
+        # 独立的内部信号总线，避免污染 UI 侧的 CoreSignalBus
+        private_bus = CoreSignalBus()
+        config_service = ConfigService(repo, private_bus)
+        # 在内存中把该独立服务栈钉死到目标配置，不写回全局 curr_config_id
+        if config_service._main_config is not None:
+            config_service._main_config["curr_config_id"] = config_id
+
+        interface = self._build_interface_for_config(config_id)
+        task_service = TaskService(config_service, CoreSignalBus(), interface)
+
+        runner_events = RunnerEvents()
+        fs_bus = FromeServiceCoordinator()
+        runner = TaskFlowRunner(
+            task_service=task_service,
+            config_service=config_service,
+            runner_events=runner_events,
+            fs_signal_bus=fs_bus,
+        )
+        log_processor = CallbackLogProcessor(runner_events)
+        # 完成后“运行其他配置”改为通过管理器启动独立运行体
+        runner.run_other_config_callback = (
+            lambda cid: self.runtime_manager.run(cid)
+        )
+        bridge = _TaggedRunnerBridge(
+            config_id,
+            is_current=lambda cid: self.config_service.current_config_id == cid,
+        )
+        self._wire_runner_events(runner_events, bridge)
+
+        return RuntimeInstance(
+            config_id=config_id,
+            runner=runner,
+            runner_events=runner_events,
+            fs_signal_bus=fs_bus,
+            log_processor=log_processor,
+            bridge=bridge,
+            config_service=config_service,
+            task_service=task_service,
+        )
+
+    def _refresh_runtime_instance(self, inst: RuntimeInstance) -> None:
+        """运行前刷新独立运行体的配置/任务快照，确保读取最新磁盘数据。"""
+        cs = inst.config_service
+        cs.load_main_config()
+        if cs._main_config is not None:
+            cs._main_config["curr_config_id"] = inst.config_id
+        inst.task_service.on_config_changed(inst.config_id)
+        try:
+            inst.task_service.refresh_hidden_flags()
+        except Exception:
+            pass
+    # endregion
 
     @property
     def run_manager(self) -> TaskFlowRunner:

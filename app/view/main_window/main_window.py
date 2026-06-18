@@ -827,7 +827,7 @@ class MainWindow(MSFluentWindow):
         self._switch_to_interface(getattr(self, "MonitorInterface", None))
 
     def _start_tasks_from_dashboard(self) -> None:
-        if self.service_coordinator.run_manager.is_running:
+        if self.service_coordinator.is_current_config_running():
             signalBus.info_bar_requested.emit(
                 "warning", self.tr("Task flow is already running")
             )
@@ -2942,15 +2942,23 @@ class MainWindow(MSFluentWindow):
         QApplication.restoreOverrideCursor()
 
     def _is_task_shutdown_pending(self) -> bool:
-        task_runner = getattr(self.service_coordinator, "task_runner", None)
-        if task_runner is None:
-            return False
+        coord = self.service_coordinator
+        task_runner = getattr(coord, "task_runner", None)
         try:
-            return bool(
+            if task_runner is not None and (
                 task_runner.is_running or task_runner.maafw.has_active_runtime()
-            )
+            ):
+                return True
         except Exception:
-            return False
+            pass
+        # 多实例：存在任意运行中的独立运行体也视为待关闭
+        try:
+            manager = getattr(coord, "runtime_manager", None)
+            if manager is not None and manager.any_running():
+                return True
+        except Exception:
+            pass
+        return False
 
     def _continue_close_after_task_shutdown(self) -> None:
         if self._shutdown_cleanup_started:
@@ -3037,6 +3045,13 @@ class MainWindow(MSFluentWindow):
             self.service_coordinator.task_runner.shutdown_runtime_sync()
         except Exception as e:
             logger.exception("清理 maafw 失败", exc_info=e)
+        # 多实例：清理所有独立运行体
+        try:
+            manager = getattr(self.service_coordinator, "runtime_manager", None)
+            if manager is not None:
+                manager.shutdown_sync()
+        except Exception as e:
+            logger.exception("清理多实例运行体失败", exc_info=e)
 
     def _stop_notice_thread(self, send_thread):
         """关闭通知线程，确保队列循环退出。"""

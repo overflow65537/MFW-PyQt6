@@ -103,5 +103,20 @@ class SignalBus(QObject):
     # 任务识别命中 ROI（供监控预览叠加）
     monitor_recognition_roi = Signal(dict)
 
+    # ==================== 多实例模式 ====================
+    # 多实例模式开关变化（cfg.multi_instance_mode）
+    multi_instance_mode_changed = Signal(bool)
+
+    # 携带 config_id 的运行时事件（多实例隔离用）。
+    # 旧的无 config_id 信号仍保留，代表“当前激活配置”，以兼容现有视图。
+    log_output_at = Signal(str, str, str)  # (config_id, level, text)
+    log_clear_requested_at = Signal(str)  # (config_id)
+    task_status_changed_at = Signal(str, str, str)  # (config_id, task_id, status)
+    task_flow_finished_at = Signal(str, dict)  # (config_id, payload)
+    monitor_recognition_roi_at = Signal(str, dict)  # (config_id, payload)
+
+    # 某个配置的运行状态变化（供配置列表显示独立运行指示）
+    config_run_state_changed = Signal(str, bool)  # (config_id, running)
+
 
 signalBus = SignalBus()

@@ -706,7 +706,7 @@ class TaskListItem(BaseListItem):
         if not self.service_coordinator or self.task.is_base_task():
             return
         asyncio.create_task(
-            self.service_coordinator.run_manager.run_tasks_flow(
+            self.service_coordinator.run_tasks_flow(
                 start_task_id=self.task.item_id
             )
         )
@@ -979,6 +979,18 @@ class ConfigListItem(BaseListItem):
         else:
             self.unsetCursor()
 
+    def set_running(self, running: bool):
+        """显示/隐藏该配置的运行指示（与任务列表 running 同款）。"""
+        indicator = getattr(self, "running_indicator", None)
+        if indicator is None:
+            return
+        if running:
+            indicator.show()
+            indicator.start()
+        else:
+            indicator.hide()
+            indicator.stop()
+
     def _init_ui(self):
         # 创建水平布局
         layout = QHBoxLayout(self)
@@ -995,6 +1007,15 @@ class ConfigListItem(BaseListItem):
         # 添加标签
         self.name_label = self._create_name_label()
         layout.addWidget(self.name_label)
+
+        # 运行指示（与任务列表 running 状态同款 IndeterminateProgressRing）
+        layout.addStretch(1)
+        self.running_indicator = IndeterminateProgressRing(self)
+        self.running_indicator.setFixedSize(20, 20)
+        self.running_indicator.setStrokeWidth(2)
+        self.running_indicator.setToolTip(self.tr("Running"))
+        self.running_indicator.hide()
+        layout.addWidget(self.running_indicator, 0, Qt.AlignmentFlag.AlignVCenter)
 
         # 创建设置按钮但不添加到布局（隐藏）
         self.setting_button = self._create_setting_button()

@@ -1008,7 +1008,33 @@ class ConfigListWidget(BaseListWidget):
         self.service_coordinator.signal_bus.config_changed.connect(
             self._on_config_changed
         )
+        # 多实例：各配置运行状态变化时更新运行指示点
+        signalBus.config_run_state_changed.connect(
+            self._on_config_run_state_changed
+        )
         self.update_list()
+
+    def _on_config_run_state_changed(self, config_id: str, running: bool):
+        """更新指定配置项的运行指示点。"""
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if (
+                isinstance(widget, ConfigListItem)
+                and widget.item.item_id == config_id
+                and hasattr(widget, "set_running")
+            ):
+                widget.set_running(running)
+                break
+
+    def _sync_config_running_indicator(self, widget: "ConfigListItem") -> None:
+        """根据当前运行状态初始化某配置项的运行指示点。"""
+        try:
+            running = self.service_coordinator.is_config_running(widget.item.item_id)
+        except Exception:
+            running = False
+        if hasattr(widget, "set_running"):
+            widget.set_running(running)
 
     def set_locked(self, locked: bool):
         """锁定后禁止用户通过点击/键盘切换配置，同时禁用配置项右键编辑入口。"""
@@ -1107,6 +1133,7 @@ class ConfigListWidget(BaseListWidget):
         config_widget = ConfigListItem(config, self.service_coordinator)
         self.addItem(list_item)
         self.setItemWidget(list_item, config_widget)
+        self._sync_config_running_indicator(config_widget)
 
     def _select_config_by_id(self, config_id: str, emit_signal: bool = True):
         """根据配置ID选中对应的列表项"""
