@@ -103,7 +103,7 @@ class MonitorInterface(QWidget):
             self._legacy_monitor_task, log_prefix="Monitor"
         )
         self._legacy_session.set_callbacks(
-            on_frame=self._apply_preview_from_pil,
+            on_frame=self._enqueue_preview_frame,
             on_capture_failure_clear=self._emit_preview_cleared,
             on_controller_disconnected=self._on_session_controller_disconnected,
         )
@@ -175,24 +175,47 @@ class MonitorInterface(QWidget):
                         )
                 elif self.service_coordinator.is_config_running(config_id):
                     self._multi_grid.clear_monitor_loading(config_id)
-            if config_id == self._bound_config_id:
+            if config_id == self._current_config_id():
+                if started:
+                    self.sync_task_preview()
                 self._set_loading(False)
                 self._set_monitor_control_running(
                     self._pool.is_display_monitoring()
                 )
-                self._update_monitor_status()
+            self._update_monitor_status()
 
         asyncio.create_task(_run())
 
+    def _enqueue_preview_frame(
+        self, pil_image: Image.Image, *, config_id: str | None = None
+    ) -> None:
+        """将帧投递到 Qt 主线程，避免异步循环直接改 UI。"""
+        try:
+            frame = pil_image.copy()
+        except Exception:
+            frame = pil_image
+        cid = config_id or self._bound_config_id or self._current_config_id() or ""
+        QTimer.singleShot(
+            0, lambda c=cid, f=frame: self._deliver_preview_frame(c, f)
+        )
+
+    def _deliver_preview_frame(self, config_id: str, pil_image: Image.Image) -> None:
+        if self._pool is not None:
+            slot = self._pool.get_slot(config_id) if config_id else None
+            roi_store = slot.roi_store if slot else None
+            if self._multi_grid is not None and config_id:
+                self._multi_grid.update_frame(
+                    config_id, pil_image, roi_store=roi_store
+                )
+            current_id = self._current_config_id()
+            if config_id and config_id == current_id:
+                self._bound_config_id = current_id
+                self._apply_preview_from_pil(pil_image, config_id=config_id)
+            return
+        self._apply_preview_from_pil(pil_image, config_id=config_id or None)
+
     def _on_pooled_frame(self, config_id: str, pil_image: Image.Image) -> None:
-        slot = self._pool.get_slot(config_id) if self._pool else None
-        roi_store = slot.roi_store if slot else None
-        if self._multi_grid is not None:
-            self._multi_grid.update_frame(
-                config_id, pil_image, roi_store=roi_store
-            )
-        if config_id == self._bound_config_id:
-            self._apply_preview_from_pil(pil_image, config_id=config_id)
+        self._enqueue_preview_frame(pil_image, config_id=config_id)
 
     def _on_pooled_capture_cleared(self, config_id: str) -> None:
         if self._multi_grid is not None:
@@ -273,6 +296,20 @@ class MonitorInterface(QWidget):
         if not self._is_recognition_roi_enabled():
             return
         self._roi_store.update(payload)
+
+    def sync_task_preview(self) -> None:
+        """任务页监控预览：仅使用监控池自身采集到的最后一帧。"""
+        current_id = self._current_config_id()
+        if not current_id:
+            return
+        self._bound_config_id = current_id
+        if self._pool is None:
+            return
+        slot = self._pool.get_slot(current_id)
+        if slot is not None and slot.last_pil_image is not None:
+            self._apply_preview_from_pil(
+                slot.last_pil_image, config_id=current_id
+            )
 
     @property
     def source_preview_pixmap(self) -> Optional[QPixmap]:
@@ -721,6 +758,10 @@ class MonitorInterface(QWidget):
         if self._multi_grid is not None:
             self._multi_grid.set_running(config_id, running)
         if running:
+            current_id = self._current_config_id()
+            if config_id == current_id:
+                self._bound_config_id = current_id
+                self._emit_preview_cleared(clear_roi=False)
             self._schedule_pool_monitoring(config_id, auto=True)
             self._update_monitor_status()
             return
@@ -806,14 +847,7 @@ class MonitorInterface(QWidget):
                     return
                 if self._bound_config_id != target_id:
                     return
-                if not self._pool.is_display_monitoring():
-                    return
-                slot = self._pool.get_slot(target_id)
-                if slot is None or slot.last_pil_image is None:
-                    return
-                self._apply_preview_from_pil(
-                    slot.last_pil_image, config_id=target_id
-                )
+                self.sync_task_preview()
 
             QTimer.singleShot(0, _maybe_restore_target_preview)
             self._set_monitor_control_running(self._pool.is_display_monitoring())

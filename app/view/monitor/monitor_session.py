@@ -102,7 +102,7 @@ class MonitorSession:
         return bool(await self.monitor_task._connect())
 
     def capture_frame(self) -> Image.Image:
-        """在工作线程中调用：从监控专用控制器截取一帧。"""
+        """在工作线程中调用：通过监控会话控制器主动截图（不读取 task 侧 cached_image）。"""
         controller = getattr(self.monitor_task.maafw, "controller", None)
         if controller is None:
             raise RuntimeError("控制器尚未初始化，无法抓取画面")

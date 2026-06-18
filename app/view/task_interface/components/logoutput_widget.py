@@ -379,6 +379,12 @@ class LogoutputWidget(QWidget):
         records = self._config_log_records.get(cid, [])
         for level, text, _timestamp in records:
             self._add_log_row(_timestamp, text, level, capture_image=False)
+        if hasattr(self, "monitor_widget"):
+            self.monitor_widget._sync_from_monitor()
+            monitor = getattr(self.monitor_widget, "_monitor", None)
+            if monitor is not None and hasattr(monitor, "sync_task_preview"):
+                monitor.sync_task_preview()
+                self.monitor_widget._sync_from_monitor()
 
     def _record_log(self, config_id: str, level: str, text: str, timestamp: str):
         """将一条日志写入对应配置的缓冲（带上限淘汰）。"""
