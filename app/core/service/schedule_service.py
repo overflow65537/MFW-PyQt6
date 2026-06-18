@@ -1,50 +1,23 @@
 from __future__ import annotations
 
-import asyncio
-from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta, time
 import calendar
 from pathlib import Path
-from typing import Any, Callable, Deque, List, Optional, TYPE_CHECKING
+from typing import Any, List, Optional
 
 import jsonc
 from PySide6.QtCore import QObject, Signal
 
 from app.common.signal_bus import signalBus
+from app.core.service.system_scheduler import get_system_scheduler_backend
 from app.utils.logger import logger
-
-if TYPE_CHECKING:
-    from app.core.core import ServiceCoordinator
 
 
 SCHEDULE_SINGLE = "single"
 SCHEDULE_DAILY = "daily"
 SCHEDULE_WEEKLY = "weekly"
 SCHEDULE_MONTHLY = "monthly"
-WEEKDAY_NAMES = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-]
-MONTH_NAMES = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-]
 
 
 def _parse_iso(value: Optional[str]) -> Optional[datetime]:
@@ -97,69 +70,6 @@ class ScheduleEntry:
             last_run=_parse_iso(payload.get("last_run")),
             next_run=_parse_iso(payload.get("next_run")),
         )
-
-    def describe(self, tr_func: Optional[Callable[[str], str]] = None) -> str:
-        tr = tr_func or (lambda text: text)
-        if self.schedule_type == SCHEDULE_SINGLE:
-            return tr("Single at {time}").format(
-                time=self._format_datetime(self.params.get("run_at"))
-            )
-        if self.schedule_type == SCHEDULE_DAILY:
-            interval = max(1, int(self.params.get("interval_days", 1)))
-            return tr("Daily every {n} day(s) at {time}").format(
-                n=interval,
-                time=self._format_time(
-                    (self.params.get("hour", 0), self.params.get("minute", 0))
-                ),
-            )
-        if self.schedule_type == SCHEDULE_WEEKLY:
-            interval = max(
-                1, int(self.params.get("interval_weeks", 1) or 1)
-            )
-            return tr("Weekly every {n} week(s) at {time}").format(
-                n=interval,
-                time=self._format_time(
-                    (self.params.get("hour", 0), self.params.get("minute", 0))
-                ),
-            )
-        if self.schedule_type == SCHEDULE_MONTHLY:
-            month_value = int(self.params.get("month", 0))
-            month_label = (
-                tr("Every month")
-                if month_value == 0
-                else tr(MONTH_NAMES[(month_value - 1) % 12])
-            )
-            hour_minute = self._format_time(
-                (self.params.get("hour", 0), self.params.get("minute", 0))
-            )
-            ordinal = self.params.get("ordinal")
-            weekday = self.params.get("weekday")
-            if ordinal is not None and weekday is not None:
-                ordinal_label = (
-                    tr("Last")
-                    if int(ordinal) >= 4
-                    else tr(("First", "Second", "Third", "Fourth")[int(ordinal)])
-                )
-                weekday_label = tr(WEEKDAY_NAMES[int(weekday) % 7])
-                return tr("Monthly ({month}) on the {ordinal} {weekday} at {time}").format(
-                    month=month_label, ordinal=ordinal_label, weekday=weekday_label, time=hour_minute
-                )
-            day = int(self.params.get("month_day", 1))
-            return tr("Monthly ({month}) on day {day} at {time}").format(
-                month=month_label, day=day, time=hour_minute
-            )
-        return tr("Custom")
-
-    def _format_datetime(self, value: Optional[str]) -> str:
-        parsed = _parse_iso(value) if isinstance(value, str) else None
-        if parsed:
-            return parsed.strftime("%Y-%m-%d %H:%M")
-        return self.created_at.strftime("%Y-%m-%d %H:%M")
-
-    def _format_time(self, value: tuple[Any, Any]) -> str:
-        hour = int(value[0]) if value[0] is not None else 0
-        minute = int(value[1]) if value[1] is not None else 0
-        return f"{hour:02d}:{minute:02d}"
 
     def compute_next_run(
         self, reference: Optional[datetime] = None
@@ -315,17 +225,15 @@ class ScheduleEntry:
 class ScheduleService(QObject):
     schedules_changed = Signal(list)
 
-    def __init__(self, service_coordinator: "ServiceCoordinator", storage_path: Path):
+    def __init__(self, storage_path: Path):
         super().__init__()
-        self.service_coordinator = service_coordinator
         self.storage_path = storage_path
         self._schedules: List[ScheduleEntry] = []
-        self._pending_queue: Deque[ScheduleEntry] = deque()
-        self._current_task: Optional[asyncio.Task] = None
-        self._scheduler_task: Optional[asyncio.Task] = None
-        self._check_interval = 15
+        self._system_scheduler = get_system_scheduler_backend()
         self._ensure_storage()
         self._load_schedules()
+        if self._system_scheduler.is_supported:
+            self._system_scheduler.sync_all(self._schedules)
 
     def _ensure_storage(self) -> None:
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
@@ -383,18 +291,136 @@ class ScheduleService(QObject):
                 return entry
         return None
 
+    def format_entry_type(self, entry: ScheduleEntry) -> str:
+        labels = {
+            SCHEDULE_SINGLE: self.tr("Single"),
+            SCHEDULE_DAILY: self.tr("Daily"),
+            SCHEDULE_WEEKLY: self.tr("Weekly"),
+            SCHEDULE_MONTHLY: self.tr("Monthly"),
+        }
+        return labels.get(entry.schedule_type, self.tr("Custom"))
+
+    def format_entry_pattern(self, entry: ScheduleEntry) -> str:
+        params = entry.params
+        time_text = self._entry_time_text(entry)
+
+        if entry.schedule_type == SCHEDULE_SINGLE:
+            run_at = _parse_iso(params.get("run_at"))
+            datetime_text = (
+                run_at.strftime("%Y-%m-%d %H:%M")
+                if run_at
+                else entry.created_at.strftime("%Y-%m-%d %H:%M")
+            )
+            return self.tr("Once at {datetime}").format(datetime=datetime_text)
+
+        if entry.schedule_type == SCHEDULE_DAILY:
+            interval = max(1, int(params.get("interval_days", 1)))
+            if interval == 1:
+                return self.tr("Every day at {time}").format(time=time_text)
+            return self.tr("Every {n} days at {time}").format(
+                n=interval, time=time_text
+            )
+
+        if entry.schedule_type == SCHEDULE_WEEKLY:
+            interval = max(1, int(params.get("interval_weeks", 1) or 1))
+            weekdays = sorted({int(value) % 7 for value in params.get("weekdays", [])})
+            weekday_text = ", ".join(self._weekday_label(value) for value in weekdays)
+            if interval == 1:
+                return self.tr("Every week on {weekdays} at {time}").format(
+                    weekdays=weekday_text, time=time_text
+                )
+            return self.tr("Every {n} weeks on {weekdays} at {time}").format(
+                n=interval, weekdays=weekday_text, time=time_text
+            )
+
+        if entry.schedule_type == SCHEDULE_MONTHLY:
+            month_value = int(params.get("month", 0))
+            month_text = self._month_label(month_value)
+            ordinal = params.get("ordinal")
+            weekday = params.get("weekday")
+            if ordinal is not None and weekday is not None:
+                return self.tr(
+                    "Every {month} on the {ordinal} {weekday} at {time}"
+                ).format(
+                    month=month_text,
+                    ordinal=self._ordinal_label(int(ordinal)),
+                    weekday=self._weekday_label(int(weekday)),
+                    time=time_text,
+                )
+            day = int(params.get("month_day", 1))
+            return self.tr("Every {month} on day {day} at {time}").format(
+                month=month_text, day=day, time=time_text
+            )
+
+        return self.tr("Custom")
+
+    def _entry_time_text(self, entry: ScheduleEntry) -> str:
+        params = entry.params
+        hour = int(params.get("hour", 0))
+        minute = int(params.get("minute", 0))
+        return f"{hour:02d}:{minute:02d}"
+
+    def _weekday_label(self, weekday: int) -> str:
+        labels = (
+            self.tr("Monday"),
+            self.tr("Tuesday"),
+            self.tr("Wednesday"),
+            self.tr("Thursday"),
+            self.tr("Friday"),
+            self.tr("Saturday"),
+            self.tr("Sunday"),
+        )
+        return labels[int(weekday) % 7]
+
+    def _month_label(self, month: int) -> str:
+        if month <= 0:
+            return self.tr("Every month")
+        labels = (
+            self.tr("January"),
+            self.tr("February"),
+            self.tr("March"),
+            self.tr("April"),
+            self.tr("May"),
+            self.tr("June"),
+            self.tr("July"),
+            self.tr("August"),
+            self.tr("September"),
+            self.tr("October"),
+            self.tr("November"),
+            self.tr("December"),
+        )
+        return labels[(int(month) - 1) % 12]
+
+    def _ordinal_label(self, ordinal: int) -> str:
+        if ordinal >= 4:
+            return self.tr("Last")
+        return (
+            self.tr("First"),
+            self.tr("Second"),
+            self.tr("Third"),
+            self.tr("Fourth"),
+        )[ordinal]
+
     def add_schedule(self, entry: ScheduleEntry) -> bool:
         entry.next_run = entry.compute_next_run()
         if entry.next_run is None and entry.schedule_type != SCHEDULE_SINGLE:
-            logger.warning("无法为计划任务生成下一次执行时间: %s", entry.describe())
+            logger.warning(
+                "无法为计划任务生成下一次执行时间: %s",
+                self.format_entry_pattern(entry),
+            )
             return False
         self._schedules.append(entry)
         self._sort_schedules()
         self._persist()
         self._notify_schedules_changed()
+        if self._system_scheduler.is_supported:
+            if entry.enabled:
+                self._system_scheduler.install(entry)
+            else:
+                self._system_scheduler.remove(entry.entry_id)
         self._log_info(
             self.tr("Schedule: {name} ({describe}) added").format(
-                name=entry.name, describe=entry.describe(self.tr)
+                name=entry.name, describe=self.format_entry_pattern(entry)
             )
         )
         return True
@@ -405,15 +431,13 @@ class ScheduleService(QObject):
             return False
         self._schedules.remove(entry)
         self._sort_schedules()
-        try:
-            self._pending_queue.remove(entry)
-        except ValueError:
-            pass
+        if self._system_scheduler.is_supported:
+            self._system_scheduler.remove(entry_id)
         self._persist()
         self._notify_schedules_changed()
         self._log_info(
             self.tr("Schedule: {name} ({describe}) removed").format(
-                name=entry.name, describe=entry.describe(self.tr)
+                name=entry.name, describe=self.format_entry_pattern(entry)
             )
         )
         return True
@@ -427,12 +451,17 @@ class ScheduleService(QObject):
             entry.next_run = entry.compute_next_run()
         self._sort_schedules()
         self._persist()
+        if self._system_scheduler.is_supported:
+            if enabled:
+                self._system_scheduler.install(entry)
+            else:
+                self._system_scheduler.set_enabled(entry_id, False)
         self._notify_schedules_changed()
         status = self.tr("enabled") if enabled else self.tr("disabled")
         self._log_info(
             self.tr("Schedule: {name} ({describe}) {status}").format(
                 name=entry.name,
-                describe=entry.describe(self.tr),
+                describe=self.format_entry_pattern(entry),
                 status=status,
             )
         )
@@ -440,185 +469,6 @@ class ScheduleService(QObject):
 
     def _sort_schedules(self) -> None:
         self._schedules.sort(key=lambda entry: (entry.next_run is None, entry.next_run))
-
-    def start(self) -> None:
-        if self._scheduler_task and not self._scheduler_task.done():
-            return
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            logger.info("事件循环尚未就绪，稍后再启动计划任务调度器")
-            return
-        self._scheduler_task = loop.create_task(self._scheduler_loop())
-
-    async def _scheduler_loop(self) -> None:
-        while True:
-            try:
-                await self._check_due_entries()
-                await asyncio.sleep(self._check_interval)
-            except asyncio.CancelledError:
-                break
-            except Exception as exc:
-                logger.exception("计划任务调度异常: %s", exc)
-                await asyncio.sleep(self._check_interval)
-
-    async def _check_due_entries(self) -> None:
-        now = datetime.now().replace(second=0, microsecond=0)
-        due = [
-            entry
-            for entry in self._schedules
-            if entry.enabled and entry.next_run and entry.next_run <= now
-        ]
-        for entry in due:
-            await self._trigger_entry(entry, now)
-
-    async def _trigger_entry(self, entry: ScheduleEntry, now: datetime) -> None:
-        self._log_info(
-            self.tr("Schedule: {name} ({describe}) triggered").format(
-                name=entry.name, describe=entry.describe(self.tr)
-            )
-        )
-        if entry.schedule_type == SCHEDULE_SINGLE:
-            entry.enabled = False
-            entry.next_run = None
-        else:
-            entry.next_run = entry.compute_next_run(
-                reference=now + timedelta(seconds=1)
-            )
-        entry.last_run = now
-        self._persist()
-        self._notify_schedules_changed()
-        if entry.force_start:
-            await self._force_start(entry)
-        else:
-            self._pending_queue.append(entry)
-            self._log_info(
-                self.tr(
-                    "Schedule: {name} queued, {count} task(s) remaining"
-                ).format(name=entry.name, count=len(self._pending_queue))
-            )
-            await self._try_start_next()
-
-    async def _force_start(self, entry: ScheduleEntry) -> None:
-        if self.service_coordinator.is_multi_instance_enabled():
-            # 多实例：仅停止目标配置，不影响其它正在运行的配置
-            target = (
-                entry.config_id or self.service_coordinator.config.current_config_id
-            )
-            if self.service_coordinator.is_config_running(target):
-                await self.service_coordinator.stop_task(config_id=target)
-            self._pending_queue.appendleft(entry)
-            await self._try_start_next()
-            return
-
-        if self.service_coordinator.run_manager.is_running or (
-            self._current_task and not self._current_task.done()
-        ):
-            await self.service_coordinator.stop_task()
-            try:
-                if self._current_task:
-                    await self._current_task
-            except asyncio.CancelledError:
-                pass
-        self._pending_queue.appendleft(entry)
-        await self._try_start_next()
-
-    async def _try_start_next(self) -> None:
-        if self._current_task and not self._current_task.done():
-            return
-        if not self._pending_queue:
-            return
-        while self._pending_queue:
-            next_entry = self._pending_queue[0]
-            if self.service_coordinator.is_multi_instance_enabled():
-                # 多实例：仅当目标配置自身在运行时才等待
-                busy = self.service_coordinator.is_config_running(
-                    next_entry.config_id
-                    or self.service_coordinator.config.current_config_id
-                )
-            else:
-                busy = self.service_coordinator.run_manager.is_running
-            if busy and not next_entry.force_start:
-                await asyncio.sleep(1)
-                continue
-            next_entry = self._pending_queue.popleft()
-            self._current_task = asyncio.create_task(self._execute_entry(next_entry))
-            return
-
-    async def _execute_entry(self, entry: ScheduleEntry) -> None:
-        self._log_info(
-            self.tr("Schedule: {name} ({describe}) started").format(
-                name=entry.name, describe=entry.describe(self.tr)
-            )
-        )
-        # 多实例模式：直接运行目标配置实例，不切换全局当前配置
-        if self.service_coordinator.is_multi_instance_enabled():
-            target_config = (
-                entry.config_id or self.service_coordinator.config.current_config_id
-            )
-            if not self.service_coordinator.config.get_config(target_config):
-                self._log_info(
-                    self.tr(
-                        "Schedule: target config {config_id} not found, skipped"
-                    ).format(config_id=target_config)
-                )
-                self._current_task = None
-                await self._try_start_next()
-                return
-            # 仅清空目标配置的日志缓冲
-            signalBus.log_clear_requested_at.emit(target_config)
-            try:
-                await self.service_coordinator.run_tasks_flow(config_id=target_config)
-            except Exception as exc:
-                logger.exception("计划任务执行失败: %s", exc)
-                self._log_info(
-                    self.tr("Schedule: {name} failed: {error}").format(
-                        name=entry.name, error=exc
-                    )
-                )
-            finally:
-                self._current_task = None
-                await self._try_start_next()
-            return
-
-        # 单实例模式：切换到目标配置、运行、再恢复
-        signalBus.log_clear_requested.emit()
-        original_config = self.service_coordinator.config.current_config_id
-        switched = False
-        if entry.config_id and entry.config_id != original_config:
-            switched = self.service_coordinator.select_config(entry.config_id)
-            if not switched:
-                self._log_info(
-                    self.tr(
-                        "Schedule: target config {config_id} not found, skipped"
-                    ).format(config_id=entry.config_id)
-                )
-                self._current_task = None
-                await self._try_start_next()
-                return
-            signalBus.config_changed.emit(entry.config_id)
-            logger.info(
-                "计划任务：配置切换完成，当前配置 %s",
-                self.service_coordinator.config.current_config_id,
-            )
-        try:
-            await self.service_coordinator.run_tasks_flow()
-        except Exception as exc:
-            logger.exception("计划任务执行失败: %s", exc)
-            self._log_info(
-                self.tr("Schedule: {name} failed: {error}").format(
-                    name=entry.name, error=exc
-                )
-            )
-        finally:
-            if switched and entry.config_id != original_config:
-                self.service_coordinator.select_config(original_config)
-                logger.info(
-                    "计划任务：已经恢复原始配置 %s",
-                    self.service_coordinator.config.current_config_id,
-                )
-            self._current_task = None
-            await self._try_start_next()
 
     def _log_info(self, message: str) -> None:
         logger.info(message)

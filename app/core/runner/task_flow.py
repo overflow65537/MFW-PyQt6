@@ -25,6 +25,8 @@ from maa.define import (
     MaaWin32InputMethodEnum,
     MaaAdbInputMethodEnum,
     MaaAdbScreencapMethodEnum,
+    MaaMacOSScreencapMethodEnum,
+    MaaMacOSInputMethodEnum,
 )
 from app.utils.notice import (
     NoticeTiming,
@@ -1408,6 +1410,10 @@ class TaskFlowRunner(QObject):
             controller = await self._connect_gamepad_controller(controller_raw)
         elif controller_type == "playcover":
             controller = await self._connect_playcover_controller(controller_raw)
+        elif controller_type == "wlroots":
+            controller = await self._connect_wlroots_controller(controller_raw)
+        elif controller_type == "macos":
+            controller = await self._connect_macos_controller(controller_raw)
         else:
             raise ValueError("不支持的控制器类型")
 
@@ -2386,6 +2392,214 @@ class TaskFlowRunner(QObject):
             self.log_output.emit("ERROR", error_msg)
             return False
 
+    async def _connect_wlroots_controller(self, controller_raw: Dict[str, Any]):
+        """连接 WlRoots 控制器"""
+        if not sys.platform.startswith("linux"):
+            error_msg = self.tr("WlRoots controller is only supported on Linux")
+            logger.error("WlRoots 控制器仅在 Linux 上支持")
+            self.log_output.emit("ERROR", error_msg)
+            return False
+
+        if not isinstance(controller_raw, dict):
+            logger.error(
+                f"控制器配置格式错误(WlRoots)，期望 dict，实际 {type(controller_raw)}: {controller_raw}"
+            )
+            return False
+
+        activate_controller = controller_raw.get("controller_type")
+        if activate_controller is None:
+            logger.error(f"未找到控制器配置: {controller_raw}")
+            return False
+
+        controller_type = self._get_controller_type(controller_raw)
+        controller_name = self._get_controller_name(controller_raw)
+
+        if controller_name in controller_raw:
+            controller_config = controller_raw[controller_name]
+        elif controller_type in controller_raw:
+            controller_config = controller_raw[controller_type]
+            controller_raw[controller_name] = controller_config
+        else:
+            controller_config = {}
+            controller_raw[controller_name] = controller_config
+
+        wlr_socket_path = (controller_config.get("wlr_socket_path") or "").strip()
+        if not wlr_socket_path:
+            error_msg = self.tr(
+                "WlRoots Wayland socket path is empty, please configure it in settings"
+            )
+            logger.error("WlRoots Wayland Socket 路径为空")
+            self.log_output.emit("ERROR", error_msg)
+            self._emit_controller_setup_hint(
+                reason="wlroots_socket_empty",
+                controller_name=controller_name,
+            )
+            return False
+
+        controller_entry = self._get_interface_controller_entry(controller_name) or {}
+        wlroots_cfg = controller_entry.get("wlroots") or {}
+        use_win32_vk_code = bool(wlroots_cfg.get("use_win32_vk_code", False))
+
+        logger.info(
+            f"正在连接 WlRoots: socket={wlr_socket_path}, use_win32_vk_code={use_win32_vk_code}"
+        )
+        msg = self.tr("Connecting to WlRoots: {socket}").format(socket=wlr_socket_path)
+        self.log_output.emit("INFO", msg)
+
+        if await self.maafw.connect_wlroots(wlr_socket_path, use_win32_vk_code):
+            logger.info("WlRoots 连接成功")
+            self.log_output.emit("INFO", self.tr("WlRoots connected successfully"))
+            return True
+
+        logger.error("WlRoots 连接失败")
+        self.log_output.emit("ERROR", self.tr("Failed to connect to WlRoots"))
+        return False
+
+    async def _connect_macos_controller(self, controller_raw: Dict[str, Any]):
+        """连接 MacOS 控制器"""
+        if sys.platform != "darwin":
+            error_msg = self.tr("MacOS controller is only supported on macOS")
+            logger.error("MacOS 控制器仅在 macOS 上支持")
+            self.log_output.emit("ERROR", error_msg)
+            return False
+
+        activate_controller = controller_raw.get("controller_type")
+        if activate_controller is None:
+            logger.error(f"未找到控制器配置: {controller_raw}")
+            return False
+
+        controller_type = self._get_controller_type(controller_raw)
+        controller_name = self._get_controller_name(controller_raw)
+
+        if controller_name in controller_raw:
+            controller_config = controller_raw[controller_name]
+        elif controller_type in controller_raw:
+            controller_config = controller_raw[controller_type]
+            controller_raw[controller_name] = controller_config
+        else:
+            controller_config = {}
+            controller_raw[controller_name] = controller_config
+
+        raw_screencap_method = controller_config.get("macos_screencap_methods")
+        raw_input_method = controller_config.get("macos_input_methods")
+
+        def _restore_raw_methods():
+            if raw_screencap_method is not None:
+                controller_config["macos_screencap_methods"] = raw_screencap_method
+            if raw_input_method is not None:
+                controller_config["macos_input_methods"] = raw_input_method
+
+        def _collect_macos_params():
+            window_id_raw = controller_config.get("window_id") or controller_config.get(
+                "hwnd", 0
+            )
+            try:
+                window_id_value = int(window_id_raw)
+            except (TypeError, ValueError):
+                window_id_value = 0
+            screencap = (
+                raw_screencap_method
+                if raw_screencap_method is not None
+                else controller_config.get("macos_screencap_methods")
+            )
+            input_method = (
+                raw_input_method
+                if raw_input_method is not None
+                else controller_config.get("macos_input_methods")
+            )
+
+            def _safe_int(value: Any) -> int | None:
+                try:
+                    return int(value)
+                except (TypeError, ValueError):
+                    return None
+
+            if _safe_int(screencap) in (None, 0):
+                screencap = int(MaaMacOSScreencapMethodEnum.ScreenCaptureKit.value)
+            if _safe_int(input_method) in (None, 0):
+                input_method = int(MaaMacOSInputMethodEnum.GlobalEvent.value)
+            return window_id_value, int(screencap), int(input_method)
+
+        logger.info("每次连接前自动搜索 MacOS 窗口...")
+        self.log_output.emit("INFO", self.tr("Auto searching MacOS windows..."))
+        found_device = await self._auto_find_macos_window(
+            controller_raw, controller_name, controller_config
+        )
+        if found_device:
+            self._save_device_to_config(controller_raw, controller_name, found_device)
+            controller_config = controller_raw[controller_name]
+            _restore_raw_methods()
+            window_id, screencap_method, input_method = _collect_macos_params()
+            if not window_id:
+                error_msg = self.tr(
+                    "Window ID is empty, please configure window connection in settings"
+                )
+                logger.error("MacOS 窗口 ID 为空")
+                self.log_output.emit("ERROR", error_msg)
+                self._emit_controller_setup_hint(
+                    reason="macos_window_id_empty",
+                    controller_name=controller_name,
+                )
+                return False
+
+            connect_success = await self.maafw.connect_macos(
+                window_id, screencap_method, input_method
+            )
+            if not connect_success:
+                self.log_output.emit("ERROR", self.tr("Device connection failed"))
+            return bool(connect_success)
+
+        program_path = (controller_config.get("program_path") or "").strip()
+        if not program_path:
+            logger.error("MacOS 控制器未匹配窗口且未配置启动程序")
+            self.log_output.emit("ERROR", self.tr("Device connection failed"))
+            self._emit_controller_setup_hint(
+                reason="macos_program_path_empty",
+                controller_name=controller_name,
+            )
+            return False
+
+        self.log_output.emit("INFO", self.tr("try to start program"))
+        logger.info("尝试启动程序")
+        program_params = controller_config.get("program_params", "")
+        wait_program_start = int(controller_config.get("wait_time", 0))
+        self.process = self._start_process(program_path, program_params)
+
+        async def _try_find_and_connect_macos():
+            nonlocal controller_config
+            found = await self._auto_find_macos_window(
+                controller_raw, controller_name, controller_config
+            )
+            if not found:
+                return False
+            self._save_device_to_config(controller_raw, controller_name, found)
+            controller_config = controller_raw[controller_name]
+            _restore_raw_methods()
+            window_id, screencap_method, input_method = _collect_macos_params()
+            if not window_id:
+                return False
+            return await self.maafw.connect_macos(
+                window_id, screencap_method, input_method
+            )
+
+        if wait_program_start > 0:
+            poll_ok = await self._poll_connect(
+                wait_program_start,
+                self.tr("waiting for program start..."),
+                _try_find_and_connect_macos,
+            )
+            if poll_ok:
+                return True
+            if self.need_stop:
+                return False
+        else:
+            if await _try_find_and_connect_macos():
+                return True
+
+        logger.error("启动程序后未找到与配置匹配的 MacOS 窗口")
+        self.log_output.emit("ERROR", self.tr("Device connection failed"))
+        return False
+
     def _parse_address_components(self, address: str | None) -> tuple[str, str | None]:
         """提取 ADB 地址和端口"""
         raw_address = (address or "").strip()
@@ -2642,6 +2856,14 @@ class TaskFlowRunner(QObject):
             self._compile_win32_regex(gamepad_cfg.get("class_regex"), "类名"),
             self._compile_win32_regex(gamepad_cfg.get("window_regex"), "窗口名"),
         )
+
+    def _get_macos_filter_pattern(self, controller_name: str) -> re.Pattern | None:
+        """从 interface 中提取 MacOS 窗口标题过滤正则"""
+        controller_entry = self._get_interface_controller_entry(controller_name)
+        if not controller_entry:
+            return None
+        macos_cfg = controller_entry.get("macos") or {}
+        return self._compile_win32_regex(macos_cfg.get("title_regex"), "窗口标题")
 
     def _window_matches_win32_filters(
         self,
@@ -2944,6 +3166,59 @@ class TaskFlowRunner(QObject):
 
         except Exception as e:
             logger.error(f"自动搜索 Win32 窗口时出错: {e}")
+            return None
+
+    async def _auto_find_macos_window(
+        self,
+        controller_raw: Dict[str, Any],
+        controller_name: str,
+        controller_config: Dict[str, Any],
+    ) -> Dict[str, Any] | None:
+        """自动搜索 MacOS 窗口并找到与旧配置一致的那一项"""
+        try:
+            windows = Toolkit.find_desktop_windows()
+            if not windows:
+                logger.warning("未找到任何 MacOS 窗口")
+                return None
+
+            window_pattern = self._get_macos_filter_pattern(controller_name)
+            matched_window_infos: list[Dict[str, Any]] = []
+            all_window_infos = []
+            for window in windows:
+                window_info = {
+                    "window_id": str(window.hwnd),
+                    "hwnd": str(window.hwnd),
+                    "window_name": window.window_name,
+                    "class_name": window.class_name,
+                    "device_name": f"{window.window_name or 'Unknown Window'}({window.hwnd})",
+                }
+                all_window_infos.append(window_info)
+                if window_pattern and not window_pattern.search(
+                    str(window.window_name or "")
+                ):
+                    continue
+                matched_window_infos.append(window_info)
+
+            if len(matched_window_infos) == 1:
+                return matched_window_infos[0]
+
+            if len(matched_window_infos) > 1:
+                old_device_name = (controller_config.get("device_name") or "").strip()
+                old_title = self._strip_bracket_content(old_device_name)
+                if old_title:
+                    for win in matched_window_infos:
+                        if (
+                            self._strip_bracket_content(win.get("window_name") or "")
+                            == old_title
+                        ):
+                            return win
+                return matched_window_infos[0]
+
+            logger.debug("MacOS 窗口列表均未满足与配置匹配的条件，跳过更新")
+            logger.debug(f"所有 MacOS 窗口信息: {all_window_infos}")
+            return None
+        except Exception as e:
+            logger.error(f"自动搜索 MacOS 窗口时出错: {e}")
             return None
 
     def _save_device_to_config(
@@ -3322,6 +3597,8 @@ class TaskFlowRunner(QObject):
         elif controller_type == "playcover":
             # 关闭 PlayCover 控制器：什么都不做
             logger.debug("PlayCover 控制器无需关闭操作")
+        elif controller_type in ("wlroots", "macos"):
+            logger.debug("%s 控制器无需额外关闭操作", controller_type)
         else:
             logger.warning(f"未知的控制器类型: {controller_type}")
 

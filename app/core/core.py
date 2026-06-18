@@ -174,7 +174,7 @@ class ServiceCoordinator:
             fs_signal_bus=self.fs_signal_bus,
         )
         schedule_store = main_config_path.parent / "schedules.json"
-        self.schedule_service = ScheduleService(self, schedule_store)
+        self.schedule_service = ScheduleService(schedule_store)
 
         # 初始化日志处理器（将 callback 信号转换为 log_output 信号）
         self.log_processor = CallbackLogProcessor(self.runner_events)

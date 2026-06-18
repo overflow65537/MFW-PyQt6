@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from datetime import datetime, timedelta
-from uuid import uuid4
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -16,15 +14,11 @@ from qfluentwidgets import BodyLabel, PrimaryPushButton
 
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
-from app.core.service.schedule_service import (
-    ScheduleEntry,
-    SCHEDULE_SINGLE,
-)
 from app.utils.logger import logger
 
 
 class TestInterface(QWidget):
-    """通用测试界面（目前用于计划任务调试）。"""
+    """通用测试界面。"""
 
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(parent=parent)
@@ -108,35 +102,14 @@ class TestInterface(QWidget):
         asyncio.create_task(self.service_coordinator.run_tasks_flow())
 
     def _test_force_start(self) -> None:
-        configs = self.service_coordinator.config.list_configs()
-        if not configs:
-            signalBus.info_bar_requested.emit(
-                "warning", "未找到任何配置，无法强制运行"
-            )
-            return
-        current_id = self.service_coordinator.config.current_config_id
-        if not current_id:
-            current_id = configs[0].get("item_id", "")
-        if not current_id:
-            signalBus.info_bar_requested.emit(
-                "warning", "当前配置 ID 不可用"
-            )
-            return
-
-        entry = ScheduleEntry(
-            entry_id=f"debug_{uuid4().hex}",
-            config_id=current_id,
-            name="调试条目",
-            schedule_type=SCHEDULE_SINGLE,
-            params={
-                "run_at": (datetime.now() + timedelta(seconds=1)).isoformat(),
-            },
-            force_start=True,
-            enabled=True,
-            created_at=datetime.now(),
-        )
         signalBus.info_bar_requested.emit("info", "已发起强制运行")
-        asyncio.create_task(self.service_coordinator.schedule_service._force_start(entry))
+
+        async def _run() -> None:
+            if self.service_coordinator.run_manager.is_running:
+                await self.service_coordinator.stop_task()
+            await self.service_coordinator.run_tasks_flow()
+
+        asyncio.create_task(_run())
 
     def _on_log_output(self, level: str, message: str) -> None:
         text = f"[{level}] {message}"
@@ -144,4 +117,3 @@ class TestInterface(QWidget):
         self._log_view.setPlainText("\n".join(self._log_buffer))
         scrollbar = self._log_view.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
-

@@ -45,9 +45,9 @@ MFW-ChainFlow Assistant 旨在为 MaaFramework 用户提供开箱即用的可视
 - 外部通知：钉钉、飞书、SMTP、WxPusher、企业微信机器人、Gotify
 - 内置计划任务：单次 / 每日 / 每周 / 每月，多策略执行
 - 动态加载自定义动作与识别器的同时支持Agent，适配个性化流程
-- 嵌入式 Agent：在 agent 字段中启用内置模式，自动转换为 custom 加载方式，使用 UI 内部环境，更小更轻盈
+- 嵌入式 Agent：在 `CFA_setting.json` 中启用内置模式，自动转换为 custom 加载方式，使用 UI 内部环境，更小更轻盈
 - 速通模式：按日 / 周 / 月限制运行次数与最小间隔，避免重复执行
-- 热更新：资源仓库与本地 update_flag.txt 一致时自动启用，速度更快且无需重启
+- 热更新：资源仓库与本地 `CFA_setting.json` 的 `update_flag` 一致时自动启用，速度更快且无需重启
 
 ## 速通模式
 
@@ -80,7 +80,21 @@ MFW 开关写在分隔符 `--` 之前；之后仅传给 Qt。
 
 ## 热更新
 
-当资源仓库中包含的 `update_flag.txt` 文件内容和本地的 `update_flag.txt` 内容不一致的时候，会启动热更新模式，速度更快并且无需重启。
+在资源包根目录放置 `CFA_setting.json`，当本地与远端仓库中的 `update_flag` 字段一致时，会启用热更新模式，速度更快并且无需重启。
+
+```json
+{
+  "update_flag": "1",
+  "embedded": false
+}
+```
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `update_flag` | 是 | 热更新标识；本地与远端一致时启用热更新 |
+| `embedded` | 否 | Agent 内置模式开关，见下方 [嵌入式 Agent](#嵌入式-agent) |
+
+> 兼容旧版：若不存在 `CFA_setting.json`，会回退读取 `update_flag.txt`（仅提供 `update_flag`，不含 `embedded`）。
 
 ## 动态加载自定义动作/识别器
 
@@ -132,14 +146,22 @@ class 动作对象1(CustomAction):
 
 ### 嵌入式 Agent
 
-在 `interface.json` 的 `agent` 字段中设置 `embedded: true`，系统会自动将 agent 转换为 custom 加载方式。这种方式使用 UI 内部环境运行，无需独立进程，资源占用更小、启动更快。
+在 `CFA_setting.json` 中设置 `"embedded": true`，系统会自动将 agent 转换为 custom 加载方式。这种方式使用 UI 内部环境运行，无需独立进程，资源占用更小、启动更快。热更新完成后，该值会同步写入 `interface.json` 的 `agent.embedded` 字段。
 
-示例 `interface.json` 片段：
+示例 `CFA_setting.json`：
+
+```json
+{
+  "update_flag": "1",
+  "embedded": true
+}
+```
+
+`interface.json` 中仍需保留 agent 入口配置，例如：
 
 ```json
 {
   "agent": {
-    "embedded": true,
     "child_args": ["{PROJECT_DIR}/agent/main.py"]
   }
 }

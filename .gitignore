@@ -476,6 +476,7 @@ release_notes
 runtime
 custom
 update/new_version/update_metadata.json
+CFA_setting.json
 update_flag.txt
 bundle/*
 MPAcustom/*

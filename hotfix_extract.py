@@ -6,16 +6,152 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import shutil
 import tarfile
 import zipfile
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 INTERFACE_NAMES = frozenset({"interface.json", "interface.jsonc"})
 AGENT_DIR_NAME = "agent"
+CFA_SETTING_FILENAME = "CFA_setting.json"
+LEGACY_UPDATE_FLAG_FILENAME = "update_flag.txt"
+
+
+def default_cfa_setting() -> dict[str, Any]:
+    return {"update_flag": "1", "embedded": False}
+
+
+def read_cfa_setting(bundle_path: Path | str) -> dict[str, Any] | None:
+    """读取 bundle 下的 CFA_setting.json；不存在时回退到旧版 update_flag.txt。"""
+    base = Path(bundle_path)
+    setting_path = base / CFA_SETTING_FILENAME
+    if setting_path.is_file():
+        try:
+            with open(setting_path, "r", encoding="utf-8") as file:
+                data = json.load(file)
+            if isinstance(data, dict) and "update_flag" in data:
+                return data
+            logger.warning(
+                "[热更新] %s 格式无效，缺少 update_flag 字段: %s",
+                CFA_SETTING_FILENAME,
+                setting_path,
+            )
+        except Exception as exc:
+            logger.error("[热更新] 读取 %s 失败: %s", setting_path, exc)
+
+    legacy_path = base / LEGACY_UPDATE_FLAG_FILENAME
+    if legacy_path.is_file():
+        try:
+            flag = legacy_path.read_text(encoding="utf-8").strip()
+            if flag:
+                return {"update_flag": flag}
+        except Exception as exc:
+            logger.error("[热更新] 读取旧版 %s 失败: %s", legacy_path, exc)
+    return None
+
+
+def cfa_setting_update_flag(setting: dict[str, Any] | None) -> str | None:
+    if not setting:
+        return None
+    flag = setting.get("update_flag")
+    if flag is None:
+        return None
+    return str(flag).strip()
+
+
+def cfa_setting_embedded(setting: dict[str, Any] | None) -> bool | None:
+    if not setting or "embedded" not in setting:
+        return None
+    return bool(setting["embedded"])
+
+
+def apply_cfa_embedded_to_interface(
+    interface: dict[str, Any],
+    bundle_path: Path | str,
+) -> bool:
+    """按 CFA_setting.json 的 embedded 字段更新 interface.agent.embedded。
+
+    Returns:
+        True 表示 interface 中的 embedded 值已变更。
+    """
+    embedded = cfa_setting_embedded(read_cfa_setting(bundle_path))
+    if embedded is None:
+        return False
+
+    agent = interface.get("agent")
+    if not isinstance(agent, dict):
+        agent = {}
+        interface["agent"] = agent
+    if agent.get("embedded") == embedded:
+        return False
+
+    agent["embedded"] = embedded
+    return True
+
+
+def _read_interface_config(config_path: Path) -> dict[str, Any]:
+    if not config_path.is_file():
+        return {}
+    try:
+        with open(config_path, "r", encoding="utf-8") as file:
+            try:
+                import jsonc
+
+                return jsonc.load(file)
+            except ImportError:
+                return json.load(file)
+    except Exception as exc:
+        logger.error("[热更新] 读取 interface 配置失败 %s: %s", config_path, exc)
+        return {}
+
+
+def _write_interface_config(config_path: Path, data: dict[str, Any]) -> None:
+    with open(config_path, "w", encoding="utf-8") as file:
+        try:
+            import jsonc
+
+            jsonc.dump(data, file, indent=4, ensure_ascii=False)
+        except ImportError:
+            json.dump(data, file, indent=4, ensure_ascii=False)
+
+
+def sync_interface_after_hotfix(
+    interface_paths: list[Path],
+    version: str,
+    bundle_path: Path | str,
+) -> bool:
+    """热更新后同步 interface 版本号，并按 CFA_setting.json 写入 agent.embedded。"""
+    setting = read_cfa_setting(bundle_path)
+    embedded = cfa_setting_embedded(setting)
+
+    for path in interface_paths:
+        if not path.is_file():
+            continue
+        interface = _read_interface_config(path)
+        if not interface:
+            continue
+        old_version = interface.get("version", "unknown")
+        interface["version"] = version
+        apply_cfa_embedded_to_interface(interface, bundle_path)
+        _write_interface_config(path, interface)
+        embedded_note = (
+            f", agent.embedded={embedded}" if embedded is not None else ""
+        )
+        logger.info(
+            "[热更新] interface 已同步: %s (version %s -> %s%s)",
+            path.name,
+            old_version,
+            version,
+            embedded_note,
+        )
+        return True
+    logger.warning("[热更新] 未能更新 interface 配置")
+    return False
 
 
 def normalize_archive_parts(parts: tuple[str, ...]) -> tuple[str, ...]:

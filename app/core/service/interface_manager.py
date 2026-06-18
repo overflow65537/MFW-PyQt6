@@ -15,6 +15,12 @@ from app.utils.interface_display import (
 )
 from app.utils.logger import logger
 from app.core.service.i18n_service import I18nService
+from hotfix_extract import (
+    CFA_SETTING_FILENAME,
+    LEGACY_UPDATE_FLAG_FILENAME,
+    apply_cfa_embedded_to_interface,
+    read_cfa_setting,
+)
 
 # child_args 无法解析时，相对 interface 目录回退的 agent 入口
 DEFAULT_AGENT_ENTRY_RELATIVE = "agent/main.py"
@@ -151,6 +157,8 @@ class InterfaceManager:
             logger.error(f"配置文件格式错误: {e}")
             self._original_interface = {}
             return
+
+        self._sync_embedded_from_cfa_setting()
 
         # 解析 import 字段：加载并合并其他 PI 文件中的 task 和 option
         self._resolve_imports()
@@ -290,6 +298,58 @@ class InterfaceManager:
                 self._deep_merge_option(base[key], ov_val)
             else:
                 base[key] = deepcopy(ov_val)
+
+    def _resolve_cfa_bundle_path(self) -> Path:
+        """解析 CFA_setting.json 所在资源包根目录（interface 目录或其上级）。"""
+        interface_dir = self._interface_dir.resolve()
+        current = interface_dir
+        for _ in range(8):
+            if read_cfa_setting(current) is not None:
+                return current
+            if (
+                (current / CFA_SETTING_FILENAME).is_file()
+                or (current / LEGACY_UPDATE_FLAG_FILENAME).is_file()
+            ):
+                return current
+            parent = current.parent
+            if parent == current:
+                break
+            current = parent
+        return interface_dir
+
+    def _sync_embedded_from_cfa_setting(self) -> None:
+        """按 CFA_setting.json 同步 agent.embedded 到磁盘与内存中的 interface。"""
+        if not self._original_interface or self._interface_path is None:
+            return
+
+        bundle_path = self._resolve_cfa_bundle_path()
+        changed = apply_cfa_embedded_to_interface(
+            self._original_interface, bundle_path
+        )
+        if not changed:
+            return
+
+        embedded = self._original_interface.get("agent", {}).get("embedded")
+        try:
+            with open(self._interface_path, "w", encoding="utf-8") as file:
+                jsonc.dump(
+                    self._original_interface,
+                    file,
+                    indent=4,
+                    ensure_ascii=False,
+                )
+            logger.info(
+                "已按 %s 同步 agent.embedded=%s 到 %s",
+                CFA_SETTING_FILENAME,
+                embedded,
+                self._interface_path.name,
+            )
+        except OSError as exc:
+            logger.error(
+                "写入 interface 配置失败 %s: %s",
+                self._interface_path,
+                exc,
+            )
 
     def _resolve_imports(self) -> None:
         """
