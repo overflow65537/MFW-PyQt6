@@ -78,6 +78,7 @@ class MonitorInterface(QWidget):
         self._roi_store = RecognitionRoiStore()
         self._bound_config_id: Optional[str] = None
         self._last_config_switch_id: Optional[str] = None
+        self._config_switch_seq: int = 0
         self._pool: Optional[ConfigMonitorPool] = None
         self._multi_grid: Optional[MultiConfigMonitorGrid] = None
 
@@ -191,7 +192,7 @@ class MonitorInterface(QWidget):
                 config_id, pil_image, roi_store=roi_store
             )
         if config_id == self._bound_config_id:
-            self._apply_preview_from_pil(pil_image)
+            self._apply_preview_from_pil(pil_image, config_id=config_id)
 
     def _on_pooled_capture_cleared(self, config_id: str) -> None:
         if self._multi_grid is not None:
@@ -771,25 +772,55 @@ class MonitorInterface(QWidget):
             return
         self._on_task_flow_finished(payload)
 
+    def _force_clear_monitor_area(self, *, clear_roi: bool = True) -> None:
+        """切换配置时强制清空监控区域，避免上一配置最后一帧残留。"""
+        self._config_switch_seq += 1
+        self._last_frame_timestamp = None
+        self._emit_preview_cleared(clear_roi=clear_roi)
+        if hasattr(self, "preview_label"):
+            self.preview_label.clear()
+        if hasattr(self, "preview_container"):
+            self.preview_container.update()
+        self._reposition_preview_overlays()
+
     def _on_active_config_changed(self, config_id: str) -> None:
-        """当前激活配置变化：多实例秒切缓存画面；单实例仍重连。"""
+        """当前激活配置变化：多实例先强制清空再按需恢复；单实例仍重连。"""
         target_id = config_id or self._current_config_id()
 
         if self._pool is not None:
             if target_id == self._last_config_switch_id:
                 return
             self._last_config_switch_id = target_id
+            self._force_clear_monitor_area(clear_roi=False)
+
             self._bound_config_id = target_id
-            cached = self._pool.set_display_config(target_id)
+            self._pool.set_display_config(target_id)
             self._roi_store = self._pool.get_display_roi_store()
             if self._multi_grid is not None:
                 self._multi_grid.set_active_config(target_id)
-            self._emit_preview_cleared(clear_roi=False)
-            if cached is not None:
-                self._apply_preview_from_pil(cached)
+
+            switch_seq = self._config_switch_seq
+
+            def _maybe_restore_target_preview() -> None:
+                if switch_seq != self._config_switch_seq:
+                    return
+                if self._bound_config_id != target_id:
+                    return
+                if not self._pool.is_display_monitoring():
+                    return
+                slot = self._pool.get_slot(target_id)
+                if slot is None or slot.last_pil_image is None:
+                    return
+                self._apply_preview_from_pil(
+                    slot.last_pil_image, config_id=target_id
+                )
+
+            QTimer.singleShot(0, _maybe_restore_target_preview)
             self._set_monitor_control_running(self._pool.is_display_monitoring())
             self._update_monitor_status()
             return
+
+        self._force_clear_monitor_area()
 
         if target_id == self._bound_config_id and not (
             self._legacy_session.monitoring_active or self._starting_monitoring
@@ -799,7 +830,6 @@ class MonitorInterface(QWidget):
         was_active = self._legacy_session.monitoring_active or self._starting_monitoring
         if was_active or self._bound_config_id:
             self._request_stop_monitoring(reason="config_changed")
-            self._emit_preview_cleared()
         self._bound_config_id = None
         self._clear_recognition_roi()
 
@@ -933,7 +963,11 @@ class MonitorInterface(QWidget):
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
 
-    def _apply_preview_from_pil(self, pil_image: Image.Image) -> None:
+    def _apply_preview_from_pil(
+        self, pil_image: Image.Image, *, config_id: str | None = None
+    ) -> None:
+        if config_id is not None and config_id != self._bound_config_id:
+            return
         image_width, image_height = pil_image.size
         self._update_preview_size_policy(image_width, image_height)
 
