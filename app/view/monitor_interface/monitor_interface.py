@@ -77,6 +77,7 @@ class MonitorInterface(QWidget):
         self._is_landscape: Optional[bool] = None
         self._roi_store = RecognitionRoiStore()
         self._bound_config_id: Optional[str] = None
+        self._last_config_switch_id: Optional[str] = None
         self._pool: Optional[ConfigMonitorPool] = None
         self._multi_grid: Optional[MultiConfigMonitorGrid] = None
 
@@ -662,7 +663,6 @@ class MonitorInterface(QWidget):
         self.service_coordinator.signal_bus.config_changed.connect(
             self._on_active_config_changed
         )
-        signalBus.config_changed.connect(self._on_active_config_changed)
         signalBus.config_run_state_changed.connect(self._on_config_run_state_changed)
         signalBus.multi_instance_mode_changed.connect(
             self._on_multi_instance_mode_changed
@@ -740,18 +740,19 @@ class MonitorInterface(QWidget):
         target_id = config_id or self._current_config_id()
 
         if self._pool is not None:
+            if target_id == self._last_config_switch_id:
+                return
+            self._last_config_switch_id = target_id
             self._bound_config_id = target_id
-            self._pool.set_display_config(target_id)
+            cached = self._pool.set_display_config(target_id)
             self._roi_store = self._pool.get_display_roi_store()
             if self._multi_grid is not None:
                 self._multi_grid.set_active_config(target_id)
-            self._emit_preview_cleared()
+            self._emit_preview_cleared(clear_roi=False)
+            if cached is not None:
+                self._apply_preview_from_pil(cached)
             self._set_monitor_control_running(self._pool.is_display_monitoring())
             self._update_monitor_status()
-            if self.service_coordinator.is_config_running(target_id):
-                asyncio.create_task(
-                    self._pool.ensure_monitoring(target_id, auto=True)
-                )
             return
 
         if target_id == self._bound_config_id and not (
@@ -796,12 +797,13 @@ class MonitorInterface(QWidget):
         self._update_monitor_status()
         self._reposition_preview_overlays()
 
-    def _emit_preview_cleared(self) -> None:
+    def _emit_preview_cleared(self, *, clear_roi: bool = True) -> None:
         self._preview_pixmap = None
         self._current_pil_image = None
         self._image_width = None
         self._image_height = None
-        self._roi_store.clear()
+        if clear_roi:
+            self._roi_store.clear()
         self.preview_label.clear()
         self._update_fps_overlay(None)
         self._update_resolution_label()

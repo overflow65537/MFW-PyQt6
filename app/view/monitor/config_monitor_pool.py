@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Dict, Optional
 
@@ -31,6 +32,7 @@ class ConfigMonitorSlot:
     last_pil_image: Optional[Image.Image] = None
     starting: bool = False
     stopping: bool = False
+    ensure_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
 class ConfigMonitorPool:
@@ -76,7 +78,7 @@ class ConfigMonitorPool:
 
     def is_display_monitoring(self) -> bool:
         slot = self._slots.get(self._display_config_id)
-        return bool(slot and slot.session.monitoring_active)
+        return bool(slot and slot.session.is_loop_running())
 
     def is_display_starting(self) -> bool:
         slot = self._slots.get(self._display_config_id)
@@ -88,7 +90,7 @@ class ConfigMonitorPool:
 
     def is_config_monitoring(self, config_id: str) -> bool:
         slot = self._slots.get(config_id)
-        return bool(slot and slot.session.monitoring_active)
+        return bool(slot and slot.session.is_loop_running())
 
     def is_config_starting(self, config_id: str) -> bool:
         slot = self._slots.get(config_id)
@@ -156,24 +158,33 @@ class ConfigMonitorPool:
         if not config_id:
             return False
         slot = self._ensure_slot(config_id)
-        if slot.session.monitoring_active or slot.starting:
-            return True
+        async with slot.ensure_lock:
+            if slot.session.is_loop_running():
+                return True
+            if slot.starting:
+                return True
+            if slot.session.monitoring_active or slot.session.is_loop_running():
+                await slot.session.stop_loop_async()
 
-        slot.starting = True
-        log_prefix = f"Monitor[{config_id[:8]}]"
-        try:
-            logger.info("[%s] 后台启动监控（%s）", log_prefix, "自动" if auto else "手动")
-            started = await slot.session.run_startup_sequence(
-                should_abort=lambda: not slot.starting,
-            )
-            if not started:
-                logger.warning("[%s] 监控启动失败", log_prefix)
-            return bool(started)
-        except Exception as exc:
-            logger.error("[%s] 监控启动异常: %s", log_prefix, exc, exc_info=True)
-            return False
-        finally:
-            slot.starting = False
+            slot.starting = True
+            log_prefix = f"Monitor[{config_id[:8]}]"
+            try:
+                logger.info(
+                    "[%s] 后台启动监控（%s）", log_prefix, "自动" if auto else "手动"
+                )
+                started = await slot.session.run_startup_sequence(
+                    should_abort=lambda: not slot.starting,
+                )
+                if not started:
+                    logger.warning("[%s] 监控启动失败", log_prefix)
+                return bool(started)
+            except Exception as exc:
+                logger.error(
+                    "[%s] 监控启动异常: %s", log_prefix, exc, exc_info=True
+                )
+                return False
+            finally:
+                slot.starting = False
 
     async def stop_monitoring(self, config_id: str, *, clear_cache: bool = False) -> None:
         """停止指定配置的监控会话（不影响其他配置）。"""
@@ -185,7 +196,8 @@ class ConfigMonitorPool:
         slot.stopping = True
         slot.starting = False
         try:
-            await slot.session.stop()
+            async with slot.ensure_lock:
+                await slot.session.stop(teardown=True)
             if clear_cache:
                 slot.last_pil_image = None
                 slot.roi_store.clear()
