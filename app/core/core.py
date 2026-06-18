@@ -897,6 +897,12 @@ class ServiceCoordinator:
         self.task_service.on_config_changed(config_id)
         self.option_service.clear_selection()
 
+        # 同步到全局 signalBus，供监控页、日志面板等订阅方感知当前配置切换
+        try:
+            signalBus.config_changed.emit(config_id)
+        except Exception as exc:
+            logger.debug("转发 config_changed 到 signalBus 失败: %s", exc)
+
         # 多实例模式下：切换当前配置后，同步主开始按钮以反映新当前配置的运行态
         try:
             if cfg.get(cfg.multi_instance_mode):

@@ -980,11 +980,16 @@ class ConfigListItem(BaseListItem):
             self.unsetCursor()
 
     def set_running(self, running: bool):
-        """显示/隐藏该配置的运行指示点（多实例模式下各配置独立运行）。"""
+        """显示/隐藏该配置的运行指示（与任务列表 running 同款）。"""
         indicator = getattr(self, "running_indicator", None)
         if indicator is None:
             return
-        indicator.setVisible(bool(running))
+        if running:
+            indicator.show()
+            indicator.start()
+        else:
+            indicator.hide()
+            indicator.stop()
 
     def _init_ui(self):
         # 创建水平布局
@@ -1003,14 +1008,13 @@ class ConfigListItem(BaseListItem):
         self.name_label = self._create_name_label()
         layout.addWidget(self.name_label)
 
-        # 运行指示点（默认隐藏，多实例模式下表示该配置正在运行）
+        # 运行指示（与任务列表 running 状态同款 IndeterminateProgressRing）
         layout.addStretch(1)
-        from qfluentwidgets import CaptionLabel as _CaptionLabel
-
-        self.running_indicator = _CaptionLabel("●", self)
-        self.running_indicator.setStyleSheet("color: #50c878;")
+        self.running_indicator = IndeterminateProgressRing(self)
+        self.running_indicator.setFixedSize(20, 20)
+        self.running_indicator.setStrokeWidth(2)
         self.running_indicator.setToolTip(self.tr("Running"))
-        self.running_indicator.setVisible(False)
+        self.running_indicator.hide()
         layout.addWidget(self.running_indicator, 0, Qt.AlignmentFlag.AlignVCenter)
 
         # 创建设置按钮但不添加到布局（隐藏）
