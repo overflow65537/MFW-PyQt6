@@ -26,6 +26,7 @@ MFW-ChainFlow Assistant 配置
 import sys
 from pathlib import Path
 from enum import Enum
+import json
 
 from PySide6.QtCore import QLocale
 from qfluentwidgets import (
@@ -195,7 +196,7 @@ class Config(QConfig):
     )  # GPU 硬件加速开关（关闭时强制 CPU 推理）
     task_interface_panel_layout = ConfigItem("Task", "task_interface_panel_layout", "")
     multi_instance_mode = ConfigItem(
-        "Task", "multi_instance_mode", False, BoolValidator()
+        "Compatibility", "multi_instance_mode", False, BoolValidator()
     )  # 多实例模式：开启后允许多个配置同时运行，并在运行时切换配置
 
     # ===== 日志设置 =====
@@ -342,7 +343,46 @@ class Config(QConfig):
 
 cfg = Config()
 cfg.themeMode.value = Theme.AUTO
-qconfig.load("config/config.json", cfg)
+
+
+def _migrate_multi_instance_mode_config(config_path: Path) -> None:
+    """将 multi_instance_mode 从 Task 分组迁移到 Compatibility（一次性）。"""
+    if not config_path.is_file():
+        return
+    try:
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    task_section = data.get("Task")
+    if not isinstance(task_section, dict):
+        return
+    if "multi_instance_mode" not in task_section:
+        return
+    compat_section = data.get("Compatibility")
+    if not isinstance(compat_section, dict):
+        compat_section = {}
+    if "multi_instance_mode" not in compat_section:
+        compat_section["multi_instance_mode"] = task_section.pop(
+            "multi_instance_mode"
+        )
+        data["Compatibility"] = compat_section
+        data["Task"] = task_section
+        config_path.write_text(
+            json.dumps(data, indent=4, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    elif "multi_instance_mode" in task_section:
+        task_section.pop("multi_instance_mode", None)
+        data["Task"] = task_section
+        config_path.write_text(
+            json.dumps(data, indent=4, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+
+_config_path = Path("config/config.json")
+_migrate_multi_instance_mode_config(_config_path)
+qconfig.load(str(_config_path), cfg)
 
 
 def detect_system_language() -> Language:

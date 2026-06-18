@@ -1390,20 +1390,6 @@ class SettingInterface(QWidget):
 
         self.taskGroup.addSettingCard(self.gpu_acceleration_card)
 
-        self.multi_instance_mode_card = SwitchSettingCard(
-            FIF.ALBUM,
-            self.tr("Multi-instance mode"),
-            self.tr(
-                "Allow multiple configurations to run at the same time, "
-                "each with its own start/stop control, log, and monitor. "
-                "When off, switching the active configuration is blocked while a task is running."
-            ),
-            configItem=cfg.multi_instance_mode,
-            parent=self.taskGroup,
-        )
-
-        self.taskGroup.addSettingCard(self.multi_instance_mode_card)
-
         self.reset_task_layout_card = PrimaryPushSettingCard(
             text=self.tr("Reset"),
             icon=FIF.SYNC,
@@ -1517,6 +1503,17 @@ class SettingInterface(QWidget):
         self.compatibility_group = SettingCardGroup(
             self.tr("Experimental / Compatibility"), self.Setting_scroll_widget
         )
+        self.multi_instance_mode_card = SwitchSettingCard(
+            FIF.ALBUM,
+            self.tr("Multi-instance mode"),
+            self.tr(
+                "Experimental. Allow multiple configurations to run at the same time, "
+                "each with its own start/stop control, log, and monitor. "
+                "When off, switching the active configuration is blocked while a task is running."
+            ),
+            configItem=cfg.multi_instance_mode,
+            parent=self.compatibility_group,
+        )
         self.multi_resource_adaptation_card = SwitchSettingCard(
             FIF.SETTING,
             self.tr("Multi-resource adaptation"),
@@ -1572,6 +1569,7 @@ class SettingInterface(QWidget):
             on_value_changed=self._on_log_max_images_changed,
         )
 
+        self.compatibility_group.addSettingCard(self.multi_instance_mode_card)
         self.compatibility_group.addSettingCard(self.multi_resource_adaptation_card)
         self.compatibility_group.addSettingCard(self.save_screenshot_card)
         self.compatibility_group.addSettingCard(self.log_zip_include_images_card)
