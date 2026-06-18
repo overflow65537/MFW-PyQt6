@@ -32,6 +32,7 @@ class ConfigMonitorSlot:
     last_pil_image: Optional[Image.Image] = None
     starting: bool = False
     stopping: bool = False
+    uses_shared_maafw: bool = False
     ensure_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
@@ -153,6 +154,52 @@ class ConfigMonitorPool:
         self._slots[config_id] = slot
         return slot
 
+    def _bind_runner_maafw(self, config_id: str) -> bool:
+        """多实例：监控复用任务运行体的 MaaFW，避免与 Runner 争抢控制器连接。"""
+        if not self._coordinator.is_multi_instance_enabled():
+            return False
+        inst = self._coordinator.runtime_manager.get_instance(config_id)
+        slot = self._slots.get(config_id)
+        if inst is None or slot is None:
+            return False
+        slot.monitor_task.maafw = inst.runner.maafw
+        slot.uses_shared_maafw = True
+        return True
+
+    def _release_shared_maafw(self, slot: ConfigMonitorSlot) -> None:
+        """恢复监控槽独立 MaaFW（任务停止后或共享连接失败回退）。"""
+        if not slot.uses_shared_maafw:
+            return
+        slot.uses_shared_maafw = False
+        from app.core.runner.maafw import MaaFW
+
+        slot.monitor_task.maafw = MaaFW()
+
+    async def ensure_monitoring_when_ready(
+        self,
+        config_id: str,
+        *,
+        auto: bool = True,
+        timeout_s: float = 90.0,
+    ) -> bool:
+        """等待任务流完成控制器连接后，再启动监控（共享同一 MaaFW）。"""
+        import time
+
+        self._ensure_slot(config_id)
+        deadline = time.monotonic() + max(5.0, timeout_s)
+        while time.monotonic() < deadline:
+            if not self._coordinator.is_config_running(config_id):
+                return False
+            if self._bind_runner_maafw(config_id):
+                slot = self._slots.get(config_id)
+                if slot is not None and slot.session.is_controller_connected():
+                    return await self.ensure_monitoring(config_id, auto=auto)
+            await asyncio.sleep(0.2)
+        slot = self._slots.get(config_id)
+        if slot is not None:
+            self._release_shared_maafw(slot)
+        return await self.ensure_monitoring(config_id, auto=auto)
+
     async def ensure_monitoring(self, config_id: str, *, auto: bool = True) -> bool:
         """为指定配置启动监控（若已在运行则跳过）。"""
         if not config_id:
@@ -169,6 +216,8 @@ class ConfigMonitorPool:
             slot.starting = True
             log_prefix = f"Monitor[{config_id[:8]}]"
             try:
+                if self._coordinator.is_config_running(config_id):
+                    self._bind_runner_maafw(config_id)
                 logger.info(
                     "[%s] 后台启动监控（%s）", log_prefix, "自动" if auto else "手动"
                 )
@@ -177,6 +226,8 @@ class ConfigMonitorPool:
                 )
                 if not started:
                     logger.warning("[%s] 监控启动失败", log_prefix)
+                    if slot.uses_shared_maafw:
+                        self._release_shared_maafw(slot)
                 return bool(started)
             except Exception as exc:
                 logger.error(
@@ -197,7 +248,10 @@ class ConfigMonitorPool:
         slot.starting = False
         try:
             async with slot.ensure_lock:
-                await slot.session.stop(teardown=True)
+                await slot.session.stop(
+                    teardown=not slot.uses_shared_maafw,
+                )
+                self._release_shared_maafw(slot)
             if clear_cache:
                 slot.last_pil_image = None
                 slot.roi_store.clear()

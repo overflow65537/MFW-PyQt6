@@ -365,6 +365,11 @@ class MultiConfigMonitorGrid(ScrollArea):
         else:
             tile.clear_preview()
 
+    def clear_monitor_loading(self, config_id: str) -> None:
+        tile = self._tiles.get(config_id)
+        if tile is not None:
+            tile.set_loading(False)
+
     def update_frame(
         self,
         config_id: str,

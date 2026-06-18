@@ -141,9 +141,47 @@ class MonitorInterface(QWidget):
         # 已为运行中的配置补建后台监控连接
         try:
             for cid in self.service_coordinator.running_config_ids():
-                asyncio.create_task(self._pool.ensure_monitoring(cid, auto=True))
+                self._schedule_pool_monitoring(cid, auto=True)
         except Exception as exc:
             logger.debug("初始化多配置监控池时同步运行中配置失败: %s", exc)
+
+    def _schedule_pool_monitoring(self, config_id: str, *, auto: bool = True) -> None:
+        """异步启动池化监控，并在失败时清除加载态。"""
+        if self._pool is None or not config_id:
+            return
+
+        async def _run() -> None:
+            started = await self._pool.ensure_monitoring_when_ready(
+                config_id, auto=auto
+            )
+            if (
+                not started
+                and self.service_coordinator.is_config_running(config_id)
+            ):
+                await asyncio.sleep(2.0)
+                if self.service_coordinator.is_config_running(config_id):
+                    started = await self._pool.ensure_monitoring_when_ready(
+                        config_id, auto=auto, timeout_s=30.0
+                    )
+            if self._multi_grid is not None:
+                if started:
+                    slot = self._pool.get_slot(config_id)
+                    if slot and slot.last_pil_image is not None:
+                        self._multi_grid.update_frame(
+                            config_id,
+                            slot.last_pil_image,
+                            roi_store=slot.roi_store,
+                        )
+                elif self.service_coordinator.is_config_running(config_id):
+                    self._multi_grid.clear_monitor_loading(config_id)
+            if config_id == self._bound_config_id:
+                self._set_loading(False)
+                self._set_monitor_control_running(
+                    self._pool.is_display_monitoring()
+                )
+                self._update_monitor_status()
+
+        asyncio.create_task(_run())
 
     def _on_pooled_frame(self, config_id: str, pil_image: Image.Image) -> None:
         slot = self._pool.get_slot(config_id) if self._pool else None
@@ -538,7 +576,7 @@ class MonitorInterface(QWidget):
         if self._pool is not None:
             try:
                 for cid in self.service_coordinator.running_config_ids():
-                    asyncio.create_task(self._pool.ensure_monitoring(cid, auto=True))
+                    self._schedule_pool_monitoring(cid, auto=True)
             except Exception:
                 pass
 
@@ -682,9 +720,7 @@ class MonitorInterface(QWidget):
         if self._multi_grid is not None:
             self._multi_grid.set_running(config_id, running)
         if running:
-            asyncio.create_task(self._pool.ensure_monitoring(config_id, auto=True))
-            if config_id == self._bound_config_id:
-                self._set_monitor_control_running(True)
+            self._schedule_pool_monitoring(config_id, auto=True)
             self._update_monitor_status()
             return
 
@@ -1211,9 +1247,14 @@ class MonitorInterface(QWidget):
 
             async def _start_sequence() -> None:
                 try:
-                    started = await self._pool.ensure_monitoring(
-                        target_id, auto=auto
-                    )
+                    if self.service_coordinator.is_config_running(target_id):
+                        started = await self._pool.ensure_monitoring_when_ready(
+                            target_id, auto=auto
+                        )
+                    else:
+                        started = await self._pool.ensure_monitoring(
+                            target_id, auto=auto
+                        )
                     if not started:
                         if not auto:
                             signalBus.info_bar_requested.emit(

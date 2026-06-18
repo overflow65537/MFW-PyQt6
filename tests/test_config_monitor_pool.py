@@ -55,6 +55,7 @@ class ConfigMonitorPoolTests(unittest.IsolatedAsyncioTestCase):
 
         coordinator = SimpleNamespace(
             is_multi_instance_enabled=lambda: True,
+            is_config_running=lambda _cid: False,
             runtime_manager=SimpleNamespace(get_instance=lambda _cid: None),
             task_service=MagicMock(),
             config_service=MagicMock(),
@@ -109,6 +110,53 @@ class ConfigMonitorPoolTests(unittest.IsolatedAsyncioTestCase):
             mock_start.assert_called_once()
 
         await slot.session.stop_loop_async()
+
+    def test_bind_runner_maafw_shares_controller(self) -> None:
+        shared_maafw = MagicMock()
+        runner = SimpleNamespace(maafw=shared_maafw)
+        inst = SimpleNamespace(
+            runner=runner,
+            task_service=MagicMock(),
+            config_service=MagicMock(),
+        )
+        self.pool._coordinator.runtime_manager.get_instance = lambda cid: (
+            inst if cid == "cfg_run" else None
+        )
+        slot = self.pool._ensure_slot("cfg_run")
+        own_maafw = slot.monitor_task.maafw
+
+        self.assertTrue(self.pool._bind_runner_maafw("cfg_run"))
+        self.assertIs(slot.monitor_task.maafw, shared_maafw)
+        self.assertTrue(slot.uses_shared_maafw)
+
+        self.pool._release_shared_maafw(slot)
+        self.assertFalse(slot.uses_shared_maafw)
+        self.assertIsNot(slot.monitor_task.maafw, shared_maafw)
+        self.assertIsNot(slot.monitor_task.maafw, own_maafw)
+
+    async def test_ensure_monitoring_when_ready_waits_for_runner(self) -> None:
+        shared_maafw = MagicMock(controller=MagicMock(connected=True))
+        runner = SimpleNamespace(maafw=shared_maafw)
+        inst = SimpleNamespace(
+            runner=runner,
+            task_service=MagicMock(),
+            config_service=MagicMock(),
+        )
+        self.pool._coordinator.runtime_manager.get_instance = lambda cid: (
+            inst if cid == "cfg_wait" else None
+        )
+        self.pool._coordinator.is_config_running = lambda cid: cid == "cfg_wait"
+
+        slot = self.pool._ensure_slot("cfg_wait")
+        with patch.object(
+            slot.session, "run_startup_sequence", new=AsyncMock(return_value=True)
+        ) as mock_start:
+            result = await self.pool.ensure_monitoring_when_ready(
+                "cfg_wait", auto=True, timeout_s=1.0
+            )
+            self.assertTrue(result)
+            mock_start.assert_called_once()
+            self.assertTrue(slot.uses_shared_maafw)
 
 
 if __name__ == "__main__":
