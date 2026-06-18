@@ -76,6 +76,80 @@ _EMBEDDED_AGENT_SERVER_SINK_DECORATORS = {
 }
 
 
+@dataclass
+class _EmbeddedAgentRegistryEntry:
+    root: Path
+    sys_paths: list[str]
+
+
+class _EmbeddedAgentLoadCoordinator:
+    """串行化多实例内置 agent 加载，并在加载前清理其他 bundle 的 sys.path / 模块缓存。"""
+
+    _lock = threading.RLock()
+    _entries: dict[int, _EmbeddedAgentRegistryEntry] = {}
+
+    @classmethod
+    def begin_load(cls, maafw: "MaaFW", root: Path) -> None:
+        with cls._lock:
+            current_id = id(maafw)
+            other_roots: list[Path] = []
+            for maafw_id, entry in list(cls._entries.items()):
+                if maafw_id == current_id:
+                    continue
+                other_roots.append(entry.root)
+                for path in entry.sys_paths:
+                    while path in sys.path:
+                        sys.path.remove(path)
+                maafw._purge_modules_under_root(entry.root)
+
+            if other_roots:
+                logger.info(
+                    "多实例内置 agent 加载前已清理其他 bundle 的 sys.path 与模块缓存: %s",
+                    ", ".join(str(item) for item in other_roots),
+                )
+
+            module_names = MaaFW._collect_module_names_under_root(root)
+            top_levels = sorted({name.split(".")[0] for name in module_names})
+            for package_name in top_levels:
+                module = sys.modules.get(package_name)
+                if module is not None and not MaaFW._module_belongs_to_root(
+                    module, root
+                ):
+                    MaaFW._purge_module_and_submodules(package_name)
+            for module_name in module_names:
+                module = sys.modules.get(module_name)
+                if module is not None and not MaaFW._module_belongs_to_root(
+                    module, root
+                ):
+                    MaaFW._purge_module_and_submodules(module_name)
+
+    @classmethod
+    def commit_load(
+        cls, maafw_id: int, root: Path, sys_paths: list[str]
+    ) -> None:
+        with cls._lock:
+            cls._entries[maafw_id] = _EmbeddedAgentRegistryEntry(
+                root=root, sys_paths=list(sys_paths)
+            )
+
+    @classmethod
+    def release(cls, maafw_id: int) -> None:
+        with cls._lock:
+            cls._entries.pop(maafw_id, None)
+
+    @classmethod
+    def finish_load(cls, maafw_id: int) -> None:
+        """加载结束后把其他实例的 sys.path 恢复到末尾，避免永久移除。"""
+        with cls._lock:
+            for other_id, entry in cls._entries.items():
+                if other_id == maafw_id:
+                    continue
+                for path in entry.sys_paths:
+                    if path in sys.path:
+                        sys.path.remove(path)
+                    sys.path.append(path)
+
+
 def iter_agent_entries(agent_config: Any):
     """遍历 interface.agent 中的全部启动项（dict 为单项，list 为多项）。"""
     if isinstance(agent_config, dict):
@@ -481,6 +555,7 @@ class MaaFW(QObject):
         self._embedded_controller_sinks.clear()
         self._embedded_tasker_sinks.clear()
         self._embedded_context_sinks.clear()
+        _EmbeddedAgentLoadCoordinator.begin_load(self, agent_path)
         self._purge_modules_under_root(self._last_custom_root)
         self._remove_custom_sys_paths()
         self._last_custom_root = agent_path
@@ -490,6 +565,9 @@ class MaaFW(QObject):
             if sys_path not in sys.path:
                 sys.path.insert(0, sys_path)
                 self._custom_sys_paths.append(sys_path)
+        _EmbeddedAgentLoadCoordinator.commit_load(
+            id(self), agent_path, self._custom_sys_paths
+        )
 
         resource = self._init_resource()
         self.custom_load_report = {
@@ -529,6 +607,7 @@ class MaaFW(QObject):
         finally:
             os.chdir(cwd)
             resource_patch()
+            _EmbeddedAgentLoadCoordinator.finish_load(id(self))
 
         actions = list(resource.custom_action_list or [])
         recognitions = list(resource.custom_recognition_list or [])
@@ -899,7 +978,7 @@ class MaaFW(QObject):
                 if self._module_belongs_to_root(sys.modules[module_name], root):
                     logger.debug("内置 agent 装饰器模块已由依赖链导入: %s", module_name)
                     continue
-                del sys.modules[module_name]
+                self._purge_module_and_submodules(module_name)
             logger.info("导入内置 agent 装饰器模块: %s", module_name)
             importlib.import_module(module_name)
 
@@ -963,12 +1042,53 @@ class MaaFW(QObject):
     @staticmethod
     def _module_belongs_to_root(module: Any, root: Path) -> bool:
         module_file = getattr(module, "__file__", None)
-        if not module_file:
-            return False
-        try:
-            return Path(module_file).resolve().is_relative_to(root)
-        except (OSError, ValueError):
-            return False
+        if module_file:
+            try:
+                if Path(module_file).resolve().is_relative_to(root):
+                    return True
+            except (OSError, ValueError):
+                pass
+        module_path = getattr(module, "__path__", None)
+        if module_path:
+            for path_entry in module_path:
+                try:
+                    if Path(path_entry).resolve().is_relative_to(root):
+                        return True
+                except (OSError, ValueError):
+                    continue
+        return False
+
+    @staticmethod
+    def _collect_module_names_under_root(root: Path) -> set[str]:
+        names: set[str] = set()
+        if not root.is_dir():
+            return names
+        skip_dirs = MaaFW._EMBEDDED_SKIP_DIRS
+        for file_path in root.rglob("*.py"):
+            try:
+                relative = file_path.relative_to(root)
+            except ValueError:
+                continue
+            if any(part in skip_dirs for part in relative.parts):
+                continue
+            module_name = MaaFW._module_name_from_path(root, file_path)
+            if module_name:
+                names.add(module_name)
+        return names
+
+    @staticmethod
+    def _purge_module_and_submodules(module_name: str) -> None:
+        prefix = module_name + "."
+        keys = [
+            key
+            for key in list(sys.modules.keys())
+            if isinstance(key, str) and (key == module_name or key.startswith(prefix))
+        ]
+        for key in keys:
+            try:
+                del sys.modules[key]
+            except KeyError:
+                pass
 
     def _purge_modules_under_root(self, root: Path | None) -> None:
         if not root:
@@ -1492,6 +1612,7 @@ class MaaFW(QObject):
             self.agent_env_vars = {}
             self.agent_connection_timeout_seconds = None
             self._last_agent_connect_timeout_seconds = None
+            _EmbeddedAgentLoadCoordinator.release(id(self))
             self._purge_modules_under_root(self._last_custom_root)
             self._last_custom_root = None
             self._embedded_resource_sinks.clear()
