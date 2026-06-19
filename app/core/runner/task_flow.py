@@ -51,6 +51,12 @@ from app.utils.controller_utils import ControllerHelper
 from app.core.item import FromeServiceCoordinator, RunnerEvents, TaskItem
 from app.core.builtin_task_loader import BuiltinTaskContext
 
+# 进程级休眠阻止引用计数：多实例共享 SetThreadExecutionState，
+# 仅当全部实例都停止后才清除 ES_SYSTEM_REQUIRED 标记。
+import threading as _threading
+_sleep_disable_counter: int = 0
+_sleep_lock = _threading.Lock()
+
 
 def _ndarray_to_png_bytes(ndarray) -> bytes | None:
     """将 BGR 格式的 numpy 截图转为 PNG 字节（用于随通知发送）。"""
@@ -148,8 +154,7 @@ class TaskFlowRunner(QObject):
         # 连接前置检查失败原因（用于在上层发送更明确的通知文案）
         self._connect_error_reason: str | None = None
 
-        # 运行时阻止系统休眠相关
-        self._es_handle: int | None = None
+        # 运行时阻止系统休眠相关（使用模块级引用计数，见文件顶部 _sleep_disable_counter）
 
     def _resolve_current_bundle_base(self) -> Path:
         bundle_base = Path(self.bundle_path or "./")
@@ -804,7 +809,7 @@ class TaskFlowRunner(QObject):
                 logger.debug(f"开始执行单个任务: {task_id}")
             self._tasks_started = True
             # 任务开始执行，阻止系统休眠
-            self._es_handle = self._set_sleep_disabled()
+            self._set_sleep_disabled()
             for task in tasks_to_run:
                 if not task:
                     continue
@@ -1832,43 +1837,50 @@ class TaskFlowRunner(QObject):
         # 停止后恢复系统休眠
         self._restore_sleep()
 
-    @staticmethod
-    def _set_sleep_disabled() -> int | None:
-        “””阻止 Windows 系统进入睡眠状态。
+    def _set_sleep_disabled(self) -> None:
+        “””阻止 Windows 系统进入睡眠状态（进程级引用计数）。
 
-        通过 ctypes 调用 kernel32.SetThreadExecutionState 阻止系统休眠。
-        返回之前的状态句柄，用于后续恢复；非 Windows 平台返回 None。
+        多实例共享 SetThreadExecutionState 的 ES_SYSTEM_REQUIRED 标记。
+        只有第一个申请者才真正调用 API，后续仅递增引用计数。
         “””
         if not sys.platform.startswith(“win32”):
-            return None
-        try:
-            import ctypes
+            return
+        global _sleep_disable_counter
+        with _sleep_lock:
+            _sleep_disable_counter += 1
+            if _sleep_disable_counter == 1:
+                try:
+                    import ctypes
 
-            ES_CONTINUOUS = 0x80000000
-            ES_SYSTEM_REQUIRED = 0x00000001
-            result = ctypes.windll.kernel32.SetThreadExecutionState(
-                ES_CONTINUOUS | ES_SYSTEM_REQUIRED
-            )
-            if result:
-                return result
-            logger.warning(“SetThreadExecutionState(阻止休眠) 返回 0”)
-            return None
-        except Exception as exc:
-            logger.warning(“阻止系统休眠失败: %s”, exc)
-            return None
+                    ES_CONTINUOUS = 0x80000000
+                    ES_SYSTEM_REQUIRED = 0x00000001
+                    result = ctypes.windll.kernel32.SetThreadExecutionState(
+                        ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+                    )
+                    if not result:
+                        logger.warning(“SetThreadExecutionState(阻止休眠) 返回 0”)
+                except Exception as exc:
+                    logger.warning(“阻止系统休眠失败: %s”, exc)
 
-    @staticmethod
-    def _restore_sleep() -> None:
-        “””恢复系统休眠许可（清除 ES_SYSTEM_REQUIRED 标记）。”””
+    def _restore_sleep(self) -> None:
+        “””恢复系统休眠许可（引用计数归零时才真正清除 ES_SYSTEM_REQUIRED 标记）。”””
         if not sys.platform.startswith(“win32”):
             return
-        try:
-            import ctypes
+        global _sleep_disable_counter
+        with _sleep_lock:
+            _sleep_disable_counter -= 1
+            if _sleep_disable_counter > 0:
+                return  # 仍有其他实例在运行，不清除标记
+            if _sleep_disable_counter < 0:
+                _sleep_disable_counter = 0
+                logger.warning(“_sleep_disable_counter 异常为负，已重置为 0”)
+            try:
+                import ctypes
 
-            ES_CONTINUOUS = 0x80000000
-            ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
-        except Exception as exc:
-            logger.warning(“恢复系统休眠失败: %s”, exc)
+                ES_CONTINUOUS = 0x80000000
+                ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+            except Exception as exc:
+                logger.warning(“恢复系统休眠失败: %s”, exc)
 
     def shutdown_runtime_sync(self) -> None:
         """同步强制清理运行态，供窗口退出阶段兜底调用。"""
