@@ -148,6 +148,9 @@ class TaskFlowRunner(QObject):
         # 连接前置检查失败原因（用于在上层发送更明确的通知文案）
         self._connect_error_reason: str | None = None
 
+        # 运行时阻止系统休眠相关
+        self._es_handle: int | None = None
+
     def _resolve_current_bundle_base(self) -> Path:
         bundle_base = Path(self.bundle_path or "./")
         if not bundle_base.is_absolute():
@@ -800,6 +803,8 @@ class TaskFlowRunner(QObject):
             if is_single_task_mode:
                 logger.debug(f"开始执行单个任务: {task_id}")
             self._tasks_started = True
+            # 任务开始执行，阻止系统休眠
+            self._es_handle = self._set_sleep_disabled()
             for task in tasks_to_run:
                 if not task:
                     continue
@@ -1822,8 +1827,48 @@ class TaskFlowRunner(QObject):
                 {"text": "START", "status": "enabled"}
             )
         self._is_running = False
-        # 写入稳定的任务流结束标记，供日志打包按“运行记录”切分（不依赖语言/文案）
-        logger.info("[RUN_RECORD] TASK_FLOW_STOP manual=%s", bool(self._manual_stop))
+        # 写入稳定的任务流结束标记，供日志打包按”运行记录”切分（不依赖语言/文案）
+        logger.info(“[RUN_RECORD] TASK_FLOW_STOP manual=%s”, bool(self._manual_stop))
+        # 停止后恢复系统休眠
+        self._restore_sleep()
+
+    @staticmethod
+    def _set_sleep_disabled() -> int | None:
+        “””阻止 Windows 系统进入睡眠状态。
+
+        通过 ctypes 调用 kernel32.SetThreadExecutionState 阻止系统休眠。
+        返回之前的状态句柄，用于后续恢复；非 Windows 平台返回 None。
+        “””
+        if not sys.platform.startswith(“win32”):
+            return None
+        try:
+            import ctypes
+
+            ES_CONTINUOUS = 0x80000000
+            ES_SYSTEM_REQUIRED = 0x00000001
+            result = ctypes.windll.kernel32.SetThreadExecutionState(
+                ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+            )
+            if result:
+                return result
+            logger.warning(“SetThreadExecutionState(阻止休眠) 返回 0”)
+            return None
+        except Exception as exc:
+            logger.warning(“阻止系统休眠失败: %s”, exc)
+            return None
+
+    @staticmethod
+    def _restore_sleep() -> None:
+        “””恢复系统休眠许可（清除 ES_SYSTEM_REQUIRED 标记）。”””
+        if not sys.platform.startswith(“win32”):
+            return
+        try:
+            import ctypes
+
+            ES_CONTINUOUS = 0x80000000
+            ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+        except Exception as exc:
+            logger.warning(“恢复系统休眠失败: %s”, exc)
 
     def shutdown_runtime_sync(self) -> None:
         """同步强制清理运行态，供窗口退出阶段兜底调用。"""
@@ -1832,6 +1877,7 @@ class TaskFlowRunner(QObject):
         self._is_running = False
         self._stop_task_timeout()
         self.maafw.force_shutdown()
+        self._restore_sleep()
 
     def _start_task_timeout(self, entry: str):
         """开始任务超时计时，每小时检查一次（单任务模式下不启动）"""
