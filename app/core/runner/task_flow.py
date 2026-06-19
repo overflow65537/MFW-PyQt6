@@ -423,6 +423,49 @@ class TaskFlowRunner(QObject):
             pass
         return None
 
+    async def _save_stop_screenshot(self, manual: bool = False) -> None:
+        """停止时主动截图保存到 debug/stop/ 目录，独立于通知截图设置。
+
+        Args:
+            manual: 是否为手动停止，用于文件名标记。
+        """
+        if not getattr(self, "maafw", None) or not getattr(
+            self.maafw, "controller", None
+        ):
+            return
+        try:
+            img = await self.maafw.screencap_test()
+            if img is None:
+                return
+
+            from PIL import Image
+
+            if (
+                hasattr(img, "shape")
+                and len(img.shape) >= 3
+                and img.shape[2] >= 3
+            ):
+                pil = Image.fromarray(img[..., ::-1])
+            else:
+                pil = Image.fromarray(img)
+
+            debug_dir = Path("debug") / "stop"
+            debug_dir.mkdir(parents=True, exist_ok=True)
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            suffix = "_manual" if manual else ""
+            filename = f"stop_{timestamp}{suffix}.png"
+            filepath = debug_dir / filename
+
+            pil.save(filepath, format="PNG")
+            self.log_output.emit(
+                "INFO",
+                self.tr("Stop screenshot saved to: {}").format(str(filepath)),
+            )
+            logger.info("停止截图已保存: %s", filepath)
+        except Exception:
+            logger.warning("保存停止截图失败", exc_info=True)
+
     async def run_tasks_flow(
         self,
         task_id: str | None = None,
@@ -1770,6 +1813,9 @@ class TaskFlowRunner(QObject):
             self.fs_signal_bus.fs_start_button_status.emit(
                 {"text": "STOP", "status": "disabled"}
             )
+        # 手动停止时截图保存到 debug/stop/（控制器仍可工作时执行）
+        if manual:
+            await self._save_stop_screenshot(manual=True)
         await self.maafw.stop_task()
         if self.fs_signal_bus:
             self.fs_signal_bus.fs_start_button_status.emit(
