@@ -742,32 +742,35 @@ class TaskListItem(BaseListItem):
             parent=self.window(),
         )
         if dlg.exec():
-            new_task = dlg.get_task_item()
-            if new_task:
-                # 在对话框关闭后重新获取任务列表和索引（因为列表可能在对话框打开期间发生了变化）
-                all_tasks = self.service_coordinator.task.get_tasks()
-                current_idx = -1
-                for i, task in enumerate(all_tasks):
-                    if task.item_id == current_task_id:
-                        current_idx = i
-                        break
+            new_tasks = dlg.get_task_items()
+            if not new_tasks:
+                return
 
-                # 计算插入位置：当前任务的下方（idx + 1）
-                # 如果找不到当前任务，使用默认位置（-2，倒数第二个）
+            all_tasks = self.service_coordinator.task.get_tasks()
+            current_idx = -1
+            for j, task in enumerate(all_tasks):
+                if task.item_id == current_task_id:
+                    current_idx = j
+                    break
+
+            for i, new_task in enumerate(new_tasks):
                 if current_idx == -1:
                     insert_idx = -2
                     from app.utils.logger import logger
 
-                    logger.warning(f"未找到任务 {current_task_id}，使用默认插入位置 -2")
+                    if i == 0:
+                        logger.warning(
+                            f"未找到任务 {current_task_id}，使用默认插入位置 -2"
+                        )
                 else:
-                    insert_idx = current_idx + 1
+                    insert_idx = current_idx + 1 + i
                     from app.utils.logger import logger
 
                     logger.info(
-                        f"找到任务 {current_task_id} 在索引 {current_idx}，将在索引 {insert_idx} 插入新任务 '{new_task.name}'"
+                        f"找到任务 {current_task_id} 在索引 {current_idx}，"
+                        f"将在索引 {insert_idx} 插入新任务 '{new_task.name}'"
                     )
 
-                # 插入到指定位置
                 self.service_coordinator.modify_task(new_task, insert_idx)
 
     def _create_status_widget(self):

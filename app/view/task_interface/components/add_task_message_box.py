@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt, QEasingCurve
+from PySide6.QtCore import Qt, QEasingCurve, QEvent
 from qfluentwidgets import (
     MessageBoxBase,
     LineEdit,
@@ -553,7 +553,11 @@ class AddTaskDialog(BaseAddDialog):
 
         self.task_label = CaptionLabel(self.tr("Task List"), self)
         self.task_hint = BodyLabel(
-            self.tr("Select one task from the groups below."), self
+            self.tr(
+                "Click to add a task. Right-click to remove one. "
+                "The same task can be added multiple times."
+            ),
+            self,
         )
         self.task_hint.setWordWrap(True)
 
@@ -576,7 +580,7 @@ class AddTaskDialog(BaseAddDialog):
         self.task_group_layout.setSpacing(12)
 
         self._task_button_group = QButtonGroup(self)
-        self._task_button_group.setExclusive(True)
+        self._task_button_group.setExclusive(False)
 
         self.task_map = task_map
         self.interface = interface or {}
@@ -597,6 +601,8 @@ class AddTaskDialog(BaseAddDialog):
         # 存储数据的变量
         self.task_name = ""
         self.task_type = "task"
+        self.items: list[TaskItem] = []
+        self._selected_tasks: list[str] = []
 
     def _normalize_interface_dir(self, interface_path: Path | str | None) -> Path:
         """解析当前 interface 目录，作为相对图标路径基准。"""
@@ -758,6 +764,7 @@ class AddTaskDialog(BaseAddDialog):
         task_button.setMinimumHeight(38)
         task_button.setMinimumWidth(116)
         task_button.setProperty("taskName", task_name)
+        task_button.setProperty("taskLabel", str(task_label))
 
         task_icon = self._resolve_icon(task_def.get("icon"))
         if task_icon:
@@ -768,7 +775,70 @@ class AddTaskDialog(BaseAddDialog):
             task_button, str(description) if description else None,
         )
         self._task_button_group.addButton(task_button)
+        task_button.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        task_button.installEventFilter(self)
         return task_button
+
+    def eventFilter(self, watched, event) -> bool:
+        """拦截任务按钮点击：左键增加，右键减少；每次点击都计数。"""
+        if not isinstance(watched, TogglePushButton):
+            return super().eventFilter(watched, event)
+
+        task_name = str(watched.property("taskName") or "").strip()
+
+        if event.type() == QEvent.Type.MouseButtonDblClick:
+            if task_name:
+                if event.button() == Qt.MouseButton.LeftButton:
+                    self._add_task_selection(task_name)
+                elif event.button() == Qt.MouseButton.RightButton:
+                    self._remove_task_selection(task_name)
+            return True
+
+        if event.type() in (
+            QEvent.Type.MouseButtonPress,
+            QEvent.Type.MouseButtonRelease,
+        ):
+            if event.button() not in (
+                Qt.MouseButton.LeftButton,
+                Qt.MouseButton.RightButton,
+            ):
+                return super().eventFilter(watched, event)
+
+            if event.type() == QEvent.Type.MouseButtonPress and task_name:
+                if event.button() == Qt.MouseButton.LeftButton:
+                    self._add_task_selection(task_name)
+                elif event.button() == Qt.MouseButton.RightButton:
+                    self._remove_task_selection(task_name)
+            return True
+
+        return super().eventFilter(watched, event)
+
+    def _add_task_selection(self, task_name: str) -> None:
+        self._selected_tasks.append(task_name)
+        self._update_task_button_display(task_name)
+
+    def _remove_task_selection(self, task_name: str) -> None:
+        for i in range(len(self._selected_tasks) - 1, -1, -1):
+            if self._selected_tasks[i] == task_name:
+                del self._selected_tasks[i]
+                break
+        self._update_task_button_display(task_name)
+
+    def _task_selection_count(self, task_name: str) -> int:
+        return self._selected_tasks.count(task_name)
+
+    def _update_task_button_display(self, task_name: str) -> None:
+        for button in self._task_button_group.buttons():
+            if str(button.property("taskName") or "") != task_name:
+                continue
+            base_label = str(button.property("taskLabel") or "")
+            count = self._task_selection_count(task_name)
+            button.blockSignals(True)
+            button.setChecked(count > 0)
+            button.setText(f"{base_label} ×{count}" if count > 0 else base_label)
+            button.blockSignals(False)
+            button.update()
+            break
 
     def _populate_task_groups(self) -> None:
         """按 group -> 动画流式布局 构建滚动内容。"""
@@ -778,40 +848,29 @@ class AddTaskDialog(BaseAddDialog):
             self.task_group_layout.addWidget(group_widget)
         self.task_group_layout.addStretch(1)
 
-    def _selected_task_name(self) -> str:
-        """获取当前被选中的任务名。"""
-        checked_button = self._task_button_group.checkedButton()
-        if checked_button is None:
-            return ""
-        return str(checked_button.property("taskName") or "")
+    def _selected_task_names(self) -> list[str]:
+        """获取当前被选中的任务名列表（允许同名，保留选择顺序）。"""
+        return list(self._selected_tasks)
 
-    def on_confirm(self):
-        """确认添加任务"""
-        self.task_name = self._selected_task_name().strip()
-
-        # 验证输入
-        if not self.task_name:
-            self.show_error(self.tr("Please select a task"))
-            return
-
+    def _create_task_item(self, task_name: str) -> TaskItem:
+        """根据任务名创建 TaskItem。"""
         default_check = True
         if self.interface:
             for task_def in self.interface.get("task", []):
-                if task_def.get("name") == self.task_name:
+                if task_def.get("name") == task_name:
                     default_check = bool(task_def.get("default_check", True))
                     break
 
-        # 创建 TaskItem 对象，匹配 core.TaskItem 数据结构
         task_option = (
-            self.task_map.get(self.task_name, {})
+            self.task_map.get(task_name, {})
             if isinstance(self.task_map, dict)
             else {}
         )
-        task_def = self._task_meta.get(self.task_name, {})
+        task_def = self._task_meta.get(task_name, {})
         task_source = "builtin" if task_def.get("builtin") else "resource"
         builtin_key = str(task_def.get("builtin_key", "") or "")
-        self.item = TaskItem(
-            name=self.task_name,
+        return TaskItem(
+            name=task_name,
             item_id=TaskItem.generate_id(),
             is_checked=default_check,
             task_option=task_option,
@@ -819,11 +878,28 @@ class AddTaskDialog(BaseAddDialog):
             builtin_key=builtin_key,
         )
 
-        # 接受对话框
+    def on_confirm(self):
+        """确认添加任务"""
+        task_names = self._selected_task_names()
+        self.task_name = task_names[0] if task_names else ""
+
+        if not task_names:
+            self.show_error(self.tr("Please select at least one task"))
+            return
+
+        self.items = [self._create_task_item(name) for name in task_names]
+        self.item = self.items[0]
+
         self.accept()
 
     def get_task_item(self):
-        """获取创建的任务项对象"""
+        """获取创建的任务项对象（兼容单选）"""
         return self.item
+
+    def get_task_items(self) -> list[TaskItem]:
+        """获取创建的任务项列表"""
+        if self.items:
+            return list(self.items)
+        return [self.item] if self.item else []
 
 
