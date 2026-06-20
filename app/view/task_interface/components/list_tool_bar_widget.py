@@ -309,6 +309,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             parent=parent,
             title_icon=FIF.APPLICATION,
         )
+        self.delete_button.hide()
         # 选择全部按钮
         self.select_all_button.clicked.connect(self.select_all)
         # 取消选择全部按钮
@@ -361,10 +362,10 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             parent=self.window(),
         )
         if dlg.exec():
-            new_task = dlg.get_task_item()
-            if new_task:
-                # 持久化到服务层
-                self.service_coordinator.modify_task(new_task, idx)
+            new_tasks = dlg.get_task_items()
+            for i, new_task in enumerate(new_tasks):
+                insert_idx = idx + i if idx >= 0 else idx
+                self.service_coordinator.modify_task(new_task, insert_idx)
 
     def _filter_task_map(
         self, task_map: dict[str, dict], interface: dict | None
