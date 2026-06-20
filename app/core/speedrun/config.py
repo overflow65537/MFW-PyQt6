@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from app.core.speedrun.conditions.cron import DEFAULT_CRON_EXPRESSION
 from app.core.speedrun.time_utils import normalize_hour_value
 
 
@@ -14,6 +15,7 @@ DEFAULT_CONDITION: dict[str, Any] = {
     "weekdays": [1],
     "days": [1],
     "hour": 0,
+    "expression": DEFAULT_CRON_EXPRESSION,
 }
 
 DEFAULT_ACTION: dict[str, Any] = {

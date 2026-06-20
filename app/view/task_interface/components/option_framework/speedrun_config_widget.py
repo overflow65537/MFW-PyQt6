@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QFormLayout, QFrame, QHBoxLayout, QVBoxLayout, QWi
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
+    LineEdit,
     SpinBox,
     SwitchButton,
     isDarkTheme,
@@ -13,6 +14,7 @@ from qfluentwidgets import (
 )
 
 from app.core.service.task_service import DEFAULT_SPEEDRUN_CONFIG
+from app.core.speedrun.conditions.cron import DEFAULT_CRON_EXPRESSION
 from app.core.speedrun.config import normalize_speedrun_config
 from app.view.task_interface.components.option_framework.animations import HeightAnimator
 
@@ -44,6 +46,7 @@ class SpeedrunConfigWidget(QWidget):
         self._init_weekday_section()
         self._init_month_day_section()
         self._init_after_time_section()
+        self._init_cron_section()
         self._init_execution_section()
         self._bind_signals()
         self._init_animators()
@@ -64,6 +67,7 @@ class SpeedrunConfigWidget(QWidget):
         self.condition_combo.addItem(self.tr("Weekday"), userData="weekday")
         self.condition_combo.addItem(self.tr("Month Day"), userData="month_day")
         self.condition_combo.addItem(self.tr("After Time"), userData="after_time")
+        self.condition_combo.addItem(self.tr("Cron"), userData="cron")
         form.addRow(self.tr("Condition Type"), self.condition_combo)
         self.main_layout.addLayout(form)
 
@@ -125,6 +129,19 @@ class SpeedrunConfigWidget(QWidget):
             container
         )
         self.main_layout.addWidget(self.after_time_section)
+
+    def _init_cron_section(self) -> None:
+        container = QWidget(self)
+        layout = QFormLayout(container)
+        self.cron_input = LineEdit(self)
+        self.cron_input.setText(DEFAULT_CRON_EXPRESSION)
+        self.cron_input.setPlaceholderText(
+            self.tr("minute hour day month weekday, e.g. 0 9 * * *")
+        )
+        self.cron_input.setClearButtonEnabled(True)
+        layout.addRow(self.tr("Cron Expression"), self.cron_input)
+        self.cron_section, self.cron_line = self._wrap_with_indicator(container)
+        self.main_layout.addWidget(self.cron_section)
 
     def _init_execution_section(self) -> None:
         execution_title = BodyLabel(self.tr("Execution"))
@@ -197,6 +214,7 @@ class SpeedrunConfigWidget(QWidget):
         self.weekday_combo.currentIndexChanged.connect(self._on_value_changed)
         self.month_day_combo.currentIndexChanged.connect(self._on_value_changed)
         self.after_hour_combo.currentIndexChanged.connect(self._on_value_changed)
+        self.cron_input.textChanged.connect(self._on_value_changed)
         qconfig.themeChanged.connect(self._on_theme_changed)
 
     def set_config(self, config: Optional[Dict[str, Any]], emit: bool = True) -> None:
@@ -241,6 +259,9 @@ class SpeedrunConfigWidget(QWidget):
         self._set_combo_value(self.run_count_month_day_combo, day_value, 0)
         self._set_combo_value(self.month_day_combo, day_value, 0)
         self._set_combo_value(self.after_hour_combo, self._to_hour(condition.get("hour")), 0)
+        self.cron_input.setText(
+            str(condition.get("expression") or DEFAULT_CRON_EXPRESSION)
+        )
 
         period = str(condition.get("period", "daily") or "daily")
         self._update_run_count_period_visibility(period)
@@ -270,6 +291,7 @@ class SpeedrunConfigWidget(QWidget):
         standalone_weekday = int(self._get_combo_value(self.weekday_combo, 1))
         standalone_day = int(self._get_combo_value(self.month_day_combo, 1))
         after_hour = int(self._get_combo_value(self.after_hour_combo, 0))
+        cron_expression = self.cron_input.text().strip() or DEFAULT_CRON_EXPRESSION
 
         if condition_type == "weekday":
             weekday = standalone_weekday
@@ -291,6 +313,7 @@ class SpeedrunConfigWidget(QWidget):
                 "weekdays": [weekday],
                 "days": [day],
                 "hour": after_hour,
+                "expression": cron_expression,
             }
         )
         config["action"]["type"] = action_type
@@ -349,6 +372,7 @@ class SpeedrunConfigWidget(QWidget):
             "weekday": self.weekday_section,
             "month_day": self.month_day_section,
             "after_time": self.after_time_section,
+            "cron": self.cron_section,
         }
         if condition_type not in targets:
             self._hide_all_condition_sections()
@@ -373,6 +397,7 @@ class SpeedrunConfigWidget(QWidget):
             self.weekday_section,
             self.month_day_section,
             self.after_time_section,
+            self.cron_section,
         ]
         for section in sections:
             section.setMaximumHeight(0)
@@ -384,6 +409,7 @@ class SpeedrunConfigWidget(QWidget):
             "weekday": HeightAnimator(self.weekday_section, duration=200, parent=self),
             "month_day": HeightAnimator(self.month_day_section, duration=200, parent=self),
             "after_time": HeightAnimator(self.after_time_section, duration=200, parent=self),
+            "cron": HeightAnimator(self.cron_section, duration=200, parent=self),
         }
 
     def _wrap_with_indicator(self, inner: QWidget) -> tuple[QWidget, QFrame]:
@@ -418,6 +444,7 @@ class SpeedrunConfigWidget(QWidget):
             self.weekday_line,
             self.month_day_line,
             self.after_time_line,
+            self.cron_line,
         ]:
             self._set_indicator_color(line)
 
