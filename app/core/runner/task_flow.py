@@ -111,10 +111,10 @@ class TaskFlowRunner(QObject):
         self.need_stop = False
         self.monitor_need_stop = False
         self._is_running = False
-        # 防止同一次任务流退出时重复发射“结束”信号（幂等保护）
+        # 防止同一次任务流退出时重复发射"结束"信号（幂等保护）
         self._task_flow_finished_emitted: bool = False
         self._next_config_to_run: str | None = None
-        # 多实例模式下由协调器注入：完成后“运行其他配置”改为启动独立运行体，
+        # 多实例模式下由协调器注入：完成后"运行其他配置"改为启动独立运行体，
         # 不再篡改本运行体的当前配置。签名为 async def(config_id: str)。
         self.run_other_config_callback = None
         self.adb_controller_raw: dict[str, Any] | None = None
@@ -488,7 +488,7 @@ class TaskFlowRunner(QObject):
             logger.warning("任务流已经在运行，忽略新的启动请求")
             return
         self._is_running = True
-        # 写入稳定的任务流开始标记，供日志打包按“运行记录”切分（不依赖语言/文案）
+        # 写入稳定的任务流开始标记，供日志打包按"运行记录"切分（不依赖语言/文案）
         logger.info("[RUN_RECORD] TASK_FLOW_START")
         self.need_stop = False
         self._manual_stop = False
@@ -825,7 +825,7 @@ class TaskFlowRunner(QObject):
                         skip_speedrun=is_single_task_mode,
                     )
                     if task_result == "skipped":
-                        # 因 speedrun 限制被跳过：记录结果并在列表中显示为“已跳过”
+                        # 因 speedrun 限制被跳过：记录结果并在列表中显示为"已跳过"
                         self._task_results[task.item_id] = "skipped"
                         self.task_status_changed.emit(task.item_id, "skipped")
                         continue
@@ -922,7 +922,7 @@ class TaskFlowRunner(QObject):
             logger.critical(traceback.format_exc())
         finally:
             # 任务流退出信号：放在 finally 的最前面，确保监控等 UI 可以立即响应停止，
-            # 不会被“完成后操作/清理”等耗时逻辑拖慢。
+            # 不会被"完成后操作/清理"等耗时逻辑拖慢。
             if not self._task_flow_finished_emitted:
                 self._task_flow_finished_emitted = True
                 try:
@@ -979,7 +979,7 @@ class TaskFlowRunner(QObject):
 
             # 判断是否需要执行完成后操作
             # - 默认：只有任务流未被 stop_task() 标记（need_stop=False）时才执行
-            # - 若完成后操作配置启用 always_run：即使流程因“非手动停止”的失败而触发 stop_task()，也会执行完成后操作
+            # - 若完成后操作配置启用 always_run：即使流程因"非手动停止"的失败而触发 stop_task()，也会执行完成后操作
             always_run_post_action = False
             try:
                 post_task = self.task_service.get_task(POST_ACTION)
@@ -1049,7 +1049,7 @@ class TaskFlowRunner(QObject):
             if not task:
                 logger.error(f"任务 ID '{task_id}' 不存在")
                 return tasks
-            # 执行层只关心“任务是否被禁用”，不展开禁用原因
+            # 执行层只关心"任务是否被禁用"，不展开禁用原因
             if self._is_task_disabled(task):
                 return tasks
             if not task.is_checked:
@@ -1403,7 +1403,7 @@ class TaskFlowRunner(QObject):
                 controller_raw = {**opt_effective, **controller_raw}
                 break
 
-        # 首选：从“控制器子配置”读取（例如 controller_raw["Win32控制器"]["permission_required"]）
+        # 首选：从"控制器子配置"读取（例如 controller_raw["Win32控制器"]["permission_required"]）
         permission_required = None
         display_short_side = None
         display_long_side = None
@@ -1640,7 +1640,7 @@ class TaskFlowRunner(QObject):
         if not task:
             logger.error(f"任务 ID '{task_id}' 不存在")
             return
-        # 执行层只关心“任务是否被禁用”，不展开禁用原因
+        # 执行层只关心"任务是否被禁用"，不展开禁用原因
         # 注意：即使 UI 未刷新也没关系，因为 run_tasks_flow 开始时会刷新一次 is_hidden；
         # 若未来有独立调用 run_task 的路径，可在此处补一次刷新。
         elif self._is_task_disabled(task):
@@ -1808,7 +1808,7 @@ class TaskFlowRunner(QObject):
         """停止当前正在运行的任务
 
         Args:
-            manual: 是否为“手动停止”（由用户或外部调用显式触发）。
+            manual: 是否为"手动停止"（由用户或外部调用显式触发）。
         """
         if manual:
             # 在任何情况下都记录手动停止的意图，避免后续错误发送通知
@@ -1832,18 +1832,18 @@ class TaskFlowRunner(QObject):
                 {"text": "START", "status": "enabled"}
             )
         self._is_running = False
-        # 写入稳定的任务流结束标记，供日志打包按”运行记录”切分（不依赖语言/文案）
-        logger.info(“[RUN_RECORD] TASK_FLOW_STOP manual=%s”, bool(self._manual_stop))
+        # 写入稳定的任务流结束标记，供日志打包按"运行记录"切分（不依赖语言/文案）
+        logger.info("[RUN_RECORD] TASK_FLOW_STOP manual=%s", bool(self._manual_stop))
         # 停止后恢复系统休眠
         self._restore_sleep()
 
     def _set_sleep_disabled(self) -> None:
-        “””阻止 Windows 系统进入睡眠状态（进程级引用计数）。
+        """阻止 Windows 系统进入睡眠状态（进程级引用计数）。
 
         多实例共享 SetThreadExecutionState 的 ES_SYSTEM_REQUIRED 标记。
         只有第一个申请者才真正调用 API，后续仅递增引用计数。
-        “””
-        if not sys.platform.startswith(“win32”):
+        """
+        if not sys.platform.startswith("win32"):
             return
         global _sleep_disable_counter
         with _sleep_lock:
@@ -1858,13 +1858,13 @@ class TaskFlowRunner(QObject):
                         ES_CONTINUOUS | ES_SYSTEM_REQUIRED
                     )
                     if not result:
-                        logger.warning(“SetThreadExecutionState(阻止休眠) 返回 0”)
+                        logger.warning("SetThreadExecutionState(阻止休眠) 返回 0")
                 except Exception as exc:
-                    logger.warning(“阻止系统休眠失败: %s”, exc)
+                    logger.warning("阻止系统休眠失败: %s", exc)
 
     def _restore_sleep(self) -> None:
-        “””恢复系统休眠许可（引用计数归零时才真正清除 ES_SYSTEM_REQUIRED 标记）。”””
-        if not sys.platform.startswith(“win32”):
+        """恢复系统休眠许可（引用计数归零时才真正清除 ES_SYSTEM_REQUIRED 标记）。"""
+        if not sys.platform.startswith("win32"):
             return
         global _sleep_disable_counter
         with _sleep_lock:
@@ -1873,14 +1873,14 @@ class TaskFlowRunner(QObject):
                 return  # 仍有其他实例在运行，不清除标记
             if _sleep_disable_counter < 0:
                 _sleep_disable_counter = 0
-                logger.warning(“_sleep_disable_counter 异常为负，已重置为 0”)
+                logger.warning("_sleep_disable_counter 异常为负，已重置为 0")
             try:
                 import ctypes
 
                 ES_CONTINUOUS = 0x80000000
                 ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
             except Exception as exc:
-                logger.warning(“恢复系统休眠失败: %s”, exc)
+                logger.warning("恢复系统休眠失败: %s", exc)
 
     def shutdown_runtime_sync(self) -> None:
         """同步强制清理运行态，供窗口退出阶段兜底调用。"""
@@ -3782,7 +3782,7 @@ class TaskFlowRunner(QObject):
         return {}
 
     def _is_task_disabled(self, task: TaskItem) -> bool:
-        """统一的“任务是否被禁用”判断（执行层只关心结论，不关心原因）。
+        """统一的"任务是否被禁用"判断（执行层只关心结论，不关心原因）。
 
         禁用来源可能包括：
         - UI 侧标记的 is_hidden
