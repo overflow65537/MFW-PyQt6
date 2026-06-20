@@ -35,6 +35,18 @@ class TaskInterface(UI_TaskInterface, QWidget):
         self.service_coordinator.fs_signals.fs_start_button_status.connect(
             self._on_button_status_changed
         )
+        try:
+            self.service_coordinator.fs_signal_bus.fs_start_button_status_at.connect(
+                self._on_button_status_at
+            )
+            signalBus.config_run_state_changed.connect(
+                self._on_config_run_state_changed
+            )
+            self.service_coordinator.signal_bus.config_changed.connect(
+                self._on_active_config_changed_for_button
+            )
+        except Exception:
+            pass
 
         # 进入任务页后的 UI 重置需避开主窗口 StackedWidget 的入场位移动画（约 300ms），否则内外纵向变化叠加会抖动
         self._show_reset_timer = QTimer(self)
@@ -133,25 +145,78 @@ class TaskInterface(UI_TaskInterface, QWidget):
             # 使用 QTimer 延迟执行
             QTimer.singleShot(0, _stop_task)
 
-    def _on_button_status_changed(self, status):
-        """处理按钮状态变化信号"""
-        """状态格式: {"text": "STOP", "status": "disabled"}"""
-        # 更新启动/停止按钮状态
+    def _on_button_status_at(self, config_id: str, status: dict):
+        """多实例：仅当前激活配置的按钮状态才更新主开始/停止按钮。"""
+        if not self.service_coordinator.is_multi_instance_enabled():
+            return
+        try:
+            current = self.service_coordinator.config_service.current_config_id
+        except Exception:
+            return
+        if config_id != current:
+            return
+        self._apply_button_status(status)
+
+    def _on_config_run_state_changed(self, config_id: str, running: bool):
+        """多实例：当前配置运行态变化时同步主按钮（不覆盖 disabled 过渡态）。"""
+        if not self.service_coordinator.is_multi_instance_enabled():
+            return
+        try:
+            current = self.service_coordinator.config_service.current_config_id
+        except Exception:
+            return
+        if config_id != current:
+            return
+        if (
+            running
+            and self.start_bar.run_button.text() == self.tr("Stop")
+            and not self.start_bar.run_button.isEnabled()
+        ):
+            return
+        status = (
+            {"text": "STOP", "status": "enabled"}
+            if running
+            else {"text": "START", "status": "enabled"}
+        )
+        self._apply_button_status(status)
+
+    def _on_active_config_changed_for_button(self, config_id: str):
+        """多实例：切换当前配置后，按该配置运行态刷新主按钮与任务列表锁定。"""
+        if not self.service_coordinator.is_multi_instance_enabled():
+            return
+        if not config_id:
+            return
+        running = self.service_coordinator.is_config_running(config_id)
+        status = (
+            {"text": "STOP", "status": "enabled"}
+            if running
+            else {"text": "START", "status": "enabled"}
+        )
+        self._apply_button_status(status)
+
+    def _apply_button_status(self, status: dict):
+        """根据状态字典更新开始/停止按钮与任务列表可编辑性。"""
         is_running = status.get("text") == "STOP"
         if is_running:
             self.start_bar.run_button.setText(self.tr("Stop"))
             self.start_bar.run_button.setIcon(FIF.CLOSE)
-            # 任务流运行时，禁用任务列表的编辑功能
             self._set_task_list_editable(False)
         else:
             self.start_bar.run_button.setText(self.tr("Start"))
             self.start_bar.run_button.setIcon(FIF.PLAY)
-            # 任务流停止时，启用任务列表的编辑功能
             self._set_task_list_editable(True)
-
-        # 设置按钮是否可用
         self.start_bar.run_button.setEnabled(status.get("status") != "disabled")
-    
+
+    def _on_button_status_changed(self, status):
+        """处理按钮状态变化信号"""
+        """状态格式: {"text": "STOP", "status": "disabled"}"""
+        if (
+            self.service_coordinator
+            and self.service_coordinator.is_multi_instance_enabled()
+        ):
+            return
+        self._apply_button_status(status)
+
     def _set_task_list_editable(self, enabled: bool):
         """设置任务列表的编辑功能是否可用
         

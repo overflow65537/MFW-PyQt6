@@ -102,6 +102,23 @@ class RuntimeInstanceManagerTests(unittest.TestCase):
         self.assertFalse(inst.running)
 
 
+    def test_button_status_stop_disabled_counts_as_running(self) -> None:
+        inst = _make_instance("c_a", running=False)
+        self.manager._instances["c_a"] = inst
+        self.manager._on_instance_button_status(
+            "c_a", {"text": "STOP", "status": "disabled"}
+        )
+        self.assertTrue(inst.running)
+
+    def test_button_status_start_counts_as_not_running(self) -> None:
+        inst = _make_instance("c_a", running=True)
+        self.manager._instances["c_a"] = inst
+        self.manager._on_instance_button_status(
+            "c_a", {"text": "START", "status": "enabled"}
+        )
+        self.assertFalse(inst.running)
+
+
 class SwitchConfigGuardTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:

@@ -245,11 +245,16 @@ class RuntimeInstanceManager:
     # ---- 内部 ----
     def _on_instance_button_status(self, config_id: str, payload: dict):
         inst = self._instances.get(config_id)
-        running = (
-            isinstance(payload, dict)
-            and payload.get("text") == "STOP"
-            and payload.get("status") == "enabled"
-        )
+        running = False
+        if isinstance(payload, dict):
+            text = payload.get("text")
+            if text == "STOP":
+                # STOP + disabled 表示启动/连接中，仍视为运行态
+                running = True
+            elif text == "START":
+                running = False
+            elif inst is not None:
+                running = inst.running
         if inst is not None:
             inst.running = running
         # 带 config_id 的按钮状态（供配置列表/各配置卡片）

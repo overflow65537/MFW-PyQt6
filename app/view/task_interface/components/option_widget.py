@@ -234,6 +234,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         service_coordinator.fs_signals.fs_start_button_status.connect(
             self._on_run_status_changed
         )
+        signalBus.config_run_state_changed.connect(
+            self._on_config_run_state_changed
+        )
         
         # 初始化时隐藏描述区域
         self._toggle_description(visible=False, animate=False)
@@ -681,6 +684,16 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         """配置切换时清除选项面板"""
         # 清除选项和当前选中的任务选项
         self.reset()
+        self._update_options_enabled()
+
+    def _on_config_run_state_changed(self, config_id: str, running: bool):
+        """多实例：任意配置运行态变化时，若与当前配置相关则刷新选项锁定。"""
+        try:
+            current = self.service_coordinator.config_service.current_config_id
+        except Exception:
+            return
+        if config_id == current:
+            self._update_options_enabled()
 
     def set_title(self, title: str):
         """设置标题"""
@@ -1078,7 +1091,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self._update_options_enabled()
 
     def _on_run_status_changed(self, status: dict):
-        """监听任务流启停，同步选项区域的启用/禁用状态"""
+        """监听任务流启停，同步选项区域的启用/禁用状态（单实例）。"""
+        if self.service_coordinator.is_multi_instance_enabled():
+            return
         self._update_options_enabled()
 
     def _update_options_enabled(self):
