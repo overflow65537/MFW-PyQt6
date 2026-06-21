@@ -466,10 +466,6 @@ class TaskFlowRunner(QObject):
             filepath = debug_dir / filename
 
             pil.save(filepath, format="PNG")
-            self.log_output.emit(
-                "INFO",
-                self.tr("Stop screenshot saved to: {}").format(str(filepath)),
-            )
             logger.info("停止截图已保存: %s", filepath)
         except Exception:
             logger.warning("保存停止截图失败", exc_info=True)

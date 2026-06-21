@@ -1823,28 +1823,33 @@ class MainWindow(MSFluentWindow):
     def _cleanup_old_files(self, debug_dir: Path) -> None:
         """清理debug目录中的旧文件。
 
-        - on_error文件夹内的文件，只保留三天内的
-        - vision文件夹内的文件，只保留一天内的
+        - on_error 文件夹内的文件，只保留三天内的
+        - stop 文件夹内的文件，只保留三天内的
+        - vision 文件夹内的文件，只保留一天内的
         """
         now = datetime.now()
         three_days_ago = now - timedelta(days=3)
         one_day_ago = now - timedelta(days=1)
 
-        # 清理 on_error 文件夹内的文件（保留三天内的）
-        on_error_dir = debug_dir / "on_error"
-        if on_error_dir.exists() and on_error_dir.is_dir():
-            for file_path in on_error_dir.iterdir():
-                if file_path.is_file():
-                    try:
-                        # 获取文件的修改时间
-                        mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
-                        if mtime < three_days_ago:
-                            file_path.unlink()
-                            logger.info(
-                                f"删除过期文件（on_error，超过3天）：{file_path}"
-                            )
-                    except Exception as exc:
-                        logger.warning(f"清理on_error文件失败：{file_path} ({exc})")
+        for subdir_name, cutoff in (
+            ("on_error", three_days_ago),
+            ("stop", three_days_ago),
+        ):
+            target_dir = debug_dir / subdir_name
+            if not target_dir.exists() or not target_dir.is_dir():
+                continue
+            for file_path in target_dir.iterdir():
+                if not file_path.is_file():
+                    continue
+                try:
+                    mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+                    if mtime < cutoff:
+                        file_path.unlink()
+                        logger.info(
+                            f"删除过期文件（{subdir_name}，超过3天）：{file_path}"
+                        )
+                except Exception as exc:
+                    logger.warning(f"清理{subdir_name}文件失败：{file_path} ({exc})")
 
         # 清理 vision 文件夹内的文件（保留一天内的）
         vision_dir = debug_dir / "vision"
