@@ -269,7 +269,9 @@ def _process_option_recursive(
         return
 
     # 提取实际的选项值和分支子选项
-    actual_value, branches = _extract_option_value_and_children(option_value)
+    actual_value, branches = _extract_option_value_and_children(
+        option_value, options, option_name
+    )
 
     # 获取该选项的 pipeline_override
     option_override = _get_option_pipeline_override(options, option_name, actual_value)
@@ -315,8 +317,21 @@ def _process_option_recursive(
                 )
 
 
+def _get_interface_option_type(
+    options: Dict[str, Any], option_name: str
+) -> str:
+    """读取 interface 中选项的类型，默认 select。"""
+    option_config = options.get(option_name, {})
+    option_type = option_config.get("type", "select")
+    if isinstance(option_type, str):
+        return option_type.lower()
+    return "select"
+
+
 def _extract_option_value_and_children(
     option_value: Any,
+    options: Dict[str, Any] | None = None,
+    option_name: str | None = None,
 ) -> tuple[Any, Dict[str, Any] | None]:
     """从选项值中提取实际值和子选项
 
@@ -325,6 +340,8 @@ def _extract_option_value_and_children(
             - 字符串: "Yes"
             - 字典（input类型）: {"章节号": "4", "难度": "Hard"}
             - 复杂格式: {"value": "No", "children": {...}}
+        options: interface 中的 option 配置，用于区分 input 与 select/switch
+        option_name: 当前选项名称
 
     Returns:
         tuple: (实际值, 子选项字典或None)
@@ -337,18 +354,28 @@ def _extract_option_value_and_children(
     if "value" in option_value:
         actual_value = option_value["value"]
         if isinstance(actual_value, dict):
-            # 常见异常：select/switch 的 value 被错误保存成 dict，后续会触发类型校验报错
-            try:
-                logger.error(
-                    "选项 value 字段类型异常"
-                    f" | actual_type={type(actual_value)}"
-                    f" | keys={list(actual_value.keys())[:20]}"
-                )
-            except Exception:
-                logger.error(
-                    "选项 value 字段类型异常"
-                    f" | actual_type={type(actual_value)}"
-                )
+            option_type = (
+                _get_interface_option_type(options, option_name)
+                if options is not None and option_name
+                else ""
+            )
+            # input 类型保存为 {"value": {字段名: 值}} 是合法格式
+            if option_type not in ("input", ""):
+                try:
+                    logger.error(
+                        "选项 value 字段类型异常"
+                        f" | option_name={option_name}"
+                        f" | option_type={option_type}"
+                        f" | actual_type={type(actual_value)}"
+                        f" | keys={list(actual_value.keys())[:20]}"
+                    )
+                except Exception:
+                    logger.error(
+                        "选项 value 字段类型异常"
+                        f" | option_name={option_name}"
+                        f" | option_type={option_type}"
+                        f" | actual_type={type(actual_value)}"
+                    )
         branches = get_option_branches(option_value)
         return actual_value, branches
 
