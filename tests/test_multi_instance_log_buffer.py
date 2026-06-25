@@ -81,6 +81,23 @@ class MultiInstanceLogBufferTests(unittest.TestCase):
         self.assertNotIn("c_b", self.widget._config_log_records)
         self.assertIn("c_a", self.widget._config_log_records)
 
+    def test_logs_to_old_config_hidden_after_switch(self) -> None:
+        """切换显示配置后，仍归属旧 config_id 的日志不应渲染（桥接未同步时的表现）。"""
+        self.widget._on_config_changed("c_b")
+        self.widget.rendered.clear()
+        self.widget._on_log_output_at("c_a", "INFO", "stale-bridge-log")
+        self.assertEqual(self.widget.rendered, [])
+        self.assertIn("c_a", self.widget._config_log_records)
+
+    def test_logs_render_when_config_id_matches_display(self) -> None:
+        """桥接 config_id 与当前显示一致时，新日志应正常渲染。"""
+        self.widget._on_config_changed("c_b")
+        self.widget.rendered.clear()
+        self.widget._on_log_output_at("c_b", "INFO", "b-visible")
+        self.assertEqual(
+            [r[1] for r in self.widget.rendered], ["b-visible"]
+        )
+
     def test_buffer_respects_max_entries(self) -> None:
         from app.common.config import cfg
 

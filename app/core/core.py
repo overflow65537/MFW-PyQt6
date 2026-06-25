@@ -903,6 +903,14 @@ class ServiceCoordinator:
         except Exception as exc:
             logger.debug("转发 config_changed 到 signalBus 失败: %s", exc)
 
+        # 单实例模式：切换当前配置后同步主运行器桥接的 config_id，
+        # 避免「完成后运行其他配置」等场景日志仍归属旧配置导致面板空白。
+        try:
+            if not self.is_multi_instance_enabled():
+                self._runner_ui_bridge.config_id = config_id
+        except Exception as exc:
+            logger.debug("同步主运行器桥接 config_id 失败: %s", exc)
+
         # 多实例模式下：切换当前配置后，同步主开始按钮以反映新当前配置的运行态
         try:
             if cfg.get(cfg.multi_instance_mode):
