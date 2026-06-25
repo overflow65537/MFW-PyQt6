@@ -1855,19 +1855,19 @@ class TaskFlowRunner(QObject):
                 {"text": "START", "status": "enabled"}
             )
         self._is_running = False
-        # 写入稳定的任务流结束标记，供日志打包按”运行记录”切分（不依赖语言/文案）
-        logger.info(“[RUN_RECORD] TASK_FLOW_STOP manual=%s”, bool(self._manual_stop))
+        # 写入稳定的任务流结束标记，供日志打包按"运行记录"切分（不依赖语言/文案）
+        logger.info("[RUN_RECORD] TASK_FLOW_STOP manual=%s", bool(self._manual_stop))
         # 停止后恢复系统休眠
         self._restore_sleep()
 
     @staticmethod
     def _set_sleep_disabled() -> int | None:
-        “””阻止 Windows 系统进入睡眠状态。
+        """阻止 Windows 系统进入睡眠状态。
 
         通过 ctypes 调用 kernel32.SetThreadExecutionState 阻止系统休眠。
         返回之前的状态句柄，用于后续恢复；非 Windows 平台返回 None。
-        “””
-        if not sys.platform.startswith(“win32”):
+        """
+        if not sys.platform.startswith("win32"):
             return None
         try:
             import ctypes
@@ -1879,16 +1879,16 @@ class TaskFlowRunner(QObject):
             )
             if result:
                 return result
-            logger.warning(“SetThreadExecutionState(阻止休眠) 返回 0”)
+            logger.warning("SetThreadExecutionState(阻止休眠) 返回 0")
             return None
         except Exception as exc:
-            logger.warning(“阻止系统休眠失败: %s”, exc)
+            logger.warning("阻止系统休眠失败: %s", exc)
             return None
 
     @staticmethod
     def _restore_sleep() -> None:
-        “””恢复系统休眠许可（清除 ES_SYSTEM_REQUIRED 标记）。”””
-        if not sys.platform.startswith(“win32”):
+        """恢复系统休眠许可（清除 ES_SYSTEM_REQUIRED 标记）。"""
+        if not sys.platform.startswith("win32"):
             return
         try:
             import ctypes
@@ -1896,7 +1896,7 @@ class TaskFlowRunner(QObject):
             ES_CONTINUOUS = 0x80000000
             ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
         except Exception as exc:
-            logger.warning(“恢复系统休眠失败: %s”, exc)
+            logger.warning("恢复系统休眠失败: %s", exc)
 
     def shutdown_runtime_sync(self) -> None:
         """同步强制清理运行态，供窗口退出阶段兜底调用。"""
