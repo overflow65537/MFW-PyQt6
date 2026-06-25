@@ -84,6 +84,7 @@ class MonitorInterface(QWidget):
 
         self._starting_monitoring = False
         self._stopping_monitoring = False
+        self._legacy_uses_shared_maafw = False
         self._pending_stop_config_id: Optional[str] = None
         self._control_debounce_ms = 150
         self._stop_debounce_timer = QTimer(self)
@@ -185,6 +186,52 @@ class MonitorInterface(QWidget):
             self._update_monitor_status()
 
         asyncio.create_task(_run())
+
+    def _bind_legacy_runner_maafw(self) -> bool:
+        """单实例模式：监控复用任务运行体的 MaaFW，避免与 Runner 争抢 ADB 连接。"""
+        try:
+            runner = self.service_coordinator.current_runner
+        except Exception:
+            return False
+        if not getattr(runner, "is_running", False):
+            return False
+        self._legacy_monitor_task.maafw = runner.maafw
+        self._legacy_uses_shared_maafw = True
+        return True
+
+    def _release_legacy_shared_maafw(self) -> None:
+        """恢复监控独立 MaaFW（任务停止后或共享连接失败回退）。"""
+        if not self._legacy_uses_shared_maafw:
+            return
+        self._legacy_uses_shared_maafw = False
+        from app.core.runner.maafw import MaaFW
+
+        self._legacy_monitor_task.maafw = MaaFW()
+
+    async def _ensure_legacy_monitoring_when_ready(
+        self,
+        *,
+        auto: bool = True,
+        timeout_s: float = 90.0,
+    ) -> bool:
+        """等待任务流完成控制器连接后，再启动监控（共享同一 MaaFW）。"""
+        deadline = time() + max(5.0, timeout_s)
+        while time() < deadline:
+            if not self.service_coordinator.is_current_config_running():
+                return False
+            if self._bind_legacy_runner_maafw():
+                if self._legacy_session.is_controller_connected():
+                    started = await self._legacy_session.run_startup_sequence(
+                        should_abort=lambda: not self._starting_monitoring,
+                    )
+                    if not started and self._legacy_uses_shared_maafw:
+                        self._release_legacy_shared_maafw()
+                    return started
+            await asyncio.sleep(0.2)
+        self._release_legacy_shared_maafw()
+        return await self._legacy_session.run_startup_sequence(
+            should_abort=lambda: not self._starting_monitoring,
+        )
 
     def _enqueue_preview_frame(
         self, pil_image: Image.Image, *, config_id: str | None = None
@@ -1376,9 +1423,14 @@ class MonitorInterface(QWidget):
 
         async def _start_sequence() -> None:
             try:
-                started = await self._legacy_session.run_startup_sequence(
-                    should_abort=lambda: not self._starting_monitoring,
-                )
+                if self.service_coordinator.is_current_config_running():
+                    started = await self._ensure_legacy_monitoring_when_ready(
+                        auto=auto
+                    )
+                else:
+                    started = await self._legacy_session.run_startup_sequence(
+                        should_abort=lambda: not self._starting_monitoring,
+                    )
                 if not started:
                     if self._starting_monitoring and not auto:
                         signalBus.info_bar_requested.emit(
@@ -1432,7 +1484,10 @@ class MonitorInterface(QWidget):
                         self._emit_preview_cleared()
                         self._set_monitor_control_running(False)
                 else:
-                    await self._legacy_session.stop()
+                    await self._legacy_session.stop(
+                        teardown=not self._legacy_uses_shared_maafw,
+                    )
+                    self._release_legacy_shared_maafw()
                     self._emit_preview_cleared()
                     self._bound_config_id = None
                     self._set_monitor_control_running(False)

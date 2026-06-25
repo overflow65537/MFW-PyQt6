@@ -2230,8 +2230,7 @@ class TaskFlowRunner(QObject):
             force_refresh=True,
         ):
             # 连接成功后额外等待 5 秒，防止程序初始化未完成
-            await asyncio.sleep(5)
-            return True
+            return await self._wait_after_controller_connect()
         elif controller_config.get("emulator_path", ""):
             logger.info("尝试启动模拟器")
             self.log_output.emit("INFO", self.tr("try to start emulator"))
@@ -2257,8 +2256,7 @@ class TaskFlowRunner(QObject):
                 )
                 if poll_ok:
                     # 轮询连接成功后额外等待 5 秒，防止程序初始化未完成
-                    await asyncio.sleep(5)
-                    return True
+                    return await self._wait_after_controller_connect()
                 if self.need_stop:
                     return False
             else:
@@ -2272,8 +2270,7 @@ class TaskFlowRunner(QObject):
                     raw_screen_method=raw_screen_method,
                 ):
                     # 启动模拟器后首次直接连接成功时，额外等待 5 秒
-                    await asyncio.sleep(5)
-                    return True
+                    return await self._wait_after_controller_connect()
         self.log_output.emit("ERROR", self.tr("Device connection failed"))
         return False
 
@@ -3015,6 +3012,8 @@ class TaskFlowRunner(QObject):
         screen_method = normalize_input_method(raw_screen_method)
         config = controller_config.get("config", {})
 
+        if self.need_stop:
+            return False
         return await self.maafw.connect_adb(
             adb_path,
             address,
@@ -3191,6 +3190,15 @@ class TaskFlowRunner(QObject):
 
         logger.debug(f"准备启动子进程: {command}")
         return subprocess.Popen(command)
+
+    async def _wait_after_controller_connect(self, seconds: float = 5.0) -> bool:
+        """连接成功后等待初始化，可被 need_stop 中断。"""
+        intervals = max(1, int(seconds * 10))
+        for _ in range(intervals):
+            if self.need_stop:
+                return False
+            await asyncio.sleep(seconds / intervals)
+        return True
 
     async def _poll_connect(
         self,
