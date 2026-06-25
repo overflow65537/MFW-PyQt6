@@ -109,8 +109,8 @@ def _is_client_log_path(file_path: str) -> bool:
 def _is_under_custom_roots(file_path: str, allowed_roots: tuple[str, ...]) -> bool:
     if not file_path or not allowed_roots or _is_client_log_path(file_path):
         return False
-    resolved = _normalize_path(_resolve_log_path(file_path))
-    if any(resolved.startswith(root) for root in allowed_roots):
+    normalized = _normalize_path(file_path)
+    if any(normalized.startswith(root) for root in allowed_roots):
         return True
     try:
         path_obj = Path(_resolve_log_path(file_path)).resolve()
@@ -129,10 +129,15 @@ def _should_skip_logging_logger(logger_obj: logging.Logger) -> bool:
 
 
 def collect_agent_loggers(
-    custom_root: Path, allowed_roots: tuple[str, ...]
+    custom_root: Path,
+    allowed_roots: tuple[str, ...],
+    *,
+    module_keys: Sequence[str] | None = None,
 ) -> list[Any]:
     """
     收集 custom 工程内的 logger（含 root），去重后挂载；由路径过滤保证不污染 app 日志。
+
+    module_keys: 内置 agent 加载后已导入的模块名，传入时仅扫描这些模块，避免遍历 sys.modules。
     """
     found: list[Any] = []
     seen_logging_names: set[str] = set()
@@ -161,12 +166,22 @@ def collect_agent_loggers(
         for attr in ("logger", "log"):
             _add(getattr(mod, attr, None))
 
-    for mod in list(sys.modules.values()):
-        if mod is None:
-            continue
-        file_name = getattr(mod, "__file__", None)
-        if not file_name or not _is_under_custom_roots(file_name, allowed_roots):
-            continue
+    if module_keys:
+        modules_to_scan = [
+            sys.modules[key]
+            for key in module_keys
+            if isinstance(key, str) and sys.modules.get(key) is not None
+        ]
+    else:
+        modules_to_scan = [
+            mod
+            for mod in sys.modules.values()
+            if mod is not None
+            and getattr(mod, "__file__", None)
+            and _is_under_custom_roots(str(mod.__file__), allowed_roots)
+        ]
+
+    for mod in modules_to_scan:
         for attr in ("logger", "log"):
             _add(getattr(mod, attr, None))
 
@@ -210,15 +225,19 @@ class EmbeddedAgentLogBridge:
         *,
         custom_root: Path,
         extra_roots: Sequence[Path] = (),
+        module_keys: Sequence[str] | None = None,
     ) -> int:
         """
         :param custom_root: interface.custom 解析后的绝对路径（agent 源码根目录）
         :param extra_roots: 可选补充根（如与 custom 不同的入口父目录）
+        :param module_keys: 内置 agent 已导入的模块名，用于加速 logger 收集
         """
         self.detach()
         self._allowed_roots = _build_allowed_roots(custom_root, extra_roots)
         attached = 0
-        for logger_obj in collect_agent_loggers(custom_root, self._allowed_roots):
+        for logger_obj in collect_agent_loggers(
+            custom_root, self._allowed_roots, module_keys=module_keys
+        ):
             if _is_logging_logger(logger_obj):
                 handler = _RunnerUiLogHandler(emit_fn, self._allowed_roots)
                 logger_obj.addHandler(handler)

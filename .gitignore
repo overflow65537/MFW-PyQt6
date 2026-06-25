@@ -488,7 +488,7 @@ MPA_custom/*
 MPAcustom_custom/*
 tasks/*
 .llm.txt
-
+agent
 # Codex local environments
 .codex/environments/
 

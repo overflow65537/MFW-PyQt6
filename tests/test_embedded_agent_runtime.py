@@ -301,6 +301,62 @@ class EmbeddedAgentRuntimeTests(unittest.TestCase):
             self.assertEqual("agent/main.py", translated.get("__embedded_agent_entry"))
             self.assertNotIn("__embedded_agent_error", translated)
 
+    def test_two_embedded_agents_with_colliding_action_package(self):
+        def _write_bundle(root: Path, register_name: str) -> None:
+            agent_dir = root / "agent"
+            action_dir = agent_dir / "action"
+            action_dir.mkdir(parents=True, exist_ok=True)
+            (action_dir / "__init__.py").write_text("", encoding="utf-8")
+            (action_dir / "Fishing.py").write_text(
+                '\n'.join(
+                    [
+                        "class Fishing:",
+                        "    pass",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (agent_dir / "Agent_file.py").write_text(
+                '\n'.join(
+                    [
+                        "from action.Fishing import Fishing",
+                        "from maa.custom_action import CustomAction",
+                        "from maa.resource import resource",
+                        "",
+                        f'@resource.custom_action("{register_name}")',
+                        "class AgentAction(CustomAction):",
+                        "    def run(self, context, argv):",
+                        "        return True",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+        with tempfile.TemporaryDirectory() as temp_a, tempfile.TemporaryDirectory() as temp_b:
+            root_a = Path(temp_a)
+            root_b = Path(temp_b)
+            _write_bundle(root_a, "alpha")
+            _write_bundle(root_b, "beta")
+
+            maafw_a = MaaFW()
+            maafw_b = MaaFW()
+            self.assertTrue(
+                maafw_a.load_embedded_agent_custom(
+                    agent_root=root_a / "agent",
+                    agent_entry=root_a / "agent" / "Agent_file.py",
+                )
+            )
+            self.assertTrue(
+                maafw_b.load_embedded_agent_custom(
+                    agent_root=root_b / "agent",
+                    agent_entry=root_b / "agent" / "Agent_file.py",
+                )
+            )
+            self.assertIn("alpha", maafw_a.resource.custom_action_list)
+            self.assertIn("beta", maafw_b.resource.custom_action_list)
+
 
 if __name__ == "__main__":
     unittest.main()

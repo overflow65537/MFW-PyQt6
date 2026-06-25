@@ -33,12 +33,14 @@ from app.common.config import cfg
 from app.core.core import ServiceCoordinator
 from app.core.runner.monitor_task import MonitorTask
 from app.view.monitor import MonitorSession
+from app.view.monitor.config_monitor_pool import ConfigMonitorPool
 from app.view.monitor.recognition_roi_store import RecognitionRoiStore
 from app.view.monitor.roi_overlay import draw_roi_on_pixmap
 from app.view.task_interface.components.panel_splitter import (
     PANEL_SECTION_SPACING,
     panel_outer_margins,
 )
+from app.view.monitor_interface.multi_config_monitor_grid import MultiConfigMonitorGrid
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 
@@ -74,9 +76,16 @@ class MonitorInterface(QWidget):
         self._image_height: Optional[int] = None
         self._is_landscape: Optional[bool] = None
         self._roi_store = RecognitionRoiStore()
+        self._bound_config_id: Optional[str] = None
+        self._last_config_switch_id: Optional[str] = None
+        self._config_switch_seq: int = 0
+        self._pool: Optional[ConfigMonitorPool] = None
+        self._multi_grid: Optional[MultiConfigMonitorGrid] = None
 
         self._starting_monitoring = False
         self._stopping_monitoring = False
+        self._legacy_uses_shared_maafw = False
+        self._pending_stop_config_id: Optional[str] = None
         self._control_debounce_ms = 150
         self._stop_debounce_timer = QTimer(self)
         self._stop_debounce_timer.setSingleShot(True)
@@ -87,27 +96,234 @@ class MonitorInterface(QWidget):
 
         self._setup_ui()
 
-        self.monitor_task = MonitorTask(
+        self._legacy_monitor_task = MonitorTask(
             task_service=self.service_coordinator.task_service,
             config_service=self.service_coordinator.config_service,
         )
-        self._session = MonitorSession(self.monitor_task, log_prefix="Monitor")
-        self._session.set_callbacks(
-            on_frame=self._apply_preview_from_pil,
+        self._legacy_session = MonitorSession(
+            self._legacy_monitor_task, log_prefix="Monitor"
+        )
+        self._legacy_session.set_callbacks(
+            on_frame=self._enqueue_preview_frame,
             on_capture_failure_clear=self._emit_preview_cleared,
             on_controller_disconnected=self._on_session_controller_disconnected,
         )
+        self._init_monitor_pool()
         self._bind_auto_task_monitoring()
         self._bind_roi_signals()
+        self._apply_layout_mode()
         self._update_monitor_status()
         self._update_empty_state()
         self._reposition_preview_overlays()
 
+    def _use_pooled_monitors(self) -> bool:
+        """多实例模式下为每个配置维持独立监控连接，切换时仅换显示。"""
+        try:
+            return bool(cfg.get(cfg.multi_instance_mode))
+        except Exception:
+            return False
+
+    def _init_monitor_pool(self) -> None:
+        if not self._use_pooled_monitors():
+            self._pool = None
+            return
+        if self._pool is not None:
+            return
+        self._pool = ConfigMonitorPool(
+            self.service_coordinator,
+            on_frame=self._on_pooled_frame,
+            on_capture_failure_clear=self._on_pooled_capture_cleared,
+            on_controller_disconnected=self._on_pooled_controller_disconnected,
+        )
+        initial_id = self._current_config_id()
+        if initial_id:
+            self._pool.set_display_config(initial_id)
+            self._bound_config_id = initial_id
+            self._roi_store = self._pool.get_display_roi_store()
+        # 已为运行中的配置补建后台监控连接
+        try:
+            for cid in self.service_coordinator.running_config_ids():
+                self._schedule_pool_monitoring(cid, auto=True)
+        except Exception as exc:
+            logger.debug("初始化多配置监控池时同步运行中配置失败: %s", exc)
+
+    def _schedule_pool_monitoring(self, config_id: str, *, auto: bool = True) -> None:
+        """异步启动池化监控，并在失败时清除加载态。"""
+        if self._pool is None or not config_id:
+            return
+
+        async def _run() -> None:
+            started = await self._pool.ensure_monitoring_when_ready(
+                config_id, auto=auto
+            )
+            if (
+                not started
+                and self.service_coordinator.is_config_running(config_id)
+            ):
+                await asyncio.sleep(2.0)
+                if self.service_coordinator.is_config_running(config_id):
+                    started = await self._pool.ensure_monitoring_when_ready(
+                        config_id, auto=auto, timeout_s=30.0
+                    )
+            if self._multi_grid is not None:
+                if started:
+                    slot = self._pool.get_slot(config_id)
+                    if slot and slot.last_pil_image is not None:
+                        self._multi_grid.update_frame(
+                            config_id,
+                            slot.last_pil_image,
+                            roi_store=slot.roi_store,
+                        )
+                elif self.service_coordinator.is_config_running(config_id):
+                    self._multi_grid.clear_monitor_loading(config_id)
+            if config_id == self._current_config_id():
+                if started:
+                    self.sync_task_preview()
+                self._set_loading(False)
+                self._set_monitor_control_running(
+                    self._pool.is_display_monitoring()
+                )
+            self._update_monitor_status()
+
+        asyncio.create_task(_run())
+
+    def _bind_legacy_runner_maafw(self) -> bool:
+        """单实例模式：监控复用任务运行体的 MaaFW，避免与 Runner 争抢 ADB 连接。"""
+        try:
+            runner = self.service_coordinator.current_runner
+        except Exception:
+            return False
+        if not getattr(runner, "is_running", False):
+            return False
+        self._legacy_monitor_task.maafw = runner.maafw
+        self._legacy_uses_shared_maafw = True
+        return True
+
+    def _release_legacy_shared_maafw(self) -> None:
+        """恢复监控独立 MaaFW（任务停止后或共享连接失败回退）。"""
+        if not self._legacy_uses_shared_maafw:
+            return
+        self._legacy_uses_shared_maafw = False
+        from app.core.runner.maafw import MaaFW
+
+        self._legacy_monitor_task.maafw = MaaFW()
+
+    async def _ensure_legacy_monitoring_when_ready(
+        self,
+        *,
+        auto: bool = True,
+        timeout_s: float = 90.0,
+    ) -> bool:
+        """等待任务流完成控制器连接后，再启动监控（共享同一 MaaFW）。"""
+        deadline = time() + max(5.0, timeout_s)
+        while time() < deadline:
+            if not self.service_coordinator.is_current_config_running():
+                return False
+            if self._bind_legacy_runner_maafw():
+                if self._legacy_session.is_controller_connected():
+                    started = await self._legacy_session.run_startup_sequence(
+                        should_abort=lambda: not self._starting_monitoring,
+                    )
+                    if not started and self._legacy_uses_shared_maafw:
+                        self._release_legacy_shared_maafw()
+                    return started
+            await asyncio.sleep(0.2)
+        self._release_legacy_shared_maafw()
+        return await self._legacy_session.run_startup_sequence(
+            should_abort=lambda: not self._starting_monitoring,
+        )
+
+    def _enqueue_preview_frame(
+        self, pil_image: Image.Image, *, config_id: str | None = None
+    ) -> None:
+        """将帧投递到 Qt 主线程，避免异步循环直接改 UI。"""
+        try:
+            frame = pil_image.copy()
+        except Exception:
+            frame = pil_image
+        cid = config_id or self._bound_config_id or self._current_config_id() or ""
+        QTimer.singleShot(
+            0, lambda c=cid, f=frame: self._deliver_preview_frame(c, f)
+        )
+
+    def _deliver_preview_frame(self, config_id: str, pil_image: Image.Image) -> None:
+        if self._pool is not None:
+            slot = self._pool.get_slot(config_id) if config_id else None
+            roi_store = slot.roi_store if slot else None
+            if self._multi_grid is not None and config_id:
+                self._multi_grid.update_frame(
+                    config_id, pil_image, roi_store=roi_store
+                )
+            current_id = self._current_config_id()
+            if config_id and config_id == current_id:
+                self._bound_config_id = current_id
+                self._apply_preview_from_pil(pil_image, config_id=config_id)
+            return
+        self._apply_preview_from_pil(pil_image, config_id=config_id or None)
+
+    def _on_pooled_frame(self, config_id: str, pil_image: Image.Image) -> None:
+        self._enqueue_preview_frame(pil_image, config_id=config_id)
+
+    def _on_pooled_capture_cleared(self, config_id: str) -> None:
+        if self._multi_grid is not None:
+            self._multi_grid.clear_frame(config_id)
+        if config_id == self._bound_config_id:
+            self._emit_preview_cleared()
+
+    def _on_pooled_controller_disconnected(self, config_id: str) -> None:
+        if config_id != self._bound_config_id:
+            return
+        if not (self._active_session().monitoring_active or self._starting_monitoring):
+            return
+        logger.warning("[Monitor] 配置 %s 控制器断开，请求停止监控", config_id)
+        self._request_stop_monitoring(reason="controller_disconnected", config_id=config_id)
+
+    @property
+    def _session(self) -> MonitorSession:
+        if self._pool is not None:
+            session = self._pool.get_display_session()
+            if session is not None:
+                return session
+        return self._legacy_session
+
+    @property
+    def monitor_task(self) -> MonitorTask:
+        if self._pool is not None:
+            task = self._pool.get_display_monitor_task()
+            if task is not None:
+                return task
+        return self._legacy_monitor_task
+
+    def _active_session(self) -> MonitorSession:
+        return self._session
+
     def _bind_roi_signals(self) -> None:
         signalBus.monitor_recognition_roi.connect(self._on_recognition_roi)
+        signalBus.monitor_recognition_roi_at.connect(self._on_recognition_roi_at)
         cfg.monitor_recognition_roi_enabled.valueChanged.connect(
             self._on_recognition_roi_setting_changed
         )
+
+    def _on_recognition_roi_at(self, config_id: str, payload: dict) -> None:
+        """多实例：按配置缓存 ROI，当前显示配置即时重绘。"""
+        if not self._is_recognition_roi_enabled():
+            return
+        if self._pool is not None:
+            slot = self._pool.get_slot(config_id)
+            if slot is not None:
+                slot.roi_store.update(payload)
+            if self._multi_grid is not None and slot and slot.last_pil_image:
+                self._multi_grid.update_frame(
+                    config_id, slot.last_pil_image, roi_store=slot.roi_store
+                )
+            if config_id == self._bound_config_id:
+                if slot is not None:
+                    self._roi_store = slot.roi_store
+                self._on_recognition_roi(payload)
+            return
+        if config_id != self._bound_config_id:
+            return
+        self._on_recognition_roi(payload)
 
     def _is_recognition_roi_enabled(self) -> bool:
         return bool(cfg.get(cfg.monitor_recognition_roi_enabled))
@@ -128,17 +344,35 @@ class MonitorInterface(QWidget):
             return
         self._roi_store.update(payload)
 
+    def sync_task_preview(self) -> None:
+        """任务页监控预览：仅使用监控池自身采集到的最后一帧。"""
+        current_id = self._current_config_id()
+        if not current_id:
+            return
+        self._bound_config_id = current_id
+        if self._pool is None:
+            return
+        slot = self._pool.get_slot(current_id)
+        if slot is not None and slot.last_pil_image is not None:
+            self._apply_preview_from_pil(
+                slot.last_pil_image, config_id=current_id
+            )
+
     @property
     def source_preview_pixmap(self) -> Optional[QPixmap]:
         return self._preview_pixmap
 
     @property
     def is_starting(self) -> bool:
+        if self._pool is not None:
+            return self._pool.is_display_starting() or self._starting_monitoring
         return self._starting_monitoring
 
     @property
     def is_monitoring(self) -> bool:
-        return self._session.monitoring_active
+        if self._pool is not None:
+            return self._pool.is_display_monitoring()
+        return self._legacy_session.monitoring_active
 
     def _setup_ui(self) -> None:
         self.main_layout = QVBoxLayout(self)
@@ -159,13 +393,7 @@ class MonitorInterface(QWidget):
         header_layout.addWidget(self._status_badge, 0, Qt.AlignmentFlag.AlignVCenter)
         self.main_layout.addLayout(header_layout)
 
-        self._subtitle_label = CaptionLabel(
-            self.tr(
-                "Live device preview via an independent controller connection. "
-                "Click the preview to sync taps to the device."
-            ),
-            self,
-        )
+        self._subtitle_label = CaptionLabel("", self)
         self.main_layout.addWidget(self._subtitle_label)
 
         self.preview_card = SimpleCardWidget(self)
@@ -208,6 +436,34 @@ class MonitorInterface(QWidget):
         )
         preview_card_layout.addWidget(self.preview_container, 1)
         self.main_layout.addWidget(self.preview_card, 1)
+
+        self._multi_panel = QWidget(self)
+        self._multi_panel.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self._multi_panel.setAutoFillBackground(False)
+        self._multi_panel.setStyleSheet("background: transparent;")
+        multi_panel_layout = QVBoxLayout(self._multi_panel)
+        multi_panel_layout.setContentsMargins(0, 0, 0, 0)
+        multi_panel_layout.setSpacing(0)
+        self._multi_grid = MultiConfigMonitorGrid(
+            is_config_running=lambda cid: self.service_coordinator.is_config_running(
+                cid
+            ),
+            parent=self._multi_panel,
+        )
+        self._multi_grid.tile_clicked.connect(self._on_grid_tile_clicked)
+        multi_panel_layout.addWidget(self._multi_grid)
+        self._multi_panel.hide()
+        self.main_layout.addWidget(self._multi_panel, 1)
+
+        self._single_subtitle_text = self.tr(
+            "Live device preview via an independent controller connection. "
+            "Click the preview to sync taps to the device."
+        )
+        self._multi_subtitle_text = self.tr(
+            "Multi-instance mode: all configurations are shown below. "
+            "Stopped configurations display a power-off indicator. "
+            "Click a card to switch the active configuration."
+        )
 
         self._empty_hint = CaptionLabel(
             self.tr("Preview will appear when monitoring starts"),
@@ -292,8 +548,9 @@ class MonitorInterface(QWidget):
         self.main_layout.setStretch(0, 0)
         self.main_layout.setStretch(1, 0)
         self.main_layout.setStretch(2, 1)
-        self.main_layout.setStretch(3, 0)
+        self.main_layout.setStretch(3, 1)
         self.main_layout.setStretch(4, 0)
+        self.main_layout.setStretch(5, 0)
 
         self._last_frame_timestamp: Optional[float] = None
         self._last_fps_overlay_update: Optional[float] = None
@@ -342,7 +599,79 @@ class MonitorInterface(QWidget):
         self._loading_overlay.setStyleSheet(
             "background-color: rgba(0, 0, 0, 0.35); border-radius: 8px;"
         )
+        if self._multi_grid is not None:
+            self._multi_grid.apply_theme()
         self._update_monitor_status()
+
+    def _collect_config_entries(self) -> list[tuple[str, str]]:
+        entries: list[tuple[str, str]] = []
+        try:
+            summaries = self.service_coordinator.config.list_configs()
+        except Exception:
+            summaries = []
+        for summary in summaries:
+            if isinstance(summary, dict):
+                config_id = summary.get("item_id")
+            else:
+                config_id = getattr(summary, "item_id", None)
+            if not config_id:
+                continue
+            item = self.service_coordinator.config.get_config(config_id)
+            name = item.name if item else str(config_id)
+            entries.append((str(config_id), name))
+        return entries
+
+    def _rebuild_multi_grid(self) -> None:
+        if self._multi_grid is None or self._pool is None:
+            return
+        self._multi_grid.rebuild(self._collect_config_entries())
+        self._multi_grid.set_active_config(self._current_config_id())
+        for config_id, _ in self._collect_config_entries():
+            slot = self._pool.get_slot(config_id)
+            if slot and slot.last_pil_image is not None:
+                self._multi_grid.update_frame(
+                    config_id, slot.last_pil_image, roi_store=slot.roi_store
+                )
+
+    def _apply_layout_mode(self) -> None:
+        """单画面 / 多配置网格布局切换。"""
+        self._init_monitor_pool()
+        multi = self._use_pooled_monitors() and self._pool is not None
+        self.preview_card.setVisible(not multi)
+        self._multi_panel.setVisible(multi)
+        self._resolution_label.setVisible(not multi)
+        self.control_card.setVisible(not multi)
+        self._subtitle_label.setText(
+            self._multi_subtitle_text if multi else self._single_subtitle_text
+        )
+        if multi:
+            self._rebuild_multi_grid()
+        self._update_monitor_status()
+
+    def _on_grid_tile_clicked(self, config_id: str) -> None:
+        if not config_id:
+            return
+        try:
+            self.service_coordinator.select_config(config_id)
+        except Exception as exc:
+            logger.warning("切换配置失败: %s", exc)
+
+    def _on_multi_instance_mode_changed(self, _enabled: bool) -> None:
+        self._apply_layout_mode()
+        if self._pool is not None:
+            try:
+                for cid in self.service_coordinator.running_config_ids():
+                    self._schedule_pool_monitoring(cid, auto=True)
+            except Exception:
+                pass
+
+    def _on_mica_setting_changed(self, _enabled: bool) -> None:
+        if self._multi_grid is not None:
+            self._multi_grid.apply_theme()
+
+    def _on_config_list_changed(self, *_args) -> None:
+        if self._multi_panel.isVisible():
+            self._rebuild_multi_grid()
 
     def _apply_status_badge_style(self, state: str) -> None:
         styles = {
@@ -357,9 +686,30 @@ class MonitorInterface(QWidget):
         )
 
     def _update_monitor_status(self) -> None:
-        session = getattr(self, "_session", None)
-        monitoring_active = session is not None and session.monitoring_active
-        if self._starting_monitoring:
+        if self._multi_panel.isVisible():
+            try:
+                running = len(self.service_coordinator.running_config_ids())
+                total = len(self._collect_config_entries())
+            except Exception:
+                running, total = 0, 0
+            if running > 0:
+                self._status_badge.setText(
+                    self.tr("{0} / {1} running").format(running, total)
+                )
+                self._apply_status_badge_style("running")
+            else:
+                self._status_badge.setText(self.tr("Idle"))
+                self._apply_status_badge_style("idle")
+            return
+
+        if self._pool is not None:
+            monitoring_active = self._pool.is_display_monitoring()
+        else:
+            session = getattr(self, "_legacy_session", None)
+            monitoring_active = session is not None and session.monitoring_active
+        if self._starting_monitoring or (
+            self._pool is not None and self._pool.is_display_starting()
+        ):
             self._status_badge.setText(self.tr("Connecting"))
             self._apply_status_badge_style("connecting")
         elif monitoring_active:
@@ -424,11 +774,161 @@ class MonitorInterface(QWidget):
             self._fps_overlay.move(x, y)
 
     def _bind_auto_task_monitoring(self) -> None:
-        if hasattr(self.service_coordinator, "fs_signals"):
-            self.service_coordinator.fs_signals.fs_start_button_status.connect(
-                self._on_task_status_changed
-            )
+        self.service_coordinator.fs_signal_bus.fs_start_button_status.connect(
+            self._on_task_status_changed
+        )
+        self.service_coordinator.fs_signal_bus.fs_start_button_status_at.connect(
+            self._on_task_status_changed_at
+        )
         signalBus.task_flow_finished.connect(self._on_task_flow_finished)
+        signalBus.task_flow_finished_at.connect(self._on_task_flow_finished_at)
+        # 配置切换：优先订阅 Core 信号总线（select_config 必经路径）
+        self.service_coordinator.signal_bus.config_changed.connect(
+            self._on_active_config_changed
+        )
+        signalBus.config_run_state_changed.connect(self._on_config_run_state_changed)
+        signalBus.multi_instance_mode_changed.connect(
+            self._on_multi_instance_mode_changed
+        )
+        signalBus.micaEnableChanged.connect(self._on_mica_setting_changed)
+        self.service_coordinator.fs_signal_bus.fs_config_added.connect(
+            self._on_config_list_changed
+        )
+        self.service_coordinator.fs_signal_bus.fs_config_removed.connect(
+            self._on_config_list_changed
+        )
+
+    def _on_config_run_state_changed(self, config_id: str, running: bool) -> None:
+        """多实例：各配置任务启停时维护对应后台监控连接。"""
+        if self._pool is None:
+            return
+        if self._multi_grid is not None:
+            self._multi_grid.set_running(config_id, running)
+        if running:
+            current_id = self._current_config_id()
+            if config_id == current_id:
+                self._bound_config_id = current_id
+                self._emit_preview_cleared(clear_roi=False)
+            self._schedule_pool_monitoring(config_id, auto=True)
+            self._update_monitor_status()
+            return
+
+        async def _stop_config_monitor() -> None:
+            await self._pool.stop_monitoring(config_id, clear_cache=True)
+            if self._multi_grid is not None:
+                self._multi_grid.clear_frame(config_id)
+            if config_id == self._bound_config_id:
+                self._emit_preview_cleared()
+                self._set_monitor_control_running(False)
+            self._update_monitor_status()
+
+        asyncio.create_task(_stop_config_monitor())
+
+    def _current_config_id(self) -> str:
+        try:
+            return str(self.service_coordinator.config_service.current_config_id or "")
+        except Exception:
+            return ""
+
+    def _on_task_status_changed_at(self, config_id: str, status: dict) -> None:
+        """多实例：后台配置由 config_run_state_changed 维护；此处仅同步当前配置 UI。"""
+        if self._pool is not None:
+            if config_id != self._current_config_id():
+                return
+            is_running = self._is_task_flow_running(status)
+            self._set_monitor_control_running(
+                self._pool.is_display_monitoring() if is_running else False
+            )
+            return
+        if config_id != self._current_config_id():
+            return
+        self._on_task_status_changed(status)
+
+    def _on_task_flow_finished_at(self, config_id: str, payload: dict) -> None:
+        """多实例：停止对应配置的监控；单实例走旧逻辑。"""
+        if self._pool is not None:
+            if config_id == self._bound_config_id:
+                self._clear_recognition_roi()
+            asyncio.create_task(
+                self._pool.stop_monitoring(config_id, clear_cache=True)
+            )
+            if config_id == self._bound_config_id:
+                self._emit_preview_cleared()
+                self._set_monitor_control_running(False)
+            return
+        if config_id != self._bound_config_id:
+            return
+        self._on_task_flow_finished(payload)
+
+    def _force_clear_monitor_area(self, *, clear_roi: bool = True) -> None:
+        """切换配置时强制清空监控区域，避免上一配置最后一帧残留。"""
+        self._config_switch_seq += 1
+        self._last_frame_timestamp = None
+        self._emit_preview_cleared(clear_roi=clear_roi)
+        if hasattr(self, "preview_label"):
+            self.preview_label.clear()
+        if hasattr(self, "preview_container"):
+            self.preview_container.update()
+        self._reposition_preview_overlays()
+
+    def _on_active_config_changed(self, config_id: str) -> None:
+        """当前激活配置变化：多实例先强制清空再按需恢复；单实例仍重连。"""
+        target_id = config_id or self._current_config_id()
+
+        if self._pool is not None:
+            if target_id == self._last_config_switch_id:
+                return
+            self._last_config_switch_id = target_id
+            self._force_clear_monitor_area(clear_roi=False)
+
+            self._bound_config_id = target_id
+            self._pool.set_display_config(target_id)
+            self._roi_store = self._pool.get_display_roi_store()
+            if self._multi_grid is not None:
+                self._multi_grid.set_active_config(target_id)
+
+            switch_seq = self._config_switch_seq
+
+            def _maybe_restore_target_preview() -> None:
+                if switch_seq != self._config_switch_seq:
+                    return
+                if self._bound_config_id != target_id:
+                    return
+                self.sync_task_preview()
+
+            QTimer.singleShot(0, _maybe_restore_target_preview)
+            self._set_monitor_control_running(self._pool.is_display_monitoring())
+            self._update_monitor_status()
+            return
+
+        self._force_clear_monitor_area()
+
+        if target_id == self._bound_config_id and not (
+            self._legacy_session.monitoring_active or self._starting_monitoring
+        ):
+            return
+
+        was_active = self._legacy_session.monitoring_active or self._starting_monitoring
+        if was_active or self._bound_config_id:
+            self._request_stop_monitoring(reason="config_changed")
+        self._bound_config_id = None
+        self._clear_recognition_roi()
+
+        def _maybe_restart() -> None:
+            if target_id != self._current_config_id():
+                return
+            try:
+                should_run = bool(
+                    self.service_coordinator.is_current_config_running()
+                )
+            except Exception:
+                should_run = False
+            if should_run and not (
+                self._legacy_session.monitoring_active or self._starting_monitoring
+            ):
+                self._start_monitoring(auto=True)
+
+        QTimer.singleShot(2 * self._control_debounce_ms + 50, _maybe_restart)
 
     def _set_loading(self, loading: bool) -> None:
         if self._starting_monitoring == loading:
@@ -444,12 +944,13 @@ class MonitorInterface(QWidget):
         self._update_monitor_status()
         self._reposition_preview_overlays()
 
-    def _emit_preview_cleared(self) -> None:
+    def _emit_preview_cleared(self, *, clear_roi: bool = True) -> None:
         self._preview_pixmap = None
         self._current_pil_image = None
         self._image_width = None
         self._image_height = None
-        self._roi_store.clear()
+        if clear_roi:
+            self._roi_store.clear()
         self.preview_label.clear()
         self._update_fps_overlay(None)
         self._update_resolution_label()
@@ -543,7 +1044,11 @@ class MonitorInterface(QWidget):
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
 
-    def _apply_preview_from_pil(self, pil_image: Image.Image) -> None:
+    def _apply_preview_from_pil(
+        self, pil_image: Image.Image, *, config_id: str | None = None
+    ) -> None:
+        if config_id is not None and config_id != self._bound_config_id:
+            return
         image_width, image_height = pil_image.size
         self._update_preview_size_policy(image_width, image_height)
 
@@ -635,24 +1140,73 @@ class MonitorInterface(QWidget):
             loop.create_task(self._on_session_controller_disconnected())
 
     def _on_task_flow_finished(self, payload: dict) -> None:
+        if self._pool is not None:
+            return
         self._clear_recognition_roi()
-        if self._session.monitoring_active or self._starting_monitoring:
+        if self._legacy_session.monitoring_active or self._starting_monitoring:
             logger.debug(f"[Monitor] 收到 task_flow_finished: {payload}，请求停止监控")
             self._request_stop_monitoring(reason="task_flow_finished")
 
-    def _on_task_status_changed(self, status: dict) -> None:
-        is_running = status.get("text") == "STOP"
-        if (
-            is_running
-            and not self._session.monitoring_active
-            and not self._starting_monitoring
-        ):
-            self._start_monitoring(auto=True)
-        elif not is_running and self._session.monitoring_active:
-            self._request_stop_monitoring(reason="task_stopped")
+    @staticmethod
+    def _is_task_flow_running(status: dict) -> bool:
+        """任务流是否处于运行中。STOP+disabled 为启动/停止过渡态，不应视为运行中。"""
+        return (
+            isinstance(status, dict)
+            and status.get("text") == "STOP"
+            and status.get("status") == "enabled"
+        )
 
-    def _request_stop_monitoring(self, *, reason: str = "") -> None:
-        if not (self._session.monitoring_active or self._starting_monitoring):
+    def _on_task_status_changed(self, status: dict) -> None:
+        if self._pool is not None:
+            return
+        is_running = self._is_task_flow_running(status)
+        current_id = self._current_config_id()
+        if is_running:
+            if (
+                self._legacy_session.monitoring_active
+                and self._bound_config_id != current_id
+            ):
+                self._request_stop_monitoring(reason="config_switch_while_running")
+                self._emit_preview_cleared()
+                self._bound_config_id = None
+                QTimer.singleShot(
+                    2 * self._control_debounce_ms + 50,
+                    lambda: self._start_monitoring(auto=True),
+                )
+                return
+            if (
+                not self._legacy_session.monitoring_active
+                and not self._starting_monitoring
+            ):
+                self._start_monitoring(auto=True)
+        elif not is_running and self._legacy_session.monitoring_active:
+            if self._bound_config_id in (None, "", current_id):
+                self._request_stop_monitoring(reason="task_stopped")
+
+    def _request_stop_monitoring(
+        self, *, reason: str = "", config_id: str | None = None
+    ) -> None:
+        target_id = config_id or self._bound_config_id or self._current_config_id()
+        if self._pool is not None:
+            slot = self._pool.get_slot(target_id)
+            if slot is None or not (
+                slot.session.monitoring_active or slot.starting
+            ):
+                return
+            if self._stopping_monitoring:
+                logger.debug("[Monitor] stop 已在进行中，忽略: %s", reason)
+                return
+            if self._stop_debounce_timer.isActive():
+                self._stop_debounce_timer.stop()
+            self._set_loading(False)
+            slot.session.stop_loop()
+            self._pending_stop_config_id = target_id
+            self._stop_debounce_timer.start(self._control_debounce_ms)
+            return
+
+        if not (
+            self._legacy_session.monitoring_active or self._starting_monitoring
+        ):
             return
         if self._stopping_monitoring:
             logger.debug(f"[Monitor] stop 已在进行中，忽略: {reason}")
@@ -660,13 +1214,18 @@ class MonitorInterface(QWidget):
         if self._stop_debounce_timer.isActive():
             self._stop_debounce_timer.stop()
         self._set_loading(False)
-        self._session.stop_loop()
+        self._legacy_session.stop_loop()
+        self._pending_stop_config_id = None
         self._stop_debounce_timer.start(self._control_debounce_ms)
 
     def _is_control_busy(self) -> bool:
+        pool_busy = False
+        if self._pool is not None:
+            pool_busy = self._pool.is_display_starting() or self._pool.is_display_stopping()
         return (
             self._starting_monitoring
             or self._stopping_monitoring
+            or pool_busy
             or self._stop_debounce_timer.isActive()
             or self._start_debounce_timer.isActive()
         )
@@ -682,6 +1241,8 @@ class MonitorInterface(QWidget):
                 self._image_width, self._image_height, force_update=True
             )
         self._refresh_preview_image()
+        if self._multi_grid is not None and self._multi_panel.isVisible():
+            self._multi_grid.refresh_all_previews()
         self._reposition_preview_overlays()
 
     def showEvent(self, event) -> None:
@@ -762,7 +1323,7 @@ class MonitorInterface(QWidget):
     def _on_monitor_control_clicked(self) -> None:
         if self._is_control_busy():
             return
-        if self._session.monitoring_active:
+        if self.is_monitoring:
             self._set_control_button_enabled(False)
             self._request_stop_monitoring(reason="manual_or_ui")
         else:
@@ -772,7 +1333,7 @@ class MonitorInterface(QWidget):
     def _request_start_monitoring(self, *, manual: bool = False) -> None:
         if manual:
             if (
-                self._session.monitoring_active
+                self.is_monitoring
                 or self._starting_monitoring
                 or self._stopping_monitoring
             ):
@@ -792,19 +1353,84 @@ class MonitorInterface(QWidget):
         self._start_monitoring_impl(auto=auto)
 
     def _start_monitoring_impl(self, *, auto: bool = False) -> None:
-        if self._session.monitoring_active or self._starting_monitoring:
+        target_id = self._current_config_id()
+        self._bound_config_id = target_id
+
+        if self._pool is not None:
+            if self._pool.is_display_monitoring():
+                if not auto:
+                    self._set_control_button_enabled(True)
+                return
+            self._pool.set_display_config(target_id)
+            self._roi_store = self._pool.get_display_roi_store()
+            logger.info(
+                "[Monitor] 开始启动监控（%s），配置=%s",
+                "自动" if auto else "手动",
+                target_id or "?",
+            )
+            self._starting_monitoring = True
+            self._set_loading(True)
+
+            async def _start_sequence() -> None:
+                try:
+                    if self.service_coordinator.is_config_running(target_id):
+                        started = await self._pool.ensure_monitoring_when_ready(
+                            target_id, auto=auto
+                        )
+                    else:
+                        started = await self._pool.ensure_monitoring(
+                            target_id, auto=auto
+                        )
+                    if not started:
+                        if not auto:
+                            signalBus.info_bar_requested.emit(
+                                "error",
+                                self.tr(
+                                    "Device connection failed, cannot start monitoring"
+                                ),
+                            )
+                        return
+                    self._set_monitor_control_running(True)
+                    if not auto:
+                        signalBus.info_bar_requested.emit(
+                            "success", self.tr("Monitoring started")
+                        )
+                except Exception as exc:
+                    logger.error("[Monitor] 启动监控失败: %s", exc, exc_info=True)
+                    if not auto:
+                        signalBus.info_bar_requested.emit(
+                            "error",
+                            self.tr("Failed to start monitoring: ") + str(exc),
+                        )
+                finally:
+                    self._starting_monitoring = False
+                    self._set_loading(False)
+                    self._set_control_button_enabled(True)
+
+            QTimer.singleShot(0, lambda: asyncio.create_task(_start_sequence()))
+            return
+
+        if self._legacy_session.monitoring_active or self._starting_monitoring:
             if not auto:
                 self._set_control_button_enabled(True)
             return
 
-        logger.info(f"[Monitor] 开始启动监控（{'自动' if auto else '手动'}）")
+        logger.info(
+            f"[Monitor] 开始启动监控（{'自动' if auto else '手动'}）"
+            f"，配置={target_id or '?'}"
+        )
         self._set_loading(True)
 
         async def _start_sequence() -> None:
             try:
-                started = await self._session.run_startup_sequence(
-                    should_abort=lambda: not self._starting_monitoring,
-                )
+                if self.service_coordinator.is_current_config_running():
+                    started = await self._ensure_legacy_monitoring_when_ready(
+                        auto=auto
+                    )
+                else:
+                    started = await self._legacy_session.run_startup_sequence(
+                        should_abort=lambda: not self._starting_monitoring,
+                    )
                 if not started:
                     if self._starting_monitoring and not auto:
                         signalBus.info_bar_requested.emit(
@@ -826,8 +1452,8 @@ class MonitorInterface(QWidget):
                     signalBus.info_bar_requested.emit(
                         "error", self.tr("Failed to start monitoring: ") + str(exc)
                     )
-                if self._session.monitoring_active:
-                    self._session.stop_loop()
+                if self._legacy_session.monitoring_active:
+                    self._legacy_session.stop_loop()
             finally:
                 self._set_loading(False)
                 self._set_control_button_enabled(True)
@@ -844,24 +1470,42 @@ class MonitorInterface(QWidget):
 
         self._stopping_monitoring = True
         self._set_loading(False)
+        stop_id = (
+            self._pending_stop_config_id
+            or self._bound_config_id
+            or self._current_config_id()
+        )
 
         async def _stop_sequence() -> None:
             try:
-                await self._session.stop()
-                self._emit_preview_cleared()
-                self._set_monitor_control_running(False)
+                if self._pool is not None:
+                    await self._pool.stop_monitoring(stop_id, clear_cache=False)
+                    if stop_id == self._bound_config_id:
+                        self._emit_preview_cleared()
+                        self._set_monitor_control_running(False)
+                else:
+                    await self._legacy_session.stop(
+                        teardown=not self._legacy_uses_shared_maafw,
+                    )
+                    self._release_legacy_shared_maafw()
+                    self._emit_preview_cleared()
+                    self._bound_config_id = None
+                    self._set_monitor_control_running(False)
                 logger.info("[Monitor] 监控已停止")
             except Exception as exc:
                 logger.error(f"[Monitor] 停止监控失败: {exc}", exc_info=True)
             finally:
                 self._stopping_monitoring = False
+                self._pending_stop_config_id = None
                 self._set_control_button_enabled(True)
 
         QTimer.singleShot(0, lambda: asyncio.create_task(_stop_sequence()))
 
     def lock_monitor_page(self, stop_loop: bool = True) -> None:
-        if stop_loop:
-            self._session.stop_loop()
+        if self._pool is not None:
+            self._pool.shutdown_sync()
+        elif stop_loop:
+            self._legacy_session.stop_loop()
         else:
-            self._session.deactivate()
+            self._legacy_session.deactivate()
         self._set_monitor_control_running(False)

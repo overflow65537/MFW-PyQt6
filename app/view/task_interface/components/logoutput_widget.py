@@ -90,6 +90,17 @@ class LogoutputWidget(QWidget):
         self._error_flash_previous_phase = 0.0
         self._error_flash_cycle_seconds = 1.8
         self._user_event_filter_installed = False
+        # 多实例：按 config_id 维护日志文本缓冲，切换配置时重建显示。
+        # 记录为 (level, text, timestamp)；图片仅在当前配置实时渲染时附带。
+        self._config_log_records: dict[str, list[tuple[str, str, str]]] = {}
+        self._current_log_config_id: str = ""
+        if service_coordinator is not None:
+            try:
+                self._current_log_config_id = (
+                    service_coordinator.config_service.current_config_id or ""
+                )
+            except Exception:
+                self._current_log_config_id = ""
         self._init_log_output()
         self._add_tail_spacer()
         self._apply_theme_colors()
@@ -156,10 +167,13 @@ class LogoutputWidget(QWidget):
             self.main_layout.setStretch(0, 0)
             self.main_layout.setStretch(1, 1)
 
-        # 连接日志输出信号
-        signalBus.log_output.connect(self._on_log_output)
-
+        # 连接日志输出信号（带 config_id，多实例隔离）
+        signalBus.log_output_at.connect(self._on_log_output_at)
+        signalBus.log_clear_requested_at.connect(self._on_clear_requested_at)
+        # 未携带 config_id 的清空请求（如调度服务）作用于当前显示的配置
         signalBus.log_clear_requested.connect(self.clear_log)
+        # 切换当前配置时重建日志显示，避免不同配置日志串流
+        signalBus.config_changed.connect(self._on_config_changed)
         signalBus.log_zip_started.connect(
             lambda: self.generate_log_zip_button.setEnabled(False)
         )
@@ -328,8 +342,8 @@ class LogoutputWidget(QWidget):
         # 交互信号：由组件发射，外部处理
         self.generate_log_zip_button.clicked.connect(signalBus.request_log_zip)
 
-    def clear_log(self):
-        """清空日志内容，清除缓存图像并重置序号"""
+    def _clear_display_only(self):
+        """仅清除当前显示的日志控件（不动缓冲）。"""
         self._remove_tail_spacer()
         while self.log_list_layout.count():
             item = self.log_list_layout.takeAt(0)
@@ -337,20 +351,69 @@ class LogoutputWidget(QWidget):
             if w:
                 w.deleteLater()
         self._log_items.clear()
-        
-        # 清除缓存图像，避免跨 session 复用旧图
         self._last_image_bytes = None
         self._last_image_small_gray = None
-        logger.info("[日志清除] 已清除所有日志条目和缓存图像，序号已重置")
-        
         self._add_tail_spacer()
 
-    def _on_log_output(self, level: str, text: str):
-        """处理日志输出信号"""
+    def clear_log(self):
+        """清空当前显示配置的日志内容、缓冲，清除缓存图像并重置序号"""
+        self._clear_display_only()
+        self._config_log_records.pop(self._current_log_config_id, None)
+        logger.info("[日志清除] 已清除当前配置日志条目和缓存图像，序号已重置")
+
+    def _on_clear_requested_at(self, config_id: str):
+        """按 config_id 清空日志缓冲；若为当前显示配置则一并清空显示。"""
+        cid = config_id or self._current_log_config_id
+        self._config_log_records.pop(cid, None)
+        if cid == self._current_log_config_id:
+            self._clear_display_only()
+
+    def _on_config_changed(self, config_id: str):
+        """切换当前配置：保存当前显示、重建为目标配置的日志缓冲。"""
+        cid = config_id or ""
+        if cid == self._current_log_config_id:
+            return
+        self._current_log_config_id = cid
+        self._clear_display_only()
+        # 从缓冲重建目标配置的历史日志（仅文本，不含历史图片）
+        records = self._config_log_records.get(cid, [])
+        for level, text, _timestamp in records:
+            self._add_log_row(_timestamp, text, level, capture_image=False)
+        if hasattr(self, "monitor_widget"):
+            self.monitor_widget._sync_from_monitor()
+            monitor = getattr(self.monitor_widget, "_monitor", None)
+            if monitor is not None and hasattr(monitor, "sync_task_preview"):
+                monitor.sync_task_preview()
+                self.monitor_widget._sync_from_monitor()
+
+    def _record_log(self, config_id: str, level: str, text: str, timestamp: str):
+        """将一条日志写入对应配置的缓冲（带上限淘汰）。"""
+        records = self._config_log_records.setdefault(config_id, [])
+        records.append((level, text, timestamp))
+        try:
+            max_records = cfg.get(cfg.log_max_images)
+        except Exception:
+            max_records = self._max_log_entries
+        if not isinstance(max_records, int) or max_records <= 0:
+            max_records = self._max_log_entries
+        if len(records) > max_records:
+            del records[: len(records) - max_records]
+
+    def _on_log_output_at(self, config_id: str, level: str, text: str):
+        """处理带 config_id 的日志输出信号。"""
+        cid = config_id or self._current_log_config_id
         normalized_level = self._normalize_level_by_text(level, text)
-        if normalized_level in {"ERROR", "CRITICAL"}:
-            self._start_log_zip_attention_effect()
-        self.add_structured_log(normalized_level, text)
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self._record_log(cid, normalized_level, text, timestamp)
+        # 仅当前显示配置实时渲染（含图片闪烁提示）
+        if cid == self._current_log_config_id:
+            if normalized_level in {"ERROR", "CRITICAL"}:
+                self._start_log_zip_attention_effect()
+            self.add_structured_log(normalized_level, text)
+
+    def _on_log_output(self, level: str, text: str):
+        """处理日志输出信号（兼容旧无 config_id 路径，归属当前配置）。"""
+        self._on_log_output_at(self._current_log_config_id, level, text)
 
     def _normalize_level_by_text(self, level: str, text: str) -> str:
         """根据日志级别与关键词将消息归一化到最终显示级别。"""
@@ -496,8 +559,12 @@ class LogoutputWidget(QWidget):
         # 2. 正确处理换行符（在同一个日志条目内换行显示）
         self._add_log_row(timestamp, raw_text, level)
 
-    def _add_log_row(self, timestamp: str, text: str, level: str):
-        """新增一条日志（LogItemWidget）"""
+    def _add_log_row(self, timestamp: str, text: str, level: str, capture_image: bool = True):
+        """新增一条日志（LogItemWidget）
+
+        Args:
+            capture_image: 是否尝试抓取当前控制器画面作为预览。重建历史缓冲时为 False。
+        """
         formatted_text, has_rich_content = self._format_colored_text(text)
         self._remove_tail_spacer()
 
@@ -512,7 +579,7 @@ class LogoutputWidget(QWidget):
 
         # System 任务：不捕获图片，使用图标 icon，不占用 500 张配额
         # 其他任务：正常捕获图片
-        if task_name == self.tr("System"):
+        if not capture_image or task_name == self.tr("System"):
             image_bytes = None
         else:
             # 日志出现时抓取一帧作为预览（优先 cached_image；None 则不显示）
@@ -712,12 +779,13 @@ class LogoutputWidget(QWidget):
         if not self.service_coordinator:
             return None
         try:
-            if hasattr(self.service_coordinator, "run_manager"):
+            task_flow = getattr(self.service_coordinator, "current_runner", None)
+            if task_flow is None and hasattr(self.service_coordinator, "run_manager"):
                 task_flow = self.service_coordinator.run_manager
-                if task_flow and hasattr(task_flow, "maafw"):
-                    controller = getattr(task_flow.maafw, "controller", None)
-                    if controller is not None:
-                        return controller
+            if task_flow and hasattr(task_flow, "maafw"):
+                controller = getattr(task_flow.maafw, "controller", None)
+                if controller is not None:
+                    return controller
         except Exception:
             return None
         return None
@@ -885,7 +953,9 @@ class LogoutputWidget(QWidget):
         if not self.service_coordinator:
             return self.tr("System")
         try:
-            runner = getattr(self.service_coordinator, "run_manager", None)
+            runner = getattr(self.service_coordinator, "current_runner", None)
+            if runner is None:
+                runner = getattr(self.service_coordinator, "run_manager", None)
             task_id = getattr(runner, "_current_running_task_id", None)
             if not task_id:
                 return self.tr("System")

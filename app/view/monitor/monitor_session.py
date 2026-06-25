@@ -18,6 +18,24 @@ from app.utils.logger import (
     suppress_qasync_logging,
 )
 
+_active_monitor_loop_count = 0
+
+
+def _acquire_monitor_loop_logging() -> None:
+    global _active_monitor_loop_count
+    _active_monitor_loop_count += 1
+    if _active_monitor_loop_count == 1:
+        suppress_asyncify_logging()
+        suppress_qasync_logging()
+
+
+def _release_monitor_loop_logging() -> None:
+    global _active_monitor_loop_count
+    _active_monitor_loop_count = max(0, _active_monitor_loop_count - 1)
+    if _active_monitor_loop_count == 0:
+        restore_asyncify_logging()
+        restore_qasync_logging()
+
 
 class MonitorSession:
     """监控截图会话，由 MonitorInterface 独占使用。"""
@@ -48,6 +66,18 @@ class MonitorSession:
     def monitoring_active(self) -> bool:
         return self._monitoring_active
 
+    def is_loop_running(self) -> bool:
+        """截图循环与帧处理循环均存活时才算监控在运行。"""
+        monitor = self._monitor_loop_task
+        processing = self._image_processing_task
+        return bool(
+            self._monitoring_active
+            and monitor is not None
+            and not monitor.done()
+            and processing is not None
+            and not processing.done()
+        )
+
     def set_callbacks(
         self,
         *,
@@ -72,7 +102,7 @@ class MonitorSession:
         return bool(await self.monitor_task._connect())
 
     def capture_frame(self) -> Image.Image:
-        """在工作线程中调用：从监控专用控制器截取一帧。"""
+        """在工作线程中调用：通过监控会话控制器主动截图（不读取 task 侧 cached_image）。"""
         controller = getattr(self.monitor_task.maafw, "controller", None)
         if controller is None:
             raise RuntimeError("控制器尚未初始化，无法抓取画面")
@@ -90,8 +120,24 @@ class MonitorSession:
 
     def start_loop(self) -> None:
         if self._monitor_loop_task and not self._monitor_loop_task.done():
-            logger.debug(f"[{self._log_prefix}] 监控循环任务已存在，跳过启动")
+            if (
+                self._image_processing_task is None
+                or self._image_processing_task.done()
+            ):
+                logger.info(
+                    f"[{self._log_prefix}] 帧处理循环已退出，正在恢复..."
+                )
+                self._image_queue = asyncio.Queue(maxsize=self._max_queue_size)
+                self._image_processing_task = asyncio.create_task(
+                    self._image_processing_loop()
+                )
+            else:
+                logger.debug(f"[{self._log_prefix}] 监控循环任务已存在，跳过启动")
             return
+        if self._monitoring_active and (
+            self._monitor_loop_task is None or self._monitor_loop_task.done()
+        ):
+            self._monitoring_active = False
         if self._monitoring_active:
             logger.debug(f"[{self._log_prefix}] 监控已激活，跳过启动")
             return
@@ -102,8 +148,7 @@ class MonitorSession:
         logger.info(
             f"[{self._log_prefix}] 开始启动监控循环，截图速率: {target_fps} FPS"
         )
-        suppress_asyncify_logging()
-        suppress_qasync_logging()
+        _acquire_monitor_loop_logging()
         self._monitoring_active = True
         try:
             self._image_queue = asyncio.Queue(maxsize=self._max_queue_size)
@@ -113,38 +158,44 @@ class MonitorSession:
             self._monitor_loop_task = asyncio.create_task(self._monitor_loop())
         except Exception:
             self._monitoring_active = False
-            restore_asyncify_logging()
-            restore_qasync_logging()
+            _release_monitor_loop_logging()
             raise
 
     def stop_loop(self) -> None:
         self._monitoring_active = False
-        task = self._monitor_loop_task
+        monitor_task = self._monitor_loop_task
+        processing_task = self._image_processing_task
         self._monitor_loop_task = None
-        if task and not task.done():
-            task.cancel()
-        restore_asyncify_logging()
-        restore_qasync_logging()
+        self._image_processing_task = None
+        if monitor_task and not monitor_task.done():
+            monitor_task.cancel()
+        if processing_task and not processing_task.done():
+            processing_task.cancel()
+
+    async def stop_loop_async(self) -> None:
+        """停止截图/帧处理双循环并等待任务退出。"""
+        self._monitoring_active = False
+        monitor_task = self._monitor_loop_task
+        processing_task = self._image_processing_task
+        self._monitor_loop_task = None
+        self._image_processing_task = None
+        self._image_queue = None
+        for task in (monitor_task, processing_task):
+            if task is not None and not task.done():
+                task.cancel()
+        for task in (monitor_task, processing_task):
+            if task is None:
+                continue
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                pass
 
     def deactivate(self) -> None:
         """仅标记为非活跃，不取消循环任务。"""
         self._monitoring_active = False
-
-    async def wait_for_image_processing_complete(self, timeout: float = 1.0) -> None:
-        if self._image_processing_task and not self._image_processing_task.done():
-            try:
-                await asyncio.wait_for(self._image_processing_task, timeout=timeout)
-            except asyncio.TimeoutError:
-                if not self._image_processing_task.done():
-                    self._image_processing_task.cancel()
-                    try:
-                        await self._image_processing_task
-                    except asyncio.CancelledError:
-                        pass
-            except Exception:
-                pass
-        self._image_queue = None
-        self._image_processing_task = None
 
     async def teardown_controller(self) -> None:
         try:
@@ -157,10 +208,10 @@ class MonitorSession:
         except Exception as exc:
             logger.warning(f"[{self._log_prefix}] 清除控制器引用时出错: {exc}")
 
-    async def stop(self) -> None:
-        self.stop_loop()
-        await self.wait_for_image_processing_complete(timeout=1.0)
-        await self.teardown_controller()
+    async def stop(self, *, teardown: bool = True) -> None:
+        await self.stop_loop_async()
+        if teardown:
+            await self.teardown_controller()
 
     async def run_startup_sequence(
         self,
@@ -175,6 +226,9 @@ class MonitorSession:
             if not await self.connect_controller():
                 logger.warning(f"[{self._log_prefix}] 监控控制器连接失败")
                 return False
+
+        if self.is_loop_running():
+            return True
 
         self.start_loop()
         await asyncio.sleep(0.1)
@@ -239,8 +293,7 @@ class MonitorSession:
                 f"[{self._log_prefix}] 监控循环结束，共捕获 {frame_count} 帧"
             )
             self._monitor_loop_task = None
-            restore_asyncify_logging()
-            restore_qasync_logging()
+            _release_monitor_loop_logging()
 
     async def _image_processing_loop(self) -> None:
         try:
