@@ -2625,24 +2625,38 @@ Supported controllers in the current resource: {controllers}</source>
             <translation>歡迎</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2370" />
+            <location filename="../view/main_window/main_window.py" line="2380" />
+            <source>This is the Task page. Here you can manage configurations, set up tasks, and start runs.</source>
+            <translation>這是任務頁面。你可以在這裡管理設定、設定任務並啟動執行。</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="2388" />
             <source>This is the configuration area. Each configuration maps to different task sets.</source>
             <translation>這是設定區域。每個設定對應不同的任務集。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2376" />
+            <location filename="../view/main_window/main_window.py" line="2396" />
             <source>This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running.</source>
             <translation>這是任務區域。請先設定控制器與資源配置；除了這兩項，每個任務在執行前都可拖曳重新排序。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2382" />
-            <source>The monitor area displays live footage once tasks are running.</source>
-            <translation>監控區域會在任務執行時顯示即時畫面。</translation>
-        </message>
-        <message>
-            <location filename="../view/main_window/main_window.py" line="2388" />
+            <location filename="../view/main_window/main_window.py" line="2404" />
             <source>When you encounter issues while running, click this button and send the generated log zip file in the report folder to the developers.</source>
             <translation>執行時若遇到問題，請點擊此按鈕，並將 report 目錄中產生的日誌壓縮包傳送給開發者。</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="2410" />
+            <source>This is the Monitor page. It displays live footage once tasks are running.</source>
+            <translation>這是監控頁面。任務執行時會顯示即時畫面。</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="2418" />
+            <source>This is the Schedule page. Create timed triggers to run configurations automatically.</source>
+            <translation>這是計劃任務頁面。可以建立定時觸發器，自動執行指定設定。</translation>
+        </message>
+        <message>
+            <source>The monitor area displays live footage once tasks are running.</source>
+            <translation type="vanished">監控區域會在任務執行時顯示即時畫面。</translation>
         </message>
         <message>
             <source>Click this button to switch to special tasks; only tasks marked as special will execute.</source>

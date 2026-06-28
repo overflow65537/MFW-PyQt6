@@ -2625,24 +2625,38 @@ Supported controllers in the current resource: {controllers}</source>
             <translation>ようこそ</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2370" />
+            <location filename="../view/main_window/main_window.py" line="2380" />
+            <source>This is the Task page. Here you can manage configurations, set up tasks, and start runs.</source>
+            <translation>ここはタスクページです。設定の管理、タスクの設定、実行の開始ができます。</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="2388" />
             <source>This is the configuration area. Each configuration maps to different task sets.</source>
             <translation>ここは設定エリアです。各設定は異なるタスクセットに対応しています。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2376" />
+            <location filename="../view/main_window/main_window.py" line="2396" />
             <source>This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running.</source>
             <translation>ここはタスクエリアです。まずコントローラーとリソース設定を設定してください。それら以外のすべてのタスクは、実行前にドラッグして順序を変更できます。</translation>
         </message>
         <message>
-            <location filename="../view/main_window/main_window.py" line="2382" />
-            <source>The monitor area displays live footage once tasks are running.</source>
-            <translation>モニターエリアは、タスク実行時にライブ映像を表示します。</translation>
-        </message>
-        <message>
-            <location filename="../view/main_window/main_window.py" line="2388" />
+            <location filename="../view/main_window/main_window.py" line="2404" />
             <source>When you encounter issues while running, click this button and send the generated log zip file in the report folder to the developers.</source>
             <translation>実行中に問題が発生した場合は、このボタンをクリックし、report フォルダ内に生成されたログ ZIP を開発者に送信してください。</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="2410" />
+            <source>This is the Monitor page. It displays live footage once tasks are running.</source>
+            <translation>ここはモニターページです。タスク実行時にライブ映像を表示します。</translation>
+        </message>
+        <message>
+            <location filename="../view/main_window/main_window.py" line="2418" />
+            <source>This is the Schedule page. Create timed triggers to run configurations automatically.</source>
+            <translation>ここはスケジュールページです。定時トリガーを作成して、設定を自動実行できます。</translation>
+        </message>
+        <message>
+            <source>The monitor area displays live footage once tasks are running.</source>
+            <translation type="vanished">モニターエリアは、タスク実行時にライブ映像を表示します。</translation>
         </message>
         <message>
             <source>Click this button to switch to special tasks; only tasks marked as special will execute.</source>

@@ -97,6 +97,9 @@ class SignalBus(QObject):
     # 请求将任务页三栏布局恢复为默认 1:1:1
     task_interface_layout_reset_requested = Signal()
 
+    # 开发调试：重新播放首次引导教程
+    tutorial_replay_requested = Signal()
+
     # 请求切换到监控页面（任务页预览点击等）
     monitor_page_requested = Signal()
 
