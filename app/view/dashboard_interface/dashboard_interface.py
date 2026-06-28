@@ -510,10 +510,7 @@ class DashboardInterface(QWidget):
         text_col.addWidget(subtitle)
         text_col.addStretch(1)
 
-        version = BodyLabel(
-            self.tr("FrameWork Version")+f" {self._get_hero_maafw_version()}  ·  UI {UI_VERSION}",
-            card,
-        )
+        version = BodyLabel(self._format_hero_version_text(), card)
         version.setObjectName("V5HeroVersion")
         version.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         text_col.addWidget(version)
@@ -677,10 +674,18 @@ class DashboardInterface(QWidget):
         subtitle = re.sub(r"[*_`~]+", "", subtitle).strip()
         return subtitle or self.tr("A More Modern Console Interface")
 
-    def _get_hero_maafw_version(self) -> str:
+    def _get_hero_resource_version(self) -> str:
         metadata = self._get_interface_metadata()
         current_version = str(metadata.get("version", "") or "").strip()
-        return current_version or MAAFW_VERSION
+        return current_version or self.tr("(unknown)")
+
+    def _format_hero_version_text(self) -> str:
+        return (
+            self.tr("FrameWork Version")
+            + f" {MAAFW_VERSION}  ·  "
+            + self.tr("Resource Version")
+            + f" {self._get_hero_resource_version()}  ·  UI {UI_VERSION}"
+        )
 
     def _extract_concise_title_from_description(self, raw_description: object) -> str:
         text = str(raw_description or "").strip()
