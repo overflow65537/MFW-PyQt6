@@ -240,6 +240,7 @@ class TutorialHighlightOverlay(QWidget):
 class TutorialStep:
     target_getter: Callable[[], QWidget | None]
     message: str
+    interface_getter: Callable[[], QWidget | None] | None = None
 
 
 class CustomSystemThemeListener(SystemThemeListener):
@@ -254,6 +255,8 @@ ENABLE_TEST_INTERFACE_PAGE = cfg.get(cfg.enable_test_interface_page)
 
 
 class MainWindow(MSFluentWindow):
+
+    _TUTORIAL_PAGE_SWITCH_DELAY_MS = 500
 
     # 可能被占用的日志文件名（需要特殊读取方式）
     _LOCKED_LOG_NAMES = {
@@ -305,6 +308,8 @@ class MainWindow(MSFluentWindow):
         self._bundle_update_in_progress = False  # bundle 更新是否正在进行
         self._tutorial_steps: list[TutorialStep] = []
         self._tutorial_index = 0
+        self._tutorial_any_step_shown = False
+        self._tutorial_pending = False
         # _tutorial_overlay 已在 super().__init__() 之前初始化
         self._tray_icon: QSystemTrayIcon | None = None
         self._startup_cleanup_scheduled = (
@@ -347,7 +352,9 @@ class MainWindow(MSFluentWindow):
 
         self.DashboardInterface = DashboardInterface(
             self.service_coordinator,
-            open_task=lambda: self._switch_to_interface(self.TaskInterface),
+            open_task=lambda: self._switch_to_interface(
+                self.TaskInterface, user_navigation=True
+            ),
             start_task=self._start_tasks_from_dashboard,
             open_monitor=lambda: self._switch_to_interface(self.MonitorInterface),
             open_schedule=lambda: self._switch_to_interface(self.ScheduleInterface),
@@ -799,13 +806,18 @@ class MainWindow(MSFluentWindow):
         except Exception as exc:
             logger.debug("保存上次页面失败（已忽略）: %s", exc)
 
-    def _switch_to_interface(self, interface: QWidget | None) -> None:
+    def switchTo(self, interface: QWidget) -> None:
+        """侧栏导航等用户主动切换页面时触发。"""
+        self._set_current_interface(interface)
+        self._maybe_start_pending_tutorial_on_user_navigation(user_initiated=True)
+
+    def _set_current_interface(self, interface: QWidget | None) -> None:
         if interface is None:
             return
         if self.stackedWidget.indexOf(interface) < 0:
             return
         try:
-            self.switchTo(interface)
+            super().switchTo(interface)
         except (AttributeError, TypeError) as exc:
             logger.warning(
                 "switchTo(%r) failed, fallback to stackedWidget.setCurrentWidget: %s",
@@ -822,6 +834,13 @@ class MainWindow(MSFluentWindow):
                     fallback_exc,
                 )
                 self.stackedWidget.setCurrentWidget(interface)
+
+    def _switch_to_interface(
+        self, interface: QWidget | None, *, user_navigation: bool = False
+    ) -> None:
+        self._set_current_interface(interface)
+        if user_navigation:
+            self._maybe_start_pending_tutorial_on_user_navigation(user_initiated=True)
 
     def _on_monitor_page_requested(self) -> None:
         self._switch_to_interface(getattr(self, "MonitorInterface", None))
@@ -1220,6 +1239,7 @@ class MainWindow(MSFluentWindow):
         signalBus.controller_setup_hint_requested.connect(
             self._on_controller_setup_hint_requested
         )
+        signalBus.tutorial_replay_requested.connect(self._replay_tutorial_sequence)
         # 多资源适配启用后，将 BundleInterface 添加到导航栏
         signalBus.multi_resource_adaptation_enabled.connect(
             self._on_multi_resource_adaptation_enabled
@@ -2325,8 +2345,9 @@ class MainWindow(MSFluentWindow):
 
     def _maybe_show_pending_announcement(self):
         """在主界面完成初始化后延迟展示公告对话框。"""
-        # 公告功能被禁用时（多资源适配开启），彻底跳过自动弹窗与“无公告教程”分支
+        # 公告功能被禁用时（多资源适配开启），跳过公告但仍可展示首次教程
         if not getattr(self, "_announcement_enabled", True):
+            QTimer.singleShot(0, self._begin_tutorial_after_announcement)
             return
         if not self._is_welcome_announcement_auto_show_permitted():
             self._announcement_pending_show = False
@@ -2341,79 +2362,202 @@ class MainWindow(MSFluentWindow):
             QTimer.singleShot(0, self._maybe_start_tutorial_for_no_announcement)
 
     def _maybe_start_tutorial_for_no_announcement(self):
-        if self._announcement_content:
+        self._begin_tutorial_after_announcement()
+
+    def _defer_tutorial_until_task_visit(self) -> None:
+        """标记待播放教程，等用户主动切换页面后再展示。"""
+        if cfg.get(cfg.special_task_tutorial_shown):
             return
-        self._start_tutorial_sequence()
+        self._tutorial_pending = True
+
+    def _begin_tutorial_after_announcement(self) -> None:
+        """公告流程结束后：自动切到任务页并播放教程。"""
+        if cfg.get(cfg.special_task_tutorial_shown):
+            return
+        if self._tutorial_overlay:
+            return
+        task_interface = getattr(self, "TaskInterface", None)
+        if task_interface is not None:
+            self._set_current_interface(task_interface)
+        self._tutorial_pending = False
+        QTimer.singleShot(
+            self._TUTORIAL_PAGE_SWITCH_DELAY_MS, self._start_tutorial_sequence
+        )
+
+    def _maybe_start_pending_tutorial_on_user_navigation(
+        self, *, user_initiated: bool = False
+    ) -> None:
+        if not user_initiated:
+            return
+        if not self._tutorial_pending:
+            return
+        if cfg.get(cfg.special_task_tutorial_shown):
+            self._tutorial_pending = False
+            return
+        self._tutorial_pending = False
+        QTimer.singleShot(
+            self._TUTORIAL_PAGE_SWITCH_DELAY_MS, self._start_tutorial_sequence
+        )
 
     def _build_tutorial_steps(self) -> list[TutorialStep]:
+        def get_task_interface():
+            return getattr(self, "TaskInterface", None)
+
+        def get_monitor_interface():
+            return getattr(self, "MonitorInterface", None)
+
+        def get_schedule_interface():
+            return getattr(self, "ScheduleInterface", None)
+
+        def get_task_main_area():
+            task_interface = get_task_interface()
+            return getattr(task_interface, "main_splitter", None)
+
         def get_config_area():
-            task_interface = getattr(self, "TaskInterface", None)
+            task_interface = get_task_interface()
             return getattr(task_interface, "config_selection", None)
 
         def get_task_area():
-            task_interface = getattr(self, "TaskInterface", None)
+            task_interface = get_task_interface()
             return getattr(task_interface, "task_info", None)
 
-        def get_monitor_area():
-            return getattr(self, "MonitorInterface", None)
+        def get_monitor_main_area():
+            return get_monitor_interface()
+
+        def get_schedule_main_area():
+            schedule = get_schedule_interface()
+            return getattr(schedule, "scroll_content", None)
 
         def get_log_button():
-            log_widget = getattr(
-                getattr(self, "TaskInterface", None), "log_output_widget", None
-            )
+            log_widget = getattr(get_task_interface(), "log_output_widget", None)
             return getattr(log_widget, "generate_log_zip_button", None)
 
         return [
+            TutorialStep(
+                target_getter=get_task_main_area,
+                message=self.tr(
+                    "This is the Task page. Here you can manage configurations, "
+                    "set up tasks, and start runs."
+                ),
+                interface_getter=get_task_interface,
+            ),
             TutorialStep(
                 target_getter=get_config_area,
                 message=self.tr(
                     "This is the configuration area. Each configuration maps to different task sets."
                 ),
+                interface_getter=get_task_interface,
             ),
             TutorialStep(
                 target_getter=get_task_area,
                 message=self.tr(
                     "This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running."
                 ),
-            ),
-            TutorialStep(
-                target_getter=get_monitor_area,
-                message=self.tr(
-                    "The monitor area displays live footage once tasks are running."
-                ),
+                interface_getter=get_task_interface,
             ),
             TutorialStep(
                 target_getter=get_log_button,
                 message=self.tr(
                     "When you encounter issues while running, click this button and send the generated log zip file in the report folder to the developers."
                 ),
+                interface_getter=get_task_interface,
+            ),
+            TutorialStep(
+                target_getter=get_monitor_main_area,
+                message=self.tr(
+                    "This is the Monitor page. It displays live footage once tasks are running."
+                ),
+                interface_getter=get_monitor_interface,
+            ),
+            TutorialStep(
+                target_getter=get_schedule_main_area,
+                message=self.tr(
+                    "This is the Schedule page. Create timed triggers to run configurations automatically."
+                ),
+                interface_getter=get_schedule_interface,
             ),
         ]
 
-    def _start_tutorial_sequence(self):
-        if cfg.get(cfg.special_task_tutorial_shown):
+    def _start_tutorial_sequence(self, force: bool = False):
+        if not force and cfg.get(cfg.special_task_tutorial_shown):
             return
         if self._tutorial_overlay:
+            if not force:
+                return
+            self._dismiss_tutorial_overlay()
+        if getattr(self, "TaskInterface", None) is None:
             return
+        start_delay_ms = 0
+        if force:
+            task_interface = getattr(self, "TaskInterface", None)
+            if (
+                task_interface is not None
+                and self.stackedWidget.currentWidget() is not task_interface
+            ):
+                self._set_current_interface(task_interface)
+                start_delay_ms = self._TUTORIAL_PAGE_SWITCH_DELAY_MS
+        self._tutorial_pending = False
         self._tutorial_steps = self._build_tutorial_steps()
         self._tutorial_index = 0
-        self._show_next_tutorial_step()
+        self._tutorial_any_step_shown = False
+        QTimer.singleShot(start_delay_ms, self._show_next_tutorial_step)
+
+    def _dismiss_tutorial_overlay(self) -> None:
+        overlay = getattr(self, "_tutorial_overlay", None)
+        if overlay is None:
+            return
+        try:
+            overlay.closed.disconnect(self._on_tutorial_overlay_closed)
+        except (TypeError, RuntimeError):
+            pass
+        overlay.close()
+        self._tutorial_overlay = None
+
+    def _replay_tutorial_sequence(self) -> None:
+        """开发调试：忽略已完成标记，重新播放引导教程。"""
+        self._dismiss_tutorial_overlay()
+        self._start_tutorial_sequence(force=True)
 
     def _show_next_tutorial_step(self):
-        while self._tutorial_index < len(self._tutorial_steps):
-            step = self._tutorial_steps[self._tutorial_index]
-            target = step.target_getter()
-            if not target or not target.isVisible():
-                self._tutorial_index += 1
-                continue
-            overlay = TutorialHighlightOverlay(self, target)
-            overlay.set_message(step.message)
-            overlay.closed.connect(self._on_tutorial_overlay_closed)
-            overlay.show()
-            self._tutorial_overlay = overlay
-            logger.info("展示教程步骤: %s", step.message)
+        if self._tutorial_index >= len(self._tutorial_steps):
+            self._complete_tutorial_sequence()
             return
-        self._complete_tutorial_sequence()
+
+        step = self._tutorial_steps[self._tutorial_index]
+        delay_ms = 0
+        if step.interface_getter is not None:
+            interface = step.interface_getter()
+            if interface is not None:
+                if self.stackedWidget.currentWidget() is not interface:
+                    self._set_current_interface(interface)
+                    delay_ms = self._TUTORIAL_PAGE_SWITCH_DELAY_MS
+
+        QTimer.singleShot(delay_ms, self._present_current_tutorial_step)
+
+    def _present_current_tutorial_step(self):
+        if self._tutorial_index >= len(self._tutorial_steps):
+            self._complete_tutorial_sequence()
+            return
+
+        step = self._tutorial_steps[self._tutorial_index]
+        target = step.target_getter()
+        if not target or not target.isVisible():
+            logger.warning(
+                "教程步骤目标不可用，已跳过: index=%s message=%s",
+                self._tutorial_index,
+                step.message,
+            )
+            self._tutorial_index += 1
+            self._show_next_tutorial_step()
+            return
+
+        overlay = TutorialHighlightOverlay(self, target)
+        overlay.set_message(step.message)
+        overlay.closed.connect(self._on_tutorial_overlay_closed)
+        overlay.show()
+        self._tutorial_overlay = overlay
+        self._tutorial_any_step_shown = True
+        logger.info("展示教程步骤: %s", step.message)
 
     def _on_tutorial_overlay_closed(self):
         self._tutorial_overlay = None
@@ -2423,11 +2567,17 @@ class MainWindow(MSFluentWindow):
     def _complete_tutorial_sequence(self):
         if cfg.get(cfg.special_task_tutorial_shown):
             return
+        if not self._tutorial_any_step_shown:
+            logger.warning("教程步骤均未成功展示，暂不标记为已完成")
+            return
+        task_interface = getattr(self, "TaskInterface", None)
+        if task_interface is not None:
+            self._set_current_interface(task_interface)
         cfg.set(cfg.special_task_tutorial_shown, True)
         logger.info("所有教程步骤已完成，配置已记录")
 
     def _on_announcement_closed(self):
-        QTimer.singleShot(0, self._start_tutorial_sequence)
+        QTimer.singleShot(0, self._begin_tutorial_after_announcement)
 
     def _bootstrap_auto_update_and_run(self) -> None:
         """启动自动更新并串行等待，更新后再执行自动任务。"""

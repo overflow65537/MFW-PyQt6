@@ -52,6 +52,10 @@ class TestInterface(QWidget):
         force_btn.clicked.connect(self._test_force_start)
         button_layout.addWidget(force_btn)
 
+        replay_tutorial_btn = PrimaryPushButton("重新播放教程")
+        replay_tutorial_btn.clicked.connect(signalBus.tutorial_replay_requested.emit)
+        button_layout.addWidget(replay_tutorial_btn)
+
         layout.addLayout(button_layout)
 
         self._log_view = QPlainTextEdit(self)
