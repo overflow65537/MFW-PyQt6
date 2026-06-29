@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -16,20 +17,35 @@ from app.core.service.schedule_service import (
     _parse_iso,
 )
 from app.core.service.system_scheduler.base import SystemSchedulerBackend
-from app.utils.install_paths import resolve_schedule_launch_command
+from app.utils.install_paths import (
+    resolve_schedule_launch_command,
+    resolve_schedule_task_folder,
+)
 from app.utils.logger import logger
 from app.utils.subprocess_helper import hidden_subprocess_kwargs
 
 if TYPE_CHECKING:
     from app.core.service.schedule_service import ScheduleEntry
 
-TASK_FOLDER = "MFW-ChainFlow Assistant"
+LEGACY_TASK_FOLDER = "MFW-ChainFlow Assistant"
 _TASK_NS = "http://schemas.microsoft.com/windows/2004/02/mit/task"
 ET.register_namespace("", _TASK_NS)
 
 
+def task_folder() -> str:
+    return resolve_schedule_task_folder()
+
+
 def task_full_name(entry_id: str) -> str:
-    return f"\\{TASK_FOLDER}\\{entry_id}"
+    return f"\\{task_folder()}\\{entry_id}"
+
+
+def _subprocess_text_encoding() -> str:
+    if sys.platform == "win32":
+        import locale
+
+        return locale.getpreferredencoding(False) or "utf-8"
+    return "utf-8"
 
 
 _WEEKDAY_NAMES = (
@@ -213,7 +229,7 @@ class WindowsTaskSchedulerBackend(SystemSchedulerBackend):
                 ["schtasks", "/Create", "/TN", task_name, "/XML", str(temp_path), "/F"],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding=_subprocess_text_encoding(),
                 errors="replace",
                 timeout=60,
                 check=False,
@@ -251,12 +267,31 @@ class WindowsTaskSchedulerBackend(SystemSchedulerBackend):
             else:
                 self.set_enabled(entry.entry_id, False)
 
-        for orphan_id in self._list_registered_entry_ids() - known_ids:
+        for orphan_id in self._list_registered_entry_ids(task_folder()) - known_ids:
             self.remove(orphan_id)
 
-    def _list_registered_entry_ids(self) -> set[str]:
+        self._migrate_legacy_tasks(entries)
+
+    def _migrate_legacy_tasks(self, entries: list["ScheduleEntry"]) -> None:
+        """将旧版全局任务文件夹中的本实例计划迁移到按安装路径隔离的文件夹。"""
+        legacy_ids = self._list_registered_entry_ids(LEGACY_TASK_FOLDER)
+        if not legacy_ids:
+            return
+
+        for entry in entries:
+            if not entry.enabled or entry.entry_id not in legacy_ids:
+                continue
+            if self.install(entry):
+                self._run_change(
+                    ["/Delete", "/TN", f"\\{LEGACY_TASK_FOLDER}\\{entry.entry_id}", "/F"],
+                    entry.entry_id,
+                    "迁移后删除旧版",
+                )
+
+    def _list_registered_entry_ids(self, folder: str | None = None) -> set[str]:
+        folder_name = folder or task_folder()
         script = (
-            f"Get-ScheduledTask -TaskPath '\\{TASK_FOLDER}\\' -ErrorAction SilentlyContinue "
+            f"Get-ScheduledTask -TaskPath '\\{folder_name}\\' -ErrorAction SilentlyContinue "
             "| ForEach-Object { $_.TaskName }"
         )
         try:
@@ -264,7 +299,7 @@ class WindowsTaskSchedulerBackend(SystemSchedulerBackend):
                 ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding=_subprocess_text_encoding(),
                 errors="replace",
                 timeout=30,
                 check=False,
@@ -289,7 +324,7 @@ class WindowsTaskSchedulerBackend(SystemSchedulerBackend):
                 ["schtasks", *args],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding=_subprocess_text_encoding(),
                 errors="replace",
                 timeout=60,
                 check=False,

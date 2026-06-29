@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import sys
 from pathlib import Path
 
@@ -23,6 +24,17 @@ def resolve_install_anchor() -> Path:
 
     root = Path(__file__).resolve().parents[2]
     return (root / "main.py").resolve()
+
+
+def resolve_schedule_instance_id() -> str:
+    """为当前安装实例生成稳定的短标识，用于隔离系统计划任务命名空间。"""
+    anchor = str(resolve_install_anchor().resolve())
+    return hashlib.sha256(anchor.encode("utf-8")).hexdigest()[:8]
+
+
+def resolve_schedule_task_folder() -> str:
+    """Windows 任务计划程序文件夹名（按安装路径隔离，避免多实例互相覆盖）。"""
+    return f"MFW-ChainFlow Assistant-{resolve_schedule_instance_id()}"
 
 
 def resolve_schedule_launch_command(config_id: str, *, force_start: bool) -> tuple[str, str]:
