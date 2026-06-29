@@ -2711,8 +2711,20 @@ class MultiResourceUpdate(Update):
             # 获取 bundle 路径
             bundle_path = self._get_bundle_path()
             if not bundle_path:
-                logger.warning("[步骤4] Bundle 配置不存在，跳过热更新")
-                return self._stop_with_notice(2)
+                interface_name = str(self.interface.get("name", "") or "").strip()
+                message = self.tr(
+                    "Unable to apply the update because bundle \"{name}\" was not "
+                    "found in the configuration.\n\n"
+                    "The interface.name field may not match the bundle key in "
+                    "multi_config.json. Please verify the bundle settings and try again."
+                ).format(name=interface_name or "?")
+                logger.warning(
+                    "[步骤4] Bundle 配置不存在，跳过热更新: interface.name=%s",
+                    interface_name,
+                )
+                signalBus.focus_modal.emit(message)
+                self._last_check_error = message
+                return self._stop_with_notice(0, "error", message)
             bundle_path_obj = Path(bundle_path)
             logger.debug("[步骤4] Bundle 路径: %s", bundle_path_obj)
 
