@@ -16,8 +16,12 @@ from app.core.service.system_scheduler.unix_common import (
     MFW_CRON_BEGIN,
     MFW_CRON_END,
     build_shell_job,
+    mfw_cron_begin,
+    mfw_cron_end,
     render_crontab,
+    render_crontab_blocks,
     split_crontab,
+    split_crontab_blocks,
 )
 
 
@@ -134,6 +138,42 @@ class CrontabBlockTests(unittest.TestCase):
         job = build_shell_job("cfg_demo", force_start=False)
         self.assertIn("--config-id=cfg_demo", job)
         self.assertIn("--direct-run", job)
+
+    def test_split_preserves_other_instance_blocks(self) -> None:
+        original = "\n".join(
+            [
+                "0 1 * * * /usr/bin/other",
+                "",
+                mfw_cron_begin("aaaaaaaa"),
+                "# mfw-schedule:sched_a",
+                "0 8 * * * /opt/MFW-a --config-id=a --direct-run",
+                mfw_cron_end("aaaaaaaa"),
+                mfw_cron_begin("bbbbbbbb"),
+                "# mfw-schedule:sched_b",
+                "0 9 * * * /opt/MFW-b --config-id=b --direct-run",
+                mfw_cron_end("bbbbbbbb"),
+            ]
+        ) + "\n"
+        preserved, blocks = split_crontab_blocks(original)
+        self.assertEqual(preserved, ["0 1 * * * /usr/bin/other"])
+        self.assertEqual(
+            blocks["aaaaaaaa"]["sched_a"],
+            ["0 8 * * * /opt/MFW-a --config-id=a --direct-run"],
+        )
+        self.assertEqual(
+            blocks["bbbbbbbb"]["sched_b"],
+            ["0 9 * * * /opt/MFW-b --config-id=b --direct-run"],
+        )
+
+        blocks["aaaaaaaa"] = {
+            "sched_a2": ["0 10 * * * /opt/MFW-a2 --config-id=a2 --direct-run"]
+        }
+        rendered = render_crontab_blocks(preserved, blocks)
+        preserved2, blocks2 = split_crontab_blocks(rendered)
+        self.assertEqual(preserved2, preserved)
+        self.assertNotIn("sched_a", blocks2["aaaaaaaa"])
+        self.assertIn("sched_a2", blocks2["aaaaaaaa"])
+        self.assertIn("sched_b", blocks2["bbbbbbbb"])
 
 
 if __name__ == "__main__":

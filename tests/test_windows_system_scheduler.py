@@ -10,8 +10,8 @@ from app.core.service.schedule_service import (
     ScheduleEntry,
 )
 from app.core.service.system_scheduler.windows import (
-    TASK_FOLDER,
     build_task_xml,
+    task_folder,
     task_full_name,
 )
 
@@ -130,11 +130,16 @@ class BuildTaskXmlTests(unittest.TestCase):
         self.assertIn("<Week>2</Week>", xml)
         self.assertIn("<Wednesday/>", xml)
 
-    def test_task_full_name(self) -> None:
+    @patch(
+        "app.core.service.system_scheduler.windows.resolve_schedule_task_folder",
+        return_value="MFW-ChainFlow Assistant-testinst01",
+    )
+    def test_task_full_name(self, _mock_folder: object) -> None:
         self.assertEqual(
             task_full_name("sched_abc"),
-            f"\\{TASK_FOLDER}\\sched_abc",
+            "\\MFW-ChainFlow Assistant-testinst01\\sched_abc",
         )
+        self.assertEqual(task_folder(), "MFW-ChainFlow Assistant-testinst01")
 
 
 if __name__ == "__main__":
