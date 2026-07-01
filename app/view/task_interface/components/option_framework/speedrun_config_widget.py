@@ -7,12 +7,12 @@ from qfluentwidgets import (
     BodyLabel,
     ComboBox,
     LineEdit,
-    SpinBox,
     SwitchButton,
     isDarkTheme,
     qconfig,
 )
 
+from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.core.service.task_service import DEFAULT_SPEEDRUN_CONFIG
 from app.core.speedrun.conditions.cron import DEFAULT_CRON_EXPRESSION
 from app.core.speedrun.config import normalize_speedrun_config
@@ -43,9 +43,6 @@ class SpeedrunConfigWidget(QWidget):
 
         self._init_condition_section()
         self._init_run_count_section()
-        self._init_weekday_section()
-        self._init_month_day_section()
-        self._init_after_time_section()
         self._init_cron_section()
         self._init_execution_section()
         self._bind_signals()
@@ -64,9 +61,6 @@ class SpeedrunConfigWidget(QWidget):
         self.condition_combo = ComboBox(self)
         self.condition_combo.addItem(self.tr("Always"), userData="always")
         self.condition_combo.addItem(self.tr("Run Count"), userData="run_count")
-        self.condition_combo.addItem(self.tr("Weekday"), userData="weekday")
-        self.condition_combo.addItem(self.tr("Month Day"), userData="month_day")
-        self.condition_combo.addItem(self.tr("After Time"), userData="after_time")
         self.condition_combo.addItem(self.tr("Cron"), userData="cron")
         form.addRow(self.tr("Condition Type"), self.condition_combo)
         self.main_layout.addLayout(form)
@@ -95,40 +89,68 @@ class SpeedrunConfigWidget(QWidget):
         self.refresh_hour_combo = self._build_hour_combo()
         layout.addRow(self.tr("Refresh Timeline"), self.refresh_hour_combo)
 
-        self.count_spin = SpinBox(self)
-        self.count_spin.setRange(1, 9999)
-        self.count_spin.setValue(1)
-        layout.addRow(self.tr("Run Count"), self.count_spin)
+        self.run_once_switch = SwitchButton(self)
+        self.run_once_switch.setOnText(self.tr("Enabled"))
+        self.run_once_switch.setOffText(self.tr("Disabled"))
+        layout.addRow(self.tr("Run Once Per Period"), self.run_once_switch)
+
+        self._init_run_count_tooltips()
 
         self.run_count_section, self.run_count_line = self._wrap_with_indicator(container)
         self.main_layout.addWidget(self.run_count_section)
         self._update_run_count_period_visibility("daily")
 
-    def _init_weekday_section(self) -> None:
-        container = QWidget(self)
-        layout = QFormLayout(container)
-        self.weekday_combo = self._build_weekday_combo()
-        layout.addRow(self.tr("Weekday"), self.weekday_combo)
-        self.weekday_section, self.weekday_line = self._wrap_with_indicator(container)
-        self.main_layout.addWidget(self.weekday_section)
-
-    def _init_month_day_section(self) -> None:
-        container = QWidget(self)
-        layout = QFormLayout(container)
-        self.month_day_combo = self._build_month_day_combo()
-        layout.addRow(self.tr("Day"), self.month_day_combo)
-        self.month_day_section, self.month_day_line = self._wrap_with_indicator(container)
-        self.main_layout.addWidget(self.month_day_section)
-
-    def _init_after_time_section(self) -> None:
-        container = QWidget(self)
-        layout = QFormLayout(container)
-        self.after_hour_combo = self._build_hour_combo()
-        layout.addRow(self.tr("Hour"), self.after_hour_combo)
-        self.after_time_section, self.after_time_line = self._wrap_with_indicator(
-            container
+    def _init_run_count_tooltips(self) -> None:
+        apply_fluent_tooltip(
+            self.run_once_switch,
+            self.tr(
+                "开启：每周期内仅运行一次（首次确认），后续同周期跳过。\n"
+                "关闭：切换为条件窗口模式，根据周期和刷新时间线划定 24 小时窗口。\n"
+                "窗口内条件命中，窗口外条件未命中，具体行为由执行类型决定：\n"
+                "  执行=运行 → 窗口内运行，窗口外不运行\n"
+                "  执行=跳过 → 窗口内跳过，窗口外运行"
+            ),
         )
-        self.main_layout.addWidget(self.after_time_section)
+        apply_fluent_tooltip(
+            self.period_combo,
+            self.tr(
+                "选择周期类型。\n"
+                "天：每日刷新，结合刷新时间线判断窗口。\n"
+                "周：每周在所选星期几刷新，结合刷新时间线判断窗口。\n"
+                "月：每月在所选日期刷新，结合刷新时间线判断窗口。"
+            ),
+        )
+        apply_fluent_tooltip(
+            self.run_count_weekday_combo,
+            self.tr("周模式下，选择每周的哪一天作为周期锚点。"),
+        )
+        apply_fluent_tooltip(
+            self.run_count_month_day_combo,
+            self.tr("月模式下，选择每月的哪一天作为周期锚点。"),
+        )
+        self._update_refresh_hour_tooltip("daily")
+
+    def _update_refresh_hour_tooltip(self, period: str) -> None:
+        period = (period or "daily").lower()
+        rules = {
+            "daily": self.tr(
+                "刷新时间线，每日从此时间开始新周期和 24 小时条件窗口。\n"
+                "仅首次开启：超过此时间线后本周期可运行一次。\n"
+                "仅首次关闭：此时间线起 24 小时为条件窗口。"
+            ),
+            "weekly": self.tr(
+                "刷新时间线，每周在所选星期几的此时间开始新周期和 24 小时条件窗口。\n"
+                "仅首次开启：本周超过此时间线后可运行一次。\n"
+                "仅首次关闭：星期几此时间线起 24 小时为条件窗口。\n"
+                "例：周二 05:00 → 窗口为周二 05:00 至周三 04:59:59"
+            ),
+            "monthly": self.tr(
+                "刷新时间线，每月在所选日期的此时间开始新周期和 24 小时条件窗口。\n"
+                "仅首次开启：本月超过此时间线后可运行一次。\n"
+                "仅首次关闭：此日期此时间线起 24 小时为条件窗口。"
+            ),
+        }
+        apply_fluent_tooltip(self.refresh_hour_combo, rules.get(period, rules["daily"]))
 
     def _init_cron_section(self) -> None:
         container = QWidget(self)
@@ -207,13 +229,10 @@ class SpeedrunConfigWidget(QWidget):
         self.notify_switch.checkedChanged.connect(self._on_value_changed)
         self.external_notify_switch.checkedChanged.connect(self._on_value_changed)
         self.period_combo.currentIndexChanged.connect(self._on_period_changed)
-        self.count_spin.valueChanged.connect(self._on_value_changed)
+        self.run_once_switch.checkedChanged.connect(self._on_value_changed)
         self.refresh_hour_combo.currentIndexChanged.connect(self._on_value_changed)
         self.run_count_weekday_combo.currentIndexChanged.connect(self._on_value_changed)
         self.run_count_month_day_combo.currentIndexChanged.connect(self._on_value_changed)
-        self.weekday_combo.currentIndexChanged.connect(self._on_value_changed)
-        self.month_day_combo.currentIndexChanged.connect(self._on_value_changed)
-        self.after_hour_combo.currentIndexChanged.connect(self._on_value_changed)
         self.cron_input.textChanged.connect(self._on_value_changed)
         qconfig.themeChanged.connect(self._on_theme_changed)
 
@@ -242,7 +261,8 @@ class SpeedrunConfigWidget(QWidget):
         )
 
         self._set_combo_value(self.period_combo, condition.get("period", "daily"), 0)
-        self.count_spin.setValue(self._to_int(condition.get("count"), 1, 1))
+        count_value = self._to_int(condition.get("count"), 1, 1)
+        self.run_once_switch.setChecked(count_value <= 1)
         self._set_combo_value(
             self.refresh_hour_combo, self._to_hour(condition.get("refresh_hour")), 0
         )
@@ -251,14 +271,11 @@ class SpeedrunConfigWidget(QWidget):
         weekday = weekdays[0] if isinstance(weekdays, list) and weekdays else 1
         weekday_value = self._to_int(weekday, 1, 1)
         self._set_combo_value(self.run_count_weekday_combo, weekday_value, 0)
-        self._set_combo_value(self.weekday_combo, weekday_value, 0)
 
         days = condition.get("days", [1])
         day = days[0] if isinstance(days, list) and days else 1
         day_value = self._to_int(day, 1, 1)
         self._set_combo_value(self.run_count_month_day_combo, day_value, 0)
-        self._set_combo_value(self.month_day_combo, day_value, 0)
-        self._set_combo_value(self.after_hour_combo, self._to_hour(condition.get("hour")), 0)
         self.cron_input.setText(
             str(condition.get("expression") or DEFAULT_CRON_EXPRESSION)
         )
@@ -284,24 +301,11 @@ class SpeedrunConfigWidget(QWidget):
         condition_type = str(self._get_combo_value(self.condition_combo, "run_count"))
         action_type = str(self._get_combo_value(self.action_combo, "skip"))
         period = str(self._get_combo_value(self.period_combo, "daily"))
-        count = int(self.count_spin.value())
+        count = 1 if self.run_once_switch.isChecked() else 9999
         refresh_hour = int(self._get_combo_value(self.refresh_hour_combo, 0))
-        run_count_weekday = int(self._get_combo_value(self.run_count_weekday_combo, 1))
-        run_count_day = int(self._get_combo_value(self.run_count_month_day_combo, 1))
-        standalone_weekday = int(self._get_combo_value(self.weekday_combo, 1))
-        standalone_day = int(self._get_combo_value(self.month_day_combo, 1))
-        after_hour = int(self._get_combo_value(self.after_hour_combo, 0))
+        weekday = int(self._get_combo_value(self.run_count_weekday_combo, 1))
+        day = int(self._get_combo_value(self.run_count_month_day_combo, 1))
         cron_expression = self.cron_input.text().strip() or DEFAULT_CRON_EXPRESSION
-
-        if condition_type == "weekday":
-            weekday = standalone_weekday
-            day = run_count_day
-        elif condition_type == "month_day":
-            weekday = run_count_weekday
-            day = standalone_day
-        else:
-            weekday = run_count_weekday
-            day = run_count_day
 
         config["enabled"] = True
         config["condition"].update(
@@ -312,7 +316,7 @@ class SpeedrunConfigWidget(QWidget):
                 "refresh_hour": refresh_hour,
                 "weekdays": [weekday],
                 "days": [day],
-                "hour": after_hour,
+                "hour": refresh_hour,
                 "expression": cron_expression,
             }
         )
@@ -338,6 +342,7 @@ class SpeedrunConfigWidget(QWidget):
     def _on_period_changed(self, _: int) -> None:
         period = str(self._get_combo_value(self.period_combo, "daily"))
         self._update_run_count_period_visibility(period)
+        self._update_refresh_hour_tooltip(period)
         self._on_value_changed()
 
     def _update_run_count_period_visibility(self, period: str) -> None:
@@ -369,9 +374,6 @@ class SpeedrunConfigWidget(QWidget):
     def _update_condition_visibility(self, condition_type: str, animate: bool = True) -> None:
         targets = {
             "run_count": self.run_count_section,
-            "weekday": self.weekday_section,
-            "month_day": self.month_day_section,
-            "after_time": self.after_time_section,
             "cron": self.cron_section,
         }
         if condition_type not in targets:
@@ -394,9 +396,6 @@ class SpeedrunConfigWidget(QWidget):
     def _hide_all_condition_sections(self) -> None:
         sections = [
             self.run_count_section,
-            self.weekday_section,
-            self.month_day_section,
-            self.after_time_section,
             self.cron_section,
         ]
         for section in sections:
@@ -406,9 +405,6 @@ class SpeedrunConfigWidget(QWidget):
     def _init_animators(self) -> None:
         self._condition_animators = {
             "run_count": HeightAnimator(self.run_count_section, duration=200, parent=self),
-            "weekday": HeightAnimator(self.weekday_section, duration=200, parent=self),
-            "month_day": HeightAnimator(self.month_day_section, duration=200, parent=self),
-            "after_time": HeightAnimator(self.after_time_section, duration=200, parent=self),
             "cron": HeightAnimator(self.cron_section, duration=200, parent=self),
         }
 
@@ -441,9 +437,6 @@ class SpeedrunConfigWidget(QWidget):
     def _on_theme_changed(self):
         for line in [
             self.run_count_line,
-            self.weekday_line,
-            self.month_day_line,
-            self.after_time_line,
             self.cron_line,
         ]:
             self._set_indicator_color(line)

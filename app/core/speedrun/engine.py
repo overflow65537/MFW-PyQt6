@@ -80,7 +80,17 @@ def evaluate_speedrun(
     condition_result = condition.evaluate(context, condition_cfg)
     if condition_result.dirty:
         update_task(task)
+    logger.debug(
+        "速通条件评估: 任务=%s, 条件类型=%s, matched=%s, reason=%s",
+        task.name,
+        condition_type,
+        condition_result.matched,
+        condition_result.reason or "无",
+    )
     if not condition_result.matched:
+        if action_type == "normal_run":
+            reason = condition_result.reason or "条件未命中，不执行"
+            return SpeedrunActionResult(should_run=False, reason=reason)
         return SpeedrunActionResult(should_run=True)
 
     _run_side_effects(context, action_cfg, condition_result.reason)
