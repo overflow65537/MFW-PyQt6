@@ -1799,7 +1799,14 @@ class TaskFlowRunner(QObject):
             return await self._run_builtin_task(task)
         speedrun_cfg = self._resolve_speedrun_config(task)
         # 仅依据任务自身的速通开关，不再依赖全局 speedrun_mode；单任务执行可跳过校验
-        if (not skip_speedrun) and speedrun_cfg:
+        if (not skip_speedrun) and speedrun_cfg and speedrun_cfg.get("enabled"):
+            condition = speedrun_cfg.get("condition", {})
+            condition_type = condition.get("type", "run_count") if isinstance(condition, dict) else "run_count"
+            action = speedrun_cfg.get("action", {})
+            action_type = action.get("type", "normal_run") if isinstance(action, dict) else "normal_run"
+            logger.debug(
+                f"任务 '{task.name}' 开始速通条件评估: 条件类型={condition_type}, 执行类型={action_type}"
+            )
             speedrun_result = evaluate_speedrun(
                 task,
                 speedrun_cfg,
@@ -1820,6 +1827,10 @@ class TaskFlowRunner(QObject):
                     + speedrun_result.reason,
                 )
                 return "skipped"
+            else:
+                logger.debug(
+                    f"任务 '{task.name}' 速通条件评估通过, 允许执行: {speedrun_result.reason or '无条件通过'}"
+                )
 
         raw_info = self.task_service.get_task_execution_info(task_id)
         logger.info(f"任务 '{task.name}' 的执行信息: {raw_info}")
@@ -1873,7 +1884,7 @@ class TaskFlowRunner(QObject):
 
         self._stop_task_timeout()
         # 仅在任务未被 abort 且正常完成时记录速通耗时
-        if self._current_task_ok and speedrun_cfg:
+        if self._current_task_ok and speedrun_cfg and speedrun_cfg.get("enabled"):
             record_speedrun_runtime(task, speedrun_cfg, self.task_service.update_task)
 
     async def _run_builtin_task(self, task: TaskItem):
