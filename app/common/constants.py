@@ -11,6 +11,9 @@ PRE_CONFIGURATION = "Pre-Configuration"
 #控制器设置任务的固定 ID
 _CONTROLLER_ = "Controller"
 
+# 全局设置任务的固定 ID
+_SETTING_ = "Setting"
+
 #资源设置任务的固定 ID
 _RESOURCE_ = "Resource"
 

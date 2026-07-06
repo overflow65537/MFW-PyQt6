@@ -16,6 +16,7 @@ from app.common.constants import (
     POST_ACTION,
     _CONTROLLER_,
     _RESOURCE_,
+    _SETTING_,
 )
 from app.common.config import cfg
 
@@ -596,12 +597,12 @@ class TaskFlowRunner(QObject):
             runner_interface = interface_manager.get_interface() or {}
             self.task_service.update_runtime_interface(runner_interface)
 
-            # 1. 配置级 global_option + resource.option（已在函数内按优先级合并）
+            # 1. Setting 全局选项 + resource.option（已在函数内按优先级合并）
             self._default_pipeline_override = get_pipeline_override_from_task_option(
                 runner_interface,
                 resource_cfg.task_option,
                 _RESOURCE_,
-                self.config_service.get_current_global_options(),
+                self.config_service.get_current_setting_options(),
             )
 
             # 2. controller.option（优先级高于 resource.option 和 global_option）
@@ -1039,7 +1040,7 @@ class TaskFlowRunner(QObject):
                 else:
                     continue
 
-            if task.name in [_CONTROLLER_, _RESOURCE_, POST_ACTION]:
+            if task.item_id in (_CONTROLLER_, _SETTING_, _RESOURCE_, POST_ACTION):
                 continue
 
             if not task.is_checked:

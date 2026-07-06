@@ -160,6 +160,7 @@ def get_pipeline_override_from_task_option(
     interface: Dict[str, Any],
     task_options: Dict[str, Any],
     task_id: Optional[str] = None,
+    setting_options: Optional[Dict[str, Any]] = None,
     global_options: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """从任务选项中提取 pipeline_override
@@ -200,25 +201,20 @@ def get_pipeline_override_from_task_option(
 
     merged_override = {}
     options = interface.get("option", {})
+    if setting_options is None and global_options is not None:
+        setting_options = global_options
 
     # 如果是 Resource 任务，按优先级顺序处理各层选项
-    # 合并优先级（从低到高）：配置级 global_options < resource_options
+    # 合并优先级（从低到高）：Setting 任务选项 < resource_options
     # controller_options 由 get_controller_option_pipeline_override 单独处理
     from app.common.constants import _RESOURCE_
     if task_id == _RESOURCE_:
-        # 1. 先处理配置级 global_options（最低优先级）
-        effective_global_options = global_options
-        if not isinstance(effective_global_options, dict):
-            legacy_global_options = task_options.get("global_options", {})
-            effective_global_options = legacy_global_options if isinstance(legacy_global_options, dict) else {}
-
-        if effective_global_options:
-            for option_name, option_value in effective_global_options.items():
+        if isinstance(setting_options, dict):
+            for option_name, option_value in setting_options.items():
                 _process_option_recursive(
                     options, option_name, option_value, merged_override
                 )
 
-        # 2. 再处理 resource_options（优先级高于 global_options）
         if "resource_options" in task_options:
             resource_options = task_options["resource_options"]
             for option_name, option_value in resource_options.items():

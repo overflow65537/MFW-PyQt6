@@ -817,6 +817,49 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 使用新的OptionFormWidget框架获取配置
         return self.option_form_widget.get_options()
 
+
+    def _apply_setting_settings_with_animation(self, form_structure: Dict[str, Any], config: Dict[str, Any]):
+        """渲染 v2.8 Setting 页面。"""
+        self._clear_options()
+        sections = form_structure.get("sections", []) if isinstance(form_structure, dict) else []
+        option_keys = [k for k, v in form_structure.items() if k not in {"type", "sections", "description"} and isinstance(v, dict)]
+        if not option_keys:
+            self.option_area_card.show()
+            empty = BodyLabel(self.tr("当前资源没有全局设置"))
+            empty.setWordWrap(True)
+            self.option_page_layout.addWidget(empty)
+            self.set_description("", has_options=False)
+            return
+
+        self.option_area_card.show()
+        if not isinstance(sections, list) or not sections:
+            plain_structure = {k: form_structure[k] for k in option_keys}
+            self.option_form_widget.build_from_structure(plain_structure, config)
+            self._connect_option_signals()
+            self._update_options_enabled()
+            self.set_description("", has_options=True)
+            return
+
+        ordered_keys: list[str] = []
+        if isinstance(sections, list):
+            for section in sections:
+                if not isinstance(section, dict):
+                    continue
+                keys = [k for k in section.get("option", []) if k in form_structure and k not in ordered_keys]
+                if not keys:
+                    continue
+                label = section.get("label") or section.get("name") or self.tr("Global Option")
+                section_label = BodyLabel(str(label))
+                section_label.setStyleSheet("font-size: 16px; font-weight: 600;")
+                self.option_page_layout.insertWidget(max(0, self.option_page_layout.indexOf(self.option_form_widget)), section_label)
+                ordered_keys.extend(keys)
+        ordered_keys.extend([k for k in option_keys if k not in ordered_keys])
+        plain_structure = {k: form_structure[k] for k in ordered_keys}
+        self.option_form_widget.build_from_structure(plain_structure, config)
+        self._connect_option_signals()
+        self._update_options_enabled()
+        self.set_description("", has_options=True)
+
     def _connect_option_signals(self):
         """
         连接选项变化信号以实现自动保存
@@ -875,6 +918,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             # 判断任务类型
             form_type = form_structure.get("type")
             is_resource = form_type == "resource"
+            is_setting = form_type == "setting"
             is_controller = form_type == "controller"
             is_post_action = form_type == "post_action"
 
@@ -884,6 +928,12 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                     lambda: self._apply_resource_settings_with_animation()
                 )
                 # 资源类型的描述会在 create_settings 中设置
+
+            elif is_setting:
+                # 全局设置任务 - 显示 setting 分区
+                self._option_animator.play(
+                    lambda: self._apply_setting_settings_with_animation(form_structure, self.current_config)
+                )
 
             elif is_controller:
                 # 控制器任务 - 显示控制器设置
@@ -913,7 +963,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         speedrun_visible = not (
             form_structure
             and form_structure.get("type")
-            in ["resource", "controller", "post_action"]
+            in ["resource", "setting", "controller", "post_action"]
         )
 
         if not speedrun_visible:

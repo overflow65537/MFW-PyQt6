@@ -1,10 +1,16 @@
-import jsonc
+﻿import jsonc
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
 from app.utils.logger import logger
-from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION, PRE_CONFIGURATION
+from app.common.constants import (
+    _RESOURCE_,
+    _CONTROLLER_,
+    _SETTING_,
+    POST_ACTION,
+    PRE_CONFIGURATION,
+)
 from app.core.item import ConfigItem, TaskItem, CoreSignalBus
 from app.core.utils.option_branches_compat import normalize_config_item_branches
 
@@ -272,6 +278,77 @@ class ConfigService:
 
         return False
 
+    def _get_first_interface_name(self, key: str) -> str:
+        items = self.repo.interface.get(key, []) if isinstance(self.repo.interface, dict) else []
+        if isinstance(items, list) and items and isinstance(items[0], dict):
+            return str(items[0].get("name", "") or "")
+        return ""
+
+    def _make_base_task(self, item_id: str, task_option: Dict[str, Any] | None = None) -> TaskItem:
+        names = {
+            _CONTROLLER_: "Controller",
+            _SETTING_: "Setting",
+            _RESOURCE_: "Resource",
+            POST_ACTION: "Post-Action",
+        }
+        return TaskItem(
+            name=names.get(item_id, item_id),
+            item_id=item_id,
+            is_checked=True,
+            task_option=dict(task_option or {}),
+        )
+
+    def _ensure_base_task_order(self, config: ConfigItem) -> bool:
+        """Ensure Controller, Setting, Resource prefix and Post-Action suffix."""
+        if not config or not isinstance(config.tasks, list):
+            return False
+        changed = False
+        first_by_id: Dict[str, TaskItem] = {}
+        normal_tasks: List[TaskItem] = []
+        for task in config.tasks:
+            if task.item_id in (_CONTROLLER_, _SETTING_, _RESOURCE_, POST_ACTION):
+                if task.item_id not in first_by_id:
+                    first_by_id[task.item_id] = task
+                else:
+                    changed = True
+            else:
+                normal_tasks.append(task)
+
+        if _CONTROLLER_ not in first_by_id:
+            first_by_id[_CONTROLLER_] = self._make_base_task(
+                _CONTROLLER_, {"controller_type": self._get_first_interface_name("controller")}
+            )
+            changed = True
+        if _SETTING_ not in first_by_id:
+            first_by_id[_SETTING_] = self._make_base_task(_SETTING_, {})
+            changed = True
+        if _RESOURCE_ not in first_by_id:
+            first_by_id[_RESOURCE_] = self._make_base_task(
+                _RESOURCE_, {"resource": self._get_first_interface_name("resource")}
+            )
+            changed = True
+        if POST_ACTION not in first_by_id:
+            first_by_id[POST_ACTION] = self._make_base_task(POST_ACTION, {})
+            changed = True
+
+        ordered = [
+            first_by_id[_CONTROLLER_],
+            first_by_id[_SETTING_],
+            first_by_id[_RESOURCE_],
+            *normal_tasks,
+            first_by_id[POST_ACTION],
+        ]
+        if [t.item_id for t in ordered] != [t.item_id for t in config.tasks]:
+            changed = True
+        config.tasks = ordered
+        return changed
+
+    def get_setting_task(self, config: ConfigItem) -> TaskItem | None:
+        for task in config.tasks:
+            if task.item_id == _SETTING_:
+                return task
+        return None
+
     def get_config(self, config_id: str) -> Optional[ConfigItem]:
         """获取指定配置"""
         config_data = self.repo.load_config(config_id)
@@ -281,12 +358,16 @@ class ConfigService:
         config = ConfigItem.from_dict(config_data)
         
         # 向后兼容：检查并转换旧的 Pre-Configuration 任务
-        self._migrate_pre_configuration_task(config)
-        # 向后兼容：将历史 Resource 任务中的全局选项迁移到配置根层
-        self._migrate_global_options_storage(config)
+        changed = self._migrate_pre_configuration_task(config)
+        changed = self._ensure_base_task_order(config) or changed
+        # 向后兼容：将历史全局选项迁移到 Setting 任务
+        changed = self._migrate_global_options_storage(config) or changed
+        changed = self._ensure_base_task_order(config) or changed
         # 向后兼容：将历史 `children` 字段更正为 `branches`
         branches_changed = normalize_config_item_branches(config)
         if branches_changed:
+            changed = True
+        if changed:
             self.repo.save_config(config.item_id, config.to_dict())
         
         return config
@@ -333,6 +414,12 @@ class ConfigService:
                     },
                 ),
                 TaskItem(
+                    name="Setting",
+                    item_id=_SETTING_,
+                    is_checked=True,
+                    task_option={},
+                ),
+                TaskItem(
                     name="Resource",
                     item_id=_RESOURCE_,
                     is_checked=True,
@@ -357,17 +444,31 @@ class ConfigService:
         """更新配置"""
         return self.save_config(config_id, config_data)
 
-    def get_current_global_options(self) -> Dict[str, Any]:
-        """获取当前配置的全局选项。"""
+    def get_current_setting_options(self) -> Dict[str, Any]:
+        """获取当前配置的 Setting 任务选项。"""
         config = self.get_current_config()
-        global_options = getattr(config, "global_options", {}) or {}
-        return dict(global_options) if isinstance(global_options, dict) else {}
+        setting_task = self.get_setting_task(config)
+        options = setting_task.task_option if setting_task else {}
+        return dict(options) if isinstance(options, dict) else {}
+
+    def update_current_setting_options(self, setting_options: Dict[str, Any]) -> bool:
+        """更新当前配置的 Setting 任务选项。"""
+        config = self.get_current_config()
+        self._ensure_base_task_order(config)
+        setting_task = self.get_setting_task(config)
+        if setting_task is None:
+            return False
+        setting_task.task_option = dict(setting_options) if isinstance(setting_options, dict) else {}
+        config.global_options = {}
+        return self.update_config(config.item_id, config)
+
+    def get_current_global_options(self) -> Dict[str, Any]:
+        """兼容旧 API：全局选项现从 Setting 任务读取。"""
+        return self.get_current_setting_options()
 
     def update_current_global_options(self, global_options: Dict[str, Any]) -> bool:
-        """更新当前配置的全局选项。"""
-        config = self.get_current_config()
-        config.global_options = dict(global_options) if isinstance(global_options, dict) else {}
-        return self.update_config(config.item_id, config)
+        """兼容旧 API：全局选项现写入 Setting 任务。"""
+        return self.update_current_setting_options(global_options)
 
     def delete_config(self, config_id: str) -> bool:
         """删除配置（禁止删除最后一个配置）"""
@@ -562,45 +663,52 @@ class ConfigService:
             return False
 
     def _migrate_global_options_storage(self, config: ConfigItem) -> bool:
-        """将历史上保存在 Resource 任务中的全局选项迁移到配置根层。"""
-        global_option_names = {
-            name for name in self.repo.interface.get("global_option", []) if isinstance(name, str) and name
-        }
-
-        resource_task = next((task for task in config.tasks if task.item_id == _RESOURCE_), None)
-        if resource_task is None or not isinstance(resource_task.task_option, dict):
-            return False
-
-        task_option = resource_task.task_option
-        current_global_options = getattr(config, "global_options", {})
-        if not isinstance(current_global_options, dict):
-            current_global_options = {}
-
+        """将历史全局选项迁移到 Setting 任务。"""
         changed = False
+        self._ensure_base_task_order(config)
+        setting_task = self.get_setting_task(config)
+        if setting_task is None:
+            return False
+        if not isinstance(setting_task.task_option, dict):
+            setting_task.task_option = {}
+            changed = True
+        setting_options = setting_task.task_option
 
-        legacy_nested_global_options = task_option.get("global_options")
-        if isinstance(legacy_nested_global_options, dict):
-            for key, value in legacy_nested_global_options.items():
-                if key not in current_global_options:
-                    current_global_options[key] = value
+        legacy_root = getattr(config, "global_options", {})
+        if isinstance(legacy_root, dict):
+            for key, value in legacy_root.items():
+                if key not in setting_options:
+                    setting_options[key] = value
                     changed = True
-            if "global_options" in task_option:
-                del task_option["global_options"]
+            if legacy_root:
+                config.global_options = {}
                 changed = True
 
-        for option_name in global_option_names:
-            if option_name not in task_option:
-                continue
-            if option_name not in current_global_options:
-                current_global_options[option_name] = task_option[option_name]
-            del task_option[option_name]
-            changed = True
+        resource_task = next((task for task in config.tasks if task.item_id == _RESOURCE_), None)
+        if resource_task is not None and isinstance(resource_task.task_option, dict):
+            task_option = resource_task.task_option
+            legacy_nested = task_option.get("global_options")
+            if isinstance(legacy_nested, dict):
+                for key, value in legacy_nested.items():
+                    if key not in setting_options:
+                        setting_options[key] = value
+                        changed = True
+                task_option.pop("global_options", None)
+                changed = True
 
-        if changed:
-            config.global_options = current_global_options
-            if self.save_config(config.item_id, config):
-                logger.info("已将 Resource 任务中的全局选项迁移到配置根层")
-                return True
-            logger.warning("全局选项迁移完成但保存失败")
+            # 已加载 interface 中 global_option 已转为 setting；收集 setting 引用的 option key，迁移旧扁平值。
+            setting_option_names: set[str] = set()
+            for section in self.repo.interface.get("setting", []) if isinstance(self.repo.interface, dict) else []:
+                if not isinstance(section, dict):
+                    continue
+                for name in section.get("option", []) if isinstance(section.get("option"), list) else []:
+                    if isinstance(name, str) and name:
+                        setting_option_names.add(name)
+            for option_name in list(setting_option_names):
+                if option_name in task_option:
+                    if option_name not in setting_options:
+                        setting_options[option_name] = task_option[option_name]
+                    task_option.pop(option_name, None)
+                    changed = True
 
         return changed

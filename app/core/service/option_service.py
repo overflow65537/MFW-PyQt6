@@ -25,10 +25,12 @@ class OptionService:
             except Exception:
                 pass
             self.current_options = task.task_option
-            from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
+            from app.common.constants import _RESOURCE_, _CONTROLLER_, _SETTING_, POST_ACTION
 
             if task.item_id == _RESOURCE_:
                 self.form_structure = {"type": "resource"}
+            elif task.item_id == _SETTING_:
+                self.form_structure = self.get_setting_form_structure()
             elif task.item_id == _CONTROLLER_:
                 self.form_structure = {"type": "controller"}
             elif task.item_id == POST_ACTION:
@@ -61,7 +63,7 @@ class OptionService:
         task.task_option.update(option_data)
 
         # 基础任务不应该包含 speedrun_config
-        from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
+        from app.common.constants import _RESOURCE_, _CONTROLLER_, _SETTING_, POST_ACTION
 
         if task.is_base_task() and "_speedrun_config" in task.task_option:
             del task.task_option["_speedrun_config"]
@@ -86,6 +88,47 @@ class OptionService:
             self.signal_bus.option_updated.emit(option_data)
 
         return success
+
+
+    def get_setting_form_structure(self) -> Dict[str, Any]:
+        """构建 v2.8 Setting 页面表单结构，按 section 顺序去重 option。"""
+        interface = self.task_service.interface or {}
+        all_options = interface.get("option", {}) if isinstance(interface, dict) else {}
+        sections = interface.get("setting", []) if isinstance(interface, dict) else []
+        form: Dict[str, Any] = {"type": "setting", "sections": []}
+        if not isinstance(all_options, dict) or not isinstance(sections, list):
+            return form
+
+        seen: set[str] = set()
+        for section in sections:
+            if not isinstance(section, dict):
+                continue
+            option_names = section.get("option", [])
+            if not isinstance(option_names, list):
+                continue
+            section_keys: list[str] = []
+            for option_name in option_names:
+                if not isinstance(option_name, str) or not option_name or option_name in seen:
+                    continue
+                option_def = all_options.get(option_name)
+                if not isinstance(option_def, dict):
+                    continue
+                if not self.is_option_visible(option_def):
+                    continue
+                form[option_name] = self.process_option_def(option_def, all_options, option_name)
+                seen.add(option_name)
+                section_keys.append(option_name)
+            if section_keys:
+                form["sections"].append(
+                    {
+                        "name": section.get("name", ""),
+                        "label": section.get("label", section.get("name", "")),
+                        "description": section.get("description", ""),
+                        "option": section_keys,
+                        "default_expand": section.get("default_expand", True),
+                    }
+                )
+        return form
 
     def get_options(self) -> Dict[str, Any]:
         """获取当前任务的选项"""
