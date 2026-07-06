@@ -1482,6 +1482,7 @@ class TaskFlowRunner(QObject):
 
         resource_target = resource_raw.get("resource")
         resource_path = []
+        resource_expected_hash = ""
 
         controller_cfg = self.task_service.get_task(_CONTROLLER_)
         gpu_idx = -1
@@ -1534,6 +1535,7 @@ class TaskFlowRunner(QObject):
             if resource["name"] == resource_target:
                 logger.debug(f"加载资源: {resource['path']}")
                 resource_path = resource["path"]
+                resource_expected_hash = str(resource.get("hash", "") or "").strip()
                 break
 
         if self.need_stop:
@@ -1589,6 +1591,28 @@ class TaskFlowRunner(QObject):
                 gpu_idx = -2
             await self.maafw.load_resource(resource, gpu_idx)
             logger.debug(f"资源加载完成: {resource}")
+
+        # v2.6.0：resource.hash 校验。hash 应为仅加载 resource.path 后的 MaaResourceGetHash 结果。
+        # 不匹配时仅警告用户，不阻止继续使用，也不影响后续 attach_resource_path 加载。
+        if resource_expected_hash and self.maafw.resource:
+            actual_hash = getattr(self.maafw.resource, "hash", "")
+            if callable(actual_hash):
+                actual_hash = actual_hash()
+            actual_hash = str(actual_hash or "").strip()
+            if actual_hash != resource_expected_hash:
+                logger.warning(
+                    "资源 hash 校验不匹配: resource=%s, expected=%s, actual=%s",
+                    resource_target,
+                    resource_expected_hash,
+                    actual_hash,
+                )
+                self.log_output.emit(
+                    "WARNING",
+                    self.tr(
+                        "Resource hash mismatch, please consider redownloading the resource package."
+                    ),
+                )
+
         # v2.2.0：控制器 attach_resource_path，在 resource.path 加载完成后额外加载
         bundle_path_str = self.bundle_path or "./"
         bundle_base = Path(bundle_path_str)
