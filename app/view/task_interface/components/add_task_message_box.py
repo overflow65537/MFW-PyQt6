@@ -28,7 +28,7 @@ from qfluentwidgets import (
 import jsonc
 from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.core.item import TaskItem, ConfigItem
-from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
+from app.common.constants import _RESOURCE_, _CONTROLLER_, _SETTING_, POST_ACTION
 from app.common.config import cfg
 from app.core.core import ServiceCoordinator
 from app.core.builtin_task_loader import BUILTIN_TASK_GROUP_NAME
@@ -475,15 +475,20 @@ class AddConfigDialog(BaseAddDialog):
         
         init_controller = bundle_interface["controller"][0]["name"]
         init_resource = bundle_interface["resource"][0]["name"]
-        # 仅为配置创建所需的基础任务:资源 与 完成后操作
         default_tasks = [
             TaskItem(
-                name="Pre-Configuration",
+                name="Controller",
                 item_id=_CONTROLLER_,
                 is_checked=True,
                 task_option={
                     "controller_type": init_controller,
                 },
+            ),
+            TaskItem(
+                name="Setting",
+                item_id=_SETTING_,
+                is_checked=True,
+                task_option={},
             ),
             TaskItem(
                 name="Resource",

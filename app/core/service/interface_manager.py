@@ -351,14 +351,60 @@ class InterfaceManager:
                 exc,
             )
 
+    def _normalize_setting_entries(self, value: Any) -> list[dict[str, Any]]:
+        """Normalize PI setting field to a list of section dictionaries."""
+        if isinstance(value, dict):
+            return [deepcopy(value)]
+        if isinstance(value, list):
+            return [deepcopy(item) for item in value if isinstance(item, dict)]
+        return []
+
+    def _merge_global_option_names(self, target: list[str], value: Any) -> None:
+        """Append global_option names preserving first occurrence."""
+        if not isinstance(value, list):
+            return
+        seen = set(target)
+        for item in value:
+            if not isinstance(item, str):
+                continue
+            name = item.strip()
+            if not name or name in seen:
+                continue
+            target.append(name)
+            seen.add(name)
+
+    def _normalize_setting_from_global_option(self, global_options: list[str]) -> None:
+        """Convert merged legacy global_option into the first setting section."""
+        native_sections = self._normalize_setting_entries(
+            self._original_interface.get("setting")
+        )
+        sections: list[dict[str, Any]] = []
+        if global_options:
+            sections.append(
+                {
+                    "name": "global_option",
+                    "label": "Global Option",
+                    "option": list(global_options),
+                    "default_expand": True,
+                }
+            )
+        sections.extend(native_sections)
+        self._original_interface["setting"] = sections
+        self._original_interface.pop("global_option", None)
+
     def _resolve_imports(self) -> None:
         """
-        解析 interface 的 import 字段：
-        按顺序加载每个路径对应的 PI 文件，仅合并其中的 task 和 option 到当前配置。
-        路径为相对于 interface 同目录的相对路径。
+        解析 interface 的 import 字段并合并 PI 片段。
+        v2.8: global_option 合并后转入 setting，runtime 不再单独消费 global_option。
         """
         import_paths = self._original_interface.get("import")
+        merged_global_options: list[str] = []
+        self._merge_global_option_names(
+            merged_global_options, self._original_interface.get("global_option")
+        )
+
         if not isinstance(import_paths, list):
+            self._normalize_setting_from_global_option(merged_global_options)
             return
         to_remove = []
         for i, item in enumerate(import_paths):
@@ -366,8 +412,6 @@ class InterfaceManager:
                 to_remove.append(i)
         for i in reversed(to_remove):
             import_paths.pop(i)
-        if not import_paths:
-            return
 
         for rel_path in import_paths:
             path_str = (rel_path or "").strip()
@@ -386,7 +430,6 @@ class InterfaceManager:
                 logger.warning(f"加载 import 文件失败 {target}: {e}")
                 continue
 
-            # 仅合并 task、option 和 preset
             if isinstance(imported.get("task"), list):
                 base_tasks = self._original_interface.setdefault("task", [])
                 if not isinstance(base_tasks, list):
@@ -405,7 +448,19 @@ class InterfaceManager:
                     base_preset = []
                     self._original_interface["preset"] = base_preset
                 base_preset.extend(imported["preset"])
+            if isinstance(imported.get("global_option"), list):
+                self._merge_global_option_names(
+                    merged_global_options, imported.get("global_option")
+                )
+            imported_setting = self._normalize_setting_entries(imported.get("setting"))
+            if imported_setting:
+                base_setting = self._original_interface.setdefault("setting", [])
+                if not isinstance(base_setting, list):
+                    base_setting = []
+                    self._original_interface["setting"] = base_setting
+                base_setting.extend(imported_setting)
 
+        self._normalize_setting_from_global_option(merged_global_options)
         # 合并完成后移除 import 字段，避免下游误用
         self._original_interface.pop("import", None)
 

@@ -742,16 +742,10 @@ class TaskDragListWidget(BaseListWidget):
 
     def _protected_positions(self, tasks: list[TaskItem]) -> dict[int, str]:
         """Remember base task ids that must stay in reserved slots."""
-        if not tasks:
-            return {}
-        positions = {0, 1, len(tasks) - 1}
-        protected: dict[int, str] = {}
-        for idx in positions:
-            if 0 <= idx < len(tasks):
-                task = tasks[idx]
-                if task.is_base_task():
-                    protected[idx] = task.item_id
-        return protected
+        protected: dict[int, str] = {0: _CONTROLLER_, 1: _SETTING_, 2: _RESOURCE_}
+        if tasks:
+            protected[len(tasks) - 1] = POST_ACTION
+        return {idx: task_id for idx, task_id in protected.items() if 0 <= idx < len(tasks)}
 
     def _base_positions_intact(
         self, tasks: list[TaskItem], protected: dict[int, str]
@@ -761,6 +755,9 @@ class TaskDragListWidget(BaseListWidget):
             if idx < 0 or idx >= len(tasks):
                 return False
             if tasks[idx].item_id != expected_id:
+                return False
+        for idx, task in enumerate(tasks):
+            if idx < 3 and task.item_id not in (_CONTROLLER_, _SETTING_, _RESOURCE_):
                 return False
         return True
 

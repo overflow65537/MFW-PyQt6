@@ -104,8 +104,6 @@ class ResourceSettingMixin:
         
         # 根据当前资源渲染资源选项（如果有）
         self._update_resource_options()
-        # 渲染全局选项（如果有 interface.global_option）
-        self._update_global_options()
 
     def _create_resource_option(self):
         """创建资源选择下拉框"""
@@ -169,7 +167,6 @@ class ResourceSettingMixin:
                 self._update_resource_options_hidden_state(resource_option_names)
                 # 更新资源选项（如果有）
                 self._update_resource_options()
-                self._update_global_options()
                 # 资源变化时，通知任务列表更新（仅携带 resource 字段）
                 self._notify_task_list_update()
                 break
@@ -335,7 +332,6 @@ class ResourceSettingMixin:
         # 填充完成后，根据当前资源更新资源选项与全局选项（如果有）
         if target_label or (target and curren_config):
             self._update_resource_options()
-            self._update_global_options()
     
     def _get_current_resource_dict(self) -> Optional[Dict[str, Any]]:
         """获取当前资源的配置字典"""

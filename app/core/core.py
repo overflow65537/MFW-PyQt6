@@ -689,7 +689,7 @@ class ServiceCoordinator:
             init_controller = self._interface.get("controller", [{}])[0].get("name", "")
             init_resource = self._interface.get("resource", [{}])[0].get("name", "")
             
-            from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
+            from app.common.constants import _RESOURCE_, _CONTROLLER_, _SETTING_, POST_ACTION
             
             default_tasks = [
                 TaskItem(
@@ -699,6 +699,12 @@ class ServiceCoordinator:
                     task_option={
                         "controller_type": init_controller,
                     },
+                ),
+                TaskItem(
+                    name="Setting",
+                    item_id=_SETTING_,
+                    is_checked=True,
+                    task_option={},
                 ),
                 TaskItem(
                     name="Resource",

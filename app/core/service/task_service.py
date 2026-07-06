@@ -17,7 +17,7 @@ from app.core.speedrun.config import (
     DEFAULT_CONDITION,
     normalize_speedrun_config,
 )
-from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
+from app.common.constants import _RESOURCE_, _CONTROLLER_, _SETTING_, POST_ACTION
 from app.core.utils.option_branches_compat import get_option_branches, set_option_branches
 
 # 速通配置默认值
@@ -1003,7 +1003,7 @@ class TaskService:
         # 但基础任务的名称可能不同，所以我们需要通过其他方式判断
         # 实际上，基础任务不会在 interface 的 task 列表中，所以这里不需要特殊处理
         # 但为了安全，我们检查 task_name 是否可能是基础任务
-        is_base_task_name = task_name in ["Controller", "Resource", "Post-Action", "Pre-Configuration"]
+        is_base_task_name = task_name in ["Controller", "Setting", "Resource", "Post-Action", "Pre-Configuration"]
         is_builtin_task = bool(task.get("builtin") or task.get("task_source") == TASK_SOURCE_BUILTIN)
         if not is_base_task_name and not is_builtin_task:
             task_default_option["_speedrun_config"] = self.build_speedrun_config(task_name)
@@ -1099,6 +1099,25 @@ class TaskService:
             return True
         return False
 
+
+    def _normalize_task_order(self, tasks: list[TaskItem]) -> list[TaskItem]:
+        """固定基础任务顺序：Controller, Setting, Resource，Post-Action 置尾。"""
+        base: dict[str, TaskItem] = {}
+        normal: list[TaskItem] = []
+        for task in tasks:
+            if task.item_id in (_CONTROLLER_, _SETTING_, _RESOURCE_, POST_ACTION):
+                base.setdefault(task.item_id, task)
+            else:
+                normal.append(task)
+        ordered: list[TaskItem] = []
+        for item_id in (_CONTROLLER_, _SETTING_, _RESOURCE_):
+            if item_id in base:
+                ordered.append(base[item_id])
+        ordered.extend(normal)
+        if POST_ACTION in base:
+            ordered.append(base[POST_ACTION])
+        return ordered
+
     def apply_task_order(self, task_order: List[str]) -> bool:
         """同步最新任务顺序到当前配置并持久化，但不强制刷新UI列表。"""
         config_id = self.config_service.current_config_id
@@ -1123,10 +1142,10 @@ class TaskService:
         if not ordered_tasks:
             return False
 
-        config.tasks = ordered_tasks
+        config.tasks = self._normalize_task_order(ordered_tasks)
 
         if self.config_service.update_config(config_id, config):
-            self.current_tasks = ordered_tasks
+            self.current_tasks = config.tasks
             return True
         return False
 
@@ -1280,7 +1299,7 @@ class TaskService:
             self.interface,
             task.task_option,
             task.item_id,
-            self.config_service.get_current_global_options() if task.item_id == _RESOURCE_ else None,
+            self.config_service.get_current_setting_options() if task.item_id == _RESOURCE_ else None,
         )
 
         # 深度合并：任务级 pipeline_override + 选项级 pipeline_override
