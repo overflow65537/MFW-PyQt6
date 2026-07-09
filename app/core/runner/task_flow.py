@@ -10,9 +10,10 @@ import time as _time
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Awaitable, Callable, Dict
 from PySide6.QtCore import QCoreApplication, QObject, QTimer
 from app.common.constants import (
+    _PRETASK_,
     POST_ACTION,
     _CONTROLLER_,
     _RESOURCE_,
@@ -50,6 +51,15 @@ from app.utils.controller_utils import ControllerHelper
 
 from app.core.item import FromeServiceCoordinator, RunnerEvents, TaskItem
 from app.core.builtin_task_loader import BuiltinTaskContext
+
+# 进程级休眠阻止引用计数：多实例共享 SetThreadExecutionState，
+# 仅当全部实例都停止后才清除 ES_SYSTEM_REQUIRED 标记。
+import threading as _threading
+_sleep_disable_counter: int = 0
+_sleep_lock = _threading.Lock()
+
+
+CACHED_IMAGE_ERROR = "Failed to get cached image."
 
 
 def _ndarray_to_png_bytes(ndarray) -> bytes | None:
@@ -105,9 +115,12 @@ class TaskFlowRunner(QObject):
         self.need_stop = False
         self.monitor_need_stop = False
         self._is_running = False
-        # 防止同一次任务流退出时重复发射“结束”信号（幂等保护）
+        # 防止同一次任务流退出时重复发射"结束"信号（幂等保护）
         self._task_flow_finished_emitted: bool = False
         self._next_config_to_run: str | None = None
+        # 多实例模式下由协调器注入：完成后"运行其他配置"改为启动独立运行体，
+        # 不再篡改本运行体的当前配置。签名为 async def(config_id: str)。
+        self.run_other_config_callback: Callable[[str], Awaitable[Any]] | None = None
         self.adb_controller_raw: dict[str, Any] | None = None
         self.adb_activate_controller: str | None = None
         self.adb_controller_config: dict[str, Any] | None = None
@@ -148,6 +161,12 @@ class TaskFlowRunner(QObject):
         # 运行时阻止系统休眠相关
         self._es_handle: int | None = None
 
+        # 控制器重连：任务流期间缓存连接参数，供 cached image 失败时复用
+        self._active_controller_raw: Dict[str, Any] | None = None
+        self._active_resource_target: str | None = None
+        self._cached_image_error_seen: bool = False
+        self._controller_reconnect_used: bool = False
+
     def _resolve_current_bundle_base(self) -> Path:
         bundle_base = Path(self.bundle_path or "./")
         if not bundle_base.is_absolute():
@@ -179,6 +198,36 @@ class TaskFlowRunner(QObject):
         interface_manager = InterfaceManager()
         interface_manager.reload(interface_path=interface_path)
         self.task_service.update_runtime_interface(interface_manager.get_interface() or {})
+
+    def _load_embedded_custom_blocking(
+        self,
+        agent_root_path: Path,
+        agent_entry_path: Path | None,
+        log_extra_roots: tuple[Path, ...] = (),
+    ) -> tuple[bool, int]:
+        """在线程池中加载内置 agent 自定义组件并挂载日志桥接。"""
+        resource = self.maafw.resource
+        if resource is None:
+            return False, 0
+        resource.clear_custom_recognition()
+        resource.clear_custom_action()
+        if not self.maafw.load_embedded_agent_custom(
+            agent_root=agent_root_path,
+            agent_entry=agent_entry_path,
+        ):
+            return False, 0
+        if not self.maafw.load_embedded_aspect_ratio_sink():
+            return False, 0
+        attached = self._embedded_agent_log_bridge.attach(
+            self._emit_embedded_agent_log,
+            custom_root=agent_root_path,
+            extra_roots=log_extra_roots,
+            module_keys=self.maafw._last_embedded_module_keys,
+        )
+        return True, attached
+
+    def _emit_embedded_agent_log(self, level: str, text: str) -> None:
+        self.log_output.emit(level, text)
 
     @property
     def callback(self):
@@ -246,7 +295,12 @@ class TaskFlowRunner(QObject):
         except Exception as exc:
             logger.warning(f"处理 MaaFW 回调信号时出错: {exc}")
 
+    def _note_maafw_output(self, text: str) -> None:
+        if CACHED_IMAGE_ERROR in text:
+            self._cached_image_error_seen = True
+
     def _handle_agent_info(self, info: str):
+        self._note_maafw_output(info)
         if "| WARNING |" in info:
             # 从warning开始截断
             info = info.split("| WARNING |")[1]
@@ -432,6 +486,138 @@ class TaskFlowRunner(QObject):
         except Exception:
             logger.warning("保存停止截图失败", exc_info=True)
 
+    def _recent_logs_contain_cached_image_error(self) -> bool:
+        for log_item in self._log_messages:
+            text = log_item[1] if len(log_item) >= 2 else ""
+            if CACHED_IMAGE_ERROR in text:
+                return True
+        return False
+
+    def _recent_maafw_log_contains_cached_image_error(self) -> bool:
+        log_path = Path("debug") / "maafw.log"
+        if not log_path.is_file():
+            return False
+        try:
+            with log_path.open("rb") as log_file:
+                log_file.seek(0, os.SEEK_END)
+                size = log_file.tell()
+                log_file.seek(max(0, size - 16384))
+                tail = log_file.read().decode("utf-8", errors="ignore")
+            return CACHED_IMAGE_ERROR in tail
+        except Exception as exc:
+            logger.debug("读取 maafw.log 失败: %s", exc)
+            return False
+
+    def _probe_cached_image_error(self) -> bool:
+        controller = getattr(self.maafw, "controller", None)
+        if controller is None:
+            return False
+        try:
+            _ = controller.cached_image
+        except RuntimeError as exc:
+            return str(exc) == CACHED_IMAGE_ERROR
+        except Exception:
+            return False
+        return False
+
+    def _is_cached_image_failure(self) -> bool:
+        return (
+            self._cached_image_error_seen
+            or self._recent_logs_contain_cached_image_error()
+            or self._recent_maafw_log_contains_cached_image_error()
+            or self._probe_cached_image_error()
+        )
+
+    async def _reconnect_controller(self) -> bool:
+        controller_raw = self._active_controller_raw
+        if not isinstance(controller_raw, dict):
+            logger.error("无法重新连接控制器：缺少控制器配置")
+            return False
+
+        old_controller = self.maafw.controller
+        self.maafw.controller = None
+        if old_controller is not None:
+            try:
+                await asyncio.to_thread(lambda: old_controller.post_inactive().wait())
+            except Exception as exc:
+                logger.debug("断开旧控制器 post_inactive 异常: %s", exc)
+
+        if self.maafw.agents:
+            await asyncio.to_thread(self.maafw._teardown_agents)
+
+        self._connect_error_reason = None
+        connected = await self.connect_device(
+            controller_raw,
+            resource_target=self._active_resource_target,
+        )
+        if not connected:
+            if not self._connect_error_reason:
+                self._connect_error_reason = self.tr(
+                    "Failed to reconnect to the device."
+                )
+            return False
+
+        if self.maafw.tasker and self.maafw.resource and self.maafw.controller:
+            tasker = self.maafw.tasker
+            resource = self.maafw.resource
+            controller = self.maafw.controller
+            await asyncio.to_thread(
+                lambda: tasker.bind(resource, controller)
+            )
+        return True
+
+    async def _try_recover_from_cached_image_failure(
+        self,
+        entry: str,
+        pipeline_override: dict,
+        save_draw: bool,
+    ) -> bool | None:
+        """cached image 失败时尝试重连控制器并重试任务。
+
+        Returns:
+            True: 重连后任务重试成功
+            False: 重连失败，应停止任务流
+            None: 不适用或未恢复
+        """
+        if (
+            self._controller_reconnect_used
+            or self.need_stop
+            or self._manual_stop
+            or not self._is_cached_image_failure()
+        ):
+            return None
+
+        self._controller_reconnect_used = True
+        logger.info("检测到 %s，尝试重新连接控制器", CACHED_IMAGE_ERROR)
+        self.log_output.emit(
+            "INFO",
+            self.tr("Cached image failed, reconnecting controller..."),
+        )
+
+        if not await self._reconnect_controller():
+            logger.error("控制器重新连接失败，停止任务流")
+            self.log_output.emit(
+                "ERROR",
+                self.tr("Controller reconnection failed, stopping task flow"),
+            )
+            await self.stop_task()
+            return False
+
+        logger.info("控制器重新连接成功，重试当前任务")
+        self.log_output.emit(
+            "INFO",
+            self.tr("Controller reconnected, retrying current task"),
+        )
+        self._cached_image_error_seen = False
+        self._start_task_timeout(entry)
+
+        if await self.maafw.run_task(entry, pipeline_override, save_draw):
+            self._stop_task_timeout()
+            return True
+
+        self._stop_task_timeout()
+        return None
+
     async def run_tasks_flow(
         self,
         task_id: str | None = None,
@@ -446,11 +632,14 @@ class TaskFlowRunner(QObject):
             logger.warning("任务流已经在运行，忽略新的启动请求")
             return
         self._is_running = True
-        # 写入稳定的任务流开始标记，供日志打包按“运行记录”切分（不依赖语言/文案）
+        # 写入稳定的任务流开始标记，供日志打包按"运行记录"切分（不依赖语言/文案）
         logger.info("[RUN_RECORD] TASK_FLOW_START")
         self.need_stop = False
         self._manual_stop = False
         self._task_flow_finished_emitted = False
+        self._active_controller_raw = None
+        self._active_resource_target = None
+        self._cached_image_error_seen = False
         # 清空任务开始时间记录
         self._task_start_times.clear()
         # 跟踪任务流是否成功启动并执行了任务
@@ -516,6 +705,7 @@ class TaskFlowRunner(QObject):
 
         def collect_log(level: str, text: str):
             """收集日志信息（包含收到的时间戳）"""
+            self._note_maafw_output(text)
             timestamp = datetime.now().strftime("%H:%M:%S")
             self._log_messages.append((level, text, timestamp))
 
@@ -542,7 +732,7 @@ class TaskFlowRunner(QObject):
                 self.fs_signal_bus.fs_start_button_status.emit(
                     {"text": "STOP", "status": "disabled"}
                 )
-            self._reload_interface_for_current_bundle()
+            await asyncio.to_thread(self._reload_interface_for_current_bundle)
             controller_cfg = self.task_service.get_task(_CONTROLLER_)
             if not controller_cfg:
                 raise ValueError("未找到基础预配置任务")
@@ -561,6 +751,11 @@ class TaskFlowRunner(QObject):
                 )
                 self.log_output.emit("ERROR", invalid_reason)
                 await self.stop_task()
+                return
+
+            # 先执行预任务（在资源加载和控制器连接之前）
+            if not await self._execute_pretasks():
+                logger.error("预任务执行失败，中止任务流")
                 return
 
             # 先加载资源，再连接控制器
@@ -647,8 +842,6 @@ class TaskFlowRunner(QObject):
                 self.log_output.emit(
                     "INFO", self.tr("Starting to load custom components...")
                 )
-                self.maafw.resource.clear_custom_recognition()
-                self.maafw.resource.clear_custom_action()
 
                 bundle_path_str = self.bundle_path or "./"
                 base_dir = Path(bundle_path_str)
@@ -684,10 +877,19 @@ class TaskFlowRunner(QObject):
                     agent_entry_path,
                 )
 
-                if not self.maafw.load_embedded_agent_custom(
-                    agent_root=agent_root_path,
-                    agent_entry=agent_entry_path,
-                ):
+                log_extra_roots: list[Path] = []
+                if agent_entry_path is not None:
+                    entry_parent = agent_entry_path.parent.resolve()
+                    if entry_parent != agent_root_path.resolve():
+                        log_extra_roots.append(entry_parent)
+
+                embedded_loaded, attached = await asyncio.to_thread(
+                    self._load_embedded_custom_blocking,
+                    agent_root_path,
+                    agent_entry_path,
+                    tuple(log_extra_roots),
+                )
+                if not embedded_loaded:
                     logger.error("内置 agent 自定义组件加载失败")
                     self.log_output.emit(
                         "ERROR",
@@ -701,29 +903,6 @@ class TaskFlowRunner(QObject):
                     await self.stop_task()
                     return
 
-                if not self.maafw.load_embedded_aspect_ratio_sink():
-                    logger.error("内置模式分辨率检查 sink 加载失败")
-                    self.log_output.emit(
-                        "ERROR",
-                        self.tr(
-                            "Embedded aspect ratio checker failed to load, "
-                            "the flow is terminated."
-                        ),
-                    )
-                    await self.stop_task()
-                    return
-
-                # custom 根目录来自 interface（InterfaceManager 根据 agent.child_args 写入 custom）
-                log_extra_roots: list[Path] = []
-                if agent_entry_path is not None:
-                    entry_parent = agent_entry_path.parent.resolve()
-                    if entry_parent != agent_root_path.resolve():
-                        log_extra_roots.append(entry_parent)
-                attached = self._embedded_agent_log_bridge.attach(
-                    lambda level, text: self.log_output.emit(level, text),
-                    custom_root=agent_root_path,
-                    extra_roots=log_extra_roots,
-                )
                 if attached:
                     logger.debug(
                         "embedded agent 日志已桥接到 UI（custom=%s），挂载 logger 数量: %s",
@@ -757,6 +936,8 @@ class TaskFlowRunner(QObject):
                     or self.tr("Failed to connect to the device."),
                 )
                 return
+            self._active_controller_raw = controller_cfg.task_option
+            self._active_resource_target = resource_target
             self.log_output.emit("INFO", self.tr("Device connected successfully"))
             logger.info("设备连接成功")
             image_bytes = await self._get_notice_screenshot_bytes()
@@ -799,7 +980,7 @@ class TaskFlowRunner(QObject):
                         skip_speedrun=is_single_task_mode,
                     )
                     if task_result == "skipped":
-                        # 因 speedrun 限制被跳过：记录结果并在列表中显示为“已跳过”
+                        # 因 speedrun 限制被跳过：记录结果并在列表中显示为"已跳过"
                         self._task_results[task.item_id] = "skipped"
                         self.task_status_changed.emit(task.item_id, "skipped")
                         continue
@@ -896,7 +1077,7 @@ class TaskFlowRunner(QObject):
             logger.critical(traceback.format_exc())
         finally:
             # 任务流退出信号：放在 finally 的最前面，确保监控等 UI 可以立即响应停止，
-            # 不会被“完成后操作/清理”等耗时逻辑拖慢。
+            # 不会被"完成后操作/清理"等耗时逻辑拖慢。
             if not self._task_flow_finished_emitted:
                 self._task_flow_finished_emitted = True
                 try:
@@ -953,7 +1134,7 @@ class TaskFlowRunner(QObject):
 
             # 判断是否需要执行完成后操作
             # - 默认：只有任务流未被 stop_task() 标记（need_stop=False）时才执行
-            # - 若完成后操作配置启用 always_run：即使流程因“非手动停止”的失败而触发 stop_task()，也会执行完成后操作
+            # - 若完成后操作配置启用 always_run：即使流程因"非手动停止"的失败而触发 stop_task()，也会执行完成后操作
             always_run_post_action = False
             try:
                 post_task = self.task_service.get_task(POST_ACTION)
@@ -1023,7 +1204,7 @@ class TaskFlowRunner(QObject):
             if not task:
                 logger.error(f"任务 ID '{task_id}' 不存在")
                 return tasks
-            # 执行层只关心“任务是否被禁用”，不展开禁用原因
+            # 执行层只关心"任务是否被禁用"，不展开禁用原因
             if self._is_task_disabled(task):
                 return tasks
             if not task.is_checked:
@@ -1039,7 +1220,7 @@ class TaskFlowRunner(QObject):
                 else:
                     continue
 
-            if task.item_id in (_CONTROLLER_, _RESOURCE_, POST_ACTION):
+            if task.item_id in (_PRETASK_, _CONTROLLER_, _RESOURCE_, POST_ACTION):
                 continue
 
             if not task.is_checked:
@@ -1051,6 +1232,126 @@ class TaskFlowRunner(QObject):
             tasks.append(task)
 
         return tasks
+
+    async def _execute_pretasks(self) -> bool:
+        """执行预任务：在资源加载和控制器连接之前，按序执行 interface.pretask 中定义的每个程序。
+
+        Returns:
+            True 表示所有预任务执行成功（或无预任务定义），False 表示执行失败需中止任务流。
+        """
+        import json
+
+        pretask_task = self.task_service.get_task(_PRETASK_)
+        if not pretask_task:
+            return True
+
+        interface = self.task_service.interface or {}
+        pretask_entries: list = list(interface.get("pretask", []) or [])
+        if not pretask_entries:
+            return True
+
+        task_option = pretask_task.task_option or {}
+        pretask_option_entries: list = list(task_option.get("pretask_entries", []) or [])
+
+        bundle_base = Path(self.bundle_path or "./")
+        if not bundle_base.is_absolute():
+            bundle_base = (Path.cwd() / bundle_base).resolve()
+
+        for idx, entry in enumerate(pretask_entries):
+            if not isinstance(entry, dict):
+                continue
+            exec_path = (entry.get("exec") or "").strip()
+            if not exec_path:
+                logger.warning("PreTask entry %d: exec 缺失，已跳过", idx)
+                continue
+
+            args = entry.get("args", [])
+            if not isinstance(args, list):
+                args = []
+            args = [str(a) for a in args]
+
+            entry_options: dict = {}
+            if idx < len(pretask_option_entries) and isinstance(pretask_option_entries[idx], dict):
+                entry_options = pretask_option_entries[idx].get("options", {}) or {}
+
+            if entry_options:
+                payload = json.dumps(entry_options, ensure_ascii=False, separators=(",", ":"))
+                args.append(payload)
+
+            exec_target = Path(exec_path)
+            if not exec_target.is_absolute():
+                exec_target = (bundle_base / exec_path.lstrip("\\/")).resolve()
+
+            exec_str = str(exec_target)
+            logger.info("PreTask[%d] 执行: %s", idx, exec_str)
+            self.log_output.emit("INFO", self.tr("Executing pretask: ") + exec_str)
+
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    exec_str,
+                    *args,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=str(bundle_base),
+                )
+
+                communicate_task = asyncio.create_task(proc.communicate())
+                cancelled_by_user = False
+                stdout = None
+                stderr = None
+                while True:
+                    done, _ = await asyncio.wait(
+                        [communicate_task], timeout=0.5
+                    )
+                    if communicate_task in done:
+                        stdout, stderr = communicate_task.result()
+                        break
+                    if self.need_stop:
+                        cancelled_by_user = True
+                        communicate_task.cancel()
+                        proc.kill()
+                        await proc.wait()
+                        break
+
+                if cancelled_by_user:
+                    logger.info("PreTask[%d] 已被用户终止", idx)
+                    self.log_output.emit("INFO", self.tr("Pretask was stopped by user"))
+                    return False
+
+                if stdout:
+                    for line in stdout.decode("utf-8", errors="replace").splitlines():
+                        if line.strip():
+                            self.log_output.emit("INFO", f"[PreTask{idx}] {line.strip()}")
+                if stderr:
+                    for line in stderr.decode("utf-8", errors="replace").splitlines():
+                        if line.strip():
+                            self.log_output.emit("WARNING", f"[PreTask{idx}] {line.strip()}")
+
+                if proc.returncode != 0:
+                    logger.error("PreTask[%d] 返回非零退出码: %d", idx, proc.returncode)
+                    self.log_output.emit(
+                        "ERROR",
+                        self.tr("Pretask exited with code {code}: {path}").format(
+                            code=proc.returncode, path=exec_str
+                        ),
+                    )
+                    return False
+            except FileNotFoundError:
+                logger.error("PreTask[%d] 执行文件未找到: %s", idx, exec_str)
+                self.log_output.emit(
+                    "ERROR",
+                    self.tr("Pretask executable not found: ") + exec_str,
+                )
+                return False
+            except Exception as e:
+                logger.error("PreTask[%d] 执行异常: %s", idx, e)
+                self.log_output.emit(
+                    "ERROR",
+                    self.tr("Pretask execution failed: ") + str(e),
+                )
+                return False
+
+        return True
 
     def _translate_log_level(self, level: str) -> str:
         """翻译日志级别"""
@@ -1377,7 +1678,7 @@ class TaskFlowRunner(QObject):
                 controller_raw = {**opt_effective, **controller_raw}
                 break
 
-        # 首选：从“控制器子配置”读取（例如 controller_raw["Win32控制器"]["permission_required"]）
+        # 首选：从"控制器子配置"读取（例如 controller_raw["Win32控制器"]["permission_required"]）
         permission_required = None
         display_short_side = None
         display_long_side = None
@@ -1638,7 +1939,7 @@ class TaskFlowRunner(QObject):
         if not task:
             logger.error(f"任务 ID '{task_id}' 不存在")
             return
-        # 执行层只关心“任务是否被禁用”，不展开禁用原因
+        # 执行层只关心"任务是否被禁用"，不展开禁用原因
         # 注意：即使 UI 未刷新也没关系，因为 run_tasks_flow 开始时会刷新一次 is_hidden；
         # 若未来有独立调用 run_task 的路径，可在此处补一次刷新。
         elif self._is_task_disabled(task):
@@ -1657,10 +1958,13 @@ class TaskFlowRunner(QObject):
             logger.debug(
                 f"任务 '{task.name}' 开始速通条件评估: 条件类型={condition_type}, 执行类型={action_type}"
             )
+            def _update_speedrun_task(t: TaskItem) -> None:
+                self.task_service.update_task(t)
+
             speedrun_result = evaluate_speedrun(
                 task,
                 speedrun_cfg,
-                self.task_service.update_task,
+                _update_speedrun_task,
                 notify_system=lambda message: self.runner_events.focus_notification.emit(
                     str(message)
                 ),
@@ -1703,11 +2007,23 @@ class TaskFlowRunner(QObject):
             logger.error("资源未初始化，无法执行任务")
             return
 
+        self._cached_image_error_seen = False
+        self._controller_reconnect_used = False
         self._start_task_timeout(entry)
 
-        if not await self.maafw.run_task(
-            entry, pipeline_override, cfg.get(cfg.save_screenshot)
-        ):
+        save_draw = cfg.get(cfg.save_screenshot)
+        task_ok = await self.maafw.run_task(entry, pipeline_override, save_draw)
+        if not task_ok:
+            self._stop_task_timeout()
+            recovery = await self._try_recover_from_cached_image_failure(
+                entry, pipeline_override, save_draw
+            )
+            if recovery is True:
+                task_ok = True
+            elif recovery is False:
+                return False
+
+        if not task_ok:
             logger.error(f"任务 '{task.name}' 执行失败")
             # 发送任务失败通知
             if not self._manual_stop:
@@ -1718,8 +2034,8 @@ class TaskFlowRunner(QObject):
                     self.tr("Task '{}' execution failed.").format(task.name),
                     image_bytes=image_bytes,
                 )
-            self._stop_task_timeout()
             return
+
         self._stop_task_timeout()
         # 仅在任务未被 abort 且正常完成时记录速通耗时
         if self._current_task_ok and speedrun_cfg and speedrun_cfg.get("enabled"):
@@ -1817,7 +2133,7 @@ class TaskFlowRunner(QObject):
         """停止当前正在运行的任务
 
         Args:
-            manual: 是否为“手动停止”（由用户或外部调用显式触发）。
+            manual: 是否为"手动停止"（由用户或外部调用显式触发）。
         """
         if manual:
             # 在任何情况下都记录手动停止的意图，避免后续错误发送通知
@@ -1841,19 +2157,19 @@ class TaskFlowRunner(QObject):
                 {"text": "START", "status": "enabled"}
             )
         self._is_running = False
-        # 写入稳定的任务流结束标记，供日志打包按”运行记录”切分（不依赖语言/文案）
-        logger.info(“[RUN_RECORD] TASK_FLOW_STOP manual=%s”, bool(self._manual_stop))
+        # 写入稳定的任务流结束标记，供日志打包按"运行记录"切分（不依赖语言/文案）
+        logger.info("[RUN_RECORD] TASK_FLOW_STOP manual=%s", bool(self._manual_stop))
         # 停止后恢复系统休眠
         self._restore_sleep()
 
     @staticmethod
     def _set_sleep_disabled() -> int | None:
-        “””阻止 Windows 系统进入睡眠状态。
+        """阻止 Windows 系统进入睡眠状态。
 
         通过 ctypes 调用 kernel32.SetThreadExecutionState 阻止系统休眠。
         返回之前的状态句柄，用于后续恢复；非 Windows 平台返回 None。
-        “””
-        if not sys.platform.startswith(“win32”):
+        """
+        if not sys.platform.startswith("win32"):
             return None
         try:
             import ctypes
@@ -1865,16 +2181,16 @@ class TaskFlowRunner(QObject):
             )
             if result:
                 return result
-            logger.warning(“SetThreadExecutionState(阻止休眠) 返回 0”)
+            logger.warning("SetThreadExecutionState(阻止休眠) 返回 0")
             return None
         except Exception as exc:
-            logger.warning(“阻止系统休眠失败: %s”, exc)
+            logger.warning("阻止系统休眠失败: %s", exc)
             return None
 
     @staticmethod
     def _restore_sleep() -> None:
-        “””恢复系统休眠许可（清除 ES_SYSTEM_REQUIRED 标记）。”””
-        if not sys.platform.startswith(“win32”):
+        """恢复系统休眠许可（清除 ES_SYSTEM_REQUIRED 标记）。"""
+        if not sys.platform.startswith("win32"):
             return
         try:
             import ctypes
@@ -1882,7 +2198,7 @@ class TaskFlowRunner(QObject):
             ES_CONTINUOUS = 0x80000000
             ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
         except Exception as exc:
-            logger.warning(“恢复系统休眠失败: %s”, exc)
+            logger.warning("恢复系统休眠失败: %s", exc)
 
     def shutdown_runtime_sync(self) -> None:
         """同步强制清理运行态，供窗口退出阶段兜底调用。"""
@@ -2073,8 +2389,7 @@ class TaskFlowRunner(QObject):
             force_refresh=True,
         ):
             # 连接成功后额外等待 5 秒，防止程序初始化未完成
-            await asyncio.sleep(5)
-            return True
+            return await self._wait_after_controller_connect()
         elif controller_config.get("emulator_path", ""):
             logger.info("尝试启动模拟器")
             self.log_output.emit("INFO", self.tr("try to start emulator"))
@@ -2100,8 +2415,7 @@ class TaskFlowRunner(QObject):
                 )
                 if poll_ok:
                     # 轮询连接成功后额外等待 5 秒，防止程序初始化未完成
-                    await asyncio.sleep(5)
-                    return True
+                    return await self._wait_after_controller_connect()
                 if self.need_stop:
                     return False
             else:
@@ -2115,8 +2429,7 @@ class TaskFlowRunner(QObject):
                     raw_screen_method=raw_screen_method,
                 ):
                     # 启动模拟器后首次直接连接成功时，额外等待 5 秒
-                    await asyncio.sleep(5)
-                    return True
+                    return await self._wait_after_controller_connect()
         self.log_output.emit("ERROR", self.tr("Device connection failed"))
         return False
 
@@ -2858,6 +3171,8 @@ class TaskFlowRunner(QObject):
         screen_method = normalize_input_method(raw_screen_method)
         config = controller_config.get("config", {})
 
+        if self.need_stop:
+            return False
         return await self.maafw.connect_adb(
             adb_path,
             address,
@@ -3035,6 +3350,15 @@ class TaskFlowRunner(QObject):
         logger.debug(f"准备启动子进程: {command}")
         return subprocess.Popen(command)
 
+    async def _wait_after_controller_connect(self, seconds: float = 5.0) -> bool:
+        """连接成功后等待初始化，可被 need_stop 中断。"""
+        intervals = max(1, int(seconds * 10))
+        for _ in range(intervals):
+            if self.need_stop:
+                return False
+            await asyncio.sleep(seconds / intervals)
+        return True
+
     async def _poll_connect(
         self,
         wait_seconds: int,
@@ -3170,7 +3494,7 @@ class TaskFlowRunner(QObject):
     ) -> Dict[str, Any] | None:
         """自动搜索 ADB 设备并找到与旧配置一致的那一项"""
         try:
-            devices = Toolkit.find_adb_devices()
+            devices = await self.maafw.detect_adb()
             if not devices:
                 logger.warning("未找到任何 ADB 设备")
                 return None
@@ -3232,7 +3556,7 @@ class TaskFlowRunner(QObject):
     ) -> Dict[str, Any] | None:
         """自动搜索 Win32 窗口并找到与旧配置一致的那一项"""
         try:
-            windows = Toolkit.find_desktop_windows()
+            windows = await asyncio.to_thread(Toolkit.find_desktop_windows)
             if not windows:
                 logger.warning("未找到任何 Win32 窗口")
                 return None
@@ -3296,7 +3620,7 @@ class TaskFlowRunner(QObject):
     ) -> Dict[str, Any] | None:
         """自动搜索 MacOS 窗口并找到与旧配置一致的那一项"""
         try:
-            windows = Toolkit.find_desktop_windows()
+            windows = await asyncio.to_thread(Toolkit.find_desktop_windows)
             if not windows:
                 logger.warning("未找到任何 MacOS 窗口")
                 return None
@@ -3474,6 +3798,14 @@ class TaskFlowRunner(QObject):
         target_config = config_service.get_config(config_id)
         if not target_config:
             logger.warning(f"完成后操作指定的配置不存在: {config_id}")
+            return
+
+        # 多实例模式：交由协调器以独立运行体启动目标配置，不篡改本运行体当前配置
+        if self.run_other_config_callback is not None:
+            try:
+                await self.run_other_config_callback(config_id)
+            except Exception as exc:
+                logger.error(f"完成后启动其他配置失败: {config_id}: {exc}")
             return
 
         config_service.current_config_id = config_id
@@ -3776,7 +4108,7 @@ class TaskFlowRunner(QObject):
         return {}
 
     def _is_task_disabled(self, task: TaskItem) -> bool:
-        """统一的“任务是否被禁用”判断（执行层只关心结论，不关心原因）。
+        """统一的"任务是否被禁用"判断（执行层只关心结论，不关心原因）。
 
         禁用来源可能包括：
         - UI 侧标记的 is_hidden

@@ -36,6 +36,9 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_log_wait_until_empty": "内置定时等待缺少目标时间，已跳过。",
         "builtin_log_wait_until_invalid": "无法解析定时等待目标时间：{time}",
         "builtin_log_wait_until_target": "内置任务等待至 {time}。",
+        "pretask_name": "预任务",
+        "pretask_description": "在控制器启动前执行的程序",
+        "pretask_no_configured": "暂无预任务配置",
     },
     "zh_tw": {
         "builtin_group_label": "框架內建任務",
@@ -72,6 +75,9 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_log_wait_until_empty": "內建定時等待缺少目標時間，已略過。",
         "builtin_log_wait_until_invalid": "無法解析定時等待目標時間：{time}",
         "builtin_log_wait_until_target": "內建任務等待至 {time}。",
+        "pretask_name": "預任務",
+        "pretask_description": "在控制器啟動前執行的程式",
+        "pretask_no_configured": "暫無預任務配置",
     },
     "ja_jp": {
         "builtin_group_label": "フレームワーク組み込みタスク",
@@ -108,6 +114,9 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_log_wait_until_empty": "組み込みの時刻待機タスクの対象時刻が空のため、スキップしました。",
         "builtin_log_wait_until_invalid": "時刻待機の対象時刻を解析できませんでした: {time}",
         "builtin_log_wait_until_target": "組み込みタスクは {time} まで待機します。",
+        "pretask_name": "プリタスク",
+        "pretask_description": "コントローラ起動前に実行されるプログラム",
+        "pretask_no_configured": "プリタスクは設定されていません",
     },
     "en_us": {
         "builtin_group_label": "Framework Built-in Tasks",
@@ -144,5 +153,8 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_log_wait_until_empty": "Builtin wait-until target time is empty, skipped.",
         "builtin_log_wait_until_invalid": "Failed to parse builtin wait-until target time: {time}",
         "builtin_log_wait_until_target": "Builtin task waits until {time}.",
+        "pretask_name": "PreTask",
+        "pretask_description": "Programs executed before controller starts",
+        "pretask_no_configured": "No pretask configured",
     },
 }

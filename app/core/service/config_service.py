@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from app.utils.logger import logger
 from app.common.constants import (
+    _PRETASK_,
     _RESOURCE_,
     _CONTROLLER_,
     _SETTING_,
@@ -286,6 +287,7 @@ class ConfigService:
 
     def _make_base_task(self, item_id: str, task_option: Dict[str, Any] | None = None) -> TaskItem:
         names = {
+            _PRETASK_: "PreTask",
             _CONTROLLER_: "Controller",
             _RESOURCE_: "Resource",
             POST_ACTION: "Post-Action",
@@ -298,24 +300,26 @@ class ConfigService:
         )
 
     def _ensure_base_task_order(self, config: ConfigItem) -> bool:
-        """Ensure Controller, Resource prefix and Post-Action suffix."""
+        """Ensure PreTask, Controller, Resource prefix and Post-Action suffix."""
         if not config or not isinstance(config.tasks, list):
             return False
         changed = False
         first_by_id: Dict[str, TaskItem] = {}
         normal_tasks: List[TaskItem] = []
         for task in config.tasks:
-            if task.item_id in (_CONTROLLER_, _RESOURCE_, POST_ACTION):
+            if task.item_id in (_PRETASK_, _CONTROLLER_, _RESOURCE_, POST_ACTION):
                 if task.item_id not in first_by_id:
                     first_by_id[task.item_id] = task
                 else:
                     changed = True
             elif task.item_id == _SETTING_:
-                # v2.8: Setting 基础任务已并入 Resource.setting_options
                 changed = True
             else:
                 normal_tasks.append(task)
 
+        if _PRETASK_ not in first_by_id:
+            first_by_id[_PRETASK_] = self._make_base_task(_PRETASK_, {})
+            changed = True
         if _CONTROLLER_ not in first_by_id:
             first_by_id[_CONTROLLER_] = self._make_base_task(
                 _CONTROLLER_, {"controller_type": self._get_first_interface_name("controller")}
@@ -331,6 +335,7 @@ class ConfigService:
             changed = True
 
         ordered = [
+            first_by_id[_PRETASK_],
             first_by_id[_CONTROLLER_],
             first_by_id[_RESOURCE_],
             *normal_tasks,
@@ -396,6 +401,12 @@ class ConfigService:
         init_resource = self.repo.interface["resource"][0]["name"]
         if not config.tasks:
             default_tasks = [
+                TaskItem(
+                    name="PreTask",
+                    item_id=_PRETASK_,
+                    is_checked=True,
+                    task_option={},
+                ),
                 TaskItem(
                     name="Controller",
                     item_id=_CONTROLLER_,
