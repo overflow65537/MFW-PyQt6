@@ -25,7 +25,7 @@ from app.core.item import TaskItem, ConfigItem
 from app.view.task_interface.components.list_item import TaskListItem, ConfigListItem
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
-from app.common.constants import _RESOURCE_, _CONTROLLER_
+from app.common.constants import _RESOURCE_, _CONTROLLER_, _SETTING_, POST_ACTION
 
 
 class BaseListWidget(ListWidget):
@@ -197,6 +197,9 @@ class TaskDragListWidget(BaseListWidget):
 
         注意：`task.is_hidden` 是“能力禁用”标记（由配置层/列表层根据 resource/controller 计算）。
         """
+        if task.item_id == _SETTING_:
+            return False
+
         # 先根据资源/控制器刷新一次 is_hidden
         should_show_by_resource = self._should_show_by_resource(task)
         should_show_by_controller = self._should_show_by_controller(task)
@@ -742,7 +745,7 @@ class TaskDragListWidget(BaseListWidget):
 
     def _protected_positions(self, tasks: list[TaskItem]) -> dict[int, str]:
         """Remember base task ids that must stay in reserved slots."""
-        protected: dict[int, str] = {0: _CONTROLLER_, 1: _SETTING_, 2: _RESOURCE_}
+        protected: dict[int, str] = {0: _CONTROLLER_, 1: _RESOURCE_}
         if tasks:
             protected[len(tasks) - 1] = POST_ACTION
         return {idx: task_id for idx, task_id in protected.items() if 0 <= idx < len(tasks)}
@@ -757,7 +760,7 @@ class TaskDragListWidget(BaseListWidget):
             if tasks[idx].item_id != expected_id:
                 return False
         for idx, task in enumerate(tasks):
-            if idx < 3 and task.item_id not in (_CONTROLLER_, _SETTING_, _RESOURCE_):
+            if idx < 2 and task.item_id not in (_CONTROLLER_, _RESOURCE_):
                 return False
         return True
 

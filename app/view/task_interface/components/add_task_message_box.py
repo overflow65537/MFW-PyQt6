@@ -28,7 +28,7 @@ from qfluentwidgets import (
 import jsonc
 from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.core.item import TaskItem, ConfigItem
-from app.common.constants import _RESOURCE_, _CONTROLLER_, _SETTING_, POST_ACTION
+from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.common.config import cfg
 from app.core.core import ServiceCoordinator
 from app.core.builtin_task_loader import BUILTIN_TASK_GROUP_NAME
@@ -485,17 +485,12 @@ class AddConfigDialog(BaseAddDialog):
                 },
             ),
             TaskItem(
-                name="Setting",
-                item_id=_SETTING_,
-                is_checked=True,
-                task_option={},
-            ),
-            TaskItem(
                 name="Resource",
                 item_id=_RESOURCE_,
                 is_checked=True,
                 task_option={
                     "resource": init_resource,
+                    "setting_options": {},
                 },
             ),
             TaskItem(

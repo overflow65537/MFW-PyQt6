@@ -16,7 +16,6 @@ from app.common.constants import (
     POST_ACTION,
     _CONTROLLER_,
     _RESOURCE_,
-    _SETTING_,
 )
 from app.common.config import cfg
 
@@ -1040,7 +1039,7 @@ class TaskFlowRunner(QObject):
                 else:
                     continue
 
-            if task.item_id in (_CONTROLLER_, _SETTING_, _RESOURCE_, POST_ACTION):
+            if task.item_id in (_CONTROLLER_, _RESOURCE_, POST_ACTION):
                 continue
 
             if not task.is_checked:
