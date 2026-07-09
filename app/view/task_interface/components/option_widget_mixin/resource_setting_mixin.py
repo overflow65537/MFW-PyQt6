@@ -40,6 +40,8 @@ class ResourceSettingMixin:
             self.global_option_label = None
         if not hasattr(self, "global_option_form_widget"):
             self.global_option_form_widget: Optional[OptionFormWidget] = None
+        if not hasattr(self, "global_option_section_labels"):
+            self.global_option_section_labels: list[BodyLabel] = []
         # 构建资源映射表
         self._rebuild_resource_mapping()
 
@@ -92,7 +94,7 @@ class ResourceSettingMixin:
                         )
 
     def create_resource_settings(self) -> None:
-        """创建固定的资源设置UI"""
+        """创建固定的资源设置 UI，并在同页附加 Setting 表单。"""
         # 在多配置模式下，重新构建资源映射表以确保使用最新的interface
         self._rebuild_resource_mapping()
 
@@ -104,6 +106,7 @@ class ResourceSettingMixin:
         
         # 根据当前资源渲染资源选项（如果有）
         self._update_resource_options()
+        self._update_global_options()
 
     def _create_resource_option(self):
         """创建资源选择下拉框"""
@@ -391,61 +394,77 @@ class ResourceSettingMixin:
         return form_structure if form_structure else None
 
     def _build_global_option_form_structure(self) -> Optional[Dict[str, Any]]:
-        """从 interface.global_option 构建全局选项的表单结构。与 task/resource/controller 同级，无则返回 None。"""
-        interface = self.service_coordinator.interface
-        global_option_def = interface.get("global_option")
-        if not global_option_def:
+        """构建并入 Resource 页的 Setting 表单结构。"""
+        form_structure = self.service_coordinator.option_service.get_setting_form_structure()
+        if not isinstance(form_structure, dict):
             return None
-        all_options = interface.get("option", {})
-        if not all_options:
-            return None
-        option_service = self.service_coordinator.option_service
-        form_structure = {}
-        if isinstance(global_option_def, list):
-            for option_name in global_option_def:
-                if option_name in all_options:
-                    option_def = all_options[option_name]
-                    if not option_service.is_option_visible(option_def):
-                        continue
-                    field_config = option_service.process_option_def(
-                        option_def, all_options, option_name
-                    )
-                    form_structure[option_name] = field_config
-        elif isinstance(global_option_def, dict):
-            for option_name, option_def in global_option_def.items():
-                if option_name == "description":
-                    continue
-                if isinstance(option_def, dict) and not option_service.is_option_visible(
-                    option_def
-                ):
-                    continue
-                field_config = option_service.process_option_def(
-                    option_def, all_options, option_name
-                )
-                form_structure[option_name] = field_config
-        return form_structure if form_structure else None
+
+        option_keys = [
+            key
+            for key, value in form_structure.items()
+            if key not in {"type", "sections", "description"} and isinstance(value, dict)
+        ]
+        return form_structure if option_keys else None
 
     def _update_global_options(self):
-        """根据 interface.global_option 更新全局选项区域：有则显示「全局选项」标题与表单，无则不显示。"""
+        """在 Resource 页中渲染 Setting 表单。"""
         form_structure = self._build_global_option_form_structure()
         if not form_structure:
             self._clear_global_options()
             return
-        option_config = self.service_coordinator.config_service.get_current_global_options()
-        if self.global_option_label is None:
-            self.global_option_label = BodyLabel(self.tr("Global Option"))
-            self.option_page_layout.addWidget(self.global_option_label)
-        if self.global_option_form_widget is None:
-            self.global_option_form_widget = OptionFormWidget()
-            self.option_page_layout.addWidget(self.global_option_form_widget)
-        self.global_option_form_widget.build_from_structure(form_structure, option_config)
+
+        self._clear_global_options()
+
+        option_config = self.service_coordinator.config_service.get_current_setting_options()
+        self.global_option_label = BodyLabel(self.tr("Setting"))
+        self.option_page_layout.addWidget(self.global_option_label)
+
+        ordered_keys: list[str] = []
+        sections = form_structure.get("sections", []) if isinstance(form_structure, dict) else []
+        if isinstance(sections, list):
+            for section in sections:
+                if not isinstance(section, dict):
+                    continue
+                keys = [
+                    key
+                    for key in section.get("option", [])
+                    if key in form_structure and key not in ordered_keys
+                ]
+                if not keys:
+                    continue
+                label = section.get("label") or section.get("name") or self.tr("Setting")
+                section_label = BodyLabel(str(label))
+                section_label.setStyleSheet("font-size: 16px; font-weight: 600;")
+                self.option_page_layout.addWidget(section_label)
+                self.global_option_section_labels.append(section_label)
+                ordered_keys.extend(keys)
+
+        ordered_keys.extend(
+            [
+                key
+                for key, value in form_structure.items()
+                if key not in {"type", "sections", "description"}
+                and isinstance(value, dict)
+                and key not in ordered_keys
+            ]
+        )
+        plain_structure = {key: form_structure[key] for key in ordered_keys}
+
+        self.global_option_form_widget = OptionFormWidget()
+        self.option_page_layout.addWidget(self.global_option_form_widget)
+        self.global_option_form_widget.build_from_structure(plain_structure, option_config)
         self._connect_global_option_signals()
 
     def _clear_global_options(self):
-        """移除全局选项标题与表单。"""
+        """移除并入 Resource 页的 Setting 标题、分区标题与表单。"""
         if self.global_option_label is not None:
             label = self.global_option_label
             self.global_option_label = None
+            if label.parent():
+                self.option_page_layout.removeWidget(label)
+            label.deleteLater()
+        while self.global_option_section_labels:
+            label = self.global_option_section_labels.pop()
             if label.parent():
                 self.option_page_layout.removeWidget(label)
             label.deleteLater()
@@ -464,7 +483,7 @@ class ResourceSettingMixin:
             widget.deleteLater()
 
     def _connect_global_option_signals(self):
-        """连接全局选项变化信号。"""
+        """连接并入 Resource 页的 Setting 选项变化信号。"""
         if self.global_option_form_widget is None:
             return
         for option_item in self.global_option_form_widget.option_items.values():
@@ -478,7 +497,7 @@ class ResourceSettingMixin:
             self._connect_global_option_child_signals(child_widget)
 
     def _on_global_option_changed(self, key: str, value: Any):
-        """全局选项变化时写入当前配置根层的 global_options。"""
+        """Setting 选项变化时写回 Setting 基础任务。"""
         option_service = self.service_coordinator.option_service
         if self.global_option_form_widget is None:
             return

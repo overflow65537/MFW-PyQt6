@@ -79,8 +79,8 @@ class TaskItem:
     is_hidden: bool = False  # 标记任务是否被隐藏（不保存到配置，仅运行时使用）
 
     def is_base_task(self) -> bool:
-        """判断是否为基础任务（资源或完成后操作）"""
-        return self.item_id in (_CONTROLLER_, _SETTING_, _RESOURCE_, POST_ACTION)
+        """判断是否为基础任务（控制器/资源/完成后操作）"""
+        return self.item_id in (_CONTROLLER_, _RESOURCE_, POST_ACTION)
 
     def is_builtin_task(self) -> bool:
         """判断是否为框架加载的内置任务。"""

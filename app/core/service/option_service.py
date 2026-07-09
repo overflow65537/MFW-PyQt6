@@ -25,12 +25,10 @@ class OptionService:
             except Exception:
                 pass
             self.current_options = task.task_option
-            from app.common.constants import _RESOURCE_, _CONTROLLER_, _SETTING_, POST_ACTION
+            from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 
             if task.item_id == _RESOURCE_:
                 self.form_structure = {"type": "resource"}
-            elif task.item_id == _SETTING_:
-                self.form_structure = self.get_setting_form_structure()
             elif task.item_id == _CONTROLLER_:
                 self.form_structure = {"type": "controller"}
             elif task.item_id == POST_ACTION:
@@ -63,7 +61,7 @@ class OptionService:
         task.task_option.update(option_data)
 
         # 基础任务不应该包含 speedrun_config
-        from app.common.constants import _RESOURCE_, _CONTROLLER_, _SETTING_, POST_ACTION
+        from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 
         if task.is_base_task() and "_speedrun_config" in task.task_option:
             del task.task_option["_speedrun_config"]
