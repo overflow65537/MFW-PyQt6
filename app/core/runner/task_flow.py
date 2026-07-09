@@ -10,9 +10,10 @@ import time as _time
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Awaitable, Callable, Dict
 from PySide6.QtCore import QCoreApplication, QObject, QTimer
 from app.common.constants import (
+    _PRETASK_,
     POST_ACTION,
     _CONTROLLER_,
     _RESOURCE_,
@@ -119,7 +120,7 @@ class TaskFlowRunner(QObject):
         self._next_config_to_run: str | None = None
         # 多实例模式下由协调器注入：完成后"运行其他配置"改为启动独立运行体，
         # 不再篡改本运行体的当前配置。签名为 async def(config_id: str)。
-        self.run_other_config_callback = None
+        self.run_other_config_callback: Callable[[str], Awaitable[Any]] | None = None
         self.adb_controller_raw: dict[str, Any] | None = None
         self.adb_activate_controller: str | None = None
         self.adb_controller_config: dict[str, Any] | None = None
@@ -557,10 +558,11 @@ class TaskFlowRunner(QObject):
             return False
 
         if self.maafw.tasker and self.maafw.resource and self.maafw.controller:
+            tasker = self.maafw.tasker
+            resource = self.maafw.resource
+            controller = self.maafw.controller
             await asyncio.to_thread(
-                lambda: self.maafw.tasker.bind(
-                    self.maafw.resource, self.maafw.controller
-                )
+                lambda: tasker.bind(resource, controller)
             )
         return True
 
@@ -749,6 +751,11 @@ class TaskFlowRunner(QObject):
                 )
                 self.log_output.emit("ERROR", invalid_reason)
                 await self.stop_task()
+                return
+
+            # 先执行预任务（在资源加载和控制器连接之前）
+            if not await self._execute_pretasks():
+                logger.error("预任务执行失败，中止任务流")
                 return
 
             # 先加载资源，再连接控制器
@@ -1213,7 +1220,7 @@ class TaskFlowRunner(QObject):
                 else:
                     continue
 
-            if task.item_id in (_CONTROLLER_, _RESOURCE_, POST_ACTION):
+            if task.item_id in (_PRETASK_, _CONTROLLER_, _RESOURCE_, POST_ACTION):
                 continue
 
             if not task.is_checked:
@@ -1225,6 +1232,126 @@ class TaskFlowRunner(QObject):
             tasks.append(task)
 
         return tasks
+
+    async def _execute_pretasks(self) -> bool:
+        """执行预任务：在资源加载和控制器连接之前，按序执行 interface.pretask 中定义的每个程序。
+
+        Returns:
+            True 表示所有预任务执行成功（或无预任务定义），False 表示执行失败需中止任务流。
+        """
+        import json
+
+        pretask_task = self.task_service.get_task(_PRETASK_)
+        if not pretask_task:
+            return True
+
+        interface = self.task_service.interface or {}
+        pretask_entries: list = list(interface.get("pretask", []) or [])
+        if not pretask_entries:
+            return True
+
+        task_option = pretask_task.task_option or {}
+        pretask_option_entries: list = list(task_option.get("pretask_entries", []) or [])
+
+        bundle_base = Path(self.bundle_path or "./")
+        if not bundle_base.is_absolute():
+            bundle_base = (Path.cwd() / bundle_base).resolve()
+
+        for idx, entry in enumerate(pretask_entries):
+            if not isinstance(entry, dict):
+                continue
+            exec_path = (entry.get("exec") or "").strip()
+            if not exec_path:
+                logger.warning("PreTask entry %d: exec 缺失，已跳过", idx)
+                continue
+
+            args = entry.get("args", [])
+            if not isinstance(args, list):
+                args = []
+            args = [str(a) for a in args]
+
+            entry_options: dict = {}
+            if idx < len(pretask_option_entries) and isinstance(pretask_option_entries[idx], dict):
+                entry_options = pretask_option_entries[idx].get("options", {}) or {}
+
+            if entry_options:
+                payload = json.dumps(entry_options, ensure_ascii=False, separators=(",", ":"))
+                args.append(payload)
+
+            exec_target = Path(exec_path)
+            if not exec_target.is_absolute():
+                exec_target = (bundle_base / exec_path.lstrip("\\/")).resolve()
+
+            exec_str = str(exec_target)
+            logger.info("PreTask[%d] 执行: %s", idx, exec_str)
+            self.log_output.emit("INFO", self.tr("Executing pretask: ") + exec_str)
+
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    exec_str,
+                    *args,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=str(bundle_base),
+                )
+
+                communicate_task = asyncio.create_task(proc.communicate())
+                cancelled_by_user = False
+                stdout = None
+                stderr = None
+                while True:
+                    done, _ = await asyncio.wait(
+                        [communicate_task], timeout=0.5
+                    )
+                    if communicate_task in done:
+                        stdout, stderr = communicate_task.result()
+                        break
+                    if self.need_stop:
+                        cancelled_by_user = True
+                        communicate_task.cancel()
+                        proc.kill()
+                        await proc.wait()
+                        break
+
+                if cancelled_by_user:
+                    logger.info("PreTask[%d] 已被用户终止", idx)
+                    self.log_output.emit("INFO", self.tr("Pretask was stopped by user"))
+                    return False
+
+                if stdout:
+                    for line in stdout.decode("utf-8", errors="replace").splitlines():
+                        if line.strip():
+                            self.log_output.emit("INFO", f"[PreTask{idx}] {line.strip()}")
+                if stderr:
+                    for line in stderr.decode("utf-8", errors="replace").splitlines():
+                        if line.strip():
+                            self.log_output.emit("WARNING", f"[PreTask{idx}] {line.strip()}")
+
+                if proc.returncode != 0:
+                    logger.error("PreTask[%d] 返回非零退出码: %d", idx, proc.returncode)
+                    self.log_output.emit(
+                        "ERROR",
+                        self.tr("Pretask exited with code {code}: {path}").format(
+                            code=proc.returncode, path=exec_str
+                        ),
+                    )
+                    return False
+            except FileNotFoundError:
+                logger.error("PreTask[%d] 执行文件未找到: %s", idx, exec_str)
+                self.log_output.emit(
+                    "ERROR",
+                    self.tr("Pretask executable not found: ") + exec_str,
+                )
+                return False
+            except Exception as e:
+                logger.error("PreTask[%d] 执行异常: %s", idx, e)
+                self.log_output.emit(
+                    "ERROR",
+                    self.tr("Pretask execution failed: ") + str(e),
+                )
+                return False
+
+        return True
 
     def _translate_log_level(self, level: str) -> str:
         """翻译日志级别"""
@@ -1831,10 +1958,13 @@ class TaskFlowRunner(QObject):
             logger.debug(
                 f"任务 '{task.name}' 开始速通条件评估: 条件类型={condition_type}, 执行类型={action_type}"
             )
+            def _update_speedrun_task(t: TaskItem) -> None:
+                self.task_service.update_task(t)
+
             speedrun_result = evaluate_speedrun(
                 task,
                 speedrun_cfg,
-                self.task_service.update_task,
+                _update_speedrun_task,
                 notify_system=lambda message: self.runner_events.focus_notification.emit(
                     str(message)
                 ),

@@ -1,7 +1,8 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from app.core.service.task_service import TaskService
 from app.core.item import CoreSignalBus
+from app.common.constants import _PRETASK_
 
 
 class OptionService:
@@ -27,7 +28,9 @@ class OptionService:
             self.current_options = task.task_option
             from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 
-            if task.item_id == _RESOURCE_:
+            if task.item_id == _PRETASK_:
+                self.form_structure = self._build_pretask_form_structure()
+            elif task.item_id == _RESOURCE_: 
                 self.form_structure = {"type": "resource"}
             elif task.item_id == _CONTROLLER_:
                 self.form_structure = {"type": "controller"}
@@ -56,6 +59,9 @@ class OptionService:
         task = self.task_service.get_task(self.current_task_id)
         if not task:
             return False
+
+        if task.item_id == _PRETASK_:
+            return self._on_pretask_option_updated(task, option_data)
 
         # 更新任务中的选项并持久化
         task.task_option.update(option_data)
@@ -529,3 +535,83 @@ class OptionService:
                 break
 
         return form_structure if form_structure else None
+
+    def _build_pretask_form_structure(self) -> Dict[str, Any]:
+        """构建 PreTask 的表单结构，读取 interface.pretask 列表并仅渲染 Select 类型选项。"""
+        interface = self.task_service.interface or {}
+        pretask_entries: List[Dict[str, Any]] = list(interface.get("pretask", []) or [])
+        all_options = interface.get("option", {}) or {}
+
+        form: Dict[str, Any] = {"type": "pretask", "entries": []}
+
+        for idx, entry in enumerate(pretask_entries):
+            if not isinstance(entry, dict):
+                continue
+            entry_data: Dict[str, Any] = {
+                "index": idx,
+                "label": entry.get("label", entry.get("name", "")),
+                "description": entry.get("description", ""),
+                "exec": entry.get("exec", ""),
+                "options": [],
+            }
+            option_names = entry.get("option", [])
+            if isinstance(option_names, list):
+                for option_name in option_names:
+                    if not isinstance(option_name, str):
+                        continue
+                    option_def = all_options.get(option_name)
+                    if not isinstance(option_def, dict):
+                        continue
+                    option_type = (option_def.get("type") or "select").lower()
+                    if option_type not in ("select", "switch", "combobox", ""):
+                        continue
+                    widget_key = f"entry_{idx}_{option_name}"
+                    field_config = self.process_option_def(option_def, all_options, widget_key)
+                    entry_data["options"].append({
+                        "key": widget_key,
+                        "name": option_name,
+                        "field": field_config,
+                    })
+            form["entries"].append(entry_data)
+
+        return form
+
+    def _on_pretask_option_updated(self, task: "TaskItem", option_data: Dict[str, Any]) -> bool:
+        """PreTask 选项更新：将 entry_{idx}_{option_name} 格式的 key 解析并存入嵌套结构。"""
+        import re
+
+        pretask_entries: list = list(task.task_option.get("pretask_entries", []) or [])
+
+        for widget_key, value in option_data.items():
+            match = re.match(r"^entry_(\d+)_(.+)$", widget_key)
+            if not match:
+                continue
+            entry_idx = int(match.group(1))
+            option_name = match.group(2)
+
+            while len(pretask_entries) <= entry_idx:
+                pretask_entries.append({"options": {}})
+            entry = pretask_entries[entry_idx]
+            if not isinstance(entry, dict):
+                pretask_entries[entry_idx] = {"options": {}}
+                entry = pretask_entries[entry_idx]
+            entry_options = entry.setdefault("options", {})
+            if isinstance(value, dict) and entry_options.get(option_name) != value:
+                entry_options[option_name] = value
+
+        task.task_option["pretask_entries"] = pretask_entries
+
+        # 清理 update_options() 中 .update(option_data) 带来的平铺 key
+        for key in list(task.task_option.keys()):
+            if re.match(r"^entry_\d+_", key):
+                del task.task_option[key]
+
+        if task.is_base_task() and "_speedrun_config" in task.task_option:
+            del task.task_option["_speedrun_config"]
+
+        success = self.task_service.update_task(task)
+
+        if success:
+            self.signal_bus.option_updated.emit(option_data)
+
+        return success

@@ -17,5 +17,8 @@ _SETTING_ = "Setting"
 #资源设置任务的固定 ID
 _RESOURCE_ = "Resource"
 
+# 预任务固定 ID
+_PRETASK_ = "PreTask"
+
 # 完成后操作任务的固定 ID
 POST_ACTION = "Post-Action"

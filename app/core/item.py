@@ -2,7 +2,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List
 from PySide6.QtCore import QObject, Signal
-from app.common.constants import POST_ACTION, _CONTROLLER_, _SETTING_, _RESOURCE_
+from app.common.constants import _PRETASK_, POST_ACTION, _CONTROLLER_, _SETTING_, _RESOURCE_
 
 
 # ==================== 信号总线 ====================
@@ -79,8 +79,8 @@ class TaskItem:
     is_hidden: bool = False  # 标记任务是否被隐藏（不保存到配置，仅运行时使用）
 
     def is_base_task(self) -> bool:
-        """判断是否为基础任务（控制器/资源/完成后操作）"""
-        return self.item_id in (_CONTROLLER_, _RESOURCE_, POST_ACTION)
+        """判断是否为基础任务（预任务/控制器/资源/完成后操作）"""
+        return self.item_id in (_PRETASK_, _CONTROLLER_, _RESOURCE_, POST_ACTION)
 
     def is_builtin_task(self) -> bool:
         """判断是否为框架加载的内置任务。"""
@@ -122,7 +122,7 @@ class TaskItem:
             task_option=task_option,
         )
         
-        if temp_task.is_base_task():
+        if temp_task.is_base_task() and item_id != _PRETASK_:
             # 基础任务不应该包含 speedrun_config
             if isinstance(task_option, dict) and "_speedrun_config" in task_option:
                 task_option = dict(task_option)  # 创建副本避免修改原始数据

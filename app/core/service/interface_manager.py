@@ -359,6 +359,25 @@ class InterfaceManager:
             return [deepcopy(item) for item in value if isinstance(item, dict)]
         return []
 
+    @staticmethod
+    def _normalize_pretask(value: Any) -> list[dict[str, Any]]:
+        """Normalize pretask field from object|object[] to a list of pretask dicts.
+
+        Per PI v2.7.0, pretask can be a single object or an array of objects.
+        """
+        if isinstance(value, dict):
+            return [deepcopy(value)]
+        if isinstance(value, list):
+            return [deepcopy(item) for item in value if isinstance(item, dict)]
+        return []
+
+    def _apply_normalized_pretask(self, pretasks: list[dict[str, Any]]) -> None:
+        """Store normalized pretask list back to original_interface."""
+        if pretasks:
+            self._original_interface["pretask"] = pretasks
+        else:
+            self._original_interface.pop("pretask", None)
+
     def _merge_global_option_names(self, target: list[str], value: Any) -> None:
         """Append global_option names preserving first occurrence."""
         if not isinstance(value, list):
@@ -396,15 +415,20 @@ class InterfaceManager:
         """
         解析 interface 的 import 字段并合并 PI 片段。
         v2.8: global_option 合并后转入 setting，runtime 不再单独消费 global_option。
+        v2.7: pretask 合并为有序列表：主文件先，再按 import 顺序依次追加。
         """
         import_paths = self._original_interface.get("import")
         merged_global_options: list[str] = []
         self._merge_global_option_names(
             merged_global_options, self._original_interface.get("global_option")
         )
+        merged_pretasks: list[dict[str, Any]] = self._normalize_pretask(
+            self._original_interface.get("pretask")
+        )
 
         if not isinstance(import_paths, list):
             self._normalize_setting_from_global_option(merged_global_options)
+            self._apply_normalized_pretask(merged_pretasks)
             return
         to_remove = []
         for i, item in enumerate(import_paths):
@@ -452,6 +476,18 @@ class InterfaceManager:
                 self._merge_global_option_names(
                     merged_global_options, imported.get("global_option")
                 )
+            if imported.get("pretask") is not None:
+                merged_pretasks.extend(self._normalize_pretask(imported["pretask"]))
+            if isinstance(imported.get("group"), list):
+                base_group = self._original_interface.setdefault("group", [])
+                if not isinstance(base_group, list):
+                    base_group = []
+                    self._original_interface["group"] = base_group
+                existing_names = {g.get("name") for g in base_group if isinstance(g, dict)}
+                for grp in imported.get("group"):
+                    if isinstance(grp, dict) and grp.get("name") not in existing_names:
+                        base_group.append(deepcopy(grp))
+                        existing_names.add(grp["name"])
             imported_setting = self._normalize_setting_entries(imported.get("setting"))
             if imported_setting:
                 base_setting = self._original_interface.setdefault("setting", [])
@@ -461,6 +497,7 @@ class InterfaceManager:
                 base_setting.extend(imported_setting)
 
         self._normalize_setting_from_global_option(merged_global_options)
+        self._apply_normalized_pretask(merged_pretasks)
         # 合并完成后移除 import 字段，避免下游误用
         self._original_interface.pop("import", None)
 

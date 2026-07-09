@@ -39,6 +39,9 @@ from app.view.task_interface.components.option_widget_mixin.resource_setting_mix
 from app.view.task_interface.components.option_widget_mixin.controller_setting_mixin import (
     ControllerSettingWidget,
 )
+from app.view.task_interface.components.option_widget_mixin.pretask_setting_mixin import (
+    PreTaskSettingMixin,
+)
 from app.view.task_interface.components.panel_splitter import (
     PANEL_SECTION_SPACING,
     panel_column_margins,
@@ -47,7 +50,7 @@ from app.view.task_interface.components.panel_splitter import (
 from ....core.core import ServiceCoordinator
 
 
-class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
+class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTaskSettingMixin):
     current_config: Dict[str, Any]
     parent_layout: QVBoxLayout
 
@@ -79,6 +82,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 初始化 Resource 和 PostAction Mixin（它们现在是 OptionWidget 的一部分）
         self._init_resource_settings()
         self._init_post_action_settings()
+        self._init_pretask_settings()
         
         # 共享控制器相关属性到 Resource Mixin（ResourceSettingMixin 需要）
         self.controller_type_mapping = self.controller_setting_widget.controller_type_mapping
@@ -934,6 +938,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             is_setting = form_type == "setting"
             is_controller = form_type == "controller"
             is_post_action = form_type == "post_action"
+            is_pretask = form_type == "pretask"
 
             if is_resource:
                 # 资源任务 - 只显示资源下拉框
@@ -964,6 +969,14 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 description = form_structure.get("description", "")
                 self.set_description(description, has_options=True)
 
+            elif is_pretask:
+                # PreTask - 使用动画过渡
+                self._option_animator.play(
+                    lambda: self._apply_pretask_settings_with_animation()
+                )
+                description = form_structure.get("description", "")
+                self.set_description(description, has_options=bool(form_structure.get("entries")))
+
             else:
                 # 正常的表单更新逻辑（update_form_from_structure会处理公告）
                 self.update_form_from_structure(form_structure, self.current_config)
@@ -976,7 +989,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         speedrun_visible = not (
             form_structure
             and form_structure.get("type")
-            in ["resource", "setting", "controller", "post_action"]
+            in ["resource", "setting", "controller", "post_action", "pretask"]
         )
 
         if not speedrun_visible:
