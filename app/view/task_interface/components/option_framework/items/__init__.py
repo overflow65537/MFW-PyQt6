@@ -3,12 +3,13 @@
 导出所有选项项类型供注册器和外部使用
 """
 from .base import OptionItemBase, TooltipComboBox
+from .checkbox import CheckBoxOptionItem
 from .combobox import ComboBoxOptionItem
-from .switch import SwitchOptionItem
+from .hotkey import HotkeyOptionItem
 from .input import InputOptionItem
 from .inputs import InputsOptionItem
-from .checkbox import CheckBoxOptionItem
 from .registry import OptionItemRegistry
+from .switch import SwitchOptionItem
 
 __all__ = [
     "OptionItemBase",
@@ -18,5 +19,6 @@ __all__ = [
     "InputOptionItem",
     "InputsOptionItem",
     "CheckBoxOptionItem",
+    "HotkeyOptionItem",
     "OptionItemRegistry",
 ]

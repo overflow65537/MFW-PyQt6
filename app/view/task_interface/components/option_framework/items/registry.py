@@ -135,20 +135,22 @@ class OptionItemRegistry:
 
 def register_default_types():
     """注册默认的选项类型"""
+    from .checkbox import CheckBoxOptionItem
     from .combobox import ComboBoxOptionItem
-    from .switch import SwitchOptionItem
+    from .hotkey import HotkeyOptionItem
     from .input import InputOptionItem
     from .inputs import InputsOptionItem
-    from .checkbox import CheckBoxOptionItem
+    from .switch import SwitchOptionItem
 
+    OptionItemRegistry.register("checkbox", CheckBoxOptionItem)
     OptionItemRegistry.register("combobox", ComboBoxOptionItem)
     OptionItemRegistry.register("select", ComboBoxOptionItem)  # select 是 combobox 的别名
     OptionItemRegistry.register("switch", SwitchOptionItem)
     OptionItemRegistry.register("input", InputOptionItem)
     OptionItemRegistry.register("inputs", InputsOptionItem)
-    OptionItemRegistry.register("checkbox", CheckBoxOptionItem)
+    OptionItemRegistry.register("hotkey", HotkeyOptionItem)
 
-    logger.debug("\u5df2\u6ce8\u518c\u9ed8\u8ba4\u9009\u9879\u7c7b\u578b: combobox, select, switch, input, inputs, checkbox")
+    logger.debug("已注册默认选项类型: combobox, select, switch, input, inputs, checkbox, hotkey")
 
 
 # 模块加载时自动注册默认类型
