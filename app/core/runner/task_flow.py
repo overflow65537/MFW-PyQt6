@@ -1219,6 +1219,43 @@ class TaskFlowRunner(QObject):
 
         return tasks
 
+    @staticmethod
+    def _is_pretask_entry_allowed(
+        entry: dict, current_controller: str, current_resource: str
+    ) -> bool:
+        """按 pretask 条目的 controller/resource 白名单过滤。"""
+        for key, current in (("controller", current_controller), ("resource", current_resource)):
+            value = entry.get(key)
+            if value in (None, "", [], {}):
+                continue
+            if not current:
+                continue
+            allowed: list[str] = []
+            if isinstance(value, str):
+                if value.strip():
+                    allowed = [value.strip()]
+            elif isinstance(value, list):
+                allowed = [str(x).strip() for x in value if x is not None and str(x).strip()]
+            else:
+                continue
+            if current.lower() not in {s.lower() for s in allowed if s}:
+                return False
+        return True
+
+    def _get_current_pretask_filter_name(self, item_id: str) -> str:
+        """获取当前选中的控制器或资源 name，用于 pretask 条目过滤。"""
+        task = self.task_service.get_task(item_id)
+        if not task or not isinstance(task.task_option, dict):
+            return ""
+        raw = task.task_option.get(
+            "controller_type" if item_id == _CONTROLLER_ else "resource"
+        )
+        if isinstance(raw, str):
+            return raw.strip()
+        if isinstance(raw, dict):
+            return str(raw.get("value", "") or "").strip()
+        return ""
+
     async def _execute_pretasks(self) -> bool:
         """执行预任务：在资源加载和控制器连接之前，按序执行 interface.pretask 中定义的每个程序。
 
@@ -1233,6 +1270,16 @@ class TaskFlowRunner(QObject):
 
         interface = self.task_service.interface or {}
         pretask_entries: list = list(interface.get("pretask", []) or [])
+        if not pretask_entries:
+            return True
+
+        current_controller = self._get_current_pretask_filter_name(_CONTROLLER_)
+        current_resource = self._get_current_pretask_filter_name(_RESOURCE_)
+
+        pretask_entries = [
+            e for e in pretask_entries
+            if self._is_pretask_entry_allowed(e, current_controller, current_resource)
+        ]
         if not pretask_entries:
             return True
 

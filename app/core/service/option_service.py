@@ -537,15 +537,30 @@ class OptionService:
         return form_structure if form_structure else None
 
     def _build_pretask_form_structure(self) -> Dict[str, Any]:
-        """构建 PreTask 的表单结构，读取 interface.pretask 列表并仅渲染 Select 类型选项。"""
+        """构建 PreTask 的表单结构，读取 interface.pretask 列表并仅渲染 Select 类型选项。
+        
+        按 pretask 条目自身的 controller/resource 字段过滤，不匹配当前选中的控制器/资源时隐藏。
+        """
         interface = self.task_service.interface or {}
         pretask_entries: List[Dict[str, Any]] = list(interface.get("pretask", []) or [])
         all_options = interface.get("option", {}) or {}
+
+        current_controller = self.get_current_controller_name()
+        current_resource = self.get_current_resource_name()
 
         form: Dict[str, Any] = {"type": "pretask", "entries": []}
 
         for idx, entry in enumerate(pretask_entries):
             if not isinstance(entry, dict):
+                continue
+
+            if not self._is_allowed_by_name_list(
+                entry.get("controller"), current_controller
+            ):
+                continue
+            if not self._is_allowed_by_name_list(
+                entry.get("resource"), current_resource
+            ):
                 continue
             entry_data: Dict[str, Any] = {
                 "index": idx,
