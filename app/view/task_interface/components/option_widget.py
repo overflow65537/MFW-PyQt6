@@ -4,7 +4,7 @@ import tempfile
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, cast
 
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QSplitter
@@ -747,13 +747,13 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
         self.option_page_layout.update()
         self.updateGeometry()
 
-    def update_form_from_structure(self, form_structure, config=None):
+    def update_form_from_structure(self, form_structure: dict, config=None):
         """
         直接从表单结构更新表单
         :param form_structure: 表单结构定义
         :param config: 可选的配置对象，用于设置表单的当前选择
         """
-        form_structure = self._translate_form_structure(form_structure)
+        form_structure = cast(dict, self._translate_form_structure(form_structure))
         # 构建表单（排除 description 字段）
         form_structure_copy = {
             k: v for k, v in form_structure.items() if k != "description"
@@ -789,7 +789,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
         # 放在最后确保选项区域已经正确设置可见性
         self.set_description(description or "", has_options=has_valid_options)
 
-    def _translate_form_structure(self, value):
+    def _translate_form_structure(self, value: dict | list | Any) -> dict | list | Any:
         """翻译动态选项结构中的用户可见文本。"""
         if isinstance(value, dict):
             translated = {}
