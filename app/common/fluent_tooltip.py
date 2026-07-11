@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QSizePolicy, QWidget
 from qfluentwidgets import ToolTip, ToolTipFilter, ToolTipPosition
@@ -52,8 +54,9 @@ class _BorderlessToolTip(ToolTip):
         super().__init__(text, parent)
 
         # Remove the outer transparent padding reserved for shadow drawing.
-        self.layout().setContentsMargins(0, 0, 0, 0)
-        self.container.setGraphicsEffect(None)
+        if (layout := self.layout()):
+            layout.setContentsMargins(0, 0, 0, 0)
+        self.container.setGraphicsEffect(None)  # pyright: ignore[reportArgumentType]
 
         setCustomStyleSheet(
             self,
@@ -94,7 +97,8 @@ class _BorderlessToolTip(ToolTip):
 
 class _BorderlessToolTipFilter(ToolTipFilter):
     def _createToolTip(self):
-        return _BorderlessToolTip(self.parent().toolTip(), self.parent().window())
+        parent = cast(QWidget, self.parent())
+        return _BorderlessToolTip(parent.toolTip(), parent.window())
 
 
 def apply_fluent_tooltip(

@@ -100,7 +100,7 @@ def evaluate_speedrun(
 def record_speedrun_runtime(
     task: TaskItem,
     speedrun: dict[str, Any],
-    update_task: Callable[[TaskItem], None],
+    update_task: Callable[..., Any],
 ) -> None:
     if not isinstance(speedrun, dict):
         return

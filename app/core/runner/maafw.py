@@ -13,7 +13,7 @@ import re
 import sys
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Sequence
 import subprocess
 import threading
 import time
@@ -579,7 +579,7 @@ class MaaFW(QObject):
 
     def _embedded_sinks_after(
         self, counts: dict[str, int]
-    ) -> list[tuple[str, ResourceEventSink | ControllerEventSink | TaskerEventSink | ContextEventSink]]:
+    ) -> Sequence[tuple[str, ResourceEventSink | ControllerEventSink | TaskerEventSink | ContextEventSink]]:
         return [
             ("resource_sink", sink)
             for sink in self._embedded_resource_sinks[counts["resource_sink"] :]
@@ -959,7 +959,7 @@ class MaaFW(QObject):
                 module = sys.modules.get(module_key)
                 if not module:
                     continue
-                if getattr(module, "__file__", None):
+                if module.__file__:
                     try:
                         if Path(module.__file__).resolve().is_relative_to(root):
                             modules_to_remove.append(module_key)
@@ -1146,7 +1146,8 @@ class MaaFW(QObject):
     def _init_tasker(self) -> Tasker:
         if self.tasker is None:
             self.tasker = Tasker()
-            self.tasker.add_context_sink(self.maa_context_sink)
+            if self.maa_context_sink:
+                self.tasker.add_context_sink(self.maa_context_sink)
             for sink in self._embedded_context_sinks:
                 self.tasker.add_context_sink(sink)
 
@@ -1231,6 +1232,9 @@ class MaaFW(QObject):
         return self.DEFAULT_AGENT_CONNECT_TIMEOUT_SECONDS * 1000
 
     def _start_one_agent(self, agent_data: dict) -> bool:
+        assert self.resource is not None
+        assert self.controller is not None
+        assert self.tasker is not None
         child_exec = agent_data.get("child_exec", "")
         if not child_exec:
             logger.warning("agent 配置缺少 child_exec，无法启动")

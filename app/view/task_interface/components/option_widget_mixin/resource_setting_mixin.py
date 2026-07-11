@@ -36,8 +36,6 @@ class ResourceSettingMixin:
         if not hasattr(self, "resource_option_form_widget"):
             self.resource_option_form_widget: Optional[OptionFormWidget] = None
         # 全局选项（interface.global_option）
-        if not hasattr(self, "global_option_label"):
-            self.global_option_label = None
         if not hasattr(self, "global_option_form_widget"):
             self.global_option_form_widget: Optional[OptionFormWidget] = None
         if not hasattr(self, "global_option_section_labels"):
@@ -110,7 +108,7 @@ class ResourceSettingMixin:
 
     def _create_resource_option(self):
         """创建资源选择下拉框"""
-        resource_label = BodyLabel(self.tr("Resource"))
+        resource_label = BodyLabel(self.tr("资源设置"))
         self.option_page_layout.addWidget(resource_label)
 
         resource_combox = ComboBox()
@@ -416,8 +414,6 @@ class ResourceSettingMixin:
         self._clear_global_options()
 
         option_config = self.service_coordinator.config_service.get_current_setting_options()
-        self.global_option_label = BodyLabel(self.tr("Setting"))
-        self.option_page_layout.addWidget(self.global_option_label)
 
         ordered_keys: list[str] = []
         sections = form_structure.get("sections", []) if isinstance(form_structure, dict) else []
@@ -456,13 +452,7 @@ class ResourceSettingMixin:
         self._connect_global_option_signals()
 
     def _clear_global_options(self):
-        """移除并入 Resource 页的 Setting 标题、分区标题与表单。"""
-        if self.global_option_label is not None:
-            label = self.global_option_label
-            self.global_option_label = None
-            if label.parent():
-                self.option_page_layout.removeWidget(label)
-            label.deleteLater()
+        """移除并入 Resource 页的分区标题与表单。"""
         while self.global_option_section_labels:
             label = self.global_option_section_labels.pop()
             if label.parent():
