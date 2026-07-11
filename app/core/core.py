@@ -1315,6 +1315,8 @@ class ServiceCoordinator:
             return await self.task_runner.run_tasks_flow(task_id)
         finally:
             if restore_checked:
+                if task_id is None:
+                    raise RuntimeError("restore_checked is True but task_id is None")
                 self.update_task_checked(task_id, False)
 
     async def stop_task_flow(self):
