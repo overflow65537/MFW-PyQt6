@@ -1,9 +1,12 @@
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
 
 from PySide6.QtWidgets import QVBoxLayout
-from qfluentwidgets import BodyLabel
+from qfluentwidgets import BodyLabel, SimpleCardWidget
 
 from app.core.core import ServiceCoordinator
+
+if TYPE_CHECKING:
+    from app.view.task_interface.components.option_framework.option_form_widget import OptionFormWidget
 
 
 class PreTaskSettingMixin:
@@ -15,6 +18,23 @@ class PreTaskSettingMixin:
     option_page_layout: QVBoxLayout
     service_coordinator: ServiceCoordinator
     current_config: Dict[str, Any]
+    option_area_card: SimpleCardWidget
+    option_form_widget: "OptionFormWidget"
+
+    def _clear_options(self) -> None:
+        ...
+
+    def set_description(self, description: str, has_options: bool = True) -> None:
+        ...
+
+    def _connect_option_signals(self) -> None:
+        ...
+
+    def _update_options_enabled(self) -> None:
+        ...
+
+    def tr(self, text: str) -> str:
+        ...
 
     def _init_pretask_settings(self):
         """初始化 PreTask 设置相关属性"""

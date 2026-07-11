@@ -723,7 +723,7 @@ class TaskFlowRunner(QObject):
 
             # 先执行预任务（在资源加载和控制器连接之前）
             if not await self._execute_pretasks():
-                logger.error("预任务执行失败，中止任务流")
+                logger.error("前置任务执行失败，中止任务流")
                 return
 
             # 先加载资源，再连接控制器

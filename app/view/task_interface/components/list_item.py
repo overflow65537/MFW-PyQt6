@@ -36,7 +36,7 @@ from qfluentwidgets import (
 from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.view.task_interface.components.marquee_label import OptionLabel
 from app.core.item import TaskItem, ConfigItem
-from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
+from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION, _PRETASK_
 from app.core.core import ServiceCoordinator
 from app.core.utils.option_branches_compat import get_option_branches
 
@@ -411,6 +411,8 @@ class TaskListItem(BaseListItem):
             return self.tr("Controller")
         elif self.task.item_id == POST_ACTION:
             return self.tr("Post-Action")
+        elif self.task.item_id == _PRETASK_:
+            return self.tr("PreTask")
         elif self.interface:
             for task in self.interface.get("task", []):
                 if task["name"] == self.task.name:
