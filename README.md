@@ -226,3 +226,5 @@ class 动作对象1(CustomAction):
 <a href="https://github.com/overflow65537/PYQT-MAA/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=overflow65537/PYQT-MAA&max=1000" alt="Contributors to MFW-PyQt6"/>
 </a>
+
+完整贡献者列表请参阅 [AUTHORS.md](./AUTHORS.md)。
