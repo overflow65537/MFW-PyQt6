@@ -2,6 +2,7 @@
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from PySide6.QtCore import QCoreApplication
 
 from app.utils.logger import logger
 from app.common.constants import (
@@ -45,7 +46,13 @@ class JsonConfigRepository:
                     and not interface_path_json.exists()
                 ):
                     raise FileNotFoundError(
-                        f"无有效资源配置文件: {interface_path_jsonc} 或 {interface_path_json}"
+                        QCoreApplication.translate(
+                            "",
+                            "No valid resource configuration file found: {path_jsonc} or {path_json}\nYou downloaded the single UI, please download the resource file from the corresponding tool.",
+                        ).format(
+                            path_jsonc=interface_path_jsonc,
+                            path_json=interface_path_json,
+                        )
                     )
 
             logger.debug("使用 interface 配置创建默认主配置")
