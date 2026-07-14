@@ -301,6 +301,7 @@ jobs:
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
+            AUTHORS.md=MFW_AUTHORS.md
           include-data-dir: |
             app/i18n=app/i18n
             app/assets/icons=app/assets/icons

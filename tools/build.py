@@ -218,6 +218,10 @@ shutil.copy(
     os.path.join(os.getcwd(), "LICENSE"),
     os.path.join(os.getcwd(), "dist", "MFW", "MFW_LICENSE"),
 )
+shutil.copy(
+    os.path.join(os.getcwd(), "AUTHORS.md"),
+    os.path.join(os.getcwd(), "dist", "MFW", "MFW_AUTHORS.md"),
+)
 
 os.makedirs(os.path.join(os.getcwd(), "dist", "MFW", "app", "i18n"), exist_ok=True)
 # 复制i18n文件
