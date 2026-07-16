@@ -3,10 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, time
 import calendar
-from pathlib import Path
 from typing import Any, List, Optional
 
-import jsonc
 from PySide6.QtCore import QObject, Signal
 
 from app.common.signal_bus import signalBus
@@ -228,59 +226,24 @@ class ScheduleEntry:
 class ScheduleService(QObject):
     schedules_changed = Signal(list)
 
-    def __init__(self, storage_path: Path):
+    def __init__(self):
         super().__init__()
-        self.storage_path = storage_path
         self._schedules: List[ScheduleEntry] = []
         self._system_scheduler = get_system_scheduler_backend()
-        self._ensure_storage()
         self._load_schedules()
-        if self._system_scheduler.is_supported:
-            self._system_scheduler.sync_all(self._schedules)
-
-    def _ensure_storage(self) -> None:
-        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-        if not self.storage_path.exists():
-            self.storage_path.write_text("[]", encoding="utf-8")
 
     def _load_schedules(self) -> None:
-        try:
-            with open(self.storage_path, "r", encoding="utf-8") as handle:
-                payload = jsonc.load(handle)
-        except Exception as exc:
-            logger.warning("无法加载计划任务文件: %s", exc)
-            return
-        if not isinstance(payload, list):
-            logger.warning(
-                "计划任务文件结构异常: 期望列表, 得到 %s", type(payload).__name__
-            )
-            return
-        entries: List[ScheduleEntry] = []
-        for raw in payload:
-            try:
-                entry = ScheduleEntry.from_dict(raw)
+        if self._system_scheduler.is_supported:
+            self._schedules = self._system_scheduler.list_all_entries()
+        else:
+            self._schedules = []
+        for entry in self._schedules:
+            if entry.next_run is None:
                 entry.next_run = entry.compute_next_run()
                 if entry.schedule_type == SCHEDULE_SINGLE and entry.next_run is None:
                     entry.enabled = False
-                entries.append(entry)
-            except Exception as exc:
-                logger.exception("反序列化计划任务失败: %s", exc)
-        self._schedules = entries
         self._sort_schedules()
-        self._persist()
         self._notify_schedules_changed()
-
-    def _persist(self) -> None:
-        try:
-            with open(self.storage_path, "w", encoding="utf-8") as handle:
-                jsonc.dump(
-                    [entry.to_dict() for entry in self._schedules],
-                    handle,
-                    indent=4,
-                    ensure_ascii=False,
-                )
-        except Exception as exc:
-            logger.exception("计划任务保存失败: %s", exc)
 
     def _notify_schedules_changed(self) -> None:
         self.schedules_changed.emit(self.get_schedules())
@@ -412,15 +375,23 @@ class ScheduleService(QObject):
                 self.format_entry_pattern(entry),
             )
             return False
+        if not self._system_scheduler.is_supported:
+            logger.warning("当前平台不支持系统计划任务")
+            return False
+        if entry.enabled:
+            ok = self._system_scheduler.install(entry)
+        else:
+            ok = self._system_scheduler.remove(entry.entry_id)
+        if not ok:
+            self._log_warning(
+                self.tr("Schedule: {name} failed to register in system scheduler").format(
+                    name=entry.name
+                )
+            )
+            return False
         self._schedules.append(entry)
         self._sort_schedules()
-        self._persist()
         self._notify_schedules_changed()
-        if self._system_scheduler.is_supported:
-            if entry.enabled:
-                self._system_scheduler.install(entry)
-            else:
-                self._system_scheduler.remove(entry.entry_id)
         self._log_info(
             self.tr("Schedule: {name} ({describe}) added").format(
                 name=entry.name, describe=self.format_entry_pattern(entry)
@@ -432,11 +403,10 @@ class ScheduleService(QObject):
         entry = self.find_schedule(entry_id)
         if not entry:
             return False
-        self._schedules.remove(entry)
-        self._sort_schedules()
         if self._system_scheduler.is_supported:
             self._system_scheduler.remove(entry_id)
-        self._persist()
+        self._schedules.remove(entry)
+        self._sort_schedules()
         self._notify_schedules_changed()
         self._log_info(
             self.tr("Schedule: {name} ({describe}) removed").format(
@@ -453,7 +423,6 @@ class ScheduleService(QObject):
         if enabled and not entry.next_run:
             entry.next_run = entry.compute_next_run()
         self._sort_schedules()
-        self._persist()
         if self._system_scheduler.is_supported:
             if enabled:
                 self._system_scheduler.install(entry)
@@ -476,3 +445,7 @@ class ScheduleService(QObject):
     def _log_info(self, message: str) -> None:
         logger.info(message)
         signalBus.info_bar_requested.emit("info", message)
+
+    def _log_warning(self, message: str) -> None:
+        logger.warning(message)
+        signalBus.info_bar_requested.emit("warning", message)

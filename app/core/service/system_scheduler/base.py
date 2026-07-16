@@ -28,6 +28,10 @@ class SystemSchedulerBackend(ABC):
         """启用或禁用一条系统计划任务。"""
 
     @abstractmethod
+    def list_all_entries(self) -> list["ScheduleEntry"]:
+        """从系统调度器读取所有本实例管理的计划任务。"""
+
+    @abstractmethod
     def sync_all(self, entries: list["ScheduleEntry"]) -> None:
         """将本地计划列表与系统调度器对齐。"""
 
@@ -50,3 +54,6 @@ class NoopSystemSchedulerBackend(SystemSchedulerBackend):
 
     def sync_all(self, entries: list["ScheduleEntry"]) -> None:
         return
+
+    def list_all_entries(self) -> list["ScheduleEntry"]:
+        return []

@@ -47,6 +47,9 @@ from app.core.service.schedule_service import (
     SCHEDULE_WEEKLY,
     ScheduleEntry,
 )
+from app.utils.admin_check import is_admin
+
+_ADMIN = is_admin()
 
 
 class ZhDateTimeInput(QWidget):
@@ -222,6 +225,12 @@ class ScheduleInterface(QWidget):
         control_layout.setSpacing(24)
         self.force_checkbox = CheckBox(self.tr("Force start"))
         self.elevated_checkbox = CheckBox(self.tr("Run as administrator"))
+        if not is_admin():
+            self.elevated_checkbox.setEnabled(False)
+            apply_fluent_tooltip(
+                self.elevated_checkbox,
+                self.tr("Requires administrator privileges to enable"),
+            )
         self.enabled_checkbox = CheckBox(self.tr("Enabled"))
         self.enabled_checkbox.setChecked(True)
         control_layout.addWidget(self.force_checkbox)
@@ -723,7 +732,6 @@ class ScheduleInterface(QWidget):
             return
 
         self._info_with_log("info", self.tr("Schedule saved."))
-        self.single_datetime.setDateTime(self._default_qdatetime())
 
     def _compose_datetime(self, datetime_input: ZhDateTimeInput) -> datetime:
         return datetime_input.dateTime()

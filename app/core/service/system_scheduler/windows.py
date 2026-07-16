@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from xml.dom import minidom
 
 from app.core.service.schedule_service import (
@@ -14,6 +15,7 @@ from app.core.service.schedule_service import (
     SCHEDULE_MONTHLY,
     SCHEDULE_SINGLE,
     SCHEDULE_WEEKLY,
+    ScheduleEntry,
     _parse_iso,
 )
 from app.core.service.system_scheduler.base import SystemSchedulerBackend
@@ -273,6 +275,215 @@ class WindowsTaskSchedulerBackend(SystemSchedulerBackend):
             self.remove(orphan_id)
 
         self._migrate_legacy_tasks(entries)
+
+    def list_all_entries(self) -> list["ScheduleEntry"]:
+        entry_ids = self._list_registered_entry_ids(task_folder())
+        if not entry_ids:
+            return []
+        info_map = self._fetch_tasks_info(entry_ids)
+        entries: list[ScheduleEntry] = []
+        for entry_id in sorted(entry_ids):
+            xml_str = self._get_task_xml(entry_id)
+            if not xml_str:
+                continue
+            entry = self._parse_task_xml(entry_id, xml_str)
+            if entry is None:
+                continue
+            info = info_map.get(entry_id, {})
+            entry.enabled = info.get("enabled", True)
+            entry.next_run = info.get("next_run")
+            entry.last_run = info.get("last_run")
+            entries.append(entry)
+        return entries
+
+    def _fetch_tasks_info(self, entry_ids: set[str]) -> dict[str, dict]:
+        folder_name = task_folder()
+        names = ", ".join(f"'{e}'" for e in entry_ids)
+        script = (
+            f"Get-ScheduledTask -TaskPath '\\{folder_name}\\' "
+            f"| Where-Object {{ $_.TaskName -in @({names}) }} "
+            "| ForEach-Object { "
+            "$t = $_; "
+            "$info = $t | Get-ScheduledTaskInfo -ErrorAction SilentlyContinue; "
+            "$enabled = ($t.State -ne 'Disabled'); "
+            "$nextRun = if ($info.NextRunTime) { $info.NextRunTime.ToString('o') } else { '' }; "
+            "$lastRun = if ($info.LastRunTime -and $info.LastRunTime -ne [datetime]::MinValue) { $info.LastRunTime.ToString('o') } else { '' }; "
+            "Write-Output (\"$($t.TaskName)|$enabled|$nextRun|$lastRun\") }"
+        )
+        info_map: dict[str, dict] = {}
+        try:
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+                capture_output=True,
+                text=True,
+                encoding=_subprocess_text_encoding(),
+                errors="replace",
+                timeout=30,
+                check=False,
+                **hidden_subprocess_kwargs(),
+            )
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    line = line.strip()
+                    if not line or "|" not in line:
+                        continue
+                    parts = line.split("|", 3)
+                    if len(parts) < 4:
+                        continue
+                    tid, enabled_str, next_str, last_str = parts
+                    info_map[tid] = {
+                        "enabled": enabled_str.lower() == "true",
+                        "next_run": _parse_iso(next_str) if next_str else None,
+                        "last_run": _parse_iso(last_str) if last_str else None,
+                    }
+        except Exception as exc:
+            logger.warning("获取计划任务状态失败: %s", exc)
+        return info_map
+
+    def _get_task_xml(self, entry_id: str) -> str | None:
+        task_name = task_full_name(entry_id)
+        try:
+            result = subprocess.run(
+                ["schtasks", "/Query", "/XML", "/TN", task_name],
+                capture_output=True,
+                text=True,
+                encoding=_subprocess_text_encoding(),
+                errors="replace",
+                timeout=30,
+                check=False,
+                **hidden_subprocess_kwargs(),
+            )
+            if result.returncode != 0:
+                return None
+            return result.stdout
+        except Exception as exc:
+            logger.warning("获取任务 XML 失败 [%s]: %s", entry_id, exc)
+            return None
+
+    def _parse_task_xml(self, entry_id: str, xml_str: str) -> ScheduleEntry | None:
+        try:
+            root = ET.fromstring(xml_str)
+        except ET.ParseError as exc:
+            logger.warning("解析任务 XML 失败 [%s]: %s", entry_id, exc)
+            return None
+
+        ns = _TASK_NS
+        def tag(name: str) -> str:
+            return f"{{{ns}}}{name}"
+
+        def text(elem: ET.Element | None, default: str = "") -> str:
+            return (elem.text or "").strip() if elem is not None else default
+
+        description = text(root.find(f".//{tag('Description')}"))
+        name = description.removeprefix("MFW schedule: ") if description else ""
+
+        args_str = text(root.find(f".//{tag('Arguments')}"))
+        config_id = ""
+        force_start = False
+        if args_str:
+            match = re.search(r"--config-id=(\S+)", args_str)
+            if match:
+                config_id = match.group(1)
+            force_start = "--force-restart" in args_str
+
+        run_elevated = False
+        run_level = text(root.find(f".//{tag('RunLevel')}"))
+        if run_level == "HighestAvailable":
+            run_elevated = True
+
+        created_at = datetime.now()
+        date_str = text(root.find(f".//{tag('Date')}"))
+        if date_str:
+            parsed = _parse_iso(date_str)
+            if parsed:
+                created_at = parsed
+
+        schedule_type = SCHEDULE_SINGLE
+        params: dict[str, Any] = {}
+
+        trigger = root.find(f".//{tag('TimeTrigger')}")
+        if trigger is not None:
+            start = text(trigger.find(tag('StartBoundary')))
+            if start:
+                params["run_at"] = start
+            schedule_type = SCHEDULE_SINGLE
+        else:
+            trigger = root.find(f".//{tag('CalendarTrigger')}")
+            if trigger is not None:
+                start = text(trigger.find(tag('StartBoundary')))
+                start_dt = _parse_iso(start) if start else datetime.now()
+                if start_dt:
+                    params["start_at"] = start_dt.isoformat()
+                    params["hour"] = start_dt.hour
+                    params["minute"] = start_dt.minute
+
+                if trigger.find(f".//{tag('ScheduleByDay')}") is not None:
+                    schedule_type = SCHEDULE_DAILY
+                    interval = text(trigger.find(f".//{tag('DaysInterval')}"), "1")
+                    params["interval_days"] = int(interval)
+                elif trigger.find(f".//{tag('ScheduleByWeek')}") is not None:
+                    schedule_type = SCHEDULE_WEEKLY
+                    weeks = text(trigger.find(f".//{tag('WeeksInterval')}"), "1")
+                    params["interval_weeks"] = int(weeks)
+                    weekdays = []
+                    for day_elem in trigger.findall(f".//{tag('DaysOfWeek')}/*"):
+                        if day_elem.tag == f"{{{ns}}}DaysOfWeek":
+                            continue
+                        day_name = day_elem.tag.split("}")[-1]
+                        if day_name in _WEEKDAY_NAMES:
+                            weekdays.append(_WEEKDAY_NAMES.index(day_name))
+                    params["weekdays"] = weekdays
+                elif trigger.find(f".//{tag('ScheduleByMonthDayOfWeek')}") is not None:
+                    schedule_type = SCHEDULE_MONTHLY
+                    week_elem = trigger.find(f".//{tag('Week')}")
+                    ordinal = 0
+                    if week_elem is not None:
+                        w = text(week_elem)
+                        if w.lower() == "last":
+                            ordinal = 4
+                        else:
+                            ordinal = max(0, int(w) - 1)
+                    params["ordinal"] = ordinal
+                    for day_elem in trigger.findall(f".//{tag('DaysOfWeek')}/*"):
+                        day_name = day_elem.tag.split("}")[-1]
+                        if day_name in _WEEKDAY_NAMES:
+                            params["weekday"] = _WEEKDAY_NAMES.index(day_name)
+                            break
+                    month_elem = trigger.find(f".//{tag('Months')}")
+                    if month_elem is not None:
+                        for m_elem in month_elem:
+                            m_name = m_elem.tag.split("}")[-1]
+                            if m_name in _MONTH_NAMES:
+                                params["month"] = _MONTH_NAMES.index(m_name) + 1
+                                break
+                    if "month" not in params:
+                        params["month"] = 0
+                elif trigger.find(f".//{tag('ScheduleByMonth')}") is not None:
+                    schedule_type = SCHEDULE_MONTHLY
+                    day_elem = trigger.find(f".//{tag('Day')}")
+                    if day_elem is not None:
+                        params["month_day"] = int(text(day_elem, "1"))
+                    month_elem = trigger.find(f".//{tag('Months')}")
+                    if month_elem is not None:
+                        for m_elem in month_elem:
+                            m_name = m_elem.tag.split("}")[-1]
+                            if m_name in _MONTH_NAMES:
+                                params["month"] = _MONTH_NAMES.index(m_name) + 1
+                                break
+                    if "month" not in params:
+                        params["month"] = 0
+
+        return ScheduleEntry(
+            entry_id=entry_id,
+            config_id=config_id,
+            name=name or config_id,
+            schedule_type=schedule_type,
+            params=params,
+            force_start=force_start,
+            run_elevated=run_elevated,
+            enabled=True,
+            created_at=created_at,
+        )
 
     def _migrate_legacy_tasks(self, entries: list["ScheduleEntry"]) -> None:
         """将旧版全局任务文件夹中的本实例计划迁移到按安装路径隔离的文件夹。"""
