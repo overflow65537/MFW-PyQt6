@@ -139,6 +139,11 @@ class CrontabBlockTests(unittest.TestCase):
         self.assertIn("--config-id=cfg_demo", job)
         self.assertIn("--direct-run", job)
 
+    def test_build_shell_job_elevated_prefixed_sudo(self) -> None:
+        job = build_shell_job("cfg_demo", force_start=False, run_elevated=True)
+        self.assertTrue(job.startswith("sudo "), f"expected sudo prefix, got: {job}")
+        self.assertIn("--config-id=cfg_demo", job)
+
     def test_split_preserves_other_instance_blocks(self) -> None:
         original = "\n".join(
             [

@@ -110,6 +110,8 @@ def build_task_xml(entry: "ScheduleEntry") -> str:
     principals = ET.SubElement(root, f"{{{_TASK_NS}}}Principals")
     principal = ET.SubElement(principals, f"{{{_TASK_NS}}}Principal", id="Author")
     _append_text(principal, f"{{{_TASK_NS}}}LogonType", "InteractiveToken")
+    if entry.run_elevated:
+        _append_text(principal, f"{{{_TASK_NS}}}RunLevel", "HighestAvailable")
 
     settings = ET.SubElement(root, f"{{{_TASK_NS}}}Settings")
     _append_text(settings, f"{{{_TASK_NS}}}DisallowStartIfOnBatteries", "true")

@@ -35,12 +35,15 @@ def current_schedule_instance_id() -> str:
     return resolve_schedule_instance_id()
 
 
-def build_shell_job(config_id: str, *, force_start: bool) -> str:
+def build_shell_job(config_id: str, *, force_start: bool, run_elevated: bool = False) -> str:
     """构建可在 shell/cron 中执行的 MFW 启动命令。"""
     executable, arguments = resolve_schedule_launch_command(
         config_id, force_start=force_start
     )
-    return f"{shlex.quote(executable)} {arguments}"
+    job = f"{shlex.quote(executable)} {arguments}"
+    if run_elevated:
+        job = f"sudo {job}"
+    return job
 
 
 def entry_marker(entry_id: str) -> str:
@@ -211,6 +214,6 @@ def list_managed_entry_ids(content: str) -> set[str]:
 def build_managed_lines(entry: "ScheduleEntry") -> list[str]:
     from app.core.service.system_scheduler.cron_expr import build_cron_schedule_lines
 
-    job = build_shell_job(entry.config_id, force_start=entry.force_start)
+    job = build_shell_job(entry.config_id, force_start=entry.force_start, run_elevated=entry.run_elevated)
     schedule_lines = build_cron_schedule_lines(entry)
     return [f"{schedule} {job}" for schedule in schedule_lines]

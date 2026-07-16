@@ -39,6 +39,7 @@ class ScheduleEntry:
     force_start: bool
     enabled: bool
     created_at: datetime
+    run_elevated: bool = False
     last_run: Optional[datetime] = None
     next_run: Optional[datetime] = None
 
@@ -50,6 +51,7 @@ class ScheduleEntry:
             "schedule_type": self.schedule_type,
             "params": self.params,
             "force_start": self.force_start,
+            "run_elevated": self.run_elevated,
             "enabled": self.enabled,
             "created_at": self.created_at.isoformat(),
             "last_run": self.last_run.isoformat() if self.last_run else None,
@@ -65,6 +67,7 @@ class ScheduleEntry:
             schedule_type=payload.get("schedule_type", SCHEDULE_SINGLE),
             params=payload.get("params", {}),
             force_start=bool(payload.get("force_start", False)),
+            run_elevated=bool(payload.get("run_elevated", False)),
             enabled=bool(payload.get("enabled", True)),
             created_at=_parse_iso(payload.get("created_at")) or datetime.now(),
             last_run=_parse_iso(payload.get("last_run")),

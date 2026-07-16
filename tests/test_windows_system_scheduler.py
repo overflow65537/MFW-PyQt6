@@ -23,6 +23,7 @@ class BuildTaskXmlTests(unittest.TestCase):
         schedule_type: str,
         params: dict,
         force_start: bool = False,
+        run_elevated: bool = False,
         enabled: bool = True,
     ) -> ScheduleEntry:
         return ScheduleEntry(
@@ -32,6 +33,7 @@ class BuildTaskXmlTests(unittest.TestCase):
             schedule_type=schedule_type,
             params=params,
             force_start=force_start,
+            run_elevated=run_elevated,
             enabled=enabled,
             created_at=datetime(2025, 6, 17, 8, 0, 0),
         )
@@ -107,6 +109,34 @@ class BuildTaskXmlTests(unittest.TestCase):
         self.assertIn("<Monday/>", xml)
         self.assertIn("<Wednesday/>", xml)
         self.assertIn("<Friday/>", xml)
+
+    @patch(
+        "app.core.service.system_scheduler.windows.resolve_schedule_launch_command",
+        return_value=(r"C:\MFW\MFW.exe", "--config-id=cfg_demo --direct-run"),
+    )
+    def test_elevated_trigger_xml(self, _mock_command: object) -> None:
+        xml = build_task_xml(
+            self._entry(
+                schedule_type=SCHEDULE_SINGLE,
+                params={"run_at": "2025-06-18T09:30:00"},
+                run_elevated=True,
+            )
+        )
+        self.assertIn("<RunLevel>HighestAvailable</RunLevel>", xml)
+
+    @patch(
+        "app.core.service.system_scheduler.windows.resolve_schedule_launch_command",
+        return_value=(r"C:\MFW\MFW.exe", "--config-id=cfg_demo --direct-run"),
+    )
+    def test_non_elevated_trigger_xml(self, _mock_command: object) -> None:
+        xml = build_task_xml(
+            self._entry(
+                schedule_type=SCHEDULE_SINGLE,
+                params={"run_at": "2025-06-18T09:30:00"},
+                run_elevated=False,
+            )
+        )
+        self.assertNotIn("RunLevel", xml)
 
     @patch(
         "app.core.service.system_scheduler.windows.resolve_schedule_launch_command",
