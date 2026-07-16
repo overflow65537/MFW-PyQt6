@@ -49,7 +49,8 @@ from app.core.service.schedule_service import (
 )
 from app.utils.admin_check import is_admin
 
-_ADMIN = is_admin()
+_ADMIN = is_admin() if sys.platform == "win32" else True
+_HAS_ENABLED_STATE = sys.platform == "win32"
 
 
 class ZhDateTimeInput(QWidget):
@@ -496,6 +497,8 @@ class ScheduleInterface(QWidget):
         self.schedule_table.setColumnWidth(5, 48)
         self.schedule_table.setColumnWidth(6, 56)
         self.schedule_table.setColumnWidth(7, 56)
+        if not _HAS_ENABLED_STATE:
+            self.schedule_table.setColumnHidden(6, True)
         self.schedule_table.verticalHeader().setDefaultSectionSize(40)
         self.schedule_table.verticalHeader().setVisible(False)
         self.schedule_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
