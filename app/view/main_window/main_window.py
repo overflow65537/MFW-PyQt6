@@ -463,6 +463,9 @@ class MainWindow(MSFluentWindow):
             # 处理国际化：将英文消息转换为可翻译的格式
             translated_message = self._translate_config_error(message)
             signalBus.info_bar_requested.emit(level, translated_message)
+
+        # 检查更新器错误文件（更新器进程写入的单向错误信息）
+        self._check_updater_error_file()
         try:
             event_loop = self._loop or asyncio.get_event_loop()
         except RuntimeError:
@@ -1212,6 +1215,26 @@ class MainWindow(MSFluentWindow):
                 "Config load failed and error occurred while resetting config."
             )
         return message
+
+    def _check_updater_error_file(self) -> None:
+        """检查并展示更新器进程写入的单向错误信息。"""
+        error_path = Path.cwd() / "update" / "update_error.json"
+        if not error_path.exists():
+            return
+        try:
+            with open(error_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            error_msg = data.get("error", "Unknown error")
+            logger.error("检测到更新器错误: %s", error_msg)
+            signalBus.info_bar_requested.emit("error", error_msg)
+        except Exception as exc:
+            logger.warning("读取更新器错误文件失败: %s", exc)
+        finally:
+            try:
+                error_path.unlink()
+                logger.info("已清除更新器错误文件: %s", error_path)
+            except Exception as exc:
+                logger.warning("清除更新器错误文件失败: %s", exc)
 
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""

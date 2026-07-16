@@ -323,6 +323,30 @@ class SettingInterface(QWidget):
                 signalBus.check_auto_run_after_update_cancel.emit()
         self._init_update_checker()
 
+        QTimer.singleShot(0, self._read_and_clear_updater_error)
+
+    def _read_and_clear_updater_error(self) -> None:
+        """读取更新器写入的错误文件，展示后删除。"""
+        error_path = Path.cwd() / "update" / "update_error.json"
+        if not error_path.exists():
+            return
+        try:
+            with open(error_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            error_msg = data.get("error", "Unknown error")
+            logger.error("检测到更新器错误: %s", error_msg)
+            from app.common.signal_bus import signalBus
+
+            signalBus.info_bar_requested.emit("error", error_msg)
+        except Exception as exc:
+            logger.warning("读取更新器错误文件失败: %s", exc)
+        finally:
+            try:
+                error_path.unlink()
+                logger.info("已清除更新器错误文件: %s", error_path)
+            except Exception as exc:
+                logger.warning("清除更新器错误文件失败: %s", exc)
+
     def connect_notice_card_clicked(self):
         # 连接通知卡片的点击事件
         self.dingtalk_noticeTypeCard.clicked.connect(self._on_dingtalk_notice_clicked)

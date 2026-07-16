@@ -604,6 +604,20 @@ def cleanup_update_artifacts(update_file_path, metadata_path=None):
     )
 
 
+UPDATE_ERROR_FILENAME = "update_error.json"
+
+
+def write_failure_reason(reason: str):
+    try:
+        error_dir = os.path.join(os.getcwd(), "update")
+        os.makedirs(error_dir, exist_ok=True)
+        error_path = os.path.join(error_dir, UPDATE_ERROR_FILENAME)
+        with open(error_path, "w", encoding="utf-8") as f:
+            json.dump({"error": reason, "timestamp": time.time()}, f, ensure_ascii=False)
+    except Exception as exc:
+        update_logger.error("写入更新错误原因失败: %s", exc)
+
+
 def ensure_update_directories():
     """
     确保 update/new_version 和 update/update_back 存在，并返回路径
@@ -747,7 +761,9 @@ def _restore_from_backup(backups):
                     os.remove(src)
                 shutil.copy2(backup, src)
         except Exception as exc:
-            update_logger.error(f"恢复 {src} 失败: {exc}")
+            error_msg = f"恢复 {src} 失败: {exc}"
+            update_logger.error(error_msg)
+            write_failure_reason(error_msg)
 
 
 def _is_under_any(abs_path: str, parents: set[str]) -> bool:
@@ -820,7 +836,9 @@ def _safe_backup_then_delete(
             return True, backups, None
         return True, backups, backup_dir
     except Exception as exc:
-        update_logger.error(f"安全删除失败: {exc}")
+        error_msg = f"安全删除失败: {exc}"
+        update_logger.error(error_msg)
+        write_failure_reason(error_msg)
         _restore_from_backup(backups)
         shutil.rmtree(backup_dir, ignore_errors=True)
         return False, [], None
@@ -1795,8 +1813,7 @@ def standard_update():
         )
     else:
         update_logger.error("更新文件处理失败")
-        error_message = "更新文件处理失败"
-        update_logger.error(error_message)
+        update_logger.error("更新文件处理失败")
         # 失败后立即删除本地更新包与元数据，主程序下次刷新即可重新下载（无需再次打开更新器）
         try:
             if package_path and os.path.isfile(package_path):
