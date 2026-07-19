@@ -48,6 +48,7 @@ from app.core.runner.maafw import (
     should_start_external_agent,
 )
 from app.utils.controller_utils import ControllerHelper
+from app.utils.screencap_lock import screencap_guard
 
 from app.core.item import FromeServiceCoordinator, RunnerEvents, TaskItem
 from app.core.builtin_task_loader import BuiltinTaskContext
@@ -481,7 +482,8 @@ class TaskFlowRunner(QObject):
         if controller is None:
             return False
         try:
-            _ = controller.cached_image
+            with screencap_guard():
+                _ = controller.cached_image
         except RuntimeError as exc:
             return str(exc) == CACHED_IMAGE_ERROR
         except Exception:

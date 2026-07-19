@@ -17,6 +17,7 @@ from app.utils.logger import (
     suppress_asyncify_logging,
     suppress_qasync_logging,
 )
+from app.utils.screencap_lock import screencap_guard
 
 
 class MonitorSession:
@@ -76,10 +77,13 @@ class MonitorSession:
         controller = getattr(self.monitor_task.maafw, "controller", None)
         if controller is None:
             raise RuntimeError("控制器尚未初始化，无法抓取画面")
-        raw_frame = controller.post_screencap().wait().get()
-        if raw_frame is None:
-            raise ValueError("采集返回空帧")
-        return Image.fromarray(raw_frame[..., ::-1])
+        # 与任务流 screencap_test 等串行，避免原生截图缓冲并发访问崩溃
+        with screencap_guard():
+            raw_frame = controller.post_screencap().wait().get()
+            if raw_frame is None:
+                raise ValueError("采集返回空帧")
+            frame = raw_frame.copy()
+        return Image.fromarray(frame[..., ::-1])
 
     async def capture_frame_async(self) -> Image.Image:
         return await asyncio.to_thread(self.capture_frame)

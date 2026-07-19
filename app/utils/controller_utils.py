@@ -9,6 +9,7 @@ from maa.toolkit import AdbDevice
 import jsonc
 
 from app.utils.logger import logger
+from app.utils.screencap_lock import screencap_guard
 
 
 def snapshot_cached_image(controller: Any) -> Optional[Any]:
@@ -23,27 +24,28 @@ def snapshot_cached_image(controller: Any) -> Optional[Any]:
         import numpy as np
         from PIL import Image as PILImage
 
-        cached_attr = getattr(controller, "cached_image", None)
-        if cached_attr is None:
-            return None
-
-        raw = cached_attr() if callable(cached_attr) else cached_attr
-        if raw is None:
-            return None
-
-        if isinstance(raw, np.ndarray):
-            if raw.ndim < 2:
+        with screencap_guard():
+            cached_attr = getattr(controller, "cached_image", None)
+            if cached_attr is None:
                 return None
-            h, w = int(raw.shape[0]), int(raw.shape[1])
-            if h <= 0 or w <= 0:
+
+            raw = cached_attr() if callable(cached_attr) else cached_attr
+            if raw is None:
                 return None
-            return np.ascontiguousarray(raw.copy())
 
-        if isinstance(raw, PILImage.Image):
-            rgb = np.asarray(raw.convert("RGB"))
-            return np.ascontiguousarray(rgb[..., ::-1])
+            if isinstance(raw, np.ndarray):
+                if raw.ndim < 2:
+                    return None
+                h, w = int(raw.shape[0]), int(raw.shape[1])
+                if h <= 0 or w <= 0:
+                    return None
+                return np.ascontiguousarray(raw.copy())
 
-        return None
+            if isinstance(raw, PILImage.Image):
+                rgb = np.asarray(raw.convert("RGB"))
+                return np.ascontiguousarray(rgb[..., ::-1])
+
+            return None
     except Exception:
         return None
 

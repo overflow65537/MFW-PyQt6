@@ -52,6 +52,7 @@ except ImportError:  # pragma: no cover
 from PySide6.QtCore import QObject, Signal
 
 from app.utils.logger import logger
+from app.utils.screencap_lock import screencap_guard
 from app.core.runner.recognition_roi import (
     extract_node_recognition_roi,
     extract_recognition_box,
@@ -1497,4 +1498,10 @@ class MaaFW(QObject):
     async def screencap_test(self) -> numpy.ndarray:
         if not self.controller:
             raise RuntimeError("Controller not initialized")
-        return self.controller.post_screencap().wait().get()
+
+        # 与 Monitor / 其它 Python 侧截图串行，避免 MuMu extras 等原生缓冲并发踩踏
+        with screencap_guard():
+            frame = self.controller.post_screencap().wait().get()
+            if frame is None:
+                return frame
+            return numpy.ascontiguousarray(frame.copy())
