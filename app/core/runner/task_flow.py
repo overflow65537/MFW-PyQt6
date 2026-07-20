@@ -39,6 +39,10 @@ from app.utils.notice import (
 from app.utils.logger import logger
 from app.core.service.config_service import ConfigService
 from app.core.utils.holiday import emit_holiday_startup_logs
+from app.core.utils.resource_pipeline_check import (
+    check_resource_pipeline,
+    format_pipeline_issue,
+)
 from app.core.service.task_service import TaskService
 from app.core.speedrun import evaluate_speedrun, record_speedrun_runtime
 from app.core.runner.embedded_agent_log_bridge import EmbeddedAgentLogBridge
@@ -1920,12 +1924,20 @@ class TaskFlowRunner(QObject):
                 return False
 
             logger.debug(f"加载资源: {resource}")
+            if not self._precheck_resource_pipeline(resource):
+                return False
             res_cfg = self.task_service.get_task(_RESOURCE_)
             gpu_idx = res_cfg.task_option.get("gpu", -1) if res_cfg else -1
             if not cfg.get(cfg.enable_gpu_acceleration):
                 # -2 means forcing CPU inference mode in maafw
                 gpu_idx = -2
-            await self.maafw.load_resource(resource, gpu_idx)
+            if not await self.maafw.load_resource(resource, gpu_idx):
+                logger.error(f"资源加载失败: {resource}")
+                self.log_output.emit(
+                    "ERROR",
+                    self.tr("Resource loading failed: {}").format(resource),
+                )
+                return False
             logger.debug(f"资源加载完成: {resource}")
 
         # v2.6.0：resource.hash 校验。hash 应为仅加载 resource.path 后的 MaaResourceGetHash 结果。
@@ -1965,8 +1977,47 @@ class TaskFlowRunner(QObject):
                 logger.warning(f"控制器附加资源不存在，已跳过: {resource}")
                 continue
             logger.debug(f"加载控制器附加资源: {resource}")
-            await self.maafw.load_resource(resource, gpu_idx)
+            if not self._precheck_resource_pipeline(resource):
+                return False
+            if not await self.maafw.load_resource(resource, gpu_idx):
+                logger.error(f"控制器附加资源加载失败: {resource}")
+                self.log_output.emit(
+                    "ERROR",
+                    self.tr("Attached resource loading failed: {}").format(resource),
+                )
+                return False
         return True
+
+    def _precheck_resource_pipeline(self, resource_dir: Path) -> bool:
+        """加载前预检 pipeline；发现问题则输出日志并返回 False。"""
+        issues = check_resource_pipeline(resource_dir)
+        if not issues:
+            return True
+
+        self.log_output.emit(
+            "ERROR",
+            self.tr("Pipeline check failed, resource loading aborted."),
+        )
+        for issue in issues:
+            detail = format_pipeline_issue(issue)
+            logger.error("pipeline 预检失败: %s", detail)
+            if issue.kind == "parse_error":
+                msg = self.tr("Pipeline check failed: invalid JSON in {}: {}").format(
+                    issue.path, issue.message
+                )
+            elif issue.kind == "duplicate_in_file":
+                msg = self.tr(
+                    'Pipeline check failed: duplicate node "{}" in {}'
+                ).format(issue.key, issue.path)
+            elif issue.kind == "duplicate_across_files":
+                msg = self.tr(
+                    'Pipeline check failed: duplicate node "{}" in {} '
+                    "(already defined in {})"
+                ).format(issue.key, issue.path, issue.first_path)
+            else:
+                msg = self.tr("Pipeline check failed: {}").format(detail)
+            self.log_output.emit("ERROR", msg)
+        return False
 
     async def run_task(self, task_id: str, skip_speedrun: bool = False):
         """执行指定任务"""
