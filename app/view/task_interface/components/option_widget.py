@@ -1199,8 +1199,8 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
             self._set_widget_enabled(self.resource_option_form_widget, enabled)
 
         # 禁用/启用资源页中的全局选项表单
-        if getattr(self, 'global_option_form_widget', None):
-            self._set_widget_enabled(self.global_option_form_widget, enabled)
+        for form_widget in getattr(self, "global_option_form_widgets", []):
+            self._set_widget_enabled(form_widget, enabled)
         
         # 禁用/启用条件执行配置控件
         if hasattr(self, 'speedrun_widget'):

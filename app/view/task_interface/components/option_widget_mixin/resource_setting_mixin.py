@@ -36,8 +36,8 @@ class ResourceSettingMixin:
         if not hasattr(self, "resource_option_form_widget"):
             self.resource_option_form_widget: Optional[OptionFormWidget] = None
         # 全局选项（interface.global_option）
-        if not hasattr(self, "global_option_form_widget"):
-            self.global_option_form_widget: Optional[OptionFormWidget] = None
+        if not hasattr(self, "global_option_form_widgets"):
+            self.global_option_form_widgets: list[OptionFormWidget] = []
         if not hasattr(self, "global_option_section_labels"):
             self.global_option_section_labels: list[BodyLabel] = []
         # 构建资源映射表
@@ -415,7 +415,7 @@ class ResourceSettingMixin:
 
         option_config = self.service_coordinator.config_service.get_current_setting_options()
 
-        ordered_keys: list[str] = []
+        covered_keys: list[str] = []
         sections = form_structure.get("sections", []) if isinstance(form_structure, dict) else []
         if isinstance(sections, list):
             for section in sections:
@@ -424,7 +424,7 @@ class ResourceSettingMixin:
                 keys = [
                     key
                     for key in section.get("option", [])
-                    if key in form_structure and key not in ordered_keys
+                    if key in form_structure and key not in covered_keys
                 ]
                 if not keys:
                     continue
@@ -433,23 +433,30 @@ class ResourceSettingMixin:
                 section_label.setStyleSheet("font-size: 16px; font-weight: 600;")
                 self.option_page_layout.addWidget(section_label)
                 self.global_option_section_labels.append(section_label)
-                ordered_keys.extend(keys)
+                covered_keys.extend(keys)
 
-        ordered_keys.extend(
-            [
-                key
-                for key, value in form_structure.items()
-                if key not in {"type", "sections", "description"}
-                and isinstance(value, dict)
-                and key not in ordered_keys
-            ]
-        )
-        plain_structure = {key: form_structure[key] for key in ordered_keys}
+                section_structure = {key: form_structure[key] for key in keys}
+                section_form = OptionFormWidget()
+                self.option_page_layout.addWidget(section_form)
+                section_form.build_from_structure(section_structure, option_config)
+                self.global_option_form_widgets.append(section_form)
 
-        self.global_option_form_widget = OptionFormWidget()
-        self.option_page_layout.addWidget(self.global_option_form_widget)
-        self.global_option_form_widget.build_from_structure(plain_structure, option_config)
-        self._connect_global_option_signals()
+                self._connect_section_form_signals(section_form)
+
+        remaining_keys = [
+            key
+            for key, value in form_structure.items()
+            if key not in {"type", "sections", "description"}
+            and isinstance(value, dict)
+            and key not in covered_keys
+        ]
+        if remaining_keys:
+            plain_structure = {key: form_structure[key] for key in remaining_keys}
+            remaining_form = OptionFormWidget()
+            self.option_page_layout.addWidget(remaining_form)
+            remaining_form.build_from_structure(plain_structure, option_config)
+            self.global_option_form_widgets.append(remaining_form)
+            self._connect_section_form_signals(remaining_form)
 
     def _clear_global_options(self):
         """移除并入 Resource 页的分区标题与表单。"""
@@ -458,9 +465,9 @@ class ResourceSettingMixin:
             if label.parent():
                 self.option_page_layout.removeWidget(label)
             label.deleteLater()
-        if self.global_option_form_widget is not None:
-            widget = self.global_option_form_widget
-            self.global_option_form_widget = None
+        widgets = self.global_option_form_widgets
+        self.global_option_form_widgets = []
+        for widget in widgets:
             if hasattr(widget, "option_items"):
                 for option_item in widget.option_items.values():
                     try:
@@ -472,11 +479,9 @@ class ResourceSettingMixin:
                 self.option_page_layout.removeWidget(widget)
             widget.deleteLater()
 
-    def _connect_global_option_signals(self):
-        """连接并入 Resource 页的 Setting 选项变化信号。"""
-        if self.global_option_form_widget is None:
-            return
-        for option_item in self.global_option_form_widget.option_items.values():
+    def _connect_section_form_signals(self, form_widget):
+        """连接单个分区表单的选项变化信号。"""
+        for option_item in form_widget.option_items.values():
             option_item.option_changed.connect(self._on_global_option_changed)
             self._connect_global_option_child_signals(option_item)
 
@@ -489,10 +494,12 @@ class ResourceSettingMixin:
     def _on_global_option_changed(self, key: str, value: Any):
         """Setting 选项变化时写回 Setting 基础任务。"""
         option_service = self.service_coordinator.option_service
-        if self.global_option_form_widget is None:
+        if not self.global_option_form_widgets:
             return
-        all_options = self.global_option_form_widget.get_options()
-        if self.service_coordinator.config_service.update_current_global_options(dict(all_options)):
+        all_options: dict[str, Any] = {}
+        for form_widget in self.global_option_form_widgets:
+            all_options.update(form_widget.get_options())
+        if self.service_coordinator.config_service.update_current_global_options(all_options):
             option_service.signal_bus.option_updated.emit(all_options)
 
     def _update_resource_options_hidden_state(self, current_resource_option_names: list):
