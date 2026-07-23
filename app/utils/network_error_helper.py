@@ -27,7 +27,7 @@ def network_error_tr(text: str) -> str:
 
 UpdateSource = Literal["github", "mirror"]
 NoticeSource = Literal[
-    "dingtalk", "lark", "smtp", "wxpusher", "qywx", "gotify"
+    "dingtalk", "lark", "smtp", "wxpusher", "qywx", "gotify", "webhook"
 ]
 
 
@@ -84,6 +84,7 @@ NOTICE_CHANNEL_LABELS: dict[str, str] = {
     "wxpusher": "WxPusher",
     "qywx": "WeCom",
     "gotify": "Gotify",
+    "webhook": "Webhook",
 }
 
 SEND_FUNC_TO_CHANNEL: dict[str, str] = {
@@ -93,6 +94,7 @@ SEND_FUNC_TO_CHANNEL: dict[str, str] = {
     "WxPusher_send": "wxpusher",
     "QYWX_send": "qywx",
     "gotify_send": "gotify",
+    "webhook_send": "webhook",
 }
 
 _notice_error_context: dict[str, NetworkErrorInfo] = {}

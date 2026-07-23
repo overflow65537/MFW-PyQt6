@@ -78,6 +78,7 @@ from app.view.setting_interface.widget.notice_type import (
     SMTPNoticeType,
     WxPusherNoticeType,
     GotifyNoticeType,
+    WebhookNoticeType,
     NoticeTimingDialog,
 )
 
@@ -355,6 +356,7 @@ class SettingInterface(QWidget):
         self.WxPusher_noticeTypeCard.clicked.connect(self._on_wxpusher_notice_clicked)
         self.QYWX_noticeTypeCard.clicked.connect(self._on_qywx_notice_clicked)
         self.gotify_noticeTypeCard.clicked.connect(self._on_gotify_notice_clicked)
+        self.webhook_noticeTypeCard.clicked.connect(self._on_webhook_notice_clicked)
         self.notice_timing_card.clicked.connect(self._on_notice_timing_clicked)
 
     def _setup_ui(self):
@@ -1327,12 +1329,26 @@ class SettingInterface(QWidget):
             parent=self.noticeGroup,
         )
 
+        if cfg.get(cfg.Notice_Webhook_status):
+            webhook_contene = self.tr("Webhook Notification Enabled")
+        else:
+            webhook_contene = self.tr("Webhook Notification Disabled")
+
+        self.webhook_noticeTypeCard = PrimaryPushSettingCard(
+            text=self.tr("Modify"),
+            icon=FIF.SEND,
+            title=self.tr("Webhook"),
+            content=webhook_contene,
+            parent=self.noticeGroup,
+        )
+
         self.noticeGroup.addSettingCard(self.dingtalk_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.lark_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.gotify_noticeTypeCard)
+        self.noticeGroup.addSettingCard(self.webhook_noticeTypeCard)
 
         # 发送格式：纯文本 / HTML（影响如 SMTP 等支持 HTML 的渠道）
         self.notice_format_card = ComboBoxSettingCard(
@@ -2500,6 +2516,12 @@ class SettingInterface(QWidget):
             else:
                 content = self.tr("Gotify Notification Disabled")
             self.gotify_noticeTypeCard.setContent(content)
+        elif notice_type == "Webhook":
+            if cfg.get(cfg.Notice_Webhook_status):
+                content = self.tr("Webhook Notification Enabled")
+            else:
+                content = self.tr("Webhook Notification Disabled")
+            self.webhook_noticeTypeCard.setContent(content)
 
     def _on_dingtalk_notice_clicked(self):
         """处理钉钉通知卡片点击事件"""
@@ -2543,6 +2565,13 @@ class SettingInterface(QWidget):
         dialog = GotifyNoticeType(parent)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._update_notice_card_status("Gotify")
+
+    def _on_webhook_notice_clicked(self):
+        """处理通用 Webhook 通知卡片点击事件"""
+        parent = self.window() or self
+        dialog = WebhookNoticeType(parent)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._update_notice_card_status("Webhook")
 
     def _on_notice_timing_clicked(self):
         """处理通知时机设置卡片点击事件"""

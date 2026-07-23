@@ -2100,6 +2100,29 @@ Please check for updates first, or visit the GitHub releases page.</source>
         </message>
     </context>
     <context>
+        <name>WebhookNoticeType</name>
+        <message>
+            <location filename="../view/setting_interface/widget/notice_type.py" line="566" />
+            <source>Webhook URL:</source>
+            <translation>Webhook URL:</translation>
+        </message>
+        <message>
+            <location filename="../view/setting_interface/widget/notice_type.py" line="567" />
+            <source>Bearer Token (optional):</source>
+            <translation>Bearer Token（任意）:</translation>
+        </message>
+        <message>
+            <location filename="../view/setting_interface/widget/notice_type.py" line="568" />
+            <source>Webhook Status:</source>
+            <translation>Webhook 通知状態:</translation>
+        </message>
+        <message>
+            <location filename="../view/setting_interface/widget/notice_type.py" line="570" />
+            <source>POSTs JSON {title, message, text} to any URL. Use for custom endpoints; prefer dedicated channels for Gotify/Lark/etc.</source>
+            <translation>任意の URL に JSON {title, message, text} を POST します。カスタムエンドポイント向けです。Gotify/Lark などは専用チャネルを優先してください。</translation>
+        </message>
+    </context>
+    <context>
         <name>ImagePreviewDialog</name>
         <message>
             <location filename="../view/task_interface/components/image_preview_dialog.py" line="29" />
@@ -4534,6 +4557,23 @@ Please check for updates first, or visit the GitHub releases page.</source>
             <location filename="../view/setting_interface/setting_interface.py" line="1325" />
             <source>Gotify</source>
             <translation>Gotify</translation>
+        </message>
+        <message>
+            <location filename="../view/setting_interface/setting_interface.py" line="1333" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2521" />
+            <source>Webhook Notification Enabled</source>
+            <translation>Webhook通知有効</translation>
+        </message>
+        <message>
+            <location filename="../view/setting_interface/setting_interface.py" line="1335" />
+            <location filename="../view/setting_interface/setting_interface.py" line="2523" />
+            <source>Webhook Notification Disabled</source>
+            <translation>Webhook通知無効</translation>
+        </message>
+        <message>
+            <location filename="../view/setting_interface/setting_interface.py" line="1340" />
+            <source>Webhook</source>
+            <translation>Webhook</translation>
         </message>
         <message>
             <location filename="../view/setting_interface/setting_interface.py" line="1341" />

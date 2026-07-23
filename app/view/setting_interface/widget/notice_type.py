@@ -73,6 +73,7 @@ class BaseNoticeType(MessageBoxBase):
             "qmsg": cfg.Notice_Qmsg_key,
             "QYWX": cfg.Notice_QYWX_key,
             "gotify": cfg.Notice_Gotify_token,
+            "webhook": cfg.Notice_Webhook_token,
         }
         cfg_key = mapping.get(key_name)
         if cfg_key is None:
@@ -542,6 +543,70 @@ class GotifyNoticeType(BaseNoticeType):
         if self._validate_priority(show_hint=False):
             cfg.set(cfg.Notice_Gotify_priority, self.gotify_priority_input.text().strip())
         cfg.set(cfg.Notice_Gotify_status, self.gotify_status_switch.isChecked())
+
+
+class WebhookNoticeType(BaseNoticeType):
+    """通用 Webhook 通知配置对话框"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent, "Webhook")
+        self.add_fields()
+
+    def add_fields(self):
+        """添加 Webhook 相关的输入框"""
+        webhook_url_title = BodyLabel(self)
+        webhook_token_title = BodyLabel(self)
+        webhook_status_title = BodyLabel(self)
+        hint_label = BodyLabel(self)
+
+        self.webhook_url_input = LineEdit(self)
+        self.webhook_token_input = PasswordLineEdit(self)
+        self.webhook_status_switch = SwitchButton(self)
+
+        webhook_url_title.setText(self.tr("Webhook URL:"))
+        webhook_token_title.setText(self.tr("Bearer Token (optional):"))
+        webhook_status_title.setText(self.tr("Webhook Status:"))
+        hint_label.setText(
+            self.tr(
+                "POSTs JSON {title, message, text} to any URL. "
+                "Use for custom endpoints; prefer dedicated channels for Gotify/Lark/etc."
+            )
+        )
+        hint_label.setWordWrap(True)
+
+        self.webhook_url_input.setText(cfg.get(cfg.Notice_Webhook_url))
+        self.webhook_url_input.setPlaceholderText("https://example.com/hook")
+        self.webhook_token_input.setText(self.decode_key("webhook"))
+        self.webhook_status_switch.setChecked(cfg.get(cfg.Notice_Webhook_status))
+
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(webhook_url_title)
+        col1.addWidget(webhook_token_title)
+        col1.addWidget(webhook_status_title)
+
+        col2.addWidget(self.webhook_url_input)
+        col2.addWidget(self.webhook_token_input)
+        col2.addWidget(self.webhook_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+
+        self.viewLayout.addLayout(mainLayout)
+        self.viewLayout.addWidget(hint_label)
+        self.webhook_url_input.textChanged.connect(self.save_fields)
+        self.webhook_token_input.textChanged.connect(self.save_fields)
+
+    def save_fields(self):
+        """保存 Webhook 相关的输入框"""
+        cfg.set(cfg.Notice_Webhook_url, self.webhook_url_input.text().strip())
+        cfg.set(
+            cfg.Notice_Webhook_token,
+            self.encrypt_key(self.webhook_token_input.text()),
+        )
+        cfg.set(cfg.Notice_Webhook_status, self.webhook_status_switch.isChecked())
 
 
 class NoticeTimingDialog(MessageBoxBase):

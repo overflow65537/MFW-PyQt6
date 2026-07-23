@@ -64,6 +64,7 @@ def decode_key(key_name) -> str:
         "wxpusher": cfg.Notice_WxPusher_SPT_token,
         "QYWX": cfg.Notice_QYWX_key,
         "gotify": cfg.Notice_Gotify_token,
+        "webhook": cfg.Notice_Webhook_token,
     }
 
     config_item = mapping.get(key_name)
@@ -381,12 +382,62 @@ class Gotify:
             return NoticeErrorCode.NETWORK_ERROR
 
 
+class Webhook:
+    """通用 Webhook：向任意 URL POST JSON，不绑定特定服务协议。"""
+
+    def __init__(self) -> None:
+        self.correct_url = r"^https?://.+"
+
+    def msg(self, msg_dict: dict) -> dict:
+        sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+        msg_text = f"{sendtime}: {msg_dict['text']}"
+        # title + message/text 双字段，兼容多数自定义接收端
+        return {
+            "title": msg_dict["title"],
+            "message": msg_text,
+            "text": msg_text,
+        }
+
+    def send(self, msg_dict: dict) -> NoticeErrorCode:
+        url = (cfg.get(cfg.Notice_Webhook_url) or "").strip()
+        if not url:
+            logger.error("Webhook URL为空")
+            return NoticeErrorCode.PARAM_EMPTY
+
+        if not re.match(self.correct_url, url):
+            logger.error("Webhook URL不正确")
+            return NoticeErrorCode.PARAM_INVALID
+
+        headers = {"Content-Type": "application/json"}
+        encrypted_token = cfg.get(cfg.Notice_Webhook_token)
+        if encrypted_token:
+            token = decode_key("webhook")
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+
+        msg = self.msg(msg_dict)
+        try:
+            response = requests.post(url=url, json=msg, headers=headers, timeout=15)
+            if 200 <= response.status_code < 300:
+                return NoticeErrorCode.SUCCESS
+            logger.error(
+                f"Webhook 发送失败，状态码: {response.status_code}，响应: {response.text}"
+            )
+            return NoticeErrorCode.RESPONSE_ERROR
+        except Exception as e:
+            info = normalize_network_error(e, source="webhook")
+            set_notice_error_context("webhook", info)
+            logger.error(info.log_message)
+            return NoticeErrorCode.NETWORK_ERROR
+
+
 dingtalk = DingTalk()
 lark = Lark()
 smtp = SMTP()
 wxpusher = WxPusher()
 qywx = QYWX()
 gotify = Gotify()
+webhook = Webhook()
 
 
 class NoticeSendThread(QThread):
@@ -407,6 +458,7 @@ class NoticeSendThread(QThread):
             "wxpusher": WxPusher_send,
             "qywx": QYWX_send,
             "gotify": gotify_send,
+            "webhook": webhook_send,
         }
 
     def add_task(self, notice_type, msg_dict, status):
@@ -655,6 +707,19 @@ def gotify_send(
     return result
 
 
+def webhook_send(
+    msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False
+) -> NoticeErrorCode:
+    if not status:
+        logger.info("Webhook 未启用")
+        return NoticeErrorCode.DISABLED
+
+    result = webhook.send(msg_dict)
+    if result == NoticeErrorCode.SUCCESS:
+        logger.info("Webhook 发送成功")
+    return result
+
+
 NOTICE_CHANNEL_STATUS = {
     "dingtalk": cfg.Notice_DingTalk_status,
     "lark": cfg.Notice_Lark_status,
@@ -662,6 +727,7 @@ NOTICE_CHANNEL_STATUS = {
     "wxpusher": cfg.Notice_WxPusher_status,
     "qywx": cfg.Notice_QYWX_status,
     "gotify": cfg.Notice_Gotify_status,
+    "webhook": cfg.Notice_Webhook_status,
 }
 
 NOTICE_EVENT_CONFIG = {
