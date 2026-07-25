@@ -4085,17 +4085,21 @@ class TaskFlowRunner(QObject):
             adb_path = self.adb_controller_config.get("adb_path")
 
             device_name = self.adb_controller_config.get("device_name", "")
+            device_name_lower = device_name.lower()
+            extras = (
+                self.adb_controller_config.get("config", {}) or {}
+            ).get("extras", {}) or {}
+            mumu_extra = extras.get("mumu") or {}
+            ld_extra = extras.get("ld") or {}
 
-            if "mumuplayer12" in device_name.lower():
+            # extras 优先；名称兼容 MuMuPlayer / MuMuPlayer12 / MuMuPlayer v5+ 等
+            is_mumu = bool(mumu_extra.get("enable")) or "mumu" in device_name_lower
+            is_ld = bool(ld_extra.get("enable")) or "ldplayer" in device_name_lower
+
+            if is_mumu:
                 ControllerHelper.close_mumu(adb_path, adb_port)
-            elif "ldplayer" in device_name.lower():
-                ld_pid_cfg = (
-                    self.adb_controller_config.get("config", {})
-                    .get("extras", {})
-                    .get("ld", {})
-                    .get("pid")
-                )
-                ControllerHelper.close_ldplayer(adb_path, ld_pid_cfg)
+            elif is_ld:
+                ControllerHelper.close_ldplayer(adb_path, ld_extra.get("pid"))
             else:
                 logger.warning(f"未找到对应的模拟器: {device_name}")
         elif controller_type == "win32":

@@ -641,11 +641,18 @@ class MonitorInterface(QWidget):
             self._request_stop_monitoring(reason="task_flow_finished")
 
     def _on_task_status_changed(self, status: dict) -> None:
-        is_running = status.get("text") == "STOP"
+        # 仅在按钮为 STOP + enabled 时视为任务真正在跑。
+        # stop_task() 会先发 STOP/disabled，若只看 text==STOP 会误触发自动监控，
+        # 进而重连 ADB 并把刚关闭的模拟器再次拉起。
+        is_running = (
+            status.get("text") == "STOP" and status.get("status") == "enabled"
+        )
         if (
             is_running
             and not self._session.monitoring_active
             and not self._starting_monitoring
+            and not self._stopping_monitoring
+            and not self._stop_debounce_timer.isActive()
         ):
             self._start_monitoring(auto=True)
         elif not is_running and self._session.monitoring_active:
@@ -659,6 +666,9 @@ class MonitorInterface(QWidget):
             return
         if self._stop_debounce_timer.isActive():
             self._stop_debounce_timer.stop()
+        # 取消尚未执行的自动启动，避免“先停后立刻再启”
+        if self._start_debounce_timer.isActive():
+            self._start_debounce_timer.stop()
         self._set_loading(False)
         self._session.stop_loop()
         self._stop_debounce_timer.start(self._control_debounce_ms)
@@ -795,6 +805,12 @@ class MonitorInterface(QWidget):
         if self._session.monitoring_active or self._starting_monitoring:
             if not auto:
                 self._set_control_button_enabled(True)
+            return
+        # 任务流结束后的停止过程中，禁止自动拉起监控（会重连并可能重启模拟器）
+        if auto and (
+            self._stopping_monitoring or self._stop_debounce_timer.isActive()
+        ):
+            logger.debug("[Monitor] 停止过程中，忽略自动启动监控")
             return
 
         logger.info(f"[Monitor] 开始启动监控（{'自动' if auto else '手动'}）")
