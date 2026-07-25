@@ -641,21 +641,24 @@ class MonitorInterface(QWidget):
             self._request_stop_monitoring(reason="task_flow_finished")
 
     def _on_task_status_changed(self, status: dict) -> None:
-        # 仅在按钮为 STOP + enabled 时视为任务真正在跑。
-        # stop_task() 会先发 STOP/disabled，若只看 text==STOP 会误触发自动监控，
-        # 进而重连 ADB 并把刚关闭的模拟器再次拉起。
-        is_running = (
-            status.get("text") == "STOP" and status.get("status") == "enabled"
-        )
+        # - STOP + enabled + device_ready：主任务流已连上设备，再自动开监控
+        # - 连接中的 STOP + enabled（无 device_ready）：只解锁停止按钮，不开监控，
+        #   否则会与任务流并发 connect_adb，MuMu 等模拟器 extras 会卡死
+        # - STOP + disabled / START：停止监控；勿在 stop_task 的 STOP/disabled 上重开监控
+        text = status.get("text")
+        btn_status = status.get("status")
+        device_ready = bool(status.get("device_ready"))
+        should_start = text == "STOP" and btn_status == "enabled" and device_ready
+        should_stop = text != "STOP" or btn_status == "disabled"
         if (
-            is_running
+            should_start
             and not self._session.monitoring_active
             and not self._starting_monitoring
             and not self._stopping_monitoring
             and not self._stop_debounce_timer.isActive()
         ):
             self._start_monitoring(auto=True)
-        elif not is_running and self._session.monitoring_active:
+        elif should_stop and self._session.monitoring_active:
             self._request_stop_monitoring(reason="task_stopped")
 
     def _request_stop_monitoring(self, *, reason: str = "") -> None:

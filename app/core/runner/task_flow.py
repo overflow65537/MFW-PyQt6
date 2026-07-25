@@ -1780,6 +1780,7 @@ class TaskFlowRunner(QObject):
                 pass
             return False
         if self.fs_signal_bus:
+            # 连接阶段允许点击停止；此时不要带 device_ready，避免监控并行抢连 ADB
             self.fs_signal_bus.fs_start_button_status.emit(
                 {"text": "STOP", "status": "enabled"}
             )
@@ -1813,6 +1814,12 @@ class TaskFlowRunner(QObject):
         elif display_raw:
             self.maafw.controller.set_screenshot_use_raw_size(display_raw)
             logger.debug("设置控制器分辨率: 原始大小")
+
+        # 主任务流连上后再通知监控启动，避免与任务流并发 connect_adb（MuMu 会卡死）
+        if self.fs_signal_bus:
+            self.fs_signal_bus.fs_start_button_status.emit(
+                {"text": "STOP", "status": "enabled", "device_ready": True}
+            )
         return True
 
     async def load_resources(self, resource_raw: Dict[str, Any]):
