@@ -73,7 +73,6 @@ class ControllerHelper:
         try:
             emu = subprocess.run(
                 [mumu_manager_path, "info", "-v", "all"],
-                shell=True,
                 capture_output=True,
                 text=True,
                 check=True,
@@ -86,6 +85,26 @@ class ControllerHelper:
             return None
 
     @staticmethod
+    def _iter_mumu_instances(
+        multi_dict: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        """将 MuMu info 输出规范为实例列表（兼容单实例/多实例格式）。"""
+        if not isinstance(multi_dict, dict) or not multi_dict:
+            return []
+        # 单实例：顶层直接带 created_timestamp / index
+        if multi_dict.get("created_timestamp", False) or "adb_port" in multi_dict:
+            return [multi_dict]
+        instances: List[Dict[str, Any]] = []
+        for key, emu_data in multi_dict.items():
+            if not isinstance(emu_data, dict):
+                continue
+            item = dict(emu_data)
+            if item.get("index") is None:
+                item["index"] = key
+            instances.append(item)
+        return instances
+
+    @staticmethod
     def get_mumu_indices_by_port(
         multi_dict: Dict[str, Any], adb_port: Optional[str]
     ) -> List[str]:
@@ -94,18 +113,28 @@ class ControllerHelper:
             return []
 
         indices: List[str] = []
-        if multi_dict.get("created_timestamp", False):
-            if str(multi_dict.get("adb_port")) == adb_port:
-                idx = multi_dict.get("index")
-                if idx is not None:
-                    indices.append(str(idx))
-            return indices
-
-        for emu_data in multi_dict.values():
-            if str(emu_data.get("adb_port")) == adb_port:
+        for emu_data in ControllerHelper._iter_mumu_instances(multi_dict):
+            if str(emu_data.get("adb_port", "")) == str(adb_port):
                 idx = emu_data.get("index")
                 if idx is not None:
                     indices.append(str(idx))
+        return indices
+
+    @staticmethod
+    def get_mumu_started_indices(multi_dict: Dict[str, Any]) -> List[str]:
+        """返回当前已启动的 MuMu 实例序号。"""
+        indices: List[str] = []
+        for emu_data in ControllerHelper._iter_mumu_instances(multi_dict):
+            started = bool(
+                emu_data.get("is_process_started")
+                or emu_data.get("is_android_started")
+                or emu_data.get("player_state") == "start_finished"
+            )
+            if not started:
+                continue
+            idx = emu_data.get("index")
+            if idx is not None:
+                indices.append(str(idx))
         return indices
 
     @staticmethod
@@ -145,29 +174,77 @@ class ControllerHelper:
         return None
 
     @staticmethod
-    def close_mumu(adb_path: Optional[str], adb_port: Optional[str]) -> bool:
-        """根据 adb_path / adb_port 关闭 MuMu 模拟器，返回是否已处理"""
+    def close_mumu(
+        adb_path: Optional[str],
+        adb_port: Optional[str],
+        *,
+        index: Any = None,
+        mumu_install_path: Optional[str] = None,
+    ) -> bool:
+        """关闭 MuMu 模拟器。
+
+        优先使用 extras 中的 index；新版 MuMu info 可能不再返回 adb_port，
+        端口匹配失败时回退到“唯一已启动实例”。
+        """
         mumu_manager_path = ControllerHelper.build_mumu_manager_path(adb_path)
-        if not mumu_manager_path:
-            logger.warning("MuMuManager.exe 路径未配置")
+        if (not mumu_manager_path or not Path(mumu_manager_path).is_file()) and mumu_install_path:
+            candidate = Path(mumu_install_path) / "nx_main" / "MuMuManager.exe"
+            if candidate.is_file():
+                mumu_manager_path = str(candidate)
+        if not mumu_manager_path or not Path(mumu_manager_path).is_file():
+            logger.warning("MuMuManager.exe 路径未配置或不存在: %s", mumu_manager_path)
             return False
 
         multi_dict = ControllerHelper.get_mumu_info(mumu_manager_path)
-        if not multi_dict:
-            logger.warning("获取 MuMu 信息失败，跳过关闭")
+        mumu_indices: List[str] = []
+
+        # 1) extras.index 最可靠
+        if index is not None and str(index).strip() != "":
+            mumu_indices = [str(index).strip()]
+            logger.info("MuMu 使用 extras.index=%s 关闭", mumu_indices[0])
+        # 2) 旧版 info 仍带 adb_port 时按端口匹配
+        elif multi_dict:
+            mumu_indices = ControllerHelper.get_mumu_indices_by_port(
+                multi_dict, adb_port
+            )
+            if mumu_indices:
+                logger.info(
+                    "MuMu 按 adb 端口 %s 匹配到序号: %s", adb_port, mumu_indices
+                )
+            else:
+                # 3) 新版 info 常无 adb_port：若仅有一个已启动实例则关闭它
+                started = ControllerHelper.get_mumu_started_indices(multi_dict)
+                if len(started) == 1:
+                    mumu_indices = started
+                    logger.info(
+                        "MuMu info 无端口匹配，回退关闭唯一已启动实例: %s",
+                        mumu_indices[0],
+                    )
+                elif len(started) > 1:
+                    logger.warning(
+                        "MuMu info 无 adb_port 且存在多个已启动实例 %s，"
+                        "缺少 extras.index，跳过关闭",
+                        started,
+                    )
+                    return False
+
+        if not mumu_indices:
+            logger.warning(
+                "MuMu 未找到可关闭实例 (port=%s, index=%s)，跳过关闭",
+                adb_port,
+                index,
+            )
             return False
 
-        mumu_indices = ControllerHelper.get_mumu_indices_by_port(multi_dict, adb_port)
-        if not mumu_indices:
-            logger.debug("MuMu 未找到匹配端口，跳过关闭")
-            return True
+        startupinfo = None
+        if sys.platform.startswith("win"):
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = subprocess.SW_HIDE
 
+        closed_any = False
         for idx in mumu_indices:
             try:
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                startupinfo.wShowWindow = subprocess.SW_HIDE
-
                 result = subprocess.run(
                     [
                         mumu_manager_path,
@@ -176,16 +253,25 @@ class ControllerHelper:
                         str(idx),
                         "shutdown",
                     ],
-                    shell=True,
                     check=True,
                     encoding="utf-8",
+                    errors="ignore",
                     capture_output=True,
                     startupinfo=startupinfo,
                 )
-                logger.debug(f"关闭序号{idx}，输出: {result.stdout.strip()}")
+                logger.info(
+                    "MuMuManager shutdown 序号 %s 成功，输出: %s",
+                    idx,
+                    (result.stdout or "").strip(),
+                )
+                closed_any = True
             except subprocess.CalledProcessError as e:
-                logger.error(f"关闭序号{idx}失败，错误信息: {e.stderr.strip()}")
-        return True
+                logger.error(
+                    "MuMuManager shutdown 序号 %s 失败，错误信息: %s",
+                    idx,
+                    (e.stderr or "").strip(),
+                )
+        return closed_any
 
     @staticmethod
     def close_ldplayer(adb_path: Optional[str], pid_cfg: Any) -> bool:

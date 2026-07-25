@@ -4104,7 +4104,12 @@ class TaskFlowRunner(QObject):
             is_ld = bool(ld_extra.get("enable")) or "ldplayer" in device_name_lower
 
             if is_mumu:
-                ControllerHelper.close_mumu(adb_path, adb_port)
+                ControllerHelper.close_mumu(
+                    adb_path,
+                    adb_port,
+                    index=mumu_extra.get("index"),
+                    mumu_install_path=mumu_extra.get("path"),
+                )
             elif is_ld:
                 ControllerHelper.close_ldplayer(adb_path, ld_extra.get("pid"))
             else:
