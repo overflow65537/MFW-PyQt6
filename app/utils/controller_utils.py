@@ -315,7 +315,7 @@ class ControllerHelper:
     ) -> Optional[str]:
         """
         尝试根据 adb 地址匹配 ADB 控制器（模拟器）序号：
-        - MuMu: 通过 manager info + adb 端口获取序号
+        - MuMu: 通过 manager info + adb 端口获取序号；新版无端口时回退唯一已启动实例
         - 雷电: 无法通过地址推断，直接返回 None
         """
         normalized_name = (device_name or "").lower()
@@ -337,7 +337,7 @@ class ControllerHelper:
                 return None
 
             mumu_manager_path = ControllerHelper.build_mumu_manager_path(adb_path)
-            if not mumu_manager_path:
+            if not mumu_manager_path or not Path(mumu_manager_path).is_file():
                 return None
 
             multi_dict = ControllerHelper.get_mumu_info(mumu_manager_path)
@@ -345,7 +345,14 @@ class ControllerHelper:
                 return None
 
             indices = ControllerHelper.get_mumu_indices_by_port(multi_dict, adb_port)
-            return indices[0] if indices else None
+            if indices:
+                return indices[0]
+
+            # 新版 MuMu info 常无 adb_port：仅一个已启动实例时可用
+            started = ControllerHelper.get_mumu_started_indices(multi_dict)
+            if len(started) == 1:
+                return started[0]
+            return None
 
         # 雷电 / 其它：目前无法通过地址反推序号
         if (
@@ -367,23 +374,30 @@ class ControllerHelper:
     ) -> Optional[str]:
         """
         统一的 ADB 控制器（模拟器）序号推导方法：
-        1. 若 device 自带 index，直接返回
-        2. MuMu：使用 adb_path + address + name 推导
-        3. 雷电：若提供 pid（或从 config 提取 pid），通过 list2 反查序号
+        1. MuMu：优先 extras.mumu.index，其次 info 端口匹配 / 唯一已启动实例
+        2. 雷电：若提供 pid（或从 config 提取 pid），通过 list2 反查序号
         """
+        device_config: Dict[str, Any] = {}
         if device is not None:
             adb_path = adb_path or str(device.adb_path)
             address = address or device.address
             device_name = device_name or device.name
+            if isinstance(getattr(device, "config", None), dict):
+                device_config = device.config or {}
             if ld_pid is None:
                 ld_pid = (
-                    (device.config or {}).get("extras", {}).get("ld", {}).get("pid")
-                )
+                    (device_config.get("extras") or {}).get("ld") or {}
+                ).get("pid")
 
-        normalized_name = (device_name).lower()
+        normalized_name = (device_name or "").lower()
+        extras = device_config.get("extras") or {}
 
-        # MuMu 序号
+        # MuMu 序号：Toolkit 通常已在 extras.mumu.index 给出
         if "mumu" in normalized_name:
+            mumu_extra = extras.get("mumu") or {}
+            mumu_index = mumu_extra.get("index")
+            if mumu_index is not None and str(mumu_index).strip() != "":
+                return str(mumu_index).strip()
             return ControllerHelper.get_index_by_adb_address(
                 adb_path, address, device_name
             )
