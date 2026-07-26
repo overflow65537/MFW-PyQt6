@@ -318,7 +318,7 @@ class MainWindow(MSFluentWindow):
         self._task_page_auto_switch_handled = False
 
         cfg.set(cfg.save_screenshot, False)
-        cfg.set(cfg.show_advanced_startup_options, False)
+        # 高级启动选项（截图/输入方式等）由用户配置持久化，重启后保持生效
 
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)

@@ -3194,12 +3194,22 @@ class TaskFlowRunner(QObject):
 
         self.adb_controller_config = controller_config
         should_refresh = force_refresh or self._uses_ld_extras(controller_config)
+        found_device = None
         if should_refresh:
             found_device = await self._auto_find_adb_device(
                 controller_raw, controller_type, controller_config
             )
             if found_device:
-                self._save_device_to_config(controller_raw, controller_name, found_device)
+                # 自动搜索会带回设备默认的截图/输入方式（如蓝叠 EmulatorExtras=64/8）。
+                # 若用户已在高级设置中显式配置，则不要覆盖，否则重启后连接会失败。
+                device_to_save = dict(found_device)
+                if has_raw_input_method:
+                    device_to_save.pop("input_methods", None)
+                if has_raw_screen_method:
+                    device_to_save.pop("screencap_methods", None)
+                self._save_device_to_config(
+                    controller_raw, controller_name, device_to_save
+                )
                 controller_config = controller_raw[controller_name]
                 self.adb_controller_config = controller_config
 
@@ -3207,6 +3217,11 @@ class TaskFlowRunner(QObject):
             controller_config["input_methods"] = raw_input_method
         if has_raw_screen_method:
             controller_config["screencap_methods"] = raw_screen_method
+        # 设备刷新后再次写回用户截图/输入方式，确保磁盘配置与本次连接一致
+        if found_device and (has_raw_input_method or has_raw_screen_method):
+            if controller_cfg := self.task_service.get_task(_CONTROLLER_):
+                controller_cfg.task_option.update(controller_raw)
+                self.task_service.update_task(controller_cfg)
 
         adb_path = (controller_config.get("adb_path", "") or "").strip()
         raw_address = (controller_config.get("address", "") or "").strip()
