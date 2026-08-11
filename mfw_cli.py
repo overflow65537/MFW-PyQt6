@@ -11,12 +11,14 @@ FLAG_CONFIG_ID = "--config-id"
 FLAG_DIRECT_RUN = "--direct-run"
 FLAG_DEV = "--dev"
 FLAG_FORCE_RESTART = "--force-restart"
+FLAG_REUSE_EXISTING = "--reuse-existing"
 
 MFW_FLAGS = (
     FLAG_CONFIG_ID,
     FLAG_DIRECT_RUN,
     FLAG_DEV,
     FLAG_FORCE_RESTART,
+    FLAG_REUSE_EXISTING,
 )
 
 # 已弃用的旧写法 → 现行开关
@@ -39,6 +41,7 @@ class StartupOptions:
     direct_run: bool = False
     enable_dev: bool = False
     force_restart: bool = False
+    reuse_existing: bool = False
 
 
 def _token_option_name(token: str) -> str:
@@ -113,6 +116,8 @@ def build_startup_argv(options: StartupOptions) -> list[str]:
         argv.append(FLAG_DEV)
     if options.force_restart:
         argv.append(FLAG_FORCE_RESTART)
+    if options.reuse_existing:
+        argv.append(FLAG_REUSE_EXISTING)
     return argv
 
 
@@ -133,6 +138,7 @@ def _build_parser() -> argparse.ArgumentParser:
             f"  {FLAG_DIRECT_RUN}      启动后直接运行任务流\n"
             f"  {FLAG_DEV}             显示测试页面\n"
             f"  {FLAG_FORCE_RESTART}   请求同目录下已有实例退出后启动本进程\n"
+            f"  {FLAG_REUSE_EXISTING}  复用已有实例执行指定配置\n"
             "\n"
             "示例:\n"
             f"  %(prog)s {FLAG_CONFIG_ID} default {FLAG_DIRECT_RUN}\n"
@@ -164,6 +170,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="请求同安装目录下正在运行的 MFW 停止任务并退出后启动本进程",
     )
+    parser.add_argument(
+        FLAG_REUSE_EXISTING,
+        action="store_true",
+        help="已有实例时复用它执行指定配置",
+    )
     return parser
 
 
@@ -183,5 +194,6 @@ def parse_startup_cli(
         direct_run=bool(ns.direct_run),
         enable_dev=bool(ns.enable_dev),
         force_restart=bool(ns.force_restart),
+        reuse_existing=bool(ns.reuse_existing),
     )
     return options, qt_extra, deprecated

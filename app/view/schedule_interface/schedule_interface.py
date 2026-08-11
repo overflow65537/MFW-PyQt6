@@ -225,6 +225,7 @@ class ScheduleInterface(QWidget):
         control_layout = QHBoxLayout()
         control_layout.setSpacing(24)
         self.force_checkbox = CheckBox(self.tr("Force start"))
+        self.reuse_existing_checkbox = CheckBox(self.tr("Reuse existing process"))
         self.elevated_checkbox = CheckBox(self.tr("Run as administrator"))
         if not is_admin():
             self.elevated_checkbox.setEnabled(False)
@@ -235,6 +236,7 @@ class ScheduleInterface(QWidget):
         self.enabled_checkbox = CheckBox(self.tr("Enabled"))
         self.enabled_checkbox.setChecked(True)
         control_layout.addWidget(self.force_checkbox)
+        control_layout.addWidget(self.reuse_existing_checkbox)
         control_layout.addWidget(self.elevated_checkbox)
         control_layout.addWidget(self.enabled_checkbox)
         control_layout.addStretch()
@@ -463,7 +465,7 @@ class ScheduleInterface(QWidget):
         layout.addWidget(title)
 
         self.schedule_table = TableWidget(self)
-        self.schedule_table.setColumnCount(8)
+        self.schedule_table.setColumnCount(9)
         self.schedule_table.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
@@ -473,13 +475,14 @@ class ScheduleInterface(QWidget):
             self.tr("Pattern"),
             self.tr("Next run"),
             self.tr("Force"),
+            self.tr("Reuse"),
             self.tr("Admin"),
             self.tr("Enabled"),
             self.tr("Action"),
         ]
         for col, label in enumerate(header_labels):
             header_item = QTableWidgetItem(label)
-            if col in (4, 5, 6, 7):
+            if col in (4, 5, 6, 7, 8):
                 header_item.setTextAlignment(
                     Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter
                 )
@@ -490,15 +493,16 @@ class ScheduleInterface(QWidget):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)
         header.setStretchLastSection(False)
-        self.schedule_table.setColumnWidth(5, 48)
-        self.schedule_table.setColumnWidth(6, 56)
+        self.schedule_table.setColumnWidth(6, 48)
         self.schedule_table.setColumnWidth(7, 56)
+        self.schedule_table.setColumnWidth(8, 56)
         if not _HAS_ENABLED_STATE:
-            self.schedule_table.setColumnHidden(6, True)
+            self.schedule_table.setColumnHidden(7, True)
         self.schedule_table.verticalHeader().setDefaultSectionSize(40)
         self.schedule_table.verticalHeader().setVisible(False)
         self.schedule_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -611,9 +615,20 @@ class ScheduleInterface(QWidget):
         self.schedule_table.setItem(
             row,
             5,
+            _item(self.tr("Yes") if entry.reuse_existing else self.tr("No")),
+        )
+        reuse_item = self.schedule_table.item(row, 5)
+        if reuse_item is not None:
+            reuse_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter
+            )
+
+        self.schedule_table.setItem(
+            row,
+            6,
             _item(self.tr("Yes") if entry.run_elevated else self.tr("No")),
         )
-        elevated_item = self.schedule_table.item(row, 5)
+        elevated_item = self.schedule_table.item(row, 6)
         if elevated_item is not None:
             elevated_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter
@@ -625,7 +640,7 @@ class ScheduleInterface(QWidget):
             partial(self._on_enabled_toggled, entry.entry_id)
         )
         self.schedule_table.setCellWidget(
-            row, 6, self._centered_cell_widget(enabled_check)
+            row, 7, self._centered_cell_widget(enabled_check)
         )
 
         remove_button = TransparentToolButton(FIF.DELETE, self)
@@ -633,7 +648,7 @@ class ScheduleInterface(QWidget):
         apply_fluent_tooltip(remove_button, self.tr("Delete schedule"))
         remove_button.clicked.connect(partial(self._on_remove_schedule, entry.entry_id))
         self.schedule_table.setCellWidget(
-            row, 7, self._centered_cell_widget(remove_button)
+            row, 8, self._centered_cell_widget(remove_button)
         )
 
     def _centered_cell_widget(self, child: QWidget) -> QWidget:
@@ -724,6 +739,7 @@ class ScheduleInterface(QWidget):
             schedule_type=schedule_type,
             params=params,
             force_start=self.force_checkbox.isChecked(),
+            reuse_existing=self.reuse_existing_checkbox.isChecked(),
             run_elevated=self.elevated_checkbox.isChecked(),
             enabled=self.enabled_checkbox.isChecked(),
             created_at=datetime.now(),

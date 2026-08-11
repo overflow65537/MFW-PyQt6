@@ -37,13 +37,22 @@ def resolve_schedule_task_folder() -> str:
     return f"MFW-ChainFlow Assistant-{resolve_schedule_instance_id()}"
 
 
-def resolve_schedule_launch_command(config_id: str, *, force_start: bool) -> tuple[str, str]:
+def resolve_schedule_launch_command(
+    config_id: str, *, force_start: bool, reuse_existing: bool = False
+) -> tuple[str, str]:
     """构建计划任务启动命令，返回 (executable, arguments)。"""
-    from mfw_cli import FLAG_CONFIG_ID, FLAG_DIRECT_RUN, FLAG_FORCE_RESTART
+    from mfw_cli import (
+        FLAG_CONFIG_ID,
+        FLAG_DIRECT_RUN,
+        FLAG_FORCE_RESTART,
+        FLAG_REUSE_EXISTING,
+    )
 
     cli_args: list[str] = [f"{FLAG_CONFIG_ID}={config_id}", FLAG_DIRECT_RUN]
     if force_start:
         cli_args.append(FLAG_FORCE_RESTART)
+    if reuse_existing:
+        cli_args.append(FLAG_REUSE_EXISTING)
 
     anchor = resolve_install_anchor()
     if getattr(sys, "frozen", False) or anchor.suffix.lower() in {".exe", ".bin"}:

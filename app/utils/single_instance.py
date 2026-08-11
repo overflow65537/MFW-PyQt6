@@ -1,14 +1,18 @@
 import os
 import hashlib
+import json
 import tempfile
 import time
 from pathlib import Path
 
 CMD_ACTIVATE = b"activate"
 CMD_SHUTDOWN = b"shutdown"
+CMD_RUN_CONFIG = b"run-config:"
 RESP_OK = b"ok"
 RESP_ACCEPTED = b"accepted"
 RESP_FAIL = b"fail"
+RESP_BUSY = b"busy"
+RESP_INVALID = b"invalid"
 FORCE_RESTART_WAIT_TIMEOUT = 10.0
 
 
@@ -87,6 +91,7 @@ class _ActivationServer:
         self._server = None
         self._on_activate = None
         self._on_shutdown = None
+        self._on_run_config = None
 
     @staticmethod
     def make_server_name(lock_key: str) -> str:
@@ -98,6 +103,9 @@ class _ActivationServer:
 
     def set_on_shutdown(self, callback) -> None:
         self._on_shutdown = callback
+
+    def set_on_run_config(self, callback) -> None:
+        self._on_run_config = callback
 
     def start(self, parent=None) -> bool:
         from PySide6.QtNetwork import QLocalServer
@@ -154,12 +162,12 @@ class _ActivationServer:
 
     def _consume_activation_request(self, socket) -> None:
         try:
-            payload = bytes(socket.readAll()).strip().lower()
+            payload = bytes(socket.readAll()).strip()
         except Exception:
             payload = b""
 
         command = payload or CMD_ACTIVATE
-        if command == CMD_SHUTDOWN:
+        if command.lower() == CMD_SHUTDOWN:
             accepted = False
             if self._on_shutdown is not None:
                 try:
@@ -167,6 +175,17 @@ class _ActivationServer:
                 except Exception:
                     accepted = False
             response = RESP_ACCEPTED if accepted else RESP_FAIL
+        elif command.startswith(CMD_RUN_CONFIG):
+            response = RESP_INVALID
+            try:
+                request = json.loads(command[len(CMD_RUN_CONFIG) :].decode("utf-8"))
+                config_id = str(request.get("config_id") or "").strip()
+                force_start = bool(request.get("force_start", False))
+                if config_id and self._on_run_config is not None:
+                    result = self._on_run_config(config_id, force_start)
+                    response = result if isinstance(result, bytes) else RESP_FAIL
+            except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+                response = RESP_INVALID
         else:
             activated = False
             if self._on_activate is not None:
@@ -292,6 +311,45 @@ def try_activate_existing_instance(
         return response == RESP_OK
     except Exception:
         return False
+    finally:
+        try:
+            socket.disconnectFromServer()
+        except Exception:
+            pass
+
+
+def request_existing_instance_run(
+    server_name: str,
+    config_id: str,
+    *,
+    force_start: bool,
+    connect_ms: int = 800,
+    response_ms: int = 1500,
+) -> bytes:
+    """请求已有实例执行配置，返回 IPC 状态码。"""
+    try:
+        from PySide6.QtNetwork import QLocalSocket
+    except Exception:
+        return RESP_FAIL
+
+    socket = QLocalSocket()
+    socket.connectToServer(server_name)
+    if not socket.waitForConnected(connect_ms):
+        return RESP_FAIL
+
+    try:
+        request = json.dumps(
+            {"config_id": config_id, "force_start": force_start}, separators=(",", ":")
+        ).encode("utf-8")
+        socket.write(CMD_RUN_CONFIG + request)
+        socket.flush()
+        if not socket.waitForBytesWritten(800):
+            return RESP_FAIL
+        if not socket.waitForReadyRead(response_ms):
+            return RESP_FAIL
+        return bytes(socket.readAll()).strip().lower()
+    except Exception:
+        return RESP_FAIL
     finally:
         try:
             socket.disconnectFromServer()
@@ -483,9 +541,17 @@ class SingleInstanceGuard:
     def set_shutdown_callback(self, callback) -> None:
         self._activation_server.set_on_shutdown(callback)
 
+    def set_run_config_callback(self, callback) -> None:
+        self._activation_server.set_on_run_config(callback)
+
     def request_instance_shutdown(self) -> bool:
         return request_instance_shutdown(self.server_name)
 
     def notify_existing_instance(self) -> bool:
         """请求已有实例前置窗口；仅当旧实例正常响应时返回 True。"""
         return try_activate_existing_instance(self.server_name)
+
+    def request_existing_instance_run(self, config_id: str, *, force_start: bool) -> bytes:
+        return request_existing_instance_run(
+            self.server_name, config_id, force_start=force_start
+        )

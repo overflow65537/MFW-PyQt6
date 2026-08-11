@@ -100,7 +100,9 @@ def _append_text(parent: ET.Element, tag: str, text: str) -> None:
 def build_task_xml(entry: "ScheduleEntry") -> str:
     """生成 Windows 任务计划程序 XML（与 schtasks 导出的 1.2 格式对齐）。"""
     command, arguments = resolve_schedule_launch_command(
-        entry.config_id, force_start=entry.force_start
+        entry.config_id,
+        force_start=entry.force_start,
+        reuse_existing=entry.reuse_existing,
     )
 
     root = ET.Element(f"{{{_TASK_NS}}}Task")
@@ -380,11 +382,13 @@ class WindowsTaskSchedulerBackend(SystemSchedulerBackend):
         args_str = text(root.find(f".//{tag('Arguments')}"))
         config_id = ""
         force_start = False
+        reuse_existing = False
         if args_str:
             match = re.search(r"--config-id=(\S+)", args_str)
             if match:
                 config_id = match.group(1)
             force_start = "--force-restart" in args_str
+            reuse_existing = "--reuse-existing" in args_str
 
         run_elevated = False
         run_level = text(root.find(f".//{tag('RunLevel')}"))
@@ -480,6 +484,7 @@ class WindowsTaskSchedulerBackend(SystemSchedulerBackend):
             schedule_type=schedule_type,
             params=params,
             force_start=force_start,
+            reuse_existing=reuse_existing,
             run_elevated=run_elevated,
             enabled=True,
             created_at=created_at,

@@ -23,6 +23,7 @@ class BuildTaskXmlTests(unittest.TestCase):
         schedule_type: str,
         params: dict,
         force_start: bool = False,
+        reuse_existing: bool = False,
         run_elevated: bool = False,
         enabled: bool = True,
     ) -> ScheduleEntry:
@@ -33,6 +34,7 @@ class BuildTaskXmlTests(unittest.TestCase):
             schedule_type=schedule_type,
             params=params,
             force_start=force_start,
+            reuse_existing=reuse_existing,
             run_elevated=run_elevated,
             enabled=enabled,
             created_at=datetime(2025, 6, 17, 8, 0, 0),
@@ -65,7 +67,28 @@ class BuildTaskXmlTests(unittest.TestCase):
                 force_start=True,
             )
         )
-        mock_command.assert_called_once_with("cfg_demo", force_start=True)
+        mock_command.assert_called_once_with(
+            "cfg_demo", force_start=True, reuse_existing=False
+        )
+
+    @patch(
+        "app.core.service.system_scheduler.windows.resolve_schedule_launch_command",
+        return_value=(
+            r"C:\MFW\MFW.exe",
+            "--config-id=cfg_demo --direct-run --reuse-existing",
+        ),
+    )
+    def test_reuse_existing_uses_cli_arguments(self, mock_command: object) -> None:
+        build_task_xml(
+            self._entry(
+                schedule_type=SCHEDULE_SINGLE,
+                params={"run_at": "2025-06-18T09:30:00"},
+                reuse_existing=True,
+            )
+        )
+        mock_command.assert_called_once_with(
+            "cfg_demo", force_start=False, reuse_existing=True
+        )
 
     @patch(
         "app.core.service.system_scheduler.windows.resolve_schedule_launch_command",

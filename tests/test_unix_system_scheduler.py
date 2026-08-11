@@ -144,6 +144,12 @@ class CrontabBlockTests(unittest.TestCase):
         self.assertTrue(job.startswith("sudo "), f"expected sudo prefix, got: {job}")
         self.assertIn("--config-id=cfg_demo", job)
 
+    def test_build_shell_job_includes_reuse_existing(self) -> None:
+        job = build_shell_job(
+            "cfg_demo", force_start=False, reuse_existing=True
+        )
+        self.assertIn("--reuse-existing", job)
+
     def test_split_preserves_other_instance_blocks(self) -> None:
         original = "\n".join(
             [

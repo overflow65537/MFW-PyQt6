@@ -3565,6 +3565,11 @@ interface.name 欄位可能與 multi_config.json 中的套件金鑰不符。請�
             <translation>強制開始</translation>
         </message>
         <message>
+            <location filename="../view/schedule_interface/schedule_interface.py" line="228" />
+            <source>Reuse existing process</source>
+            <translation>重用現有程序</translation>
+        </message>
+        <message>
             <location filename="../view/schedule_interface/schedule_interface.py" line="234" />
             <location filename="../view/schedule_interface/schedule_interface.py" line="476" />
             <source>Enabled</source>
@@ -3741,6 +3746,11 @@ interface.name 欄位可能與 multi_config.json 中的套件金鑰不符。請�
             <location filename="../view/schedule_interface/schedule_interface.py" line="474" />
             <source>Force</source>
             <translation>強制執行</translation>
+        </message>
+        <message>
+            <location filename="../view/schedule_interface/schedule_interface.py" line="476" />
+            <source>Reuse</source>
+            <translation>重用</translation>
         </message>
         <message>
             <location filename="../view/schedule_interface/schedule_interface.py" line="475" />

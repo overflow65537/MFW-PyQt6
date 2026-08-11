@@ -118,11 +118,13 @@ class CrontabSchedulerBackend(SystemSchedulerBackend):
 
         config_id = ""
         force_start = False
+        reuse_existing = False
         if "--config-id=" in cmd:
             match = re.search(r"--config-id=(\S+)", cmd)
             if match:
                 config_id = match.group(1)
         force_start = "--force-restart" in cmd
+        reuse_existing = "--reuse-existing" in cmd
 
         hour = int(hour_f)
         minute = int(minute_f)
@@ -192,6 +194,7 @@ class CrontabSchedulerBackend(SystemSchedulerBackend):
             schedule_type=schedule_type,
             params=params,
             force_start=force_start,
+            reuse_existing=reuse_existing,
             run_elevated=run_elevated,
             enabled=True,
             created_at=datetime.now(),
