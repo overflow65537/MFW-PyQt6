@@ -5,6 +5,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from app.utils.logger import logger
+
 CMD_ACTIVATE = b"activate"
 CMD_SHUTDOWN = b"shutdown"
 CMD_RUN_CONFIG = b"run-config:"
@@ -149,6 +151,7 @@ class _ActivationServer:
             socket = self._server.nextPendingConnection()
             if socket is None:
                 continue
+            socket.setParent(self._server)
 
             if socket.bytesAvailable() > 0:
                 self._consume_activation_request(socket)
@@ -181,10 +184,16 @@ class _ActivationServer:
                 request = json.loads(command[len(CMD_RUN_CONFIG) :].decode("utf-8"))
                 config_id = str(request.get("config_id") or "").strip()
                 force_start = bool(request.get("force_start", False))
+                logger.debug(
+                    "单实例 IPC 收到复用执行请求: config_id=%s force_start=%s",
+                    config_id,
+                    force_start,
+                )
                 if config_id and self._on_run_config is not None:
                     result = self._on_run_config(config_id, force_start)
                     response = result if isinstance(result, bytes) else RESP_FAIL
-            except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+            except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                logger.debug("单实例 IPC 拒绝无效的复用执行请求: %s", exc)
                 response = RESP_INVALID
         else:
             activated = False
@@ -198,13 +207,9 @@ class _ActivationServer:
         try:
             socket.write(response)
             socket.flush()
-            socket.waitForBytesWritten(800)
+            logger.debug("单实例 IPC 已回复: %s", response)
         except Exception:
-            pass
-
-        try:
-            socket.disconnectFromServer()
-        except Exception:
+            logger.debug("单实例 IPC 写入回复失败")
             pass
 
 
@@ -324,31 +329,54 @@ def request_existing_instance_run(
     *,
     force_start: bool,
     connect_ms: int = 800,
-    response_ms: int = 1500,
+    response_ms: int = 5000,
 ) -> bytes:
     """请求已有实例执行配置，返回 IPC 状态码。"""
     try:
         from PySide6.QtNetwork import QLocalSocket
-    except Exception:
+    except Exception as exc:
+        logger.debug("单实例 IPC 无法导入 QLocalSocket: %s", exc)
         return RESP_FAIL
 
     socket = QLocalSocket()
     socket.connectToServer(server_name)
     if not socket.waitForConnected(connect_ms):
+        logger.debug(
+            "单实例 IPC 连接失败: server=%s error=%s state=%s",
+            server_name,
+            socket.errorString(),
+            socket.state(),
+        )
         return RESP_FAIL
 
     try:
         request = json.dumps(
             {"config_id": config_id, "force_start": force_start}, separators=(",", ":")
         ).encode("utf-8")
-        socket.write(CMD_RUN_CONFIG + request)
+        payload = CMD_RUN_CONFIG + request
+        written = socket.write(payload)
+        if written != len(payload):
+            logger.debug(
+                "单实例 IPC 请求写入失败: expected=%s written=%s error=%s state=%s",
+                len(payload),
+                written,
+                socket.errorString(),
+                socket.state(),
+            )
+            return RESP_FAIL
         socket.flush()
-        if not socket.waitForBytesWritten(800):
-            return RESP_FAIL
         if not socket.waitForReadyRead(response_ms):
+            logger.debug(
+                "单实例 IPC 等待回复失败: error=%s state=%s",
+                socket.errorString(),
+                socket.state(),
+            )
             return RESP_FAIL
-        return bytes(socket.readAll()).strip().lower()
-    except Exception:
+        response = bytes(socket.readAll()).strip().lower()
+        logger.debug("单实例 IPC 收到回复: %s", response)
+        return response
+    except Exception as exc:
+        logger.debug("单实例 IPC 客户端异常: %s", exc)
         return RESP_FAIL
     finally:
         try:

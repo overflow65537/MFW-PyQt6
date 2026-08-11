@@ -170,7 +170,11 @@ def _run() -> int:
     if not single_instance.acquire():
         if options.reuse_existing:
             from app.utils.single_instance import RESP_ACCEPTED, RESP_BUSY
+            from PySide6.QtCore import QCoreApplication
 
+            _ = QCoreApplication.instance()
+            if ipc_app is None:
+                _ = QCoreApplication([sys.argv[0]])
             response = single_instance.request_existing_instance_run(
                 options.config_id or "", force_start=options.force_restart
             )
