@@ -169,23 +169,27 @@ def _run() -> int:
     single_instance = SingleInstanceGuard(instance_key)
     if not single_instance.acquire():
         if options.reuse_existing:
-            from app.utils.single_instance import RESP_ACCEPTED, RESP_BUSY
-            from PySide6.QtCore import QCoreApplication
+            try:
+                from app.utils.single_instance import RESP_ACCEPTED, RESP_BUSY
+                from PySide6.QtCore import QCoreApplication
 
-            _ = QCoreApplication.instance()
-            if ipc_app is None:
-                _ = QCoreApplication([sys.argv[0]])
-            response = single_instance.request_existing_instance_run(
-                options.config_id or "", force_start=options.force_restart
-            )
-            if response == RESP_ACCEPTED:
-                logger.info("已有实例已接收复用执行请求")
-                return 0
-            if response == RESP_BUSY:
-                logger.info("已有实例正在执行任务，已跳过复用执行请求")
-                return 0
-            logger.warning("向已有实例发送复用执行请求失败: %s", response)
-            return 1
+                ipc_app = QCoreApplication.instance()
+                if ipc_app is None:
+                    _ = QCoreApplication([sys.argv[0]])
+                response = single_instance.request_existing_instance_run(
+                    options.config_id or "", force_start=options.force_restart
+                )
+                if response == RESP_ACCEPTED:
+                    logger.info("已有实例已接收复用执行请求")
+                    return 0
+                if response == RESP_BUSY:
+                    logger.info("已有实例正在执行任务，跳过复用执行请求")
+                    return 2
+                logger.warning("向已有实例发送复用执行请求失败: %s", response)
+                return 1
+            except Exception:
+                logger.exception("未知错误")
+                return 3
 
         from app.utils.startup_dialog import run_duplicate_instance_flow
 
@@ -423,7 +427,7 @@ def _run() -> int:
         if window is None:
             pending_reuse_request["request"] = (config_id, force_start)
             reuse_request_in_progress["value"] = True
-            return RESP_ACCEPTED
+            return RESP_BUSY
         if not window.service_coordinator.config.get_config(config_id):
             return RESP_INVALID
         if _is_task_running(window) and not force_start:

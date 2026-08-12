@@ -207,6 +207,7 @@ class _ActivationServer:
         try:
             socket.write(response)
             socket.flush()
+            socket.waitForBytesWritten(800)
             logger.debug("单实例 IPC 已回复: %s", response)
         except Exception:
             logger.debug("单实例 IPC 写入回复失败")
@@ -354,17 +355,14 @@ def request_existing_instance_run(
             {"config_id": config_id, "force_start": force_start}, separators=(",", ":")
         ).encode("utf-8")
         payload = CMD_RUN_CONFIG + request
-        written = socket.write(payload)
-        if written != len(payload):
-            logger.debug(
-                "单实例 IPC 请求写入失败: expected=%s written=%s error=%s state=%s",
-                len(payload),
-                written,
-                socket.errorString(),
-                socket.state(),
-            )
-            return RESP_FAIL
-        socket.flush()
+        try:
+            socket.write(payload)
+            socket.flush()
+            socket.waitForBytesWritten(800)
+            logger.debug("复用单实例 IPC 已请求: %s", payload)
+        except Exception:
+            logger.debug("复用单实例 IPC 请求失败")
+            pass
         if not socket.waitForReadyRead(response_ms):
             logger.debug(
                 "单实例 IPC 等待回复失败: error=%s state=%s",
