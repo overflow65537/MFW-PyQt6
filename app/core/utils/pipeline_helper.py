@@ -11,6 +11,11 @@
 
 from typing import Dict, Any, List, Optional
 from app.core.utils.option_branches_compat import get_option_branches
+from app.core.utils.hotkey_keycode import (
+    hotkey_key_to_code,
+    resolve_controller_type,
+    split_hotkey_combo,
+)
 from app.utils.logger import logger
 
 
@@ -118,15 +123,19 @@ def get_controller_option_pipeline_override(
     if not interface or not controller_task_option:
         return {}
 
-    controller_type = controller_task_option.get("controller_type")
-    if not controller_type:
+    controller_name_raw = controller_task_option.get("controller_type")
+    if isinstance(controller_name_raw, dict):
+        controller_name = str(controller_name_raw.get("value", "") or "").strip()
+    else:
+        controller_name = str(controller_name_raw or "").strip()
+    if not controller_name:
         return {}
 
     # 在 interface.controller 中找到当前控制器定义
     controllers = interface.get("controller", [])
     controller_def = None
     for ctrl in controllers:
-        if ctrl.get("name") == controller_type:
+        if str(ctrl.get("name", "")).lower() == controller_name.lower():
             controller_def = ctrl
             break
 
@@ -145,12 +154,17 @@ def get_controller_option_pipeline_override(
 
     options = interface.get("option", {})
     merged_override: Dict[str, Any] = {}
+    controller_type = resolve_controller_type(interface, controller_name)
 
     for option_name, option_value in controller_options.items():
         # 只处理控制器定义中声明的选项
         if option_name in controller_option_names:
             _process_option_recursive(
-                options, option_name, option_value, merged_override
+                options,
+                option_name,
+                option_value,
+                merged_override,
+                controller_type,
             )
 
     return merged_override
@@ -162,6 +176,7 @@ def get_pipeline_override_from_task_option(
     task_id: Optional[str] = None,
     setting_options: Optional[Dict[str, Any]] = None,
     global_options: Optional[Dict[str, Any]] = None,
+    controller_type: Optional[str] = None,
 ) -> Dict[str, Any]:
     """从任务选项中提取 pipeline_override
 
@@ -191,6 +206,7 @@ def get_pipeline_override_from_task_option(
             }
             对于 Resource 任务，资源选项保存在 "resource_options" 字段中
         task_id: 任务ID，用于判断是否为 Resource 任务
+        controller_type: 当前 PI 控制器类型，用于 hotkey 虚拟键码映射
 
     Returns:
         Dict: 合并后的 pipeline_override
@@ -212,14 +228,22 @@ def get_pipeline_override_from_task_option(
         if isinstance(setting_options, dict):
             for option_name, option_value in setting_options.items():
                 _process_option_recursive(
-                    options, option_name, option_value, merged_override
+                    options,
+                    option_name,
+                    option_value,
+                    merged_override,
+                    controller_type,
                 )
 
         if "resource_options" in task_options:
             resource_options = task_options["resource_options"]
             for option_name, option_value in resource_options.items():
                 _process_option_recursive(
-                    options, option_name, option_value, merged_override
+                    options,
+                    option_name,
+                    option_value,
+                    merged_override,
+                    controller_type,
                 )
     else:
         # 非 Resource 任务，按原来的逻辑处理所有选项
@@ -234,7 +258,11 @@ def get_pipeline_override_from_task_option(
                 continue
             # 处理选项（包括递归处理子选项）
             _process_option_recursive(
-                options, option_name, option_value, merged_override
+                options,
+                option_name,
+                option_value,
+                merged_override,
+                controller_type,
             )
 
     return merged_override
@@ -245,6 +273,7 @@ def _process_option_recursive(
     option_name: str,
     option_value: Any,
     merged_override: Dict[str, Any],
+    controller_type: Optional[str] = None,
 ) -> None:
     """递归处理选项及其子选项
 
@@ -270,7 +299,9 @@ def _process_option_recursive(
     )
 
     # 获取该选项的 pipeline_override
-    option_override = _get_option_pipeline_override(options, option_name, actual_value)
+    option_override = _get_option_pipeline_override(
+        options, option_name, actual_value, controller_type
+    )
 
     # 深度合并
     _deep_merge_dict(merged_override, option_override)
@@ -297,7 +328,11 @@ def _process_option_recursive(
                     actual_option_name = _extract_child_option_name(nested_key)
                     if actual_option_name:
                         _process_option_recursive(
-                            options, actual_option_name, nested_data, merged_override
+                            options,
+                            actual_option_name,
+                            nested_data,
+                            merged_override,
+                            controller_type,
                         )
                 continue
 
@@ -309,7 +344,11 @@ def _process_option_recursive(
 
             if actual_option_name:
                 _process_option_recursive(
-                    options, actual_option_name, child_data, merged_override
+                    options,
+                    actual_option_name,
+                    child_data,
+                    merged_override,
+                    controller_type,
                 )
 
 
@@ -355,8 +394,8 @@ def _extract_option_value_and_children(
                 if options is not None and option_name
                 else ""
             )
-            # input 类型保存为 {"value": {字段名: 值}} 是合法格式
-            if option_type not in ("input", ""):
+            # input/hotkey 类型保存为 {"value": {字段名: 值}} 是合法格式
+            if option_type not in ("input", "hotkey", ""):
                 try:
                     logger.error(
                         "选项 value 字段类型异常"
@@ -394,7 +433,10 @@ def _extract_child_option_name(child_key: str) -> str | None:
 
 
 def _get_option_pipeline_override(
-    options: Dict[str, Any], option_name: str, option_value: str | Dict[str, Any]
+    options: Dict[str, Any],
+    option_name: str,
+    option_value: str | Dict[str, Any],
+    controller_type: Optional[str] = None,
 ) -> Dict[str, Any]:
     """获取指定选项的 pipeline_override"""
     if option_name not in options:
@@ -402,7 +444,7 @@ def _get_option_pipeline_override(
         return {}
 
     option_config = options[option_name]
-    option_type = option_config.get("type", "select")
+    option_type = str(option_config.get("type", "select")).lower()
 
     if option_type in ("select", "switch"):
         if not isinstance(option_value, str):
@@ -434,6 +476,13 @@ def _get_option_pipeline_override(
             logger.error(f"Input 选项值必须是字典，实际类型: {type(option_value)}")
             return {}
         return _get_input_pipeline_override(option_config, option_value)
+    elif option_type == "hotkey":
+        if not isinstance(option_value, dict):
+            logger.error(f"Hotkey 选项值必须是字典，实际类型: {type(option_value)}")
+            return {}
+        return _get_hotkey_pipeline_override(
+            option_config, option_value, controller_type
+        )
     else:
         logger.warning(f"未知的选项类型: {option_type}")
         return {}
@@ -513,6 +562,67 @@ def _get_input_pipeline_override(
     result = _convert_types(result, option_config, input_values)
 
     return result
+
+
+def _get_hotkey_pipeline_override(
+    option_config: Dict[str, Any],
+    hotkey_values: Dict[str, Any],
+    controller_type: Optional[str],
+) -> Dict[str, Any]:
+    """将 hotkey 占位符替换为当前控制器使用的整数键码。"""
+    import copy
+
+    placeholder_values: Dict[str, int] = {}
+    hotkeys = option_config.get("hotkeys", [])
+    for hotkey_config in hotkeys:
+        if not isinstance(hotkey_config, dict):
+            continue
+        hotkey_name = hotkey_config.get("name")
+        if not hotkey_name:
+            continue
+
+        hotkey_value = hotkey_values.get(
+            hotkey_name, hotkey_config.get("default", "")
+        )
+        primary, modifiers = split_hotkey_combo(str(hotkey_value or ""))
+
+        def _resolve(key_name: str) -> int:
+            if not key_name:
+                return 0
+            return hotkey_key_to_code(key_name, controller_type) or 0
+
+        primary_code = _resolve(primary)
+        modifier1_code = _resolve(modifiers[0] if modifiers else "")
+        modifier2_code = _resolve(modifiers[1] if len(modifiers) > 1 else "")
+        placeholder_values[f"{{{hotkey_name}}}"] = primary_code
+        placeholder_values[f"{{{hotkey_name}.primary}}"] = primary_code
+        placeholder_values[f"{{{hotkey_name}.modifier1}}"] = modifier1_code
+        placeholder_values[f"{{{hotkey_name}.modifier2}}"] = modifier2_code
+        # 兼容早期文档中将字段后缀写在右花括号外的形式。
+        placeholder_values[f"{{{hotkey_name}}}.primary"] = primary_code
+        placeholder_values[f"{{{hotkey_name}}}.modifier1"] = modifier1_code
+        placeholder_values[f"{{{hotkey_name}}}.modifier2"] = modifier2_code
+
+    ordered_placeholders = sorted(
+        placeholder_values.items(), key=lambda item: len(item[0]), reverse=True
+    )
+
+    def replace_recursive(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: replace_recursive(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [replace_recursive(item) for item in value]
+        if isinstance(value, str):
+            if value in placeholder_values:
+                return placeholder_values[value]
+            result = value
+            for placeholder, key_code in ordered_placeholders:
+                result = result.replace(placeholder, str(key_code))
+            return result
+        return value
+
+    result = replace_recursive(copy.deepcopy(option_config.get("pipeline_override", {})))
+    return result if isinstance(result, dict) else {}
 
 
 def _replace_placeholders(

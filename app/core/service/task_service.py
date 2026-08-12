@@ -543,7 +543,7 @@ class TaskService:
             值: 取决于 option.type:
                 - select/switch: string (case.name)
                 - checkbox: string[] (case.name 数组)
-                - input: record<string, string> (输入字段 name → 值)
+                - input/hotkey: record<string, string> (字段 name → 值)
 
         Args:
             task: 要修改的任务
@@ -586,8 +586,8 @@ class TaskService:
                     self._update_children_visibility_select(
                         current_option, scalar, option_key, option_template, interface_options
                     )
-            elif option_type == "input":
-                # input 类型：preset_value 应为 record<string, string>
+            elif option_type in ("input", "hotkey"):
+                # input/hotkey 类型：preset_value 应为 record<string, string>
                 if isinstance(preset_value, dict):
                     if not isinstance(current_option.get("value"), dict):
                         current_option["value"] = {}
@@ -889,6 +889,19 @@ class TaskService:
             option_key: str, option_template: dict
         ) -> Any:
             """递归生成选项默认值"""
+            hotkeys = option_template.get("hotkeys")
+            if isinstance(hotkeys, list) and hotkeys:
+                hotkey_values: dict[str, str] = {}
+                for hotkey_config in hotkeys:
+                    if not isinstance(hotkey_config, dict):
+                        continue
+                    hotkey_name = hotkey_config.get("name")
+                    if hotkey_name:
+                        hotkey_values[hotkey_name] = str(
+                            hotkey_config.get("default", "") or ""
+                        )
+                return {"value": hotkey_values}
+
             inputs = option_template.get("inputs")
             if isinstance(inputs, list) and inputs:
                 nested_values: dict[str, Any] = {}
@@ -1318,12 +1331,26 @@ class TaskService:
         from app.core.utils.pipeline_helper import (
             get_pipeline_override_from_task_option,
         )
+        from app.core.utils.hotkey_keycode import resolve_controller_type
+
+        controller_name = ""
+        controller_task = self.get_task(_CONTROLLER_)
+        if controller_task and isinstance(controller_task.task_option, dict):
+            controller_name_raw = controller_task.task_option.get("controller_type", "")
+            if isinstance(controller_name_raw, dict):
+                controller_name = str(
+                    controller_name_raw.get("value", "") or ""
+                ).strip()
+            else:
+                controller_name = str(controller_name_raw or "").strip()
+        controller_type = resolve_controller_type(self.interface, controller_name)
 
         option_pipeline_override = get_pipeline_override_from_task_option(
             self.interface,
             task.task_option,
             task.item_id,
             self.config_service.get_current_setting_options() if task.item_id == _RESOURCE_ else None,
+            controller_type=controller_type,
         )
 
         # 深度合并：任务级 pipeline_override + 选项级 pipeline_override

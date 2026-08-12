@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from app.common.constants import _RESOURCE_
+from app.core.utils.hotkey_keycode import hotkey_key_to_code
 from app.core.utils.pipeline_helper import (
     ChildKeyParser,
     LegacyChildKeyParser,
@@ -74,6 +75,24 @@ def _base_interface() -> dict:
                         "next": "MainChapter_{章节号}",
                         "timeout": "{超时时间}",
                     }
+                },
+            },
+            "操作快捷键": {
+                "type": "hotkey",
+                "hotkeys": [
+                    {"name": "技能", "default": "E"},
+                    {"name": "组合", "default": "Ctrl+A"},
+                ],
+                "pipeline_override": {
+                    "Skill": {
+                        "key": "{技能}",
+                        "primary": "{技能.primary}",
+                    },
+                    "Combo": {
+                        "primary": "{组合.primary}",
+                        "modifier1": "{组合.modifier1}",
+                        "modifier2": "{组合.modifier2}",
+                    },
                 },
             },
             "往世乐土-真我刻印自选": {
@@ -275,6 +294,37 @@ class TestGetPipelineOverrideFromTaskOption(unittest.TestCase):
             override["往世乐土-选刻印-真我刻印选择"]["expected"],
         )
 
+    def test_hotkey_replaces_primary_and_modifiers_with_win32_ints(self):
+        override = get_pipeline_override_from_task_option(
+            self.interface,
+            {
+                "操作快捷键": {
+                    "value": {"技能": "E", "组合": "Ctrl+A"}
+                }
+            },
+            controller_type="Win32",
+        )
+        self.assertEqual(0x45, override["Skill"]["key"])
+        self.assertEqual(0x45, override["Skill"]["primary"])
+        self.assertEqual(0x41, override["Combo"]["primary"])
+        self.assertEqual(0x11, override["Combo"]["modifier1"])
+        self.assertEqual(0, override["Combo"]["modifier2"])
+
+    def test_hotkey_uses_controller_specific_key_map(self):
+        adb_override = get_pipeline_override_from_task_option(
+            self.interface,
+            {"操作快捷键": {"技能": "E", "组合": "Ctrl+A"}},
+            controller_type="Adb",
+        )
+        macos_override = get_pipeline_override_from_task_option(
+            self.interface,
+            {"操作快捷键": {"技能": "E", "组合": "Ctrl+A"}},
+            controller_type="MacOS",
+        )
+        self.assertEqual(33, adb_override["Skill"]["key"])
+        self.assertEqual(0x0E, macos_override["Skill"]["key"])
+        self.assertEqual(0x3B, macos_override["Combo"]["modifier1"])
+
     def test_switch_branches_do_not_treat_branch_key_as_option_name(self):
         """分支键（如 Yes）与 option 同名时，仍应按 branches 分组递归。"""
         override = get_pipeline_override_from_task_option(
@@ -376,6 +426,15 @@ class TestGetControllerOptionPipelineOverride(unittest.TestCase):
             },
         )
         self.assertEqual({}, override)
+
+
+class TestHotkeyKeycode(unittest.TestCase):
+    def test_unknown_controller_falls_back_to_win32(self):
+        self.assertEqual(0x45, hotkey_key_to_code("E", "Unknown"))
+
+    def test_macos_does_not_fall_back_to_win32(self):
+        with patch("app.core.utils.hotkey_keycode.logger.warning"):
+            self.assertIsNone(hotkey_key_to_code("Insert", "MacOS"))
 
 
 if __name__ == "__main__":

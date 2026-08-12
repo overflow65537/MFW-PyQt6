@@ -285,6 +285,13 @@ class OptionService:
             if children:
                 field_config["children"] = children
 
+        elif option_type == "hotkey":
+            field_config["type"] = "hotkey"
+            hotkeys_source = option_def.get("hotkeys", [])
+            field_config["hotkeys"] = [
+                dict(item) for item in hotkeys_source if isinstance(item, dict)
+            ]
+
         elif option_type == "input":
             inputs_source = option_def.get("inputs", [])
             inputs = [dict(item) for item in inputs_source]

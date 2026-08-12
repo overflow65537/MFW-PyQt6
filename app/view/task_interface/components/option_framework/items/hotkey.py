@@ -64,25 +64,46 @@ class _HotkeyCaptureButton(QWidget):
         self._update_text()
         self.releaseKeyboard()
 
+    def _cancel_capture(self):
+        self._capturing = False
+        self._update_text()
+        self.releaseKeyboard()
+
     def keyPressEvent(self, event: QKeyEvent):
         if not self._capturing:
             super().keyPressEvent(event)
             return
 
         key = event.key()
-        if key == Qt.Key.Key_unknown:
-            self._finish_capture()
+        if key in (Qt.Key.Key_unknown, Qt.Key.Key_Escape):
+            self._cancel_capture()
+            event.accept()
+            return
+
+        modifier_keys = {
+            Qt.Key.Key_Control,
+            Qt.Key.Key_Shift,
+            Qt.Key.Key_Alt,
+            Qt.Key.Key_Meta,
+            Qt.Key.Key_AltGr,
+        }
+        if key in modifier_keys:
+            event.accept()
             return
 
         modifiers = event.modifiers()
         key_code = modifiers.value | key
-        key_text = QKeySequence(key_code).toString()
+        key_text = QKeySequence(key_code).toString(
+            QKeySequence.SequenceFormat.PortableText
+        )
         if not key_text:
-            self._finish_capture()
+            self._cancel_capture()
+            event.accept()
             return
 
         self._current_key = key_text
         self._finish_capture()
+        event.accept()
 
     def key(self) -> str:
         return self._current_key

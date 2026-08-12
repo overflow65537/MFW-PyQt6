@@ -764,6 +764,9 @@ class TaskFlowRunner(QObject):
             )
             runner_interface = interface_manager.get_interface() or {}
             self.task_service.update_runtime_interface(runner_interface)
+            controller_type = self._get_controller_type(
+                controller_cfg.task_option or {}
+            )
 
             # 1. Setting 全局选项 + resource.option（已在函数内按优先级合并）
             self._default_pipeline_override = get_pipeline_override_from_task_option(
@@ -771,6 +774,7 @@ class TaskFlowRunner(QObject):
                 resource_cfg.task_option,
                 _RESOURCE_,
                 self.config_service.get_current_setting_options(),
+                controller_type=controller_type,
             )
 
             # 2. controller.option（优先级高于 resource.option 和 global_option）
