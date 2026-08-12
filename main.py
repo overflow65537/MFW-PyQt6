@@ -425,8 +425,6 @@ def _run() -> int:
         if reuse_request_in_progress["value"]:
             return RESP_BUSY
         if window is None:
-            pending_reuse_request["request"] = (config_id, force_start)
-            reuse_request_in_progress["value"] = True
             return RESP_BUSY
         if not window.service_coordinator.config.get_config(config_id):
             return RESP_INVALID
