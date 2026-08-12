@@ -51,6 +51,7 @@ except ImportError:  # pragma: no cover
 
 from PySide6.QtCore import QObject, Signal
 
+from app.utils.install_paths import is_packed
 from app.utils.logger import logger
 from app.utils.screencap_lock import screencap_guard
 from app.core.runner.recognition_roi import (
@@ -1265,8 +1266,7 @@ class MaaFW(QObject):
         start_cmd = [child_exec, *child_args, socket_id]
         logger.debug(f"启动agent命令: {start_cmd}")
 
-        is_packed = getattr(sys, "frozen", False)
-        encoding = "utf-8" if is_packed else "gbk"
+        encoding = "utf-8" if is_packed() else "gbk"
         env = os.environ.copy()
         if self.agent_env_vars:
             env.update(self.agent_env_vars)

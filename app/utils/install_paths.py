@@ -6,6 +6,11 @@ import hashlib
 import sys
 from pathlib import Path
 
+def is_packed() -> bool:
+    return (
+            getattr(sys, "frozen", False) or
+            globals().get("__compiled__") is not None
+    )
 
 def resolve_install_anchor() -> Path:
     """定位 MFW 安装锚点（发行根目录旁的 exe 或 main.py）。"""
@@ -55,7 +60,7 @@ def resolve_schedule_launch_command(
         cli_args.append(FLAG_REUSE_EXISTING)
 
     anchor = resolve_install_anchor()
-    if getattr(sys, "frozen", False) or anchor.suffix.lower() in {".exe", ".bin"}:
+    if is_packed() or anchor.suffix.lower() in {".exe", ".bin"}:
         return str(anchor), " ".join(cli_args)
 
     main_py = anchor if anchor.suffix.lower() == ".py" else anchor.parent / "main.py"
