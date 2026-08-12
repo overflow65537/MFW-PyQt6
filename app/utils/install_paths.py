@@ -7,10 +7,12 @@ import sys
 from pathlib import Path
 
 def is_packed() -> bool:
+    """是否为打包运行时（PyInstaller ``sys.frozen`` 或 Nuitka ``__compiled__``）。"""
     return (
-            getattr(sys, "frozen", False) or
-            globals().get("__compiled__") is not None
+        getattr(sys, "frozen", False)
+        or globals().get("__compiled__") is not None
     )
+
 
 def resolve_install_anchor() -> Path:
     """定位 MFW 安装锚点（发行根目录旁的 exe 或 main.py）。"""

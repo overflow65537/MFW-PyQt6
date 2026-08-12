@@ -28,6 +28,8 @@ import atexit
 import traceback
 from pathlib import Path
 
+from app.utils.install_paths import is_packed
+
 
 def _install_anchor_path() -> str:
     """
@@ -46,15 +48,11 @@ def _install_anchor_path() -> str:
     return __file__
 
 
-def _is_packed_runtime() -> bool:
-    return getattr(sys, "frozen", False) or globals().get("__compiled__") is not None
-
-
 def _resolve_install_root() -> Path:
     """发行根目录：与 interface、maafw 同级，而非 PyInstaller 的 _internal 子目录。"""
     anchor = Path(_install_anchor_path()).resolve()
     root = anchor.parent
-    if not _is_packed_runtime():
+    if not is_packed():
         return root
 
     # PyInstaller onedir：sys._MEIPASS 指向 _internal，发行根为其父目录
@@ -78,7 +76,7 @@ def _resolve_maafw_dir(install_root: Path) -> Path:
 _install_root = _resolve_install_root()
 os.chdir(_install_root)
 # 打包版：MaaFramework 等原生库放在发行根下的 maafw/（见 CI move_maa_bin_to_maafw、PyInstaller build.py）
-if _is_packed_runtime():
+if is_packed():
     _maafw = _resolve_maafw_dir(_install_root)
     os.environ["MAAFW_BINARY_PATH"] = str(_maafw)
     if sys.platform == "win32":
