@@ -47,6 +47,7 @@ class RunnerEvents(QObject):
     """Runner 运行时事件，仅供 Core 内部向协调器上报。"""
 
     callback = Signal(dict)
+    telemetry = Signal(dict)
     log_output = Signal(str, str)
     set_window_title = Signal(str)
     task_status_changed = Signal(str, str)

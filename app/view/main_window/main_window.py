@@ -3202,6 +3202,7 @@ class MainWindow(MSFluentWindow):
                 send_thread = None
         try:
 
+            self.service_coordinator.shutdown_telemetry()
             self._clear_maafw_sync()
             self._stop_notice_thread(send_thread)
             self._stop_update_workers()

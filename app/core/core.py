@@ -18,6 +18,7 @@ from app.core.service.config_service import ConfigService, JsonConfigRepository
 from app.core.service.schedule_service import ScheduleService
 from app.core.service.task_service import TaskService
 from app.core.service.option_service import OptionService
+from app.core.service.telemetry_service import TelemetryService
 from app.core.service.interface_manager import get_interface_manager, InterfaceManager
 from app.core.runner.task_flow import TaskFlowRunner
 from app.core.log_processor import CallbackLogProcessor
@@ -147,6 +148,9 @@ class ServiceCoordinator:
                 raise
         
         self.option_service = OptionService(self.task_service, self.signal_bus)
+        self.telemetry_service = TelemetryService(
+            self.runner_events, self._interface
+        )
         self.config_service.register_on_change(self._on_config_changed)
 
         # 运行器
@@ -835,6 +839,7 @@ class ServiceCoordinator:
         # 更新相关服务的 interface 数据
         self.config_repo.interface = self._interface
         self.task_service.reload_interface(self._interface)
+        self.telemetry_service.configure_from_interface(self._interface)
 
     def _connect_signals(self):
         """连接所有信号"""
@@ -1282,6 +1287,7 @@ class ServiceCoordinator:
 
             # 重新初始化任务服务（刷新 interface 数据）
             self.task_service.reload_interface(self._interface)
+            self.telemetry_service.configure_from_interface(self._interface)
 
             # 通知 UI 配置已更新
             current_config_id = self.config_service.current_config_id
@@ -1325,6 +1331,18 @@ class ServiceCoordinator:
     async def stop_task(self, *, manual: bool = False):
         """停止当前任务流（供内部/调度等模块调用，可指定是否视为手动停止）。"""
         return await self.task_runner.stop_task(manual=manual)
+
+    def set_telemetry_enabled(self, enabled: bool) -> None:
+        """更新用户遥测授权并立即应用。"""
+        self.telemetry_service.set_user_enabled(bool(enabled))
+
+    def is_telemetry_forced_disabled(self) -> bool:
+        """开发/调试构建中强制禁用遥测。"""
+        return self.telemetry_service.is_forced_disabled(self._interface)
+
+    def shutdown_telemetry(self) -> None:
+        """退出应用前刷新并关闭遥测。"""
+        self.telemetry_service.shutdown()
 
     @property
     def run_manager(self) -> TaskFlowRunner:

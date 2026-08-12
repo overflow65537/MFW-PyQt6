@@ -14,3 +14,4 @@ pillow
 json-with-comments
 py7zr
 croniter
+sentry-sdk

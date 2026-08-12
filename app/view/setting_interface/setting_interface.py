@@ -388,6 +388,7 @@ class SettingInterface(QWidget):
         self.initialize_task_settings()
         self.initialize_notice_settings()
         self.initialize_personalization_settings()
+        self.initialize_privacy_settings()
         self.initialize_hotkey_settings()
         self.initialize_update_settings()
         self.initialize_compatibility_settings()
@@ -1127,6 +1128,33 @@ class SettingInterface(QWidget):
 
         # 检测权限并禁用设置（如果权限不足）
         self._check_and_disable_hotkey_settings()
+
+    def initialize_privacy_settings(self):
+        """添加匿名遥测授权开关。"""
+        self.privacy_group = SettingCardGroup(
+            self.tr("Privacy"), self.Setting_scroll_widget
+        )
+        self.telemetry_card = SwitchSettingCard(
+            FIF.INFO,
+            self.tr("Help improve software"),
+            self.tr(
+                "Allow anonymous crash and task statistics to be sent to the "
+                "resource author's Sentry project."
+            ),
+            configItem=cfg.telemetry_enabled,
+            parent=self.privacy_group,
+        )
+        self.telemetry_card.checkedChanged.connect(
+            self._service_coordinator.set_telemetry_enabled
+        )
+        if self._service_coordinator.is_telemetry_forced_disabled():
+            self.telemetry_card.setEnabled(False)
+            if hasattr(self.telemetry_card, "contentLabel"):
+                self.telemetry_card.contentLabel.setText(
+                    self.tr("Telemetry is disabled in development builds.")
+                )
+        self.privacy_group.addSettingCard(self.telemetry_card)
+        self.add_setting_group(self.privacy_group)
 
     def _check_and_disable_hotkey_settings(self):
         """检测全局快捷键权限，如果不可用则禁用设置界面。"""

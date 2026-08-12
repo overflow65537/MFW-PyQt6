@@ -290,7 +290,7 @@ class TaskFlowRunner(QObject):
     def _build_agent_env_vars(
         self, controller_cfg: TaskItem, resource_cfg: TaskItem
     ) -> Dict[str, str]:
-        """v2.5.0: 构建 PI_* 环境变量，在启动 agent 子进程时注入。"""
+        """构建 PI_* 环境变量，在启动 agent 子进程时注入。"""
         import json as _json
 
         from app.common.__version__ import __version__
@@ -300,7 +300,7 @@ class TaskFlowRunner(QObject):
         interface = self.task_service.interface or {}
 
         # PI_INTERFACE_VERSION: Client 实现的 PI 扩展能力版本
-        env_vars["PI_INTERFACE_VERSION"] = "v2.5.0"
+        env_vars["PI_INTERFACE_VERSION"] = "v2.9.1"
 
         # PI_CLIENT_NAME
         env_vars["PI_CLIENT_NAME"] = "MFW"
@@ -764,6 +764,9 @@ class TaskFlowRunner(QObject):
             )
             runner_interface = interface_manager.get_interface() or {}
             self.task_service.update_runtime_interface(runner_interface)
+            self.runner_events.telemetry.emit(
+                {"event": "configure", "interface": runner_interface}
+            )
             controller_type = self._get_controller_type(
                 controller_cfg.task_option or {}
             )
@@ -956,6 +959,25 @@ class TaskFlowRunner(QObject):
             )
             if not tasks_to_run:
                 return
+            controller_name = self._get_controller_name(
+                controller_cfg.task_option or {}
+            )
+            controller_info = next(
+                (
+                    controller
+                    for controller in runner_interface.get("controller", [])
+                    if isinstance(controller, dict)
+                    and controller.get("name") == controller_name
+                ),
+                {"name": controller_name, "type": controller_type},
+            )
+            self.runner_events.telemetry.emit(
+                {
+                    "event": "run_start",
+                    "tasks": [task.name for task in tasks_to_run if task],
+                    "controller": controller_info,
+                }
+            )
             if is_single_task_mode:
                 logger.debug(f"开始执行单个任务: {task_id}")
             self._tasks_started = True
@@ -1072,6 +1094,13 @@ class TaskFlowRunner(QObject):
 
             logger.critical(traceback.format_exc())
         finally:
+            self.runner_events.telemetry.emit(
+                {
+                    "event": (
+                        "run_cancelled" if self._manual_stop else "run_finished"
+                    )
+                }
+            )
             # 任务流退出信号：放在 finally 的最前面，确保监控等 UI 可以立即响应停止，
             # 不会被"完成后操作/清理"等耗时逻辑拖慢。
             if not self._task_flow_finished_emitted:
@@ -2109,6 +2138,14 @@ class TaskFlowRunner(QObject):
         self._start_task_timeout(entry)
 
         save_draw = cfg.get(cfg.save_screenshot)
+        self.runner_events.telemetry.emit(
+            {
+                "event": "prepare_task",
+                "name": entry,
+                "display_name": task.name,
+                "options": task.task_option,
+            }
+        )
         task_ok = await self.maafw.run_task(entry, pipeline_override, save_draw)
         if not task_ok:
             self._stop_task_timeout()

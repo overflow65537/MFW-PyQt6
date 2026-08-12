@@ -163,6 +163,11 @@ class Config(QConfig):
 
     announcement = ConfigItem("General", "announcement", "")
 
+    # ===== 隐私设置 =====
+    telemetry_enabled = ConfigItem(
+        "Privacy", "telemetry_enabled", True, BoolValidator()
+    )
+
     # ===== 运行时标记 =====
     # 用于在 UI/逻辑层快速判断当前进程是否处于管理员权限（会在启动时刷新）
     is_admin = ConfigItem("Runtime", "is_admin", False, BoolValidator())

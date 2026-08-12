@@ -184,6 +184,11 @@ class MaaContextSink(ContextEventSink):
             self._emit_callback(payload)
 
     def on_raw_notification(self, context: Context, msg: str, details: dict):
+        # 节点遥测与 focus 展示解耦：即使没有 focus/content，也把原始节点结果
+        # 交给 Core 侧 TelemetryService 按 focus.trace 决定是否上报。
+        if msg.startswith("Node."):
+            self._emit({"name": "node", "message": msg, "details": details})
+
         focus_entry = (details.get("focus") or {}).get(msg)
         if not focus_entry:
             return
@@ -194,9 +199,16 @@ class MaaContextSink(ContextEventSink):
         if isinstance(focus_entry, str):
             content = focus_entry
             display = ["log"]
+            trace = msg == "Node.PipelineNode.Failed"
         elif isinstance(focus_entry, dict):
             content = focus_entry.get("content", "")
             raw_display = focus_entry.get("display", "log")
+            raw_trace = focus_entry.get("trace")
+            trace = (
+                raw_trace
+                if isinstance(raw_trace, bool)
+                else msg == "Node.PipelineNode.Failed"
+            )
             if isinstance(raw_display, list):
                 display = raw_display
             else:
@@ -217,6 +229,8 @@ class MaaContextSink(ContextEventSink):
                 "name": "context",
                 "details": content,
                 "display": display,
+                "trace": trace,
+                "message": msg,
                 "context_meta": {
                     "name": details.get("name", ""),
                     "task_id": str(details.get("task_id", "")),
@@ -354,9 +368,15 @@ class MaaTaskerEventSink(TaskerEventSink):
         detail: TaskerEventSink.TaskerTaskDetail,
     ):
         if self._emit_callback is not None:
-            self._emit_callback(
-                {"name": "task", "task": detail.entry, "status": noti_type.value}
-            )
+            payload = {
+                "name": "task",
+                "task": detail.entry,
+                "status": noti_type.value,
+            }
+            task_id = getattr(detail, "task_id", None)
+            if task_id is not None:
+                payload["task_id"] = task_id
+            self._emit_callback(payload)
 
 
 class MaaFW(QObject):
