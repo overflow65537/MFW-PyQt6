@@ -3806,6 +3806,11 @@ interface.name 字段可能与 multi_config.json 中的包键不匹配。请检�
             <translation>强制启动</translation>
         </message>
         <message>
+            <location filename="../view/schedule_interface/schedule_interface.py" line="228" />
+            <source>Reuse existing process</source>
+            <translation>复用已有进程</translation>
+        </message>
+        <message>
             <location filename="../view/schedule_interface/schedule_interface.py" line="234" />
             <location filename="../view/schedule_interface/schedule_interface.py" line="476" />
             <source>Enabled</source>
@@ -3982,6 +3987,11 @@ interface.name 字段可能与 multi_config.json 中的包键不匹配。请检�
             <location filename="../view/schedule_interface/schedule_interface.py" line="474" />
             <source>Force</source>
             <translation>强制</translation>
+        </message>
+        <message>
+            <location filename="../view/schedule_interface/schedule_interface.py" line="476" />
+            <source>Reuse</source>
+            <translation>复用</translation>
         </message>
         <message>
             <location filename="../view/schedule_interface/schedule_interface.py" line="475" />

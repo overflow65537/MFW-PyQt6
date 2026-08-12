@@ -3565,6 +3565,11 @@ interface.nameフィールドがmulti_config.jsonのバンドルキーと一致�
             <translation>強制開始</translation>
         </message>
         <message>
+            <location filename="../view/schedule_interface/schedule_interface.py" line="228" />
+            <source>Reuse existing process</source>
+            <translation>既存のプロセスを再利用</translation>
+        </message>
+        <message>
             <location filename="../view/schedule_interface/schedule_interface.py" line="234" />
             <location filename="../view/schedule_interface/schedule_interface.py" line="476" />
             <source>Enabled</source>
@@ -3741,6 +3746,11 @@ interface.nameフィールドがmulti_config.jsonのバンドルキーと一致�
             <location filename="../view/schedule_interface/schedule_interface.py" line="474" />
             <source>Force</source>
             <translation>強制実行</translation>
+        </message>
+        <message>
+            <location filename="../view/schedule_interface/schedule_interface.py" line="476" />
+            <source>Reuse</source>
+            <translation>再利用</translation>
         </message>
         <message>
             <location filename="../view/schedule_interface/schedule_interface.py" line="475" />

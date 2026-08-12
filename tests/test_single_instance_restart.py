@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from app.utils.single_instance import (
     CMD_ACTIVATE,
+    CMD_RUN_CONFIG,
     CMD_SHUTDOWN,
     RESP_OK,
     process_matches_install_anchor,
@@ -28,6 +29,7 @@ class ProcessMatchesInstallAnchorTests(unittest.TestCase):
     def test_shutdown_command_constants(self) -> None:
         self.assertEqual(CMD_ACTIVATE, b"activate")
         self.assertEqual(CMD_SHUTDOWN, b"shutdown")
+        self.assertEqual(CMD_RUN_CONFIG, b"run-config:")
         self.assertEqual(RESP_OK, b"ok")
 
     @patch("app.utils.single_instance.is_running_with_admin_privileges", return_value=False)

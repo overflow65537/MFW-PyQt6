@@ -154,7 +154,11 @@ def _run() -> int:
             apply_theme_from_config()
         return app
 
-    if options.force_restart and is_instance_running(instance_key):
+    if (
+        options.force_restart
+        and not options.reuse_existing
+        and is_instance_running(instance_key)
+    ):
         from app.utils.startup_dialog import run_force_restart_shutdown_flow
 
         _ensure_early_startup_app(qt_argv)
@@ -164,6 +168,29 @@ def _run() -> int:
 
     single_instance = SingleInstanceGuard(instance_key)
     if not single_instance.acquire():
+        if options.reuse_existing:
+            try:
+                from app.utils.single_instance import RESP_ACCEPTED, RESP_BUSY
+                from PySide6.QtCore import QCoreApplication
+
+                ipc_app = QCoreApplication.instance()
+                if ipc_app is None:
+                    _ = QCoreApplication([sys.argv[0]])
+                response = single_instance.request_existing_instance_run(
+                    options.config_id or "", force_start=options.force_restart
+                )
+                if response == RESP_ACCEPTED:
+                    logger.info("已有实例已接收复用执行请求")
+                    return 0
+                if response == RESP_BUSY:
+                    logger.info("已有实例正在执行任务，跳过复用执行请求")
+                    return 2
+                logger.warning("向已有实例发送复用执行请求失败: %s", response)
+                return 1
+            except Exception:
+                logger.exception("未知错误")
+                return 3
+
         from app.utils.startup_dialog import run_duplicate_instance_flow
 
         _ensure_early_startup_app(qt_argv)
@@ -225,6 +252,8 @@ def _run() -> int:
     window_holder: dict[str, MainWindow | None] = {"window": None}
     pending_force_shutdown = {"requested": False}
     pending_activation = {"requested": False}
+    pending_reuse_request: dict[str, tuple[str, bool] | None] = {"request": None}
+    reuse_request_in_progress = {"value": False}
 
     def _activate_existing_window() -> bool:
         window = window_holder["window"]
@@ -365,6 +394,49 @@ def _run() -> int:
 
     single_instance.set_shutdown_callback(_handle_force_shutdown_request)
 
+    def _is_task_running(window: MainWindow) -> bool:
+        task_runner = window.service_coordinator.task_runner
+        return task_runner.is_running or task_runner.maafw.has_active_runtime()
+
+    def _schedule_reused_run(window: MainWindow, config_id: str, force_start: bool) -> None:
+        async def _run() -> None:
+            try:
+                if _is_task_running(window):
+                    if not force_start:
+                        logger.info("已有任务正在执行，跳过复用执行请求")
+                        return
+                    await window.service_coordinator.stop_task(manual=True)
+
+                if not window.service_coordinator.select_config(config_id):
+                    logger.warning("复用执行请求指定的配置不存在: %s", config_id)
+                    return
+                await window.service_coordinator.run_tasks_flow()
+            except Exception:
+                logger.exception("复用已有实例执行任务失败")
+            finally:
+                reuse_request_in_progress["value"] = False
+
+        asyncio.ensure_future(_run(), loop=loop)
+
+    def _handle_reuse_run_request(config_id: str, force_start: bool) -> bytes:
+        from app.utils.single_instance import RESP_ACCEPTED, RESP_BUSY, RESP_INVALID
+
+        window = window_holder["window"]
+        if reuse_request_in_progress["value"]:
+            return RESP_BUSY
+        if window is None:
+            return RESP_BUSY
+        if not window.service_coordinator.config.get_config(config_id):
+            return RESP_INVALID
+        if _is_task_running(window) and not force_start:
+            return RESP_BUSY
+
+        reuse_request_in_progress["value"] = True
+        _schedule_reused_run(window, config_id, force_start)
+        return RESP_ACCEPTED
+
+    single_instance.set_run_config_callback(_handle_reuse_run_request)
+
     # 初始化 GPU 信息缓存
     try:
         from app.utils.gpu_cache import gpu_cache
@@ -383,6 +455,10 @@ def _run() -> int:
     window_holder["window"] = w
     if pending_force_shutdown["requested"]:
         _schedule_graceful_shutdown(w)
+    elif pending_reuse_request["request"] is not None:
+        config_id, force_start = pending_reuse_request["request"]
+        pending_reuse_request["request"] = None
+        _schedule_reused_run(w, config_id, force_start)
     elif pending_activation["requested"]:
         from PySide6.QtCore import QTimer
 
