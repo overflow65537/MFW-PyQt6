@@ -30,6 +30,8 @@
 | 2026-5-6 | v2.7.0 | 新增 `pretask` 字段，用于在 Controller 启动前执行自定义程序，并支持将 option 取值作为最后一个参数传入 |
 | 2026-6-30 | v2.8.0 | 新增 `setting` 任务设置页 UI 声明字段；`import` 支持导入 `global_option` 与 `setting` 字段；新增 `hotkey` 配置项类型 |
 | 2026-7-1 | v2.8.1 | `pretask` 支持 `controller` / `resource` 过滤字段，与 `task.controller` / `task.resource` 语义一致 |
+| 2026-7-22 | v2.9.0 | 新增 `telemetry` 匿名遥测（数据埋点）配置字段 |
+| 2026-8-5 | v2.9.1 | 新增 `focus` 消息模板对象的 `trace` 字段，用于按回调消息类型控制遥测是否上传节点结果 |
 
 ## `interface.json`
 
@@ -101,6 +103,28 @@
 - description `string`  
   项目描述信息，显示在"关于"页面。支持文件路径、URL或直接文本，内容支持Markdown格式。支持国际化（以`$`开头）。
 
+- telemetry `object` **💡 v2.9.0**  
+  匿名遥测（数据埋点）配置，用于向资源作者自己的遥测平台上报崩溃与任务运行统计。并非所有 Client 都会支持。可选；未配置时不进行任何遥测。该字段作为遥测配置的统一容器，当前提供 `sentry` 子字段，未来可扩展其他平台。
+
+  数据归属与隐私约定：  
+  - 遥测配置指向资源作者自己的平台项目，数据天然按项目隔离；不同软件使用不同配置即可区分。若多个软件共用同一配置，Client 应通过 `release` / tag（如项目名、`version`）在同一项目内区分。  
+  - Client 应遵循用户授权优先：即使配置了本字段，是否上报仍由用户在 Client 中的开关决定（建议默认开启、可随时关闭，且调试 / 开发版本强制禁用）。  
+
+  - sentry `object`  
+    基于 [Sentry](https://sentry.io) 的遥测配置。
+
+    - dsn `string`  
+      Sentry 项目的 DSN。必填；缺省或为空字符串时不启用 Sentry 遥测。
+
+    - tracing `boolean`  
+      是否启用性能 / 事务上报（任务开始、结束及各子任务结果以事务 / Span 形式上报）。可选，默认 `true`。关闭后仅上报崩溃 / 错误，不上报任务生命周期。
+
+    - traces_sample_rate `number`  
+      事务采样率，取值 `0`~`1`。可选，默认 `1.0`。任务为低频业务事件，全量上报可获得精确的成功 / 失败统计；用户量较大时可调低以控制 Sentry 配额，但统计将变为抽样。
+
+    - environment `string`  
+      环境标签（如 `production`、`beta`），用于在 Sentry 中区分。可选；缺省由 Client 决定（如使用更新频道，或回退为 `production`）。
+
 - controller `object[]`  
   控制器配置，为一个对象数组，含有预设的控制器信息。
 
@@ -116,8 +140,9 @@
   - icon `string`  
     控制器图标文件路径，相对于项目根目录。可选。支持国际化（以`$`开头）。
 
-  - type `'Adb' | 'Win32' | 'MacOS' | 'PlayCover' | 'Gamepad' | 'WlRoots'`  
-    控制器类型，取值为 `Adb`、`Win32`（仅 Windows）、`MacOS`（仅 macOS）、`PlayCover`（仅 macOS）、`Gamepad`（仅 Windows）和 `WlRoots`（仅 Linux）。
+  - type `'Adb' | 'Win32' | 'MacOS' | 'PlayCover' | 'Gamepad' | 'Linux'`  
+    控制器类型，取值为 `Adb`、`Win32`（仅 Windows）、`MacOS`（仅 macOS）、`PlayCover`（仅 macOS）、`Gamepad`（仅 Windows）和 `Linux`
+    （仅 Linux）。
 
   - display_short_side `number`  
     默认缩放分辨率的短边长度，用于屏幕适配。可选，默认720。与`display_long_side`和`display_raw`互斥。
@@ -196,9 +221,14 @@
     - screencap `string`  
       可选。截图方式，不提供则使用默认。仅当配置了窗口正则时有效。详见 [控制方式说明](2.4-控制方式说明.md#win32-screencap)。
 
-  - wlroots `object`  
-    `wlroots` 控制器的具体配置（仅 Linux）。用于控制在 wlroots
-    合成器中运行的应用程序。详见 [控制方式说明](2.4-控制方式说明.md#wlroots-linux)。
+  - linux `object`  
+    `Linux` 控制器的具体配置。详见 [控制方式说明](2.4-控制方式说明.md#linux)。
+
+    - screencap `string`  
+      可选。`Linux` 控制器的截图方式，不提供则使用默认。
+
+    - input `string`  
+      可选。`Linux` 控制器的输入方式，不提供则使用默认。
 
     - use_win32_vk_code `bool`
       可选。为 `true` 时按键被视为 Win32 Virtual-Key 键码，内部转换为 Linux evdev 码；为 `false` 时按原始 evdev 码处理。默认 `false`。
@@ -720,7 +750,7 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
 
     > [!NOTE]
     >
-    > Pipeline 协议中 [`ClickKey`](3.1-任务流水线协议.md#clickkey) 的 `key` 字段还支持 *list<int>*（一次动作依次按下多个键，如 `[17, 65]` 表示 Ctrl+A）。`hotkey` 占位符**仅**替换为单个整数，不会自动展开为数组。一般单键改绑（如战斗技能 `E`、`1`、`F1`）使用 `{名称}.primary` 即可；若确需组合键的一次性 `ClickKey` 数组形式，Integrator 需在 pipeline 中另行设计（例如直接写键码数组，或拆成多个 `KeyDown`/`KeyUp` 节点）。
+    > Pipeline 协议中 [`ClickKey`](3.1-任务流水线协议.md#clickkey) 的 `key` 字段还支持 `list<int>`（一次动作依次按下多个键，如 `[17, 65]` 表示 Ctrl+A）。`hotkey` 占位符**仅**替换为单个整数，不会自动展开为数组。一般单键改绑（如战斗技能 `E`、`1`、`F1`）使用 `{名称}.primary` 即可；若确需组合键的一次性 `ClickKey` 数组形式，Integrator 需在 pipeline 中另行设计（例如直接写键码数组，或拆成多个 `KeyDown`/`KeyUp` 节点）。
 
   - default_case `string` | `string[]`  
     默认选项名称。可选。
@@ -1136,11 +1166,11 @@ typedef void(MAA_CALL* MaaEventCallback)(
 
 #### 消息模板机制
 
-资源作者可以在 Pipeline 中通过 `focus` 字段配置消息模板。`focus` 是一个字典，键为消息类型，值为模板字符串或模板对象。模板字符串支持文件路径、URL 或直接文本，内容支持 Markdown 格式，支持国际化（以`$`开头）。Client 收到回调后，应根据模板进行占位符替换并按指定方式展示给用户。
+资源作者可以在 Pipeline 中通过 `focus` 字段配置消息模板。`focus` 是一个字典，键为消息类型，值为模板字符串或模板对象。模板字符串支持文件路径、URL 或直接文本，内容支持 Markdown 格式，支持国际化（以`$`开头）。Client 收到回调后，应根据模板进行占位符替换并按指定方式展示给用户；对象写法还可配置是否将本次节点结果上传到遥测平台。
 
 ##### `focus` 值的两种写法
 
-**简写（纯字符串）：** 等价于 `display: "log"`，内容仅展示在运行日志中。
+**简写（纯字符串）：** 等价于 `display: "log"`，内容仅展示在运行日志中；`trace` 使用默认值。
 
 ```jsonc
 "focus": {
@@ -1148,13 +1178,14 @@ typedef void(MAA_CALL* MaaEventCallback)(
 }
 ```
 
-**完整写法（对象）：** 可通过 `display` 字段指定展示渠道。 **💡 v2.3.0**
+**完整写法（对象）：** 可通过 `display` 指定展示渠道，通过 `trace` 控制是否上传遥测。 **💡 v2.3.0**（`trace` 为 **💡 v2.9.1**）
 
 ```jsonc
 "focus": {
     "Node.Action.Starting": {
         "content": "{name} 开始执行",
-        "display": "toast"
+        "display": "toast",
+        "trace": false
     }
 }
 ```
@@ -1184,6 +1215,15 @@ typedef void(MAA_CALL* MaaEventCallback)(
 }
 ```
 
+##### `trace` 默认值 **💡 v2.9.1**
+
+在已配置 `telemetry.sentry` 且 `tracing` 启用（或未显式关闭）的前提下：
+
+| 消息类型 | 默认值 | 说明 |
+| -------- | ------ | ---- |
+| `Node.PipelineNode.Failed` | `true` | 与常见 Client 对流水线节点失败的默认上报行为对齐 |
+| 其他 `Node.xxx` 消息 | `false` | 需在对应消息的模板对象中显式写 `"trace": true` 才会上传 |
+
 **Pipeline 中的完整配置示例：**
 
 ```jsonc
@@ -1197,7 +1237,11 @@ typedef void(MAA_CALL* MaaEventCallback)(
       },
       "Node.Action.Failed": {
         "content": "{name} 执行失败",
-        "display": "modal"
+        "display": "modal",
+        "trace": true
+      },
+      "Node.PipelineNode.Succeeded": {
+        "trace": true
       }
     }
   }
@@ -1223,7 +1267,11 @@ typedef void(MAA_CALL* MaaEventCallback)(
         },
         "Node.Action.Failed": {
             "content": "{name} 执行失败",
-            "display": "modal"
+            "display": "modal",
+            "trace": true
+        },
+        "Node.PipelineNode.Succeeded": {
+            "trace": true
         }
     }
 }
@@ -1234,9 +1282,9 @@ typedef void(MAA_CALL* MaaEventCallback)(
 1. 在回调函数中解析 `details_json` 参数
 2. 检查解析后的对象中是否存在 `focus` 字段
 3. 若存在，根据 `message` 参数在 `focus` 中查找对应的模板（字符串或对象）
-4. 若模板为字符串，则 `content` 即为该字符串，`display` 视为 `["log"]`；若为对象，则分别读取 `content` 和 `display`
-5. 使用 `details_json` 中的数据替换 `content` 中的占位符（如 `{name}`、`{task_id}`）
-6. 根据 `display` 指定的渠道（可多个）将处理后的文本展示给用户 **💡 v2.3.0**
+4. 若模板为字符串，则 `content` 即为该字符串，`display` 视为 `["log"]`，`trace` 使用默认值；若为对象，则分别读取 `content`、`display`、`trace`
+5. 若存在 `content`，使用 `details_json` 中的数据替换占位符（如 `{name}`、`{task_id}`），再根据 `display` 指定的渠道展示给用户 **💡 v2.3.0**
+6. 解析有效 `trace`：对象中显式给出则用之，否则使用默认值；在全局遥测已启用时，仅当有效值为 `true` 才上传本次节点结果 **💡 v2.9.1**
 
 以上述示例为例，收到 `Node.Action.Starting` 时，应在日志中追加并弹出 toast：`NodeA 开始执行，任务 ID: 12345`
 
