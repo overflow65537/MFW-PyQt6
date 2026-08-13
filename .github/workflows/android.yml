@@ -20,12 +20,12 @@ permissions:
 
 env:
   # Keep these versions aligned. Official PySide6 6.11 Android wheels target
-  # CPython 3.11, and Qt 6.11 uses JDK 21 / Android API 36 / NDK r27c.
+  # CPython 3.11. Keep the NDK aligned with pyside6-android-deploy --help.
   PYSIDE_VERSION: "6.11.1"
   PYTHON_VERSION: "3.11"
   ANDROID_API_LEVEL: "36"
   ANDROID_BUILD_TOOLS_VERSION: "36.0.0"
-  ANDROID_NDK_VERSION: "27.2.12479018"
+  ANDROID_NDK_VERSION: "26.1.10909125"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
@@ -150,21 +150,42 @@ jobs:
           echo "Installing PySide6 Android deployment requirements from: $ANDROID_REQUIREMENTS"
           python -m pip install --requirement "$ANDROID_REQUIREMENTS"
           pyside6-android-deploy --help
-          qtpip --help
 
       - name: Restore Android Qt wheels
         id: android-wheel-cache
         uses: actions/cache@v5
         with:
           path: .cache/android-wheels
-          key: pyside-android-aarch64-${{ env.PYSIDE_VERSION }}
+          key: pyside-android-aarch64-direct-v1-${{ env.PYSIDE_VERSION }}
 
       - name: Download matching Android wheels
         if: steps.android-wheel-cache.outputs.cache-hit != 'true'
+        env:
+          QT_FOR_PYTHON_RELEASES: https://download.qt.io/official_releases/QtForPython
         run: |
           mkdir -p .cache/android-wheels
           cd .cache/android-wheels
-          qtpip download PySide6 --android --arch aarch64
+
+          PYSIDE_WHEEL="pyside6-${PYSIDE_VERSION}-${PYSIDE_VERSION}-cp311-cp311-android_aarch64.whl"
+          SHIBOKEN_WHEEL="shiboken6-${PYSIDE_VERSION}-${PYSIDE_VERSION}-cp311-cp311-android_aarch64.whl"
+
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output "$PYSIDE_WHEEL" \
+            "${QT_FOR_PYTHON_RELEASES}/pyside6/${PYSIDE_WHEEL}"
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output "$SHIBOKEN_WHEEL" \
+            "${QT_FOR_PYTHON_RELEASES}/shiboken6/${SHIBOKEN_WHEEL}"
+
+      - name: Verify Android wheels
+        run: |
+          PYSIDE_WHEEL=".cache/android-wheels/pyside6-$PYSIDE_VERSION-$PYSIDE_VERSION-cp311-cp311-android_aarch64.whl"
+          SHIBOKEN_WHEEL=".cache/android-wheels/shiboken6-$PYSIDE_VERSION-$PYSIDE_VERSION-cp311-cp311-android_aarch64.whl"
+
+          test -f "$PYSIDE_WHEEL"
+          test -f "$SHIBOKEN_WHEEL"
+          python -m zipfile --test "$PYSIDE_WHEEL"
+          python -m zipfile --test "$SHIBOKEN_WHEEL"
+          ls -lh .cache/android-wheels/*.whl
 
       - name: Prepare CI deployment spec
         run: |

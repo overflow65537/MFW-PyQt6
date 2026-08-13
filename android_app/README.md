@@ -36,13 +36,17 @@ Required tools:
 5. `pyside6-android-deploy` from a desktop PySide6 installation.
 6. Matching **Android aarch64** PySide6 and shiboken6 wheels.
 
-Do not use desktop PyPI PySide6 wheels as Android target wheels. Download a
-matching official Android wheel pair, for example when `qtpip` is available:
+Do not use desktop PyPI PySide6 wheels as Android target wheels. Download the
+matching Android wheel pair from the official Qt for Python `pyside6` and
+`shiboken6` release directories. For example, the pinned 6.11.1 CI uses:
 
-```bash
-qtpip download PySide6 --android --arch aarch64
+```text
+pyside6-6.11.1-6.11.1-cp311-cp311-android_aarch64.whl
+shiboken6-6.11.1-6.11.1-cp311-cp311-android_aarch64.whl
 ```
 
+The CI downloads these files directly because the open-source PySide6 wheel
+installs `pyside6-android-deploy` but does not provide a `qtpip` executable.
 Do not commit developer-specific absolute wheel, SDK or NDK paths.
 
 ## Initialize the deployment configuration
@@ -110,10 +114,11 @@ The CI toolchain is deliberately pinned as one compatible set:
 - PySide6/shiboken6 Android aarch64 6.11.1 wheels;
 - JDK 21;
 - Android platform 36 and Build Tools 36.0.0;
-- Android NDK 27.2.12479018.
+- Android NDK 26.1.10909125 (r26b).
 
-The workflow downloads the official Android wheels with `qtpip`, creates an
-untracked `pysidedeploy.ci.spec` containing runner-specific absolute paths,
+The workflow downloads the pinned official Android wheels directly from Qt,
+creates an untracked `pysidedeploy.ci.spec` containing runner-specific
+absolute paths,
 runs a deployment dry-run, builds the arm64 debug APK and uploads it as the
 `MFW-Android-PoC-arm64-debug` artifact. Deployment logs and the generated CI
 spec are uploaded separately for diagnosis, including when the build fails.
