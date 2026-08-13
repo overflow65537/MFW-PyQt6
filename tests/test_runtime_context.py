@@ -30,13 +30,17 @@ class RuntimeContextIsolationTests(unittest.TestCase):
                     _current_running_task_id=None,
                     is_running=False,
                     maafw=SimpleNamespace(has_active_runtime=lambda: False),
+                    runner_events=_kwargs["runner_events"],
                     setParent=Mock(),
                 )
                 runners.append(runner)
                 return runner
 
             def make_monitor(**_kwargs):
-                monitor = SimpleNamespace(setParent=Mock())
+                monitor = SimpleNamespace(
+                    runner_events=_kwargs["runner_events"],
+                    setParent=Mock(),
+                )
                 monitors.append(monitor)
                 return monitor
 
@@ -59,6 +63,10 @@ class RuntimeContextIsolationTests(unittest.TestCase):
         self.assertIs(context_b.task_runner, runners[1])
         self.assertIs(context_a.monitor_task, monitors[0])
         self.assertIs(context_b.monitor_task, monitors[1])
+        self.assertIs(context_a.events, context_a.task_runner.runner_events)
+        self.assertIs(context_a.events, context_a.monitor_task.runner_events)
+        self.assertIs(context_b.events, context_b.task_runner.runner_events)
+        self.assertIs(context_b.events, context_b.monitor_task.runner_events)
 
     def test_logs_and_clear_requests_do_not_cross_contexts(self):
         context_a, context_b, _, _ = self._create_contexts()
@@ -112,6 +120,7 @@ class PostActionRuntimeRoutingTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_coordinator_runs_and_clears_target_context(self):
         target_context = SimpleNamespace(
+            is_running=False,
             logs=SimpleNamespace(clear=Mock()),
         )
         coordinator = ServiceCoordinator.__new__(ServiceCoordinator)
@@ -119,6 +128,7 @@ class PostActionRuntimeRoutingTests(unittest.IsolatedAsyncioTestCase):
             current_config_id="config-a",
             get_config=lambda config_id: object() if config_id == "config-b" else None,
         )
+        coordinator._runtime_contexts = {"config-b": target_context}
         coordinator.select_config = Mock(
             side_effect=lambda config_id: setattr(
                 coordinator._config_service, "current_config_id", config_id
@@ -126,16 +136,59 @@ class PostActionRuntimeRoutingTests(unittest.IsolatedAsyncioTestCase):
             or True
         )
         coordinator._activate_runtime_context = Mock(return_value=target_context)
-        coordinator._runtime = SimpleNamespace(run=AsyncMock())
 
-        await ServiceCoordinator._run_configuration_from_post_action(
-            coordinator, "config-b"
-        )
+        with patch("app.core.core.RuntimeFacade") as facade_cls:
+            facade_cls.return_value.run = AsyncMock()
+            await ServiceCoordinator._run_configuration_from_post_action(
+                coordinator, "config-b"
+            )
 
         self.assertEqual("config-b", coordinator._config_service.current_config_id)
         coordinator._activate_runtime_context.assert_called_once_with("config-b")
         target_context.logs.clear.assert_called_once_with()
-        coordinator._runtime.run.assert_awaited_once_with()
+        facade_cls.return_value.run.assert_awaited_once_with()
+        context_provider = facade_cls.call_args.args[0]
+        self.assertIs(target_context, context_provider())
+
+    async def test_coordinator_rejects_run_while_another_context_is_running(self):
+        coordinator = ServiceCoordinator.__new__(ServiceCoordinator)
+        coordinator._config_service = SimpleNamespace(
+            current_config_id="config-a",
+            get_config=lambda config_id: object() if config_id == "config-b" else None,
+        )
+        coordinator._runtime_contexts = {
+            "config-a": SimpleNamespace(is_running=True),
+            "config-b": SimpleNamespace(is_running=False),
+        }
+        coordinator.select_config = Mock()
+        coordinator._activate_runtime_context = Mock()
+
+        started = await ServiceCoordinator.run_configuration(coordinator, "config-b")
+
+        self.assertFalse(started)
+        coordinator.select_config.assert_not_called()
+        coordinator._activate_runtime_context.assert_not_called()
+
+    async def test_stop_targets_the_only_running_context_without_switching(self):
+        stop_task = AsyncMock()
+        running_context = SimpleNamespace(
+            is_running=True,
+            task_runner=SimpleNamespace(stop_task=stop_task),
+        )
+        coordinator = ServiceCoordinator.__new__(ServiceCoordinator)
+        coordinator._runtime_contexts = {
+            "config-a": running_context,
+            "config-b": SimpleNamespace(is_running=False),
+        }
+
+        stopped = await ServiceCoordinator.stop_running_configuration(
+            coordinator,
+            config_id="config-b",
+            manual=True,
+        )
+
+        self.assertTrue(stopped)
+        stop_task.assert_awaited_once_with(manual=True)
 
     async def test_explicit_configuration_run_rejects_missing_target(self):
         coordinator = ServiceCoordinator.__new__(ServiceCoordinator)
@@ -155,6 +208,48 @@ class PostActionRuntimeRoutingTests(unittest.IsolatedAsyncioTestCase):
         coordinator.select_config.assert_not_called()
         coordinator._activate_runtime_context.assert_not_called()
         coordinator._runtime.run.assert_not_awaited()
+
+
+class RuntimeContextRegistryTests(unittest.TestCase):
+    def test_deleting_inactive_configuration_releases_its_context(self):
+        active_context = SimpleNamespace(is_running=False)
+        removed_context = SimpleNamespace(
+            is_running=False,
+            deleteLater=Mock(),
+        )
+        config_removed = Mock()
+        coordinator = ServiceCoordinator.__new__(ServiceCoordinator)
+        coordinator._runtime_contexts = {
+            "config-a": active_context,
+            "config-b": removed_context,
+        }
+        coordinator._active_runtime_context = active_context
+        coordinator._config_service = SimpleNamespace(
+            delete_config=Mock(return_value=True),
+        )
+        coordinator._view_signals = SimpleNamespace(
+            config_removed=SimpleNamespace(emit=config_removed),
+        )
+
+        deleted = ServiceCoordinator.delete_config(coordinator, "config-b")
+
+        self.assertTrue(deleted)
+        self.assertNotIn("config-b", coordinator._runtime_contexts)
+        removed_context.deleteLater.assert_called_once_with()
+        config_removed.assert_called_once_with("config-b")
+
+    def test_running_configuration_cannot_be_deleted(self):
+        running_context = SimpleNamespace(is_running=True)
+        coordinator = ServiceCoordinator.__new__(ServiceCoordinator)
+        coordinator._runtime_contexts = {"config-a": running_context}
+        coordinator._config_service = SimpleNamespace(
+            delete_config=Mock(return_value=True),
+        )
+
+        deleted = ServiceCoordinator.delete_config(coordinator, "config-a")
+
+        self.assertFalse(deleted)
+        coordinator._config_service.delete_config.assert_not_called()
 
 
 class TelemetryRuntimeBindingTests(unittest.TestCase):

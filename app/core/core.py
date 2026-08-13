@@ -903,19 +903,53 @@ class ServiceCoordinator:
         if not await self.run_configuration(config_id, clear_logs=True):
             logger.warning("完成后指定的配置无法运行: %s", config_id)
 
+    def get_running_config_ids(self) -> list[str]:
+        """Return configuration ids whose RuntimeContext still owns a live runtime."""
+        return [
+            config_id
+            for config_id, context in self._runtime_contexts.items()
+            if context.is_running
+        ]
+
+    async def stop_running_configuration(
+        self,
+        *,
+        config_id: str | None = None,
+        manual: bool = True,
+    ) -> bool:
+        """Stop the single live runtime without switching the active UI context."""
+        running_ids = self.get_running_config_ids()
+        if not running_ids:
+            return False
+
+        # The optional id is validated by the command layer. The current runtime
+        # model still permits only one live task, so stop that task without
+        # switching the UI context.
+        target_id = running_ids[0]
+        context = self._runtime_contexts[target_id]
+        await context.task_runner.stop_task(manual=manual)
+        return True
+
     async def run_configuration(
         self,
         config_id: str,
         *,
         clear_logs: bool = False,
     ) -> bool:
-        """切换到指定配置，并在它所属的 RuntimeContext 中启动任务流。
-
-        该入口用于 CLI、计划任务和完成后操作等“按配置 ID 启动”的场景，
-        避免延迟执行时仅依赖届时的全局当前配置。
-        """
+        """Atomically select and run one configuration's RuntimeContext."""
         target_id = str(config_id or "").strip()
         if not target_id or self._config_service.get_config(target_id) is None:
+            return False
+
+        running_ids = self.get_running_config_ids()
+        if any(running_id != target_id for running_id in running_ids):
+            logger.warning(
+                "Cannot run %s while another configuration is active: %s",
+                target_id,
+                ", ".join(running_ids),
+            )
+            return False
+        if target_id in running_ids:
             return False
 
         if self._config_service.current_config_id != target_id:
@@ -928,9 +962,9 @@ class ServiceCoordinator:
         if clear_logs:
             context.logs.clear()
 
-        # RuntimeFacade 在协程入口捕获当前 Context 的 runner，并保留运行前的
-        # hidden flag 刷新等统一行为。
-        await self._runtime.run()
+        # Capture the target runner before awaiting so later UI switches cannot
+        # redirect this run to another RuntimeContext.
+        await RuntimeFacade(lambda: context).run()
         return True
 
     def get_runtime_context(self, config_id: str | None = None) -> RuntimeContext:

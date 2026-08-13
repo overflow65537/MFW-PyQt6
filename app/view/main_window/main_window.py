@@ -42,7 +42,7 @@ from datetime import datetime, timedelta
 from collections import OrderedDict
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from PySide6.QtCore import (
     QEvent,
@@ -274,8 +274,9 @@ class MainWindow(MSFluentWindow):
         self,
         loop: asyncio.AbstractEventLoop | None = None,
         auto_run: bool = False,
-        switch_config_id: str | None = None,
+        startup_config_id: str | None = None,
         force_enable_test: bool = False,
+        startup_command_submitter: Callable[[str | None], Any] | None = None,
     ):
         # 在 super().__init__() 之前初始化可能被 resizeEvent 访问的属性，避免属性不存在错误
         self._background_label = None
@@ -294,11 +295,11 @@ class MainWindow(MSFluentWindow):
         super().__init__()
         self._loop = loop
         self._cli_auto_run = bool(auto_run)
-        self._cli_switch_config_id = (switch_config_id or "").strip() or None
         # 只要 CLI 显式指定了配置，就把后续自动运行绑定到该 ID。自动更新可能
         # 延迟 direct-run；无效 ID 也应拒绝启动，不能回退运行原配置。
-        self._cli_run_config_id: str | None = self._cli_switch_config_id
+        self._cli_run_config_id = (startup_config_id or "").strip() or None
         self._cli_force_enable_test = bool(force_enable_test)
+        self._startup_command_submitter = startup_command_submitter
         self._auto_update_thread = None
         self._auto_update_in_progress = False
         self._auto_update_pending_restart = False
@@ -329,7 +330,6 @@ class MainWindow(MSFluentWindow):
         # 初始化配置管理器
         multi_config_path = Path.cwd() / "config" / "multi_config.json"
         self.service_coordinator = ServiceCoordinator(multi_config_path)
-        self._apply_cli_switch_config()
 
         self._announcement_pending_show = False
         # 多资源适配开启时：公告功能彻底关闭（不加载、不比对、不自动弹窗、无入口）
@@ -1370,16 +1370,6 @@ class MainWindow(MSFluentWindow):
     def _on_multi_resource_adaptation_enabled(self) -> None:
         """响应设置页开启多资源适配的信号，将 BundleInterface 添加到导航栏。"""
         self._add_bundle_interface_to_navigation()
-
-    def _apply_cli_switch_config(self) -> None:
-        """处理 CLI 请求的配置切换，在 UI 初始化前执行。"""
-        if not self._cli_switch_config_id:
-            return
-        target = self._cli_switch_config_id
-        if self.service_coordinator.select_config(target):
-            logger.info("CLI 指定配置已切换: %s", target)
-        else:
-            logger.warning("CLI 指定配置不存在，保持原配置: %s", target)
 
     def _check_hotkey_permission(self):
         """检测全局快捷键权限，如果不可用则禁用设置。"""
@@ -2667,7 +2657,7 @@ class MainWindow(MSFluentWindow):
         self._check_and_start_bundle_update()
 
     def _schedule_auto_run(self) -> None:
-        """根据 CLI 或配置决定是否在启动后自动运行任务。"""
+        """Schedule startup auto-run after the update pipeline finishes."""
         if self._auto_run_scheduled:
             return
         should_run = self._cli_auto_run or cfg.get(cfg.run_after_startup)
@@ -2675,6 +2665,20 @@ class MainWindow(MSFluentWindow):
             return
         self._auto_run_scheduled = True
         self._maybe_switch_home_to_task()
+
+        submitter = self._startup_command_submitter
+        if submitter is not None:
+            try:
+                response = submitter(self._cli_run_config_id)
+                if getattr(response, "succeeded", True) is False:
+                    logger.warning(
+                        "Startup run request rejected: status=%s code=%s",
+                        getattr(getattr(response, "status", None), "value", None),
+                        getattr(response, "code", ""),
+                    )
+            except Exception as exc:
+                logger.exception("Failed to submit startup run command", exc_info=exc)
+            return
 
         async def _start_flow():
             try:
@@ -2684,11 +2688,11 @@ class MainWindow(MSFluentWindow):
                         target_id
                     )
                     if not started:
-                        logger.warning("启动参数指定的配置无法运行: %s", target_id)
+                        logger.warning("Startup configuration could not be run: %s", target_id)
                     return
                 await self.service_coordinator.runtime.run()
             except Exception as exc:
-                logger.error("启动后自动运行失败: %s", exc)
+                logger.error("Startup auto-run failed: %s", exc)
 
         QTimer.singleShot(0, lambda: asyncio.create_task(_start_flow()))
 

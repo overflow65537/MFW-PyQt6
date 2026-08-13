@@ -1,0 +1,361 @@
+import asyncio
+import unittest
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
+
+from PySide6.QtCore import Qt
+
+from app.core.service.app_command_dispatcher import AppCommandDispatcher
+from app.ipc.protocol import IpcCommand, IpcRequest, IpcStatus
+
+
+class _FakeWindow:
+    def __init__(self, coordinator):
+        self.service_coordinator = coordinator
+        self.visible = True
+        self.minimized = False
+        self.show = Mock(side_effect=self._show)
+        self.showNormal = Mock(side_effect=self._show_normal)
+        self.raise_ = Mock()
+        self.activateWindow = Mock()
+        self.close = Mock()
+        self._allow_window_close = False
+
+    def _show(self):
+        self.visible = True
+
+    def _show_normal(self):
+        self.minimized = False
+
+    def isVisible(self):
+        return self.visible
+
+    def windowState(self):
+        return (
+            Qt.WindowState.WindowMinimized
+            if self.minimized
+            else Qt.WindowState.WindowNoState
+        )
+
+
+class AppCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.events = []
+        self.running_ids = []
+        configs = {"config-a": object(), "config-b": object()}
+        self.coordinator = SimpleNamespace(
+            configs=SimpleNamespace(
+                current_config_id="config-a",
+                get_config=lambda config_id: configs.get(config_id),
+            ),
+            runtime=SimpleNamespace(
+                is_running=False,
+                run=AsyncMock(side_effect=lambda: self.events.append("runtime.run")),
+                stop=AsyncMock(side_effect=lambda **_kwargs: self.events.append("runtime.stop")),
+            ),
+        )
+        self.coordinator.get_running_config_ids = lambda: list(self.running_ids)
+        self.coordinator.select_config = Mock(side_effect=self._select_config)
+        self.coordinator.run_configuration = AsyncMock(side_effect=self._run_config)
+        self.coordinator.stop_running_configuration = AsyncMock(
+            side_effect=self._stop_running
+        )
+        self.window = _FakeWindow(self.coordinator)
+        self.close_callback = AsyncMock(side_effect=lambda: self.events.append("close"))
+        self.dispatcher = AppCommandDispatcher(
+            asyncio.get_running_loop(),
+            close_callback=self.close_callback,
+        )
+        self.dispatcher.attach_window(self.window)
+
+    async def asyncTearDown(self):
+        await self.dispatcher.close()
+
+    def _select_config(self, config_id):
+        self.events.append(f"switch:{config_id}")
+        self.coordinator.configs.current_config_id = config_id
+        return True
+
+    async def _run_config(self, config_id, **_kwargs):
+        self.events.append(f"run:{config_id}")
+        self.coordinator.configs.current_config_id = config_id
+        self.running_ids[:] = [config_id]
+        return True
+
+    async def _stop_running(self, **_kwargs):
+        self.events.append("stop")
+        was_running = bool(self.running_ids)
+        self.running_ids.clear()
+        return was_running
+
+    async def _submit_and_wait(self, command, params=None):
+        request = IpcRequest(command, params or {})
+        response = self.dispatcher.submit(request)
+        await self.dispatcher.wait_idle()
+        return response
+
+    async def test_activate_is_synchronous(self):
+        self.window.visible = False
+        self.window.minimized = True
+
+        response = self.dispatcher.submit(IpcRequest(IpcCommand.ACTIVATE))
+
+        self.assertEqual(IpcStatus.OK, response.status)
+        self.window.show.assert_called_once_with()
+        self.window.showNormal.assert_called_once_with()
+        self.window.raise_.assert_called_once_with()
+        self.window.activateWindow.assert_called_once_with()
+
+    async def test_switch_config_success_and_not_found(self):
+        response = await self._submit_and_wait(
+            IpcCommand.SWITCH_CONFIG,
+            {"config_id": "config-b"},
+        )
+        self.assertEqual(IpcStatus.ACCEPTED, response.status)
+        self.assertEqual("config-b", self.coordinator.configs.current_config_id)
+
+        missing = self.dispatcher.submit(
+            IpcRequest(IpcCommand.SWITCH_CONFIG, {"config_id": "missing"})
+        )
+        self.assertEqual(IpcStatus.NOT_FOUND, missing.status)
+        self.assertEqual("config_not_found", missing.code)
+
+    async def test_run_current_and_specified_configuration(self):
+        current = await self._submit_and_wait(
+            IpcCommand.RUN,
+            {"config_id": None, "force_restart": False},
+        )
+        self.assertEqual(IpcStatus.ACCEPTED, current.status)
+        self.coordinator.run_configuration.assert_awaited_with("config-a")
+
+        self.running_ids.clear()
+        specified = await self._submit_and_wait(
+            IpcCommand.RUN,
+            {"config_id": "config-b", "force_restart": False},
+        )
+        self.assertEqual(IpcStatus.ACCEPTED, specified.status)
+        self.coordinator.run_configuration.assert_awaited_with("config-b")
+
+    async def test_busy_run_is_rejected(self):
+        self.running_ids[:] = ["config-a"]
+
+        response = self.dispatcher.submit(
+            IpcRequest(
+                IpcCommand.RUN,
+                {"config_id": "config-b", "force_restart": False},
+            )
+        )
+
+        self.assertEqual(IpcStatus.BUSY, response.status)
+        self.assertEqual("task_running", response.code)
+        self.coordinator.run_configuration.assert_not_awaited()
+
+    async def test_force_restart_stops_before_running_target(self):
+        self.running_ids[:] = ["config-a"]
+
+        response = await self._submit_and_wait(
+            IpcCommand.RUN,
+            {"config_id": "config-b", "force_restart": True},
+        )
+
+        self.assertEqual(IpcStatus.ACCEPTED, response.status)
+        self.assertEqual(["stop", "run:config-b"], self.events)
+
+    async def test_second_run_is_busy_while_first_is_reserved(self):
+        gate = asyncio.Event()
+
+        async def slow_run(config_id, **_kwargs):
+            await gate.wait()
+            return await self._run_config(config_id)
+
+        self.coordinator.run_configuration.side_effect = slow_run
+        first = self.dispatcher.submit(
+            IpcRequest(
+                IpcCommand.RUN,
+                {"config_id": "config-a", "force_restart": False},
+            )
+        )
+        second = self.dispatcher.submit(
+            IpcRequest(
+                IpcCommand.RUN,
+                {"config_id": "config-b", "force_restart": False},
+            )
+        )
+
+        self.assertEqual(IpcStatus.ACCEPTED, first.status)
+        self.assertEqual(IpcStatus.BUSY, second.status)
+        self.assertEqual("command_in_progress", second.code)
+        gate.set()
+        await self.dispatcher.wait_idle()
+
+    async def test_stop_is_idempotent_and_validates_config(self):
+        response = await self._submit_and_wait(
+            IpcCommand.STOP,
+            {"config_id": None},
+        )
+        self.assertEqual(IpcStatus.ACCEPTED, response.status)
+        self.coordinator.stop_running_configuration.assert_awaited_once_with(
+            config_id=None,
+            manual=True,
+        )
+
+        missing = self.dispatcher.submit(
+            IpcRequest(IpcCommand.STOP, {"config_id": "missing"})
+        )
+        self.assertEqual(IpcStatus.NOT_FOUND, missing.status)
+
+    async def test_shutdown_stops_then_closes_and_rejects_mutations(self):
+        self.running_ids[:] = ["config-a"]
+        shutdown = self.dispatcher.submit(
+            IpcRequest(IpcCommand.SHUTDOWN, {"reason": "restart"})
+        )
+        rejected_run = self.dispatcher.submit(
+            IpcRequest(
+                IpcCommand.RUN,
+                {"config_id": "config-b", "force_restart": True},
+            )
+        )
+        rejected_switch = self.dispatcher.submit(
+            IpcRequest(IpcCommand.SWITCH_CONFIG, {"config_id": "config-b"})
+        )
+        rejected_stop = self.dispatcher.submit(
+            IpcRequest(IpcCommand.STOP, {"config_id": None})
+        )
+        await self.dispatcher.wait_idle()
+
+        self.assertEqual(IpcStatus.ACCEPTED, shutdown.status)
+        for response in (rejected_run, rejected_switch, rejected_stop):
+            self.assertEqual(IpcStatus.BUSY, response.status)
+            self.assertEqual("shutting_down", response.code)
+        self.assertEqual(["stop", "close"], self.events)
+        self.close_callback.assert_awaited_once_with()
+
+    async def test_status_reports_active_and_running_configurations(self):
+        self.running_ids[:] = ["config-b"]
+        self.coordinator.configs.current_config_id = "config-a"
+
+        response = self.dispatcher.submit(IpcRequest(IpcCommand.STATUS))
+
+        self.assertEqual(IpcStatus.OK, response.status)
+        self.assertEqual(
+            {
+                "ready": True,
+                "active_config_id": "config-a",
+                "running": True,
+                "running_config_ids": ["config-b"],
+                "shutting_down": False,
+            },
+            response.data,
+        )
+
+
+class AppCommandDispatcherStartupTests(unittest.IsolatedAsyncioTestCase):
+    async def test_pending_commands_are_fifo_and_attach_drains_once(self):
+        events = []
+        coordinator = SimpleNamespace(
+            configs=SimpleNamespace(
+                current_config_id="config-a",
+                get_config=lambda config_id: object()
+                if config_id in {"config-a", "config-b"}
+                else None,
+            ),
+            runtime=SimpleNamespace(is_running=False),
+            get_running_config_ids=lambda: [],
+            select_config=Mock(side_effect=lambda config_id: events.append(f"switch:{config_id}") or True),
+            run_configuration=AsyncMock(side_effect=lambda config_id: events.append(f"run:{config_id}") or True),
+            stop_running_configuration=AsyncMock(return_value=False),
+        )
+        window = _FakeWindow(coordinator)
+        dispatcher = AppCommandDispatcher(asyncio.get_running_loop())
+        try:
+            activate = dispatcher.submit(IpcRequest(IpcCommand.ACTIVATE))
+            switch = dispatcher.submit_startup(
+                IpcRequest(IpcCommand.SWITCH_CONFIG, {"config_id": "config-b"})
+            )
+            run = dispatcher.submit_startup(
+                IpcRequest(
+                    IpcCommand.RUN,
+                    {"config_id": "config-b", "force_restart": False},
+                )
+            )
+            self.assertEqual(IpcStatus.ACCEPTED, activate.status)
+            self.assertEqual(IpcStatus.ACCEPTED, switch.status)
+            self.assertEqual(IpcStatus.ACCEPTED, run.status)
+
+            dispatcher.attach_window(window)
+            dispatcher.attach_window(window)
+            await dispatcher.wait_idle()
+
+            window.raise_.assert_called_once_with()
+            self.assertEqual(["switch:config-b", "run:config-b"], events)
+            coordinator.run_configuration.assert_awaited_once_with("config-b")
+        finally:
+            await dispatcher.close()
+
+    async def test_external_mutation_is_busy_until_window_is_ready(self):
+        dispatcher = AppCommandDispatcher(asyncio.get_running_loop())
+        try:
+            activate = dispatcher.submit(IpcRequest(IpcCommand.ACTIVATE))
+            run = dispatcher.submit(
+                IpcRequest(
+                    IpcCommand.RUN,
+                    {"config_id": "config-a", "force_restart": False},
+                )
+            )
+            switch = dispatcher.submit(
+                IpcRequest(IpcCommand.SWITCH_CONFIG, {"config_id": "config-a"})
+            )
+            stop = dispatcher.submit(
+                IpcRequest(IpcCommand.STOP, {"config_id": None})
+            )
+
+            self.assertEqual(IpcStatus.ACCEPTED, activate.status)
+            for response in (run, switch, stop):
+                self.assertEqual(IpcStatus.BUSY, response.status)
+                self.assertEqual("application_not_ready", response.code)
+        finally:
+            await dispatcher.close()
+
+    async def test_startup_shutdown_drops_earlier_mutating_commands(self):
+        events = []
+        coordinator = SimpleNamespace(
+            configs=SimpleNamespace(
+                current_config_id="config-a",
+                get_config=lambda _config_id: object(),
+            ),
+            runtime=SimpleNamespace(is_running=False),
+            get_running_config_ids=lambda: [],
+            select_config=Mock(side_effect=lambda config_id: events.append(f"switch:{config_id}") or True),
+            run_configuration=AsyncMock(side_effect=lambda config_id: events.append(f"run:{config_id}") or True),
+            stop_running_configuration=AsyncMock(side_effect=lambda **_kwargs: events.append("stop") or False),
+        )
+        close_callback = AsyncMock(side_effect=lambda: events.append("close"))
+        dispatcher = AppCommandDispatcher(
+            asyncio.get_running_loop(),
+            close_callback=close_callback,
+        )
+        try:
+            dispatcher.submit_startup(
+                IpcRequest(IpcCommand.SWITCH_CONFIG, {"config_id": "config-b"})
+            )
+            dispatcher.submit_startup(
+                IpcRequest(
+                    IpcCommand.RUN,
+                    {"config_id": "config-b", "force_restart": False},
+                )
+            )
+            dispatcher.submit(
+                IpcRequest(IpcCommand.SHUTDOWN, {"reason": "external"})
+            )
+            dispatcher.attach_window(_FakeWindow(coordinator))
+            await dispatcher.wait_idle()
+
+            self.assertEqual(["stop", "close"], events)
+            coordinator.select_config.assert_not_called()
+            coordinator.run_configuration.assert_not_awaited()
+        finally:
+            await dispatcher.close()
+
+
+if __name__ == "__main__":
+    unittest.main()

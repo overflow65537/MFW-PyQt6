@@ -1,10 +1,12 @@
 import os
 import hashlib
-import json
 import tempfile
 import time
 from pathlib import Path
 
+from app.ipc.local_client import LocalIpcClient
+from app.ipc.local_server import LocalIpcServer
+from app.ipc.protocol import IpcResponse, IpcStatus
 from app.utils.logger import logger
 
 CMD_ACTIVATE = b"activate"
@@ -85,134 +87,18 @@ class _SingleInstanceLock:
                 self._fp = None
 
 
-class _ActivationServer:
-    """接收后续实例的激活/关闭请求，并回写处理结果。"""
-
-    def __init__(self, server_name: str):
-        self.server_name = str(server_name)
-        self._server = None
-        self._on_activate = None
-        self._on_shutdown = None
-        self._on_run_config = None
+class _ActivationServer(LocalIpcServer):
+    """Compatibility name for the transport-only local IPC server."""
 
     @staticmethod
     def make_server_name(lock_key: str) -> str:
-        h = hashlib.sha256(lock_key.encode("utf-8")).hexdigest()[:16]
+        h = hashlib.sha256(str(lock_key).encode("utf-8")).hexdigest()[:16]
         return f"mfw_single_instance_{h}"
 
-    def set_on_activate(self, callback) -> None:
-        self._on_activate = callback
-
-    def set_on_shutdown(self, callback) -> None:
-        self._on_shutdown = callback
-
-    def set_on_run_config(self, callback) -> None:
-        self._on_run_config = callback
-
     def start(self, parent=None) -> bool:
-        from PySide6.QtNetwork import QLocalServer
-
-        try:
-            QLocalServer.removeServer(self.server_name)
-        except Exception:
-            pass
-
-        self._server = QLocalServer(parent)
-        self._server.newConnection.connect(self._handle_new_connection)
-        if self._server.listen(self.server_name):
-            return True
-
-        try:
-            self._server.close()
-        except Exception:
-            pass
-        self._server = None
-        return False
-
-    def close(self) -> None:
-        if self._server is None:
-            return
-        try:
-            self._server.close()
-        finally:
-            try:
-                from PySide6.QtNetwork import QLocalServer
-
-                QLocalServer.removeServer(self.server_name)
-            except Exception:
-                pass
-            self._server = None
-
-    def _handle_new_connection(self) -> None:
-        if self._server is None:
-            return
-
-        while self._server.hasPendingConnections():
-            socket = self._server.nextPendingConnection()
-            if socket is None:
-                continue
-            socket.setParent(self._server)
-
-            if socket.bytesAvailable() > 0:
-                self._consume_activation_request(socket)
-            else:
-                socket.readyRead.connect(
-                    lambda current_socket=socket: self._consume_activation_request(
-                        current_socket
-                    )
-                )
-            socket.disconnected.connect(socket.deleteLater)
-
-    def _consume_activation_request(self, socket) -> None:
-        try:
-            payload = bytes(socket.readAll()).strip()
-        except Exception:
-            payload = b""
-
-        command = payload or CMD_ACTIVATE
-        if command.lower() == CMD_SHUTDOWN:
-            accepted = False
-            if self._on_shutdown is not None:
-                try:
-                    accepted = bool(self._on_shutdown())
-                except Exception:
-                    accepted = False
-            response = RESP_ACCEPTED if accepted else RESP_FAIL
-        elif command.startswith(CMD_RUN_CONFIG):
-            response = RESP_INVALID
-            try:
-                request = json.loads(command[len(CMD_RUN_CONFIG) :].decode("utf-8"))
-                config_id = str(request.get("config_id") or "").strip()
-                force_start = bool(request.get("force_start", False))
-                logger.debug(
-                    "单实例 IPC 收到复用执行请求: config_id=%s force_start=%s",
-                    config_id,
-                    force_start,
-                )
-                if config_id and self._on_run_config is not None:
-                    result = self._on_run_config(config_id, force_start)
-                    response = result if isinstance(result, bytes) else RESP_FAIL
-            except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-                logger.debug("单实例 IPC 拒绝无效的复用执行请求: %s", exc)
-                response = RESP_INVALID
-        else:
-            activated = False
-            if self._on_activate is not None:
-                try:
-                    activated = bool(self._on_activate())
-                except Exception:
-                    activated = False
-            response = RESP_OK if activated else RESP_FAIL
-
-        try:
-            socket.write(response)
-            socket.flush()
-            socket.waitForBytesWritten(800)
-            logger.debug("单实例 IPC 已回复: %s", response)
-        except Exception:
-            logger.debug("单实例 IPC 写入回复失败")
-            pass
-
+        if parent is not None and self.parent() is None:
+            self.setParent(parent)
+        return super().start()
 
 def _normalize_install_anchor(instance_key: str) -> Path:
     return Path(instance_key).resolve()
@@ -289,39 +175,31 @@ def is_running_with_admin_privileges() -> bool:
     return False
 
 
+def _response_to_legacy_bytes(response: IpcResponse) -> bytes:
+    if response.status == IpcStatus.OK:
+        return RESP_OK
+    if response.status == IpcStatus.ACCEPTED:
+        return RESP_ACCEPTED
+    if response.status == IpcStatus.BUSY:
+        return RESP_BUSY
+    if response.status in {IpcStatus.INVALID, IpcStatus.NOT_FOUND}:
+        return RESP_INVALID
+    return RESP_FAIL
+
+
 def try_activate_existing_instance(
     server_name: str,
     *,
     connect_ms: int = 800,
     response_ms: int = 500,
 ) -> bool:
-    """请求已有实例前置窗口；仅当收到 RESP_OK 时视为成功。"""
-    try:
-        from PySide6.QtNetwork import QLocalSocket
-    except Exception:
-        return False
-
-    socket = QLocalSocket()
-    socket.connectToServer(server_name)
-    if not socket.waitForConnected(connect_ms):
-        return False
-
-    try:
-        socket.write(CMD_ACTIVATE)
-        socket.flush()
-        if not socket.waitForBytesWritten(800):
-            return False
-        if not socket.waitForReadyRead(response_ms):
-            return False
-        response = bytes(socket.readAll()).strip().lower()
-        return response == RESP_OK
-    except Exception:
-        return False
-    finally:
-        try:
-            socket.disconnectFromServer()
-        except Exception:
-            pass
+    """请求已有实例前置窗口；仅当统一 IPC 返回成功时视为成功。"""
+    response = LocalIpcClient(
+        server_name,
+        connect_ms=connect_ms,
+        response_ms=response_ms,
+    ).activate()
+    return response.status in {IpcStatus.OK, IpcStatus.ACCEPTED}
 
 
 def request_existing_instance_run(
@@ -332,56 +210,13 @@ def request_existing_instance_run(
     connect_ms: int = 800,
     response_ms: int = 5000,
 ) -> bytes:
-    """请求已有实例执行配置，返回 IPC 状态码。"""
-    try:
-        from PySide6.QtNetwork import QLocalSocket
-    except Exception as exc:
-        logger.debug("单实例 IPC 无法导入 QLocalSocket: %s", exc)
-        return RESP_FAIL
-
-    socket = QLocalSocket()
-    socket.connectToServer(server_name)
-    if not socket.waitForConnected(connect_ms):
-        logger.debug(
-            "单实例 IPC 连接失败: server=%s error=%s state=%s",
-            server_name,
-            socket.errorString(),
-            socket.state(),
-        )
-        return RESP_FAIL
-
-    try:
-        request = json.dumps(
-            {"config_id": config_id, "force_start": force_start}, separators=(",", ":")
-        ).encode("utf-8")
-        payload = CMD_RUN_CONFIG + request
-        try:
-            socket.write(payload)
-            socket.flush()
-            socket.waitForBytesWritten(800)
-            logger.debug("复用单实例 IPC 已请求: %s", payload)
-        except Exception:
-            logger.debug("复用单实例 IPC 请求失败")
-            pass
-        if not socket.waitForReadyRead(response_ms):
-            logger.debug(
-                "单实例 IPC 等待回复失败: error=%s state=%s",
-                socket.errorString(),
-                socket.state(),
-            )
-            return RESP_FAIL
-        response = bytes(socket.readAll()).strip().lower()
-        logger.debug("单实例 IPC 收到回复: %s", response)
-        return response
-    except Exception as exc:
-        logger.debug("单实例 IPC 客户端异常: %s", exc)
-        return RESP_FAIL
-    finally:
-        try:
-            socket.disconnectFromServer()
-        except Exception:
-            pass
-
+    """兼容旧调用：通过统一 IPC 请求运行配置并返回旧字节状态码。"""
+    response = LocalIpcClient(
+        server_name,
+        connect_ms=connect_ms,
+        response_ms=response_ms,
+    ).run(config_id or None, force_restart=force_start)
+    return _response_to_legacy_bytes(response)
 
 def find_matching_instance_pids(
     instance_key: str, *, exclude_pid: int | None = None
@@ -466,34 +301,9 @@ def terminate_matching_instances(
 
 
 def request_instance_shutdown(server_name: str) -> bool:
-    """通过本地套接字请求已有实例执行优雅关闭。"""
-    try:
-        from PySide6.QtNetwork import QLocalSocket
-    except Exception:
-        return False
-
-    socket = QLocalSocket()
-    socket.connectToServer(server_name)
-    if not socket.waitForConnected(800):
-        return False
-
-    try:
-        socket.write(CMD_SHUTDOWN)
-        socket.flush()
-        if not socket.waitForBytesWritten(800):
-            return False
-        if not socket.waitForReadyRead(1500):
-            return False
-        response = bytes(socket.readAll()).strip().lower()
-        return response in {RESP_OK, RESP_ACCEPTED}
-    except Exception:
-        return False
-    finally:
-        try:
-            socket.disconnectFromServer()
-        except Exception:
-            pass
-
+    """通过统一 IPC 请求已有实例执行优雅关闭。"""
+    response = LocalIpcClient(server_name).shutdown(reason="restart")
+    return response.status in {IpcStatus.OK, IpcStatus.ACCEPTED}
 
 def force_restart_existing_instance(
     instance_key: str, *, timeout: float = FORCE_RESTART_WAIT_TIMEOUT
@@ -541,13 +351,14 @@ def try_force_terminate_stale_instance(
 
 
 class SingleInstanceGuard:
-    """单实例守卫：文件锁判重 + 本地套接字激活已有实例。"""
+    """单实例守卫：文件锁与统一本地 IPC 的组合管理。"""
 
     def __init__(self, instance_key: str):
         self.instance_key = str(instance_key)
         self.server_name = _ActivationServer.make_server_name(self.instance_key)
         self._lock = _SingleInstanceLock(self.instance_key)
-        self._activation_server = _ActivationServer(self.server_name)
+        self._ipc_server = _ActivationServer(self.server_name)
+        self._ipc_client = LocalIpcClient(self.server_name)
 
     def acquire(self) -> bool:
         return self._lock.acquire()
@@ -556,28 +367,53 @@ class SingleInstanceGuard:
         self._lock.release()
 
     def start_activation_server(self, parent=None) -> bool:
-        return self._activation_server.start(parent)
+        return self._ipc_server.start(parent)
 
     def stop_activation_server(self) -> None:
-        self._activation_server.close()
+        self._ipc_server.close()
 
-    def set_activation_callback(self, callback) -> None:
-        self._activation_server.set_on_activate(callback)
+    def set_command_handler(self, handler) -> None:
+        self._ipc_server.set_command_handler(handler)
 
-    def set_shutdown_callback(self, callback) -> None:
-        self._activation_server.set_on_shutdown(callback)
-
-    def set_run_config_callback(self, callback) -> None:
-        self._activation_server.set_on_run_config(callback)
+    def send_command(self, request):
+        return self._ipc_client.send_command(request)
 
     def request_instance_shutdown(self) -> bool:
-        return request_instance_shutdown(self.server_name)
+        return self._ipc_client.shutdown(reason="restart").succeeded
 
     def notify_existing_instance(self) -> bool:
         """请求已有实例前置窗口；仅当旧实例正常响应时返回 True。"""
-        return try_activate_existing_instance(self.server_name)
+        return self._ipc_client.activate().status in {
+            IpcStatus.OK,
+            IpcStatus.ACCEPTED,
+        }
 
     def request_existing_instance_run(self, config_id: str, *, force_start: bool) -> bytes:
-        return request_existing_instance_run(
-            self.server_name, config_id, force_start=force_start
+        response = self._ipc_client.run(
+            config_id or None,
+            force_restart=force_start,
         )
+        return _response_to_legacy_bytes(response)
+
+    def activate(self) -> IpcResponse:
+        return self._ipc_client.activate()
+
+    def switch_config(self, config_id: str) -> IpcResponse:
+        return self._ipc_client.switch_config(config_id)
+
+    def run(
+        self,
+        config_id: str | None = None,
+        *,
+        force_restart: bool = False,
+    ) -> IpcResponse:
+        return self._ipc_client.run(config_id, force_restart=force_restart)
+
+    def stop(self, config_id: str | None = None) -> IpcResponse:
+        return self._ipc_client.stop(config_id)
+
+    def shutdown(self, reason: str = "user") -> IpcResponse:
+        return self._ipc_client.shutdown(reason)
+
+    def status(self) -> IpcResponse:
+        return self._ipc_client.status()

@@ -1,13 +1,15 @@
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+from app.ipc.protocol import IpcResponse, IpcStatus
 from app.utils.single_instance import (
     CMD_ACTIVATE,
     CMD_RUN_CONFIG,
     CMD_SHUTDOWN,
     RESP_OK,
     process_matches_install_anchor,
+    try_activate_existing_instance,
     try_force_terminate_stale_instance,
 )
 
@@ -31,6 +33,15 @@ class ProcessMatchesInstallAnchorTests(unittest.TestCase):
         self.assertEqual(CMD_SHUTDOWN, b"shutdown")
         self.assertEqual(CMD_RUN_CONFIG, b"run-config:")
         self.assertEqual(RESP_OK, b"ok")
+
+    @patch("app.utils.single_instance.LocalIpcClient")
+    def test_pending_activation_is_treated_as_success(self, client_cls: Mock) -> None:
+        client_cls.return_value.activate.return_value = IpcResponse(
+            status=IpcStatus.ACCEPTED,
+            request_id="activate-request",
+        )
+
+        self.assertTrue(try_activate_existing_instance("test-server"))
 
     @patch("app.utils.single_instance.is_running_with_admin_privileges", return_value=False)
     def test_force_terminate_requires_admin(self, _mock_admin: object) -> None:

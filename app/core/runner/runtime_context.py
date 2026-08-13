@@ -154,7 +154,7 @@ class RuntimeContext(QObject):
         self.monitor_task = MonitorTask(
             task_service=task_service,
             config_service=config_service,
-            runner_events=RunnerEvents(self),
+            runner_events=self.events,
         )
         self.monitor_task.setParent(self)
         self.logs = RuntimeLogStore(

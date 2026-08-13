@@ -117,8 +117,12 @@ def _run() -> int:
     from app.common.theme_manager import apply_theme_from_config
     from app.utils.crypto import crypto_manager
     from app.utils.logger import logger
-    from app.utils.single_instance import SingleInstanceGuard, is_instance_running
+    from app.utils.single_instance import SingleInstanceGuard
     from app.utils.startup_cli import parse_startup_cli
+    from app.utils.startup_strategy import (
+        ExistingInstanceAction,
+        decide_existing_instance_action,
+    )
 
     # 启动参数解析（单实例检查前处理 --force-restart）
     options, qt_extra, deprecated_cli = parse_startup_cli()
@@ -152,52 +156,56 @@ def _run() -> int:
             apply_theme_from_config()
         return app
 
-    if (
-        options.force_restart
-        and not options.reuse_existing
-        and is_instance_running(instance_key)
-    ):
-        from app.utils.startup_dialog import run_force_restart_shutdown_flow
-
-        _ensure_early_startup_app(qt_argv)
-        _show_deprecated_cli_if_needed()
-        if not run_force_restart_shutdown_flow(instance_key):
-            return 1
-
     single_instance = SingleInstanceGuard(instance_key)
     if not single_instance.acquire():
-        if options.reuse_existing:
+        existing_action = decide_existing_instance_action(
+            existing_instance=True,
+            reuse_existing=options.reuse_existing,
+            force_restart=options.force_restart,
+        )
+        if existing_action == ExistingInstanceAction.REUSE:
             try:
-                from app.utils.single_instance import RESP_ACCEPTED, RESP_BUSY
+                from app.ipc.protocol import IpcStatus
                 from PySide6.QtCore import QCoreApplication
 
                 ipc_app = QCoreApplication.instance()
                 if ipc_app is None:
                     _ = QCoreApplication([sys.argv[0]])
-                response = single_instance.request_existing_instance_run(
-                    options.config_id or "", force_start=options.force_restart
+                response = single_instance.run(
+                    options.config_id,
+                    force_restart=options.force_restart,
                 )
-                if response == RESP_ACCEPTED:
+                if response.status == IpcStatus.ACCEPTED:
                     logger.info("已有实例已接收复用执行请求")
                     return 0
-                if response == RESP_BUSY:
+                if response.status == IpcStatus.BUSY:
                     logger.info("已有实例正在执行任务，跳过复用执行请求")
                     return 2
-                logger.warning("向已有实例发送复用执行请求失败: %s", response)
+                logger.warning(
+                    "向已有实例发送复用执行请求失败: status=%s code=%s",
+                    response.status.value,
+                    response.code,
+                )
                 return 1
             except Exception:
                 logger.exception("未知错误")
                 return 3
 
-        from app.utils.startup_dialog import run_duplicate_instance_flow
-
         _ensure_early_startup_app(qt_argv)
         _show_deprecated_cli_if_needed()
-        outcome = run_duplicate_instance_flow(instance_key)
-        if outcome == "activated":
-            return 0
-        if outcome == "failed":
-            return 1
+        if existing_action == ExistingInstanceAction.RESTART:
+            from app.utils.startup_dialog import run_force_restart_shutdown_flow
+
+            if not run_force_restart_shutdown_flow(instance_key):
+                return 1
+        else:
+            from app.utils.startup_dialog import run_duplicate_instance_flow
+
+            outcome = run_duplicate_instance_flow(instance_key)
+            if outcome == "activated":
+                return 0
+            if outcome == "failed":
+                return 1
         if not single_instance.acquire():
             return 1
 
@@ -240,52 +248,6 @@ def _run() -> int:
 
     _show_deprecated_cli_if_needed()
 
-    if single_instance.start_activation_server(app):
-        atexit.register(single_instance.stop_activation_server)
-    else:
-        logger.warning("单实例激活服务启动失败，重复启动时将无法自动前置已有窗口")
-
-    from app.view.main_window.main_window import MainWindow
-
-    window_holder: dict[str, MainWindow | None] = {"window": None}
-    pending_force_shutdown = {"requested": False}
-    pending_activation = {"requested": False}
-    pending_reuse_request: dict[str, tuple[str, bool] | None] = {"request": None}
-    reuse_request_in_progress = {"value": False}
-
-    def _activate_existing_window() -> bool:
-        window = window_holder["window"]
-        if window is None:
-            pending_activation["requested"] = True
-            return True
-
-        if not window.isVisible():
-            window.show()
-        if window.windowState() & Qt.WindowState.WindowMinimized:
-            window.showNormal()
-
-        window.raise_()
-        window.activateWindow()
-
-        if os.name == "nt":
-            try:
-                import ctypes
-
-                user32 = ctypes.windll.user32
-                hwnd = int(window.winId())
-                if user32.IsIconic(hwnd):
-                    user32.ShowWindow(hwnd, 9)  # SW_RESTORE
-                else:
-                    user32.ShowWindow(hwnd, 5)  # SW_SHOW
-                # SetForegroundWindow 常因系统前台策略失败，但窗口已恢复/显示即视为成功
-                user32.SetForegroundWindow(hwnd)
-            except Exception:
-                logger.debug("Windows 前置已有实例失败", exc_info=True)
-
-        return True
-
-    single_instance.set_activation_callback(_activate_existing_window)
-
     # 国际化配置（须在 --force-restart 等待弹窗之后安装，以便弹窗也能翻译）
     locale = cfg.get(cfg.language)
     translator = FluentTranslator(locale.value)
@@ -300,7 +262,6 @@ def _run() -> int:
                 return True
         return False
 
-    # 确定语言代码（与 interface_manager / 资源包 languages 键一致）
     language_code = "zh_cn"
     if locale == Language.CHINESE_SIMPLIFIED:
         _try_load_qm(galleryTranslator, ("i18n.zh_CN.qm",))
@@ -322,7 +283,6 @@ def _run() -> int:
     app.installTranslator(translator)
     app.installTranslator(galleryTranslator)
 
-    # 尝试导入 maa 库，检测是否缺少 VC++ Redistributable
     try:
         import maa
         from maa.context import Context
@@ -330,7 +290,6 @@ def _run() -> int:
         from maa.custom_recognition import CustomRecognition
     except (ImportError, OSError) as e:
         error_msg = str(e).lower()
-        # 检测是否是 DLL 加载失败或 VC++ 相关错误
         if any(
             keyword in error_msg
             for keyword in [
@@ -348,89 +307,36 @@ def _run() -> int:
 
             show_vcredist_missing_dialog()
         else:
-            # 其他导入错误，正常抛出
             raise
 
-    # 异步事件循环初始化
     loop = QEventLoop(app)
 
-    # 异步异常处理
     def handle_async_exception(loop, context):
         logger.exception("异步任务异常:", exc_info=context.get("exception"))
 
     loop.set_exception_handler(handle_async_exception)
-
     asyncio.set_event_loop(loop)
 
-    def _schedule_graceful_shutdown(window) -> None:
-        async def _stop_and_close() -> None:
-            try:
-                runtime = window.service_coordinator.runtime
-                if runtime.is_running:
-                    await runtime.stop(manual=True)
-            except Exception:
-                logger.exception("收到 --force-restart 关闭请求后停止任务失败")
-            window._allow_window_close = True
-            from PySide6.QtCore import QTimer
+    from app.core.service.app_command_dispatcher import AppCommandDispatcher
+    from app.ipc.protocol import IpcCommand, IpcRequest
+    from app.view.main_window.main_window import MainWindow
 
-            QTimer.singleShot(0, window.close)
-
-        try:
-            asyncio.ensure_future(_stop_and_close(), loop=loop)
-        except Exception:
-            logger.exception("调度优雅关闭失败")
-            window._allow_window_close = True
-            window.close()
-
-    def _handle_force_shutdown_request() -> bool:
-        window = window_holder["window"]
+    async def _close_application() -> None:
+        window = dispatcher.window
         if window is None:
-            pending_force_shutdown["requested"] = True
-            return True
-        _schedule_graceful_shutdown(window)
-        return True
+            app.quit()
+            return
+        window._allow_window_close = True
+        from PySide6.QtCore import QTimer
 
-    single_instance.set_shutdown_callback(_handle_force_shutdown_request)
+        QTimer.singleShot(0, window.close)
 
-    def _is_task_running(window: MainWindow) -> bool:
-        return window.service_coordinator.runtime.is_running
-
-    def _schedule_reused_run(window: MainWindow, config_id: str, force_start: bool) -> None:
-        async def _run() -> None:
-            try:
-                if _is_task_running(window):
-                    if not force_start:
-                        logger.info("已有任务正在执行，跳过复用执行请求")
-                        return
-                    await window.service_coordinator.runtime.stop(manual=True)
-
-                if not await window.service_coordinator.run_configuration(config_id):
-                    logger.warning("复用执行请求指定的配置不存在: %s", config_id)
-            except Exception:
-                logger.exception("复用已有实例执行任务失败")
-            finally:
-                reuse_request_in_progress["value"] = False
-
-        asyncio.ensure_future(_run(), loop=loop)
-
-    def _handle_reuse_run_request(config_id: str, force_start: bool) -> bytes:
-        from app.utils.single_instance import RESP_ACCEPTED, RESP_BUSY, RESP_INVALID
-
-        window = window_holder["window"]
-        if reuse_request_in_progress["value"]:
-            return RESP_BUSY
-        if window is None:
-            return RESP_BUSY
-        if not window.service_coordinator.configs.get_config(config_id):
-            return RESP_INVALID
-        if _is_task_running(window) and not force_start:
-            return RESP_BUSY
-
-        reuse_request_in_progress["value"] = True
-        _schedule_reused_run(window, config_id, force_start)
-        return RESP_ACCEPTED
-
-    single_instance.set_run_config_callback(_handle_reuse_run_request)
+    dispatcher = AppCommandDispatcher(loop, close_callback=_close_application)
+    single_instance.set_command_handler(dispatcher.submit)
+    if single_instance.start_activation_server(app):
+        atexit.register(single_instance.stop_activation_server)
+    else:
+        logger.warning("单实例 IPC 服务启动失败，重复启动时将无法控制已有窗口")
 
     # 初始化 GPU 信息缓存
     try:
@@ -440,24 +346,35 @@ def _run() -> int:
     except Exception as e:
         logger.warning(f"GPU 信息缓存初始化失败，忽略: {e}")
 
-    # 创建主窗口
+    def _submit_startup_run(config_id: str | None):
+        return dispatcher.submit_startup(
+            IpcRequest(
+                IpcCommand.RUN,
+                {
+                    "config_id": config_id,
+                    "force_restart": False,
+                },
+            )
+        )
+
+    if options.config_id:
+        dispatcher.submit_startup(
+            IpcRequest(
+                IpcCommand.SWITCH_CONFIG,
+                {"config_id": options.config_id},
+            )
+        )
+
+    # Preserve MainWindow's update sequencing; route the eventual run through
+    # the same application command dispatcher used by IPC requests.
     w = MainWindow(
         loop=loop,
         auto_run=options.direct_run,
-        switch_config_id=options.config_id,
+        startup_config_id=options.config_id,
         force_enable_test=options.enable_dev,
+        startup_command_submitter=_submit_startup_run,
     )
-    window_holder["window"] = w
-    if pending_force_shutdown["requested"]:
-        _schedule_graceful_shutdown(w)
-    elif pending_reuse_request["request"] is not None:
-        config_id, force_start = pending_reuse_request["request"]
-        pending_reuse_request["request"] = None
-        _schedule_reused_run(w, config_id, force_start)
-    elif pending_activation["requested"]:
-        from PySide6.QtCore import QTimer
-
-        QTimer.singleShot(0, _activate_existing_window)
+    dispatcher.attach_window(w)
     w.show()
 
     # 连接应用退出信号到事件循环停止
@@ -467,6 +384,7 @@ def _run() -> int:
     with loop:
         loop.run_forever()
         logger.debug("关闭异步任务完成")
+        loop.run_until_complete(dispatcher.close())
 
         # Cancel all pending tasks before closing the loop
         try:
