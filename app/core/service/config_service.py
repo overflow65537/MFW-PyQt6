@@ -397,6 +397,21 @@ class ConfigService:
         # config_data 应为 ConfigItem，直接转换为 dict 保存
         return self.repo.save_config(config_id, config_data.to_dict())
 
+    def rename_config(self, config_id: str, new_name: str) -> bool:
+        """重命名配置，由 Service 修改 ConfigItem 并持久化。"""
+        normalized_name = str(new_name or "").strip()
+        if not config_id or not normalized_name:
+            return False
+
+        config = self.get_config(config_id)
+        if not config:
+            return False
+        if config.name == normalized_name:
+            return True
+
+        config.name = normalized_name
+        return self.update_config(config_id, config)
+
     def create_config(self, config: ConfigItem) -> str:
         """创建新配置，统一使用 uuid 生成 id"""
         if not config.item_id:

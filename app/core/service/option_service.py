@@ -1,20 +1,34 @@
+from copy import deepcopy
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.core.service.task_service import TaskService
 from app.core.item import CoreSignalBus, TaskItem
-from app.common.constants import _PRETASK_, _RESOURCE_
+from app.common.constants import _CONTROLLER_, _PRETASK_, _RESOURCE_, POST_ACTION
 
 
-_RESOURCE_EXCLUDED_FIELDS = {
+_CONTROLLER_BASE_FIELDS = {
+    "controller_type",
     "gpu",
     "agent_timeout",
     "agent_embedded",
     "custom",
-    "_speedrun_config",
-    "controller_type",
-    "adb",
-    "win32",
 }
+
+_POST_ACTION_DEFAULTS: Dict[str, Any] = {
+    "none": True,
+    "shutdown": False,
+    "close_controller": False,
+    "close_software": False,
+    "run_other": False,
+    "run_program": False,
+    "always_run": False,
+    "target_config": "",
+    "program_path": "",
+    "program_args": "",
+}
+_POST_ACTION_KEYS = frozenset(_POST_ACTION_DEFAULTS)
+_POST_ACTION_EXCLUSIVE_EXIT_GROUP = ("shutdown", "close_software", "run_other")
 
 
 class OptionService:
@@ -166,17 +180,250 @@ class OptionService:
         self.current_options.update(options)
         return self._on_option_updated(options)
 
+    @staticmethod
+    def _normalize_json_value(value: Any) -> Any:
+        if isinstance(value, Path):
+            return str(value)
+        if isinstance(value, dict):
+            return {
+                str(key): OptionService._normalize_json_value(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, (list, tuple)):
+            return [OptionService._normalize_json_value(item) for item in value]
+        return value
+
+    def _controller_names(self) -> set[str]:
+        interface = self.task_service.interface or {}
+        controllers = interface.get("controller", [])
+        if not isinstance(controllers, list):
+            return set()
+        return {
+            str(controller.get("name"))
+            for controller in controllers
+            if isinstance(controller, dict) and controller.get("name")
+        }
+
+    def _sanitize_controller_options(
+        self,
+        existing: Dict[str, Any],
+        changes: Dict[str, Any],
+    ) -> tuple[Dict[str, Any], Dict[str, Any]]:
+        allowed_fields = _CONTROLLER_BASE_FIELDS | self._controller_names()
+        sanitized = {
+            key: self._normalize_json_value(value)
+            for key, value in existing.items()
+            if key in allowed_fields
+        }
+        accepted_changes = {
+            key: self._normalize_json_value(value)
+            for key, value in changes.items()
+            if key in allowed_fields
+        }
+        sanitized.update(accepted_changes)
+        sanitized.pop("_speedrun_config", None)
+        return sanitized, accepted_changes
+
+    def update_controller_options(self, options: Dict[str, Any]) -> bool:
+        """过滤并保存 Controller 任务选项，一次写入对应一次域事件。"""
+        task = self.task_service.get_task(_CONTROLLER_)
+        if not task or not isinstance(options, dict):
+            return False
+
+        existing = task.task_option if isinstance(task.task_option, dict) else {}
+        sanitized, accepted_changes = self._sanitize_controller_options(
+            existing,
+            options,
+        )
+        if sanitized == existing:
+            return True
+
+        task.task_option = sanitized
+        if not self.task_service.update_task(task):
+            return False
+
+        if self.current_task_id == _CONTROLLER_:
+            self.current_options = task.task_option
+        if "controller_type" in accepted_changes:
+            self.task_service.refresh_hidden_flags()
+            self._refresh_current_task_form_structure()
+        self.signal_bus.option_updated.emit(accepted_changes)
+        return True
+
+    @staticmethod
+    def normalize_post_action(action: Dict[str, Any] | None) -> Dict[str, Any]:
+        """规范化完成后动作字段及互斥关系。"""
+        normalized = dict(_POST_ACTION_DEFAULTS)
+        if isinstance(action, dict):
+            normalized.update(
+                {
+                    key: deepcopy(value)
+                    for key, value in action.items()
+                    if key in _POST_ACTION_KEYS
+                }
+            )
+
+        selected_exit = next(
+            (
+                key
+                for key in _POST_ACTION_EXCLUSIVE_EXIT_GROUP
+                if bool(normalized.get(key))
+            ),
+            None,
+        )
+        for key in _POST_ACTION_EXCLUSIVE_EXIT_GROUP:
+            normalized[key] = key == selected_exit
+
+        action_keys = {
+            "shutdown",
+            "close_controller",
+            "close_software",
+            "run_other",
+            "run_program",
+        }
+        if normalized.get("none"):
+            for key in action_keys:
+                normalized[key] = False
+        elif not any(bool(normalized.get(key)) for key in action_keys):
+            normalized["none"] = True
+        else:
+            normalized["none"] = False
+
+        if not normalized.get("run_other"):
+            normalized["target_config"] = ""
+        return normalized
+
+    def update_post_action(self, action: Dict[str, Any]) -> bool:
+        """规范化并保存 Post-Action，一次写入对应一次域事件。"""
+        task = self.task_service.get_task(POST_ACTION)
+        if not task:
+            return False
+
+        normalized = self.normalize_post_action(action)
+        new_options = {"post_action": normalized}
+        existing = task.task_option if isinstance(task.task_option, dict) else {}
+        if existing == new_options:
+            return True
+
+        task.task_option = new_options
+        if not self.task_service.update_task(task):
+            return False
+        if self.current_task_id == POST_ACTION:
+            self.current_options = task.task_option
+        self.signal_bus.option_updated.emit({"post_action": normalized})
+        return True
+
+    def get_current_speedrun_config(self) -> Dict[str, Any]:
+        """返回当前普通任务的标准化条件执行配置。"""
+        if not self.current_task_id:
+            return {}
+        task = self.task_service.get_task(self.current_task_id)
+        if not task or task.is_base_task() or task.is_builtin_task():
+            return {}
+        existing = (
+            task.task_option.get("_speedrun_config")
+            if isinstance(task.task_option, dict)
+            else None
+        )
+        return self.task_service.build_speedrun_config(task.name, existing)
+
+    def update_speedrun_config(self, config: Dict[str, Any]) -> bool:
+        """标准化并保存当前任务的条件执行配置。"""
+        if not self.current_task_id:
+            return False
+        task = self.task_service.get_task(self.current_task_id)
+        if not task or task.is_base_task() or task.is_builtin_task():
+            return False
+        normalized = self.task_service.build_speedrun_config(task.name, config)
+        return self.update_option("_speedrun_config", normalized)
+
+    def update_setting_options(self, options: Dict[str, Any]) -> bool:
+        """保存 Setting 表单值，存储位置由 ConfigService 统一管理。"""
+        return self.task_service.config_service.update_current_setting_options(options)
+
+    def _resource_option_names(self, resource_name: str) -> tuple[set[str], set[str]]:
+        all_names: set[str] = set()
+        active_names: set[str] = set()
+        interface = self.task_service.interface or {}
+        resources = interface.get("resource", [])
+        if not isinstance(resources, list):
+            return all_names, active_names
+        for resource in resources:
+            if not isinstance(resource, dict):
+                continue
+            names = resource.get("option", [])
+            if not isinstance(names, list):
+                continue
+            valid_names = {name for name in names if isinstance(name, str)}
+            all_names.update(valid_names)
+            if resource.get("name") == resource_name:
+                active_names = valid_names
+        return all_names, active_names
+
+    def _normalize_resource_task_options(
+        self,
+        source: Dict[str, Any],
+        resource_name: str,
+        submitted_options: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        all_names, active_names = self._resource_option_names(resource_name)
+        stored = source.get("resource_options", {})
+        stored_options = dict(stored) if isinstance(stored, dict) else {}
+
+        for name in all_names:
+            if name in source and name not in stored_options:
+                stored_options[name] = deepcopy(source[name])
+        if isinstance(submitted_options, dict):
+            stored_options.update(
+                {
+                    key: deepcopy(value)
+                    for key, value in submitted_options.items()
+                    if key in active_names
+                }
+            )
+
+        for name in all_names:
+            if name not in stored_options:
+                continue
+            value = stored_options[name]
+            if name not in active_names:
+                stored_options[name] = (
+                    {**value, "hidden": True}
+                    if isinstance(value, dict)
+                    else {"value": value, "hidden": True}
+                )
+            elif isinstance(value, dict) and "hidden" in value:
+                visible_value = {
+                    key: item for key, item in value.items() if key != "hidden"
+                }
+                stored_options[name] = (
+                    visible_value["value"]
+                    if set(visible_value) == {"value"}
+                    else visible_value
+                )
+
+        normalized: Dict[str, Any] = {"resource": resource_name}
+        setting_options = source.get("setting_options")
+        if isinstance(setting_options, dict):
+            normalized["setting_options"] = deepcopy(setting_options)
+        if stored_options:
+            normalized["resource_options"] = stored_options
+        return normalized
+
     def update_resource_selection(self, resource_name: str) -> bool:
         """更新 Resource 基础任务，并在持久化成功后通知资源上下文变化。"""
         resource_task = self.task_service.get_task(_RESOURCE_)
         if not resource_task:
             return False
-        if not isinstance(resource_task.task_option, dict):
-            resource_task.task_option = {}
-
-        resource_task.task_option["resource"] = resource_name
-        for field in _RESOURCE_EXCLUDED_FIELDS:
-            resource_task.task_option.pop(field, None)
+        existing = (
+            resource_task.task_option
+            if isinstance(resource_task.task_option, dict)
+            else {}
+        )
+        resource_task.task_option = self._normalize_resource_task_options(
+            existing,
+            resource_name,
+        )
 
         if not self.task_service.update_task(resource_task):
             return False
@@ -197,60 +444,21 @@ class OptionService:
         resource_task = self.task_service.get_task(_RESOURCE_)
         if not resource_task:
             return False
-        if not isinstance(resource_task.task_option, dict):
-            resource_task.task_option = {}
-
-        stored_options = resource_task.task_option.get("resource_options")
-        if not isinstance(stored_options, dict):
-            stored_options = {}
-        else:
-            stored_options = dict(stored_options)
-
-        all_option_names: set[str] = set()
-        interface = self.task_service.interface or {}
-        for resource in interface.get("resource", []):
-            if isinstance(resource, dict):
-                option_names = resource.get("option", [])
-                if isinstance(option_names, list):
-                    all_option_names.update(
-                        name for name in option_names if isinstance(name, str)
-                    )
-
-        active_names = set(active_option_names)
-        for option_name in all_option_names:
-            if option_name not in stored_options:
-                continue
-            stored_value = stored_options[option_name]
-            if option_name not in active_names:
-                if isinstance(stored_value, dict):
-                    stored_options[option_name] = {
-                        **stored_value,
-                        "hidden": True,
-                    }
-                else:
-                    stored_options[option_name] = {
-                        "value": stored_value,
-                        "hidden": True,
-                    }
-            elif isinstance(stored_value, dict) and "hidden" in stored_value:
-                visible_value = {
-                    key: value
-                    for key, value in stored_value.items()
-                    if key != "hidden"
-                }
-                stored_options[option_name] = (
-                    visible_value["value"]
-                    if set(visible_value) == {"value"}
-                    else visible_value
-                )
-
-        stored_options.update(resource_options)
-        resource_task.task_option["resource_options"] = stored_options
-        for field in _RESOURCE_EXCLUDED_FIELDS:
-            resource_task.task_option.pop(field, None)
-        for key in all_option_names:
-            if key not in {"resource", "resource_options"}:
-                resource_task.task_option.pop(key, None)
+        existing = (
+            resource_task.task_option
+            if isinstance(resource_task.task_option, dict)
+            else {}
+        )
+        resource_name = str(existing.get("resource", "") or "")
+        resource_task.task_option = self._normalize_resource_task_options(
+            existing,
+            resource_name,
+            {
+                key: value
+                for key, value in resource_options.items()
+                if key in set(active_option_names)
+            },
+        )
 
         if not self.task_service.update_task(resource_task):
             return False

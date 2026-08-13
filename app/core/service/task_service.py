@@ -1197,6 +1197,37 @@ class TaskService:
                 return task
         return None
 
+    def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
+        """更新单个任务勾选状态，并仅持久化、通知一次。"""
+        config_id = self.config_service.current_config_id
+        if not config_id:
+            return False
+
+        config = self.config_service.get_config(config_id)
+        if not config:
+            return False
+
+        target_task = next(
+            (task for task in config.tasks if task.item_id == task_id),
+            None,
+        )
+        if target_task is None:
+            return False
+        if target_task.is_base_task() and not is_checked:
+            return False
+
+        is_checked = bool(is_checked)
+        if target_task.is_checked == is_checked:
+            return True
+
+        target_task.is_checked = is_checked
+        if not self.config_service.update_config(config_id, config):
+            return False
+
+        self.current_tasks = config.tasks
+        self.signal_bus.task_updated.emit(target_task)
+        return True
+
     def update_task(self, task: TaskItem, idx: int = -2) -> bool:
         """更新任务
         
