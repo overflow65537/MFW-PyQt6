@@ -34,7 +34,7 @@ class IpcProtocolTests(unittest.TestCase):
     def test_request_and_response_round_trip_with_unicode_config_id(self):
         request = IpcRequest(
             IpcCommand.RUN,
-            {"config_id": "??-?", "force_restart": False},
+            {"config_id": "配置-甲", "force_restart": False},
             request_id="request-1",
         )
         decoded_request = decode_request(encode_request(request))
@@ -44,7 +44,7 @@ class IpcProtocolTests(unittest.TestCase):
             request,
             status=IpcStatus.ACCEPTED,
             code="queued",
-            data={"config_id": "??-?"},
+            data={"config_id": "配置-甲"},
         )
         decoded_response = decode_response(encode_response(response))
         self.assertEqual(response, decoded_response)

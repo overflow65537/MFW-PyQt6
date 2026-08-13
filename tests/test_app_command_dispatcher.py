@@ -37,6 +37,9 @@ class _FakeWindow:
             else Qt.WindowState.WindowNoState
         )
 
+    def winId(self):
+        return 0
+
 
 class AppCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
