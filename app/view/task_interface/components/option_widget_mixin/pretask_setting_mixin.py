@@ -45,7 +45,7 @@ class PreTaskSettingMixin:
         self._clear_options()
         self.option_area_card.show()
 
-        form_structure = self.service_coordinator.option.get_form_structure()
+        form_structure = self.service_coordinator.options.get_form_structure()
         if not form_structure or form_structure.get("type") != "pretask":
             return
 

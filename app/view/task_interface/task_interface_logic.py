@@ -83,12 +83,12 @@ class TaskInterface(UI_TaskInterface, QWidget):
         if not self.isVisible():
             return
         self.option_panel.reset()
-        if self.service_coordinator and self.service_coordinator.run_manager.is_running:
+        if self.service_coordinator and self.service_coordinator.runtime.is_running:
             self._set_task_list_editable(False)
         if hasattr(self, "task_info") and hasattr(self.task_info, "task_list"):
             task_list = self.task_info.task_list
             if self.service_coordinator and hasattr(self.service_coordinator, "option"):
-                option_service = self.service_coordinator.option
+                option_service = self.service_coordinator.options
                 if hasattr(option_service, "clear_selection"):
                     option_service.clear_selection()
             task_list.setCurrentRow(-1)

@@ -30,7 +30,6 @@ from qfluentwidgets import (
 
 from app.common.signal_bus import signalBus
 from app.common.config import cfg
-from app.utils.controller_utils import snapshot_cached_image
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.monitor_widget import MonitorWidget
@@ -707,28 +706,9 @@ class LogoutputWidget(QWidget):
             self.log_list_layout.removeItem(self._tail_spacer_item)
             self._tail_spacer_item = None
 
-    def _get_controller(self):
-        """获取控制器：优先使用任务流的控制器。"""
-        if not self.service_coordinator:
-            return None
-        try:
-            if hasattr(self.service_coordinator, "run_manager"):
-                task_flow = self.service_coordinator.run_manager
-                if task_flow and hasattr(task_flow, "maafw"):
-                    controller = getattr(task_flow.maafw, "controller", None)
-                    if controller is not None:
-                        return controller
-        except Exception:
-            return None
-        return None
-
     def _try_capture_cached_image_bytes(self) -> QByteArray | None:
         """尝试从 controller.cached_image 获取一帧，并压缩为 JPG bytes。"""
-        controller = self._get_controller()
-        if controller is None:
-            logger.debug("[LogImage] No controller available")
-            return None
-        cached = snapshot_cached_image(controller)
+        cached = self.service_coordinator.runtime.get_cached_image_snapshot()
         if cached is None:
             logger.debug("[LogImage] cached_image unavailable or empty")
             return None
@@ -885,12 +865,11 @@ class LogoutputWidget(QWidget):
         if not self.service_coordinator:
             return self.tr("System")
         try:
-            runner = getattr(self.service_coordinator, "run_manager", None)
-            task_id = getattr(runner, "_current_running_task_id", None)
+            task_id = self.service_coordinator.runtime.current_running_task_id
             if not task_id:
                 return self.tr("System")
-            task_service = getattr(self.service_coordinator, "task", None)
-            tasks = task_service.get_tasks() if task_service else []
+            task_service = self.service_coordinator.tasks
+            tasks = task_service.get_tasks()
             for t in tasks or []:
                 if getattr(t, "item_id", None) == task_id:
                     return self._display_name_for_task(t, task_service) or self.tr("System")
@@ -902,12 +881,10 @@ class LogoutputWidget(QWidget):
         """返回日志中显示的任务名，内置任务显示翻译后的 label。"""
         try:
             if getattr(task, "is_builtin_task", lambda: False)():
-                definition = task_service.get_builtin_task_definition(task)
-                if definition:
-                    return task_service.builtin_task_loader.i18n_service.translate_text(
-                        definition.label
-                    )
-            interface = getattr(task_service, "interface", {}) or {}
+                label = task_service.get_builtin_task_label(task)
+                if label:
+                    return label
+            interface = task_service.interface
             for task_def in interface.get("task", []):
                 if task_def.get("name") == getattr(task, "name", ""):
                     label = task_def.get("label") or task_def.get("name")
@@ -925,15 +902,15 @@ class LogoutputWidget(QWidget):
         # 1) interface.log（相对于 bundle 路径）
         try:
             if self.service_coordinator:
-                iface = getattr(self.service_coordinator, "interface", None) or {}
+                iface = self.service_coordinator.interface_api.data
                 log_rel = iface.get("log") if isinstance(iface, dict) else None
                 
                 if isinstance(log_rel, str) and log_rel.strip():
                     # 获取当前配置的 bundle path
                     try:
-                        config = self.service_coordinator.config_service.get_current_config()
+                        config = self.service_coordinator.configs.get_current_config()
                         bundle_path_str = (
-                            self.service_coordinator.config_service.get_bundle_path_for_config(config)
+                            self.service_coordinator.configs.get_bundle_path_for_config(config)
                             or ""
                         )
                         if bundle_path_str:
@@ -966,7 +943,7 @@ class LogoutputWidget(QWidget):
         # 2) interface.icon（相对于 interface 文件目录，作为fallback）
         try:
             if self.service_coordinator:
-                iface = getattr(self.service_coordinator, "interface", None) or {}
+                iface = self.service_coordinator.interface_api.data
                 icon_rel = iface.get("icon") if isinstance(iface, dict) else None
                 if isinstance(icon_rel, str) and icon_rel.strip():
                     base_path = getattr(

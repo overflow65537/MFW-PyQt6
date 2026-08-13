@@ -752,7 +752,7 @@ class MainWindow(MSFluentWindow):
         self._adjust_title_bar_for_macos()
 
         # 设置图标
-        icon_path = self.service_coordinator.task.interface.get(
+        icon_path = self.service_coordinator.tasks.interface.get(
             "icon", "./app/assets/icons/logo.png"
         )
         icon_path = Path(icon_path)
@@ -849,7 +849,7 @@ class MainWindow(MSFluentWindow):
         self._switch_to_interface(getattr(self, "MonitorInterface", None))
 
     def _start_tasks_from_dashboard(self) -> None:
-        if self.service_coordinator.run_manager.is_running:
+        if self.service_coordinator.runtime.is_running:
             signalBus.info_bar_requested.emit(
                 "warning", self.tr("Task flow is already running")
             )
@@ -2086,7 +2086,7 @@ class MainWindow(MSFluentWindow):
 
     def _build_log_zip_filename(self) -> str:
         """生成日志压缩包文件名：资源名-资源版本-时间.zip"""
-        interface = self.service_coordinator.interface or {}
+        interface = self.service_coordinator.interface_api.data
         resource_name = _safe_path_segment(str(interface.get("name", "") or ""), "MFW_CFA")
         resource_version = _safe_version_file_stem(
             resolve_resource_version(interface=interface),
@@ -2304,7 +2304,7 @@ class MainWindow(MSFluentWindow):
 
     def _refresh_announcement_sections(self) -> None:
         """重新读取欢迎信息和 resource/announcement.md，更新公告内容。"""
-        welcome_content = self.service_coordinator.task.interface.get("welcome", "")
+        welcome_content = self.service_coordinator.tasks.interface.get("welcome", "")
         sections: list[tuple[str, str]] = []
         if welcome_content:
             sections.append((self.tr("Welcome"), welcome_content))
@@ -2363,7 +2363,7 @@ class MainWindow(MSFluentWindow):
     def _is_welcome_announcement_auto_show_permitted(self) -> bool:
         from app.utils.version_policy import is_welcome_announcement_auto_show_permitted
 
-        interface = getattr(self.service_coordinator.task, "interface", None)
+        interface = self.service_coordinator.tasks.interface
         return is_welcome_announcement_auto_show_permitted(interface=interface)
 
     def _maybe_show_pending_announcement(self):
@@ -2611,9 +2611,7 @@ class MainWindow(MSFluentWindow):
 
         auto_update_allowed = is_auto_update_permitted(
             config_enabled=bool(cfg.get(cfg.auto_update)),
-            interface=getattr(
-                getattr(self.service_coordinator, "task", None), "interface", None
-            ),
+            interface=self.service_coordinator.tasks.interface,
         )
         if auto_update_allowed:
             logger.info("自动更新已开启，准备启动自动更新线程")
@@ -2795,9 +2793,7 @@ class MainWindow(MSFluentWindow):
 
         bundle_auto_update_enabled = is_auto_update_permitted(
             config_enabled=bool(cfg.get(cfg.bundle_auto_update)),
-            interface=getattr(
-                getattr(self.service_coordinator, "task", None), "interface", None
-            ),
+            interface=self.service_coordinator.tasks.interface,
         )
         if cfg.get(cfg.bundle_auto_update) and not bundle_auto_update_enabled:
             logger.info(

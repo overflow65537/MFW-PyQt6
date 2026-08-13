@@ -939,9 +939,9 @@ class BaseUpdate(QThread):
             logger.error("service_coordinator 未初始化")
             return None
         try:
-            config = self.service_coordinator.config_service.get_current_config()
+            config = self.service_coordinator.configs.get_current_config()
             bundle_path = (
-                self.service_coordinator.config_service.get_bundle_path_for_config(
+                self.service_coordinator.configs.get_bundle_path_for_config(
                     config
                 )
                 or ""
@@ -1689,7 +1689,7 @@ class Update(BaseUpdate):
             self._emit_info_bar("success", self.tr("Update applied successfully"))
             self._cleanup_update_artifacts(download_dir, zip_file_path)
             # 触发服务协调器重新初始化
-            signalBus.fs_reinit_requested.emit()
+            signalBus.coordinator_reinit_requested.emit()
             self.stop_signal.emit(1)
 
         except Exception as e:
@@ -2564,7 +2564,7 @@ class MultiResourceUpdate(Update):
 
         try:
             # 根据 bundle 名称获取 bundle 信息
-            bundle_info = self.service_coordinator.config_service.get_bundle(
+            bundle_info = self.service_coordinator.configs.get_bundle(
                 bundle_name
             )
             bundle_path = bundle_info.get("path", "")
@@ -2768,7 +2768,7 @@ class MultiResourceUpdate(Update):
             self._emit_info_bar("success", self.tr("Update applied successfully"))
             self._cleanup_update_artifacts(download_dir, zip_file_path)
             # 触发服务协调器重新初始化
-            signalBus.fs_reinit_requested.emit()
+            signalBus.coordinator_reinit_requested.emit()
             self.stop_signal.emit(1)
 
         except Exception as e:

@@ -141,7 +141,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
                         # 获取当前保存的资源
                         from app.common.constants import _RESOURCE_
 
-                        resource_task = self.service_coordinator.task_service.get_task(
+                        resource_task = self.service_coordinator.tasks.get_task(
                             _RESOURCE_
                         )
                         current_resource_name = ""
@@ -432,36 +432,13 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
 
     def _apply_speedrun_config(self) -> None:
         """加载当前任务的条件执行配置到 UI"""
-        option_service = self.service_coordinator.option
-        task_service = self.service_coordinator.task
-        task_id = getattr(option_service, "current_task_id", None)
-        task = task_service.get_task(task_id) if task_id else None
-        if not task:
+        option_service = self.service_coordinator.options
+        merged_cfg = option_service.get_current_speedrun_config()
+        if not merged_cfg:
             self.speedrun_widget.set_config(None, emit=False)
             return
 
-        existing_cfg = (
-            task.task_option.get("_speedrun_config")
-            if isinstance(task.task_option, dict)
-            else None
-        )
-        merged_cfg = task_service.build_speedrun_config(task.name, existing_cfg)
-
-        # 如果缺失或需要修正，持久化到任务
-        if not isinstance(task.task_option, dict):
-            task.task_option = {}
-        if task.task_option.get("_speedrun_config") != merged_cfg:
-            task.task_option["_speedrun_config"] = merged_cfg
-            task_service.update_task(task)
-
-        try:
-            option_service.current_options["_speedrun_config"] = merged_cfg
-        except Exception:
-            pass
-
-        state = {}
-        if isinstance(task.task_option, dict):
-            state = task.task_option.get("_speedrun_state", {}) or {}
+        state = option_service.get_option("_speedrun_state") or {}
 
         self.speedrun_widget.set_config(merged_cfg, emit=False)
         try:
@@ -472,7 +449,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
     def _on_speedrun_changed(self, config: Dict[str, Any]) -> None:
         """条件执行配置修改后立即保存到当前任务"""
         try:
-            self.service_coordinator.option.update_option("_speedrun_config", config)
+            self.service_coordinator.options.update_speedrun_config(config)
         except Exception as exc:
             logger.error(f"保存条件执行配置失败: {exc}")
 
@@ -868,8 +845,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
         try:
             # 获取当前所有配置
             all_config = self.get_current_form_config()
-            # 调用OptionService的update_options方法保存选项
-            self.service_coordinator.option_service.update_options(all_config)
+            form_structure = self.service_coordinator.options.get_form_structure() or {}
+            if form_structure.get("type") == "setting":
+                self.service_coordinator.options.update_setting_options(all_config)
+            else:
+                self.service_coordinator.options.update_options(all_config)
         except Exception as e:
             # 如果保存失败，记录错误但不影响用户操作
             logger.error(f"自动保存选项失败: {e}")
@@ -879,12 +859,12 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
         当选项被加载时触发
         """
         # 先从OptionService获取form_structure
-        form_structure = self.service_coordinator.option.get_form_structure()
+        form_structure = self.service_coordinator.options.get_form_structure()
 
         # 只使用form_structure更新表单
         if form_structure:
             # 获取最新配置并更新到共享字典中（保持字典引用不变）
-            new_config = self.service_coordinator.option.get_options()
+            new_config = self.service_coordinator.options.get_options()
             self.current_config.clear()
             self.current_config.update(new_config)
             # 同步更新控制器组件的 current_config（Resource 和 PostAction 现在直接使用 self.current_config）
@@ -1002,7 +982,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
         # 从Controller任务的配置中获取当前控制器类型（资源任务应该使用Controller任务的配置）
         from app.common.constants import _CONTROLLER_
 
-        controller_task = self.service_coordinator.task_service.get_task(_CONTROLLER_)
+        controller_task = self.service_coordinator.tasks.get_task(_CONTROLLER_)
         controller_name = ""
         if controller_task and isinstance(controller_task.task_option, dict):
             controller_name = controller_task.task_option.get("controller_type", "")
@@ -1039,7 +1019,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
         # 注意：必须在 create_resource_settings 之前设置，因为 create_resource_settings 会调用 _fill_resource_option
         from app.common.constants import _RESOURCE_
 
-        resource_task = self.service_coordinator.task_service.get_task(_RESOURCE_)
+        resource_task = self.service_coordinator.tasks.get_task(_RESOURCE_)
         if resource_task and isinstance(resource_task.task_option, dict):
             resource_name = resource_task.task_option.get("resource", "")
             if resource_name:
@@ -1080,7 +1060,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
         # 从 POST_ACTION 任务的配置中获取完成后操作配置，并设置到 current_config 中
         from app.common.constants import POST_ACTION
 
-        post_action_task = self.service_coordinator.task_service.get_task(POST_ACTION)
+        post_action_task = self.service_coordinator.tasks.get_task(POST_ACTION)
         if post_action_task and isinstance(post_action_task.task_option, dict):
             post_action_config = post_action_task.task_option.get("post_action", {})
             if post_action_config:
@@ -1118,7 +1098,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
     def _update_options_enabled(self):
         """根据运行状态更新所有选项的启用/禁用状态"""
         # 检查是否有任务正在运行
-        is_running = self.service_coordinator.run_manager.is_running
+        is_running = self.service_coordinator.runtime.is_running
         self._set_options_enabled(not is_running)
         if not is_running:
             self._reapply_contextual_disable_rules()

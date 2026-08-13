@@ -424,7 +424,7 @@ def _run() -> int:
             return RESP_BUSY
         if window is None:
             return RESP_BUSY
-        if not window.service_coordinator.config.get_config(config_id):
+        if not window.service_coordinator.configs.get_config(config_id):
             return RESP_INVALID
         if _is_task_running(window) and not force_start:
             return RESP_BUSY

@@ -65,14 +65,14 @@ class TestInterface(QWidget):
         layout.addWidget(self._log_view)
 
     def _test_switch_config(self) -> None:
-        configs = self.service_coordinator.config.list_configs()
+        configs = self.service_coordinator.configs.list_configs()
         if not configs:
             signalBus.info_bar_requested.emit(
                 "warning", "未找到任何配置，无法切换"
             )
             return
 
-        current = self.service_coordinator.config.current_config_id
+        current = self.service_coordinator.configs.current_config_id
         target_info = None
         for config in configs:
             if config.get("item_id") != current:
@@ -97,7 +97,7 @@ class TestInterface(QWidget):
         logger.info("测试页面：切换配置 %s -> %s", current, target_id)
 
     def _test_run_tasks(self) -> None:
-        if self.service_coordinator.run_manager.is_running:
+        if self.service_coordinator.runtime.is_running:
             signalBus.info_bar_requested.emit(
                 "warning", "任务流正在运行，无法重复启动"
             )
@@ -109,7 +109,7 @@ class TestInterface(QWidget):
         signalBus.info_bar_requested.emit("info", "已发起强制运行")
 
         async def _run() -> None:
-            if self.service_coordinator.run_manager.is_running:
+            if self.service_coordinator.runtime.is_running:
                 await self.service_coordinator.stop_task()
             await self.service_coordinator.run_tasks_flow()
 

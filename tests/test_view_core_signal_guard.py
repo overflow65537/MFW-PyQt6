@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+APP_ROOT = PROJECT_ROOT / "app"
 VIEW_ROOT = PROJECT_ROOT / "app" / "view"
 COORDINATOR_PATH = PROJECT_ROOT / "app" / "core" / "core.py"
 
@@ -18,6 +19,24 @@ def _attribute_path(node: ast.AST) -> str:
 
 
 class ViewCoreSignalBoundaryTests(unittest.TestCase):
+    def test_legacy_view_signal_names_are_removed(self):
+        forbidden_names = (
+            "FromeServiceCoordinator",
+            "fs_task_",
+            "fs_config_",
+            "fs_reinit_requested",
+        )
+        violations: list[str] = []
+
+        for file_path in APP_ROOT.rglob("*.py"):
+            source = file_path.read_text(encoding="utf-8-sig")
+            for name in forbidden_names:
+                if name in source:
+                    relative_path = file_path.relative_to(PROJECT_ROOT).as_posix()
+                    violations.append(f"{relative_path}: {name}")
+
+        self.assertEqual([], violations)
+
     def test_view_does_not_access_core_signal_bus(self):
         violations: list[str] = []
 
@@ -78,6 +97,55 @@ class ViewCoreSignalBoundaryTests(unittest.TestCase):
                 violations.append(f"{node.lineno}: property {node.name}")
 
         self.assertEqual([], violations)
+
+    def test_view_does_not_mutate_task_or_config_business_fields(self):
+        forbidden_attributes = {
+            "task_option",
+            "current_options",
+            "is_checked",
+            "is_hidden",
+        }
+        violations: list[str] = []
+
+        def check_target(target: ast.AST, relative_path: str) -> None:
+            if isinstance(target, (ast.Tuple, ast.List)):
+                for item in target.elts:
+                    check_target(item, relative_path)
+                return
+            if isinstance(target, ast.Attribute):
+                path = _attribute_path(target)
+                if target.attr in forbidden_attributes or path.endswith(
+                    (".item.name", ".task.name")
+                ):
+                    violations.append(f"{relative_path}:{target.lineno}: {path}")
+                    return
+            if isinstance(target, ast.Subscript):
+                owner = _attribute_path(target.value)
+                if owner.endswith((".task_option", ".current_options")):
+                    violations.append(f"{relative_path}:{target.lineno}: {owner}[...]")
+
+        for file_path in VIEW_ROOT.rglob("*.py"):
+            source = file_path.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=str(file_path))
+            relative_path = file_path.relative_to(PROJECT_ROOT).as_posix()
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                    targets = (
+                        node.targets
+                        if isinstance(node, ast.Assign)
+                        else [node.target]
+                    )
+                    for target in targets:
+                        check_target(target, relative_path)
+                elif isinstance(node, ast.Delete):
+                    for target in node.targets:
+                        check_target(target, relative_path)
+
+        self.assertEqual(
+            [],
+            violations,
+            msg="View 不得直接修改 TaskItem/ConfigItem 业务字段",
+        )
 
 
 if __name__ == "__main__":

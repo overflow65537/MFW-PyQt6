@@ -187,7 +187,7 @@ class BaseListItem(QWidget):
 
 # 任务列表项组件
 class TaskListItem(BaseListItem):
-    checkbox_changed = Signal(object)  # 发射 TaskItem 对象
+    checkbox_changed = Signal(str, bool)
 
     def __init__(
         self,
@@ -629,7 +629,7 @@ class TaskListItem(BaseListItem):
         # 尝试从 service_coordinator 获取最新的 task 对象，确保使用最新的 task_option
         if self.service_coordinator:
             try:
-                latest_task = self.service_coordinator.task.get_task(self.task.item_id)
+                latest_task = self.service_coordinator.tasks.get_task(self.task.item_id)
                 if latest_task:
                     self.task = latest_task
             except Exception:
@@ -665,10 +665,8 @@ class TaskListItem(BaseListItem):
 
     def on_checkbox_changed(self, state):
         # 复选框状态变更处理
-        is_checked = state == 2
-        self.task.is_checked = is_checked
-        # 发射信号通知父组件更新
-        self.checkbox_changed.emit(self.task)
+        is_checked = state == Qt.CheckState.Checked.value
+        self.checkbox_changed.emit(self.task.item_id, is_checked)
 
     def contextMenuEvent(self, event):
         """右键菜单：单独运行任务、插入任务"""
@@ -708,7 +706,7 @@ class TaskListItem(BaseListItem):
         if not self.service_coordinator or self.task.is_base_task():
             return
         asyncio.create_task(
-            self.service_coordinator.run_manager.run_tasks_flow(
+            self.service_coordinator.runtime.run_tasks_flow(
                 start_task_id=self.task.item_id
             )
         )
@@ -725,8 +723,8 @@ class TaskListItem(BaseListItem):
         from app.view.task_interface.components.add_task_message_box import AddTaskDialog
         from app.common.signal_bus import signalBus
 
-        task_map = getattr(self.service_coordinator.task, "default_option", {})
-        interface = getattr(self.service_coordinator.task, "interface", {})
+        task_map = self.service_coordinator.tasks.default_option
+        interface = self.service_coordinator.tasks.interface
 
         # 过滤任务映射（根据当前工具栏的过滤模式，这里使用全部任务）
         filtered_task_map = task_map  # 可以根据需要添加过滤逻辑
@@ -740,7 +738,7 @@ class TaskListItem(BaseListItem):
         dlg = AddTaskDialog(
             task_map=filtered_task_map,
             interface=interface,
-            interface_path=self.service_coordinator.interface_path,
+            interface_path=self.service_coordinator.interface_api.path,
             parent=self.window(),
         )
         if dlg.exec():
@@ -748,7 +746,7 @@ class TaskListItem(BaseListItem):
             if not new_tasks:
                 return
 
-            all_tasks = self.service_coordinator.task.get_tasks()
+            all_tasks = self.service_coordinator.tasks.get_tasks()
             current_idx = -1
             for j, task in enumerate(all_tasks):
                 if task.item_id == current_task_id:
@@ -1021,7 +1019,7 @@ class ConfigListItem(BaseListItem):
 
         try:
             # 获取 bundle 信息
-            bundle_info = self.service_coordinator.config.get_bundle(bundle_name)
+            bundle_info = self.service_coordinator.configs.get_bundle(bundle_name)
             if not bundle_info:
                 return None
 
@@ -1142,26 +1140,26 @@ class ConfigListItem(BaseListItem):
             new_name = dialog.get_new_name()
             if new_name and new_name.strip() and new_name != current_name:
                 new_name = new_name.strip()
-
-                # 更新配置项的 name
-                self.item.name = new_name
-
-                # 保存配置
                 try:
-                    success = self.service_coordinator.config.save_config(
-                        self.item.item_id, self.item
+                    success = self.service_coordinator.configs.rename_config(
+                        self.item.item_id,
+                        new_name,
                     )
                     if success:
-                        # 更新显示的标签文本
+                        updated_item = self.service_coordinator.configs.get_config(
+                            self.item.item_id
+                        )
+                        if updated_item is not None:
+                            self.item = updated_item
                         self.name_label.setText(new_name)
                     else:
                         from app.utils.logger import logger
 
-                        logger.error(f"保存配置失败: {self.item.item_id}")
+                        logger.error(f"重命名配置失败: {self.item.item_id}")
                 except Exception as e:
                     from app.utils.logger import logger
 
-                    logger.error(f"保存配置时发生错误: {e}")
+                    logger.error(f"重命名配置时发生错误: {e}")
 
     def _copy_config_id(self):
         config_id = getattr(self.item, "item_id", "") or ""
@@ -1184,7 +1182,7 @@ class ConfigListItem(BaseListItem):
         )
 
         config_id = self.item.item_id
-        config = self.service_coordinator.config.get_config(config_id)
+        config = self.service_coordinator.configs.get_config(config_id)
         if not config:
             signalBus.info_bar_requested.emit(
                 "error", self.tr("Failed to load config for sharing.")
@@ -1199,7 +1197,7 @@ class ConfigListItem(BaseListItem):
             return
 
         resource_version = resolve_bundle_resource_version(
-            self.service_coordinator.config, bundle_name
+            self.service_coordinator.configs, bundle_name
         )
 
         try:

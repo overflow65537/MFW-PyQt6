@@ -652,7 +652,7 @@ class ControllerSettingWidget(QWidget):
     def _rebuild_interface_data(self):
         """重新构建基于interface的数据结构（用于多配置模式下interface更新时）"""
         # 获取最新的interface
-        interface = self.service_coordinator.interface
+        interface = self.service_coordinator.interface_api.data
 
         # 构建控制器类型映射，根据平台过滤控制器
         controllers = interface.get("controller", [])
@@ -718,7 +718,7 @@ class ControllerSettingWidget(QWidget):
         self.interface_custom_default = (
             interface_custom if isinstance(interface_custom, str) else ""
         )
-        self.current_config = self.service_coordinator.option_service.current_options
+        self.current_config = self.service_coordinator.options.current_options
         self.current_config.setdefault("gpu", -1)
         agent_timeout_default = self._coerce_int(agent_interface_config.get("timeout"))
         if agent_timeout_default is None:
@@ -1825,96 +1825,17 @@ class ControllerSettingWidget(QWidget):
             {current_controller_name: self.current_config[current_controller_name]}
         )
 
-    def _normalize_config_for_json(self, config: Any) -> Any:
-        """递归规范化配置数据，确保所有路径类型都被转换为字符串
-
-        Args:
-            config: 需要规范化的配置数据
-
-        Returns:
-            规范化后的配置数据
-        """
-        if isinstance(config, Path):
-            return str(config)
-        elif isinstance(config, dict):
-            return {
-                key: self._normalize_config_for_json(value)
-                for key, value in config.items()
-            }
-        elif isinstance(config, list):
-            return [self._normalize_config_for_json(item) for item in config]
-        else:
-            return config
-
     def _auto_save_options(self, changed_options: dict[str, Any] | None = None):
-        """自动保存当前选项
-
-        changed_options:
-            - 为 None 时：保存完整配置（兼容旧逻辑）
-            - 为 dict 时：仅保存和广播其中包含的字段，避免无关字段导致任务列表重载
-        """
+        """向 OptionFacade 提交控制器表单值。"""
         if self._syncing:
             return
         try:
-            option_service = self.service_coordinator.option_service
             options_to_save = changed_options or self.current_config
-            # 规范化配置数据，确保所有路径类型都被转换为字符串
-            options_to_save = self._normalize_config_for_json(options_to_save)
-            ok = option_service.update_options(options_to_save)
-            # 强制同步到预配置任务，确保落盘
-            from app.common.constants import _CONTROLLER_
-
-            task = option_service.task_service.get_task(_CONTROLLER_)
-            if task:
-                # 只保存应该保存到 Controller 任务的字段
-                # Controller 任务应该包含：controller_type, gpu, agent_timeout, custom, 以及控制器特定的配置（如 adb, win32）
-                controller_task_option = {}
-                # 保存基础字段
-                if "controller_type" in self.current_config:
-                    controller_task_option["controller_type"] = self.current_config[
-                        "controller_type"
-                    ]
-                if "gpu" in self.current_config:
-                    controller_task_option["gpu"] = self.current_config["gpu"]
-                if "agent_timeout" in self.current_config:
-                    controller_task_option["agent_timeout"] = self.current_config[
-                        "agent_timeout"
-                    ]
-                if "agent_embedded" in self.current_config:
-                    controller_task_option["agent_embedded"] = self.current_config[
-                        "agent_embedded"
-                    ]
-                if "custom" in self.current_config:
-                    controller_task_option["custom"] = self.current_config["custom"]
-                # 保存控制器特定的配置（使用控制器名称作为键）
-                # 遍历所有控制器名称，保存其配置
-                for controller_info in self.controller_type_mapping.values():
-                    controller_name = controller_info["name"]
-                    if controller_name in self.current_config:
-                        # 规范化配置数据，确保所有路径类型都被转换为字符串
-                        controller_task_option[controller_name] = (
-                            self._normalize_config_for_json(
-                                self.current_config[controller_name]
-                            )
-                        )
-
-                # 更新任务选项（只更新相关字段，保留其他字段）
-                # 规范化整个 controller_task_option，确保所有路径类型都被转换为字符串
-                controller_task_option = self._normalize_config_for_json(
-                    controller_task_option
-                )
-                task.task_option.update(controller_task_option)
-                # 确保不包含 speedrun_config
-                if "_speedrun_config" in task.task_option:
-                    del task.task_option["_speedrun_config"]
-                if not option_service.task_service.update_task(task):
-                    logger.warning("控制器设置强制保存失败")
-            else:
-                logger.warning("未找到 Controller 任务，无法保存控制器设置")
-
+            ok = self.service_coordinator.options.update_controller_options(
+                options_to_save
+            )
             if not ok:
-                logger.warning("资源设置保存返回 False（已尝试强制保存）")
-            logger.info(f"选项自动保存成功: {self.current_config}")
+                logger.warning("控制器设置保存返回 False")
         except Exception as e:
             logger.error(f"自动保存选项失败: {e}")
 

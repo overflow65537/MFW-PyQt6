@@ -147,39 +147,7 @@ class PostActionSettingMixin:
         if not isinstance(raw_state, dict):
             raw_state = {}
 
-        merged = dict(self._DEFAULT_STATE)
-        merged.update(raw_state)
-
-        # 一组互斥：run_other / close_software / shutdown
-        # 兼容旧配置：若多选，按优先级保留一个（shutdown > close_software > run_other）
-        if merged.get("shutdown"):
-            merged["close_software"] = False
-            merged["run_other"] = False
-        elif merged.get("close_software"):
-            merged["run_other"] = False
-        elif merged.get("run_other"):
-            merged["close_software"] = False
-            merged["shutdown"] = False
-
-        # 新的互斥逻辑：只有"无动作"与其他选项互斥
-        if merged.get("none"):
-            # 如果"无动作"被选中，其他选项都设为False
-            for action_key in self._PRIMARY_ACTIONS.union(
-                self._SECONDARY_ACTIONS
-            ).union(self._OPTIONAL_ACTIONS):
-                if action_key != "none":
-                    merged[action_key] = False
-        else:
-            # 如果有其他选项被选中，确保"无动作"为False
-            has_other_selected = any(
-                merged.get(action_key, False)
-                for action_key in self._PRIMARY_ACTIONS.union(
-                    self._SECONDARY_ACTIONS
-                ).union(self._OPTIONAL_ACTIONS)
-                if action_key != "none"
-            )
-            if has_other_selected:
-                merged["none"] = False
+        merged = self.service_coordinator.options.normalize_post_action(raw_state)
 
         self.current_config[self._CONFIG_KEY] = merged
         self._post_action_state = merged
@@ -405,7 +373,7 @@ class PostActionSettingMixin:
     # region 数据 & 持久化
     def _load_available_configs(self) -> List[Tuple[str, str]]:
         configs: List[Tuple[str, str]] = []
-        config_service = getattr(self.service_coordinator, "config_service", None)
+        config_service = getattr(self.service_coordinator, "configs", None)
         if not config_service:
             return configs
 
@@ -423,26 +391,14 @@ class PostActionSettingMixin:
 
     def _save_post_action_state(self) -> None:
         try:
-            # 仅写入 post_action 片段，避免携带无关字段导致覆盖
-            payload = dict(self._post_action_state)
+            payload = self.service_coordinator.options.normalize_post_action(
+                self._post_action_state
+            )
+            self._post_action_state = payload
             self.current_config[self._CONFIG_KEY] = payload
-            option_service = self.service_coordinator.option_service
-            ok = option_service.update_option(self._CONFIG_KEY, payload)
+            ok = self.service_coordinator.options.update_post_action(payload)
             if not ok:
-                # 兜底：直接更新 POST_ACTION 任务后再持久化
-                from app.common.constants import POST_ACTION
-
-                task = option_service.task_service.get_task(POST_ACTION)
-                if task:
-                    # 只保存 post_action 字段，不保存其他字段（如 speedrun_config 等）
-                    task.task_option[self._CONFIG_KEY] = payload
-                    # 确保不包含 speedrun_config
-                    if "_speedrun_config" in task.task_option:
-                        del task.task_option["_speedrun_config"]
-                    if not option_service.task_service.update_task(task):
-                        logger.warning("完成后操作配置兜底保存失败")
-                else:
-                    logger.warning("未找到 Post-Action 任务，无法保存完成后操作配置")
+                logger.warning("完成后操作配置保存失败")
         except Exception as exc:
             logger.error(f"保存完成后操作配置失败: {exc}")
 

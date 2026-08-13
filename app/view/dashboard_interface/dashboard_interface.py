@@ -651,7 +651,7 @@ class DashboardInterface(QWidget):
         return grid
 
     def _get_interface_metadata(self) -> dict:
-        interface_data = getattr(self.service_coordinator.task, "interface", None)
+        interface_data = self.service_coordinator.tasks.interface
         return interface_data or {}
 
     def _get_hero_title(self) -> str:
@@ -757,7 +757,7 @@ class DashboardInterface(QWidget):
             return path
 
         candidates: list[Path] = []
-        interface_path = getattr(self.service_coordinator, "interface_path", None)
+        interface_path = self.service_coordinator.interface_api.path
         if interface_path:
             interface_dir = Path(interface_path).expanduser().resolve().parent
             for candidate_name in (

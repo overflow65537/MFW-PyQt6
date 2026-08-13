@@ -94,13 +94,15 @@ class ScheduleInterface(QWidget):
         super().__init__(parent=parent)
         self.setObjectName("ScheduleInterface")
         self.service_coordinator = service_coordinator
+        self.schedules = service_coordinator.schedules
+        # 下一阶段迁移 Schedule CRUD；本阶段仅保留写边界。
         self.schedule_service = service_coordinator.schedule_service
         self._config_map: dict[str, str] = {}
         self._schedule_entries: list[ScheduleEntry] = []
         self._setup_ui()
         self._connect_signals()
         self._refresh_config_selector()
-        self._refresh_schedule_table(self.schedule_service.get_schedules())
+        self._refresh_schedule_table(self.schedules.get_schedules())
 
     def _setup_ui(self) -> None:
         main_layout = QVBoxLayout(self)
@@ -127,7 +129,7 @@ class ScheduleInterface(QWidget):
         main_layout.addWidget(self.scroll_area)
 
     def _connect_signals(self) -> None:
-        self.schedule_service.schedules_changed.connect(self._refresh_schedule_table)
+        self.schedules.schedules_changed.connect(self._refresh_schedule_table)
         self.service_coordinator.view_signals.config_changed.connect(
             lambda _: self._refresh_config_selector()
         )
@@ -538,7 +540,7 @@ class ScheduleInterface(QWidget):
         return card
 
     def _refresh_config_selector(self) -> None:
-        configs = self.service_coordinator.config.list_configs()
+        configs = self.service_coordinator.configs.list_configs()
 
         self.config_selector.blockSignals(True)
         self.config_selector.clear()
@@ -586,12 +588,12 @@ class ScheduleInterface(QWidget):
         self.schedule_table.setItem(
             row,
             1,
-            _item(self.schedule_service.format_entry_type(entry)),
+            _item(self.schedules.format_entry_type(entry)),
         )
         self.schedule_table.setItem(
             row,
             2,
-            _item(self.schedule_service.format_entry_pattern(entry)),
+            _item(self.schedules.format_entry_pattern(entry)),
         )
 
         next_run = (

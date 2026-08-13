@@ -276,7 +276,9 @@ class AddConfigDialog(BaseAddDialog):
         language = "zh_cn"
         if self._service_coordinator:
             try:
-                language = self._service_coordinator.interface_obj.get_current_language()
+                language = (
+                    self._service_coordinator.interface_api.get_current_language()
+                )
             except Exception:
                 pass
 
@@ -291,7 +293,7 @@ class AddConfigDialog(BaseAddDialog):
         if not self._service_coordinator:
             return names
         try:
-            for entry in self._service_coordinator.config.list_configs():
+            for entry in self._service_coordinator.configs.list_configs():
                 n = entry.get("name")
                 if isinstance(n, str) and n.strip():
                     names.add(n.strip())

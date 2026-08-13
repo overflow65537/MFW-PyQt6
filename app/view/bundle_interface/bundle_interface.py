@@ -475,14 +475,14 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self._bundle_data.clear()
 
         try:
-            bundle_names = self.service_coordinator.config.list_bundles()
+            bundle_names = self.service_coordinator.configs.list_bundles()
             if not bundle_names:
                 logger.warning("未找到任何 bundle")
                 return
 
             for bundle_name in bundle_names:
                 try:
-                    bundle_info = self.service_coordinator.config.get_bundle(
+                    bundle_info = self.service_coordinator.configs.get_bundle(
                         bundle_name
                     )
                     bundle_path_str = bundle_info.get("path", "")
@@ -827,7 +827,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
             return
 
         try:
-            bundle_names = self.service_coordinator.config.list_bundles()
+            bundle_names = self.service_coordinator.configs.list_bundles()
             if not bundle_names:
                 return
 
@@ -956,7 +956,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         logger.info("开始自动更新所有bundle...")
         try:
-            bundle_names = self.service_coordinator.config.list_bundles()
+            bundle_names = self.service_coordinator.configs.list_bundles()
             if not bundle_names:
                 logger.warning("没有找到任何bundle")
                 # 没有bundle，直接发送完成信号
@@ -1027,7 +1027,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         logger.info("开始更新所有bundle...")
         try:
-            bundle_names = self.service_coordinator.config.list_bundles()
+            bundle_names = self.service_coordinator.configs.list_bundles()
             if not bundle_names:
                 logger.warning("没有找到任何bundle")
                 return
@@ -1238,7 +1238,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         """ci/alpha 资源版本禁用 Bundle 自动更新开关。"""
         from app.utils.version_policy import version_disallows_auto_update
 
-        interface = getattr(self.service_coordinator.task, "interface", None) or {}
+        interface = self.service_coordinator.tasks.interface
         version = str(interface.get("version", "") or "")
         if not version_disallows_auto_update(version):
             return
@@ -1257,7 +1257,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         if checked and not is_auto_update_permitted(
             config_enabled=True,
-            interface=getattr(self.service_coordinator.task, "interface", None),
+            interface=self.service_coordinator.tasks.interface,
         ):
             self.auto_update_switch.blockSignals(True)
             self.auto_update_switch.setChecked(False)
@@ -1409,14 +1409,14 @@ class BundleInterface(UI_BundleInterface, QWidget):
         # 查找所有使用该 bundle 的配置
         configs_to_delete = []
         try:
-            all_configs = self.service_coordinator.config.list_configs()
+            all_configs = self.service_coordinator.configs.list_configs()
             for config_info in all_configs:
                 config_id = config_info.get("item_id")
                 if not config_id:
                     continue
                 
                 # 获取配置的完整数据
-                config_item = self.service_coordinator.config.get_config(config_id)
+                config_item = self.service_coordinator.configs.get_config(config_id)
                 if config_item and config_item.bundle == bundle_name:
                     configs_to_delete.append({
                         "id": config_id,
@@ -1709,7 +1709,7 @@ class AddBundleDialog(MessageBoxBase):
             logger.info("[步骤4] 服务协调器可用")
 
             coordinator = self._service_coordinator
-            config_service = coordinator.config_service
+            config_service = coordinator.configs
             logger.info(f"[步骤4] 获取配置服务: {type(config_service).__name__}")
 
             # 检查是否已存在同名的 bundle
