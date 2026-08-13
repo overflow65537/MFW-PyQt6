@@ -63,6 +63,42 @@ class OptionFacade:
     def update_controller_options(self, options: dict[str, Any]) -> bool:
         return self._service.update_controller_options(snapshot(options))
 
+    def update_controller_field(
+        self,
+        controller_name: str,
+        controller_type: str,
+        field_name: str,
+        value: Any,
+    ) -> bool:
+        return self._service.update_controller_field(
+            controller_name,
+            controller_type,
+            field_name,
+            snapshot(value),
+        )
+
+    def update_controller_device(
+        self,
+        controller_name: str,
+        device_name: str,
+        device_info: dict[str, Any],
+    ) -> bool:
+        return self._service.update_controller_device(
+            controller_name,
+            device_name,
+            snapshot(device_info),
+        )
+
+    def update_controller_selection(
+        self,
+        controller_name: str,
+        controller_info: dict[str, Any],
+    ) -> bool:
+        return self._service.update_controller_selection(
+            controller_name,
+            snapshot(controller_info),
+        )
+
     def normalize_post_action(
         self,
         action: dict[str, Any] | None,

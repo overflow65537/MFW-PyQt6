@@ -2,6 +2,8 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import jsonc
+
 from app.core.service.task_service import TaskService
 from app.core.item import CoreSignalBus, TaskItem
 from app.common.constants import _CONTROLLER_, _PRETASK_, _RESOURCE_, POST_ACTION
@@ -250,6 +252,126 @@ class OptionService:
         self.signal_bus.option_updated.emit(accepted_changes)
         return True
 
+    def update_controller_field(
+        self,
+        controller_name: str,
+        controller_type: str,
+        field_name: str,
+        value: Any,
+    ) -> bool:
+        """将控制器表单字段转换为存储字段并保存。"""
+        if not controller_name or not field_name:
+            return False
+        task = self.task_service.get_task(_CONTROLLER_)
+        if not task:
+            return False
+
+        options = task.task_option if isinstance(task.task_option, dict) else {}
+        stored = options.get(controller_name, {})
+        controller_options = dict(stored) if isinstance(stored, dict) else {}
+
+        normalized_value = self._normalize_json_value(value)
+        if field_name == "config" and isinstance(normalized_value, str):
+            try:
+                normalized_value = jsonc.loads(normalized_value)
+            except (jsonc.JSONDecodeError, ValueError):
+                pass
+
+        aliases = {
+            "gamepad_hwnd": "hwnd",
+            "gamepad_program_path": "program_path",
+            "gamepad_program_params": "program_params",
+            "playcover_address": "address",
+            "wlroots_socket_path": "wlr_socket_path",
+            "macos_window_id": "window_id",
+            "macos_program_path": "program_path",
+            "macos_program_params": "program_params",
+        }
+        wait_fields = {
+            "adb_wait_time",
+            "win32_wait_time",
+            "gamepad_wait_time",
+            "macos_wait_time",
+        }
+        target_field = aliases.get(field_name, field_name)
+        if field_name in wait_fields:
+            target_field = "wait_time"
+            try:
+                normalized_value = max(0, int(str(normalized_value).strip() or "0"))
+            except (TypeError, ValueError):
+                normalized_value = 0
+
+        controller_options[target_field] = normalized_value
+        if controller_type.lower() == "playcover":
+            controller_options.pop("playcover_uuid", None)
+        return self.update_controller_options(
+            {controller_name: controller_options}
+        )
+
+    def update_controller_device(
+        self,
+        controller_name: str,
+        device_name: str,
+        device_info: Dict[str, Any],
+    ) -> bool:
+        """合并设备搜索结果并保存当前控制器配置。"""
+        if not controller_name or not isinstance(device_info, dict):
+            return False
+        task = self.task_service.get_task(_CONTROLLER_)
+        if not task:
+            return False
+        options = task.task_option if isinstance(task.task_option, dict) else {}
+        stored = options.get(controller_name, {})
+        controller_options = dict(stored) if isinstance(stored, dict) else {}
+        controller_options.update(self._normalize_json_value(device_info))
+        controller_options["device_name"] = str(device_name or "")
+        return self.update_controller_options(
+            {controller_name: controller_options}
+        )
+
+    def update_controller_selection(
+        self,
+        controller_name: str,
+        controller_info: Dict[str, Any],
+    ) -> bool:
+        """保存控制器类型及其接口元信息与类型默认字段。"""
+        if not controller_name or not isinstance(controller_info, dict):
+            return False
+        task = self.task_service.get_task(_CONTROLLER_)
+        if not task:
+            return False
+        options = task.task_option if isinstance(task.task_option, dict) else {}
+        stored = options.get(controller_name, {})
+        controller_options = dict(stored) if isinstance(stored, dict) else {}
+
+        for key in (
+            "permission_required",
+            "display_short_side",
+            "display_long_side",
+            "display_raw",
+        ):
+            if controller_info.get(key) is not None:
+                controller_options[key] = deepcopy(controller_info[key])
+
+        controller_type = str(controller_info.get("type", "") or "").lower()
+        if controller_type == "playcover":
+            playcover = controller_info.get("playcover", {})
+            default_uuid = (
+                playcover.get("uuid", "maa.playcover")
+                if isinstance(playcover, dict)
+                else "maa.playcover"
+            )
+            controller_options.setdefault("uuid", default_uuid)
+            controller_options.setdefault("address", "")
+            controller_options.pop("playcover_uuid", None)
+
+        return self.update_controller_options(
+            {
+                "controller_type": controller_name,
+                controller_name: controller_options,
+            }
+        )
+
     @staticmethod
     def normalize_post_action(action: Dict[str, Any] | None) -> Dict[str, Any]:
         """规范化完成后动作字段及互斥关系。"""
@@ -424,6 +546,8 @@ class OptionService:
             existing,
             resource_name,
         )
+        if resource_task.task_option == existing:
+            return True
 
         if not self.task_service.update_task(resource_task):
             return False
