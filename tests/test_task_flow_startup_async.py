@@ -11,26 +11,18 @@ from app.core.utils.resource_pipeline_check import check_resource_pipeline
 
 class TaskFlowStartupAsyncTest(unittest.IsolatedAsyncioTestCase):
     async def test_embedded_agent_cleanup_runs_in_worker_thread(self) -> None:
-        clear_recognition = Mock()
-        clear_action = Mock()
+        clear_resource_custom = Mock()
         runner = SimpleNamespace(
-            maafw=SimpleNamespace(
-                resource=SimpleNamespace(
-                    clear_custom_recognition=clear_recognition,
-                    clear_custom_action=clear_action,
-                )
-            )
+            maafw=SimpleNamespace(clear_resource_custom=clear_resource_custom)
         )
 
         with patch(
             "app.core.runner.task_flow.asyncio.to_thread",
-            new=AsyncMock(side_effect=[True, True]),
+            new=AsyncMock(return_value=True),
         ) as to_thread:
             await TaskFlowRunner._clear_embedded_agent_custom(runner)
 
-        self.assertEqual(to_thread.await_count, 2)
-        self.assertEqual(to_thread.await_args_list[0].args, (clear_recognition,))
-        self.assertEqual(to_thread.await_args_list[1].args, (clear_action,))
+        to_thread.assert_awaited_once_with(clear_resource_custom)
 
     async def test_embedded_agent_loading_runs_in_worker_thread(self) -> None:
         loader = Mock()

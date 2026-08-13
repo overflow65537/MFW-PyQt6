@@ -45,7 +45,7 @@ class _Controller:
 class MaaFWLifecycleTests(unittest.TestCase):
     @staticmethod
     def _make_runtime() -> MaaFW:
-        runtime = object.__new__(MaaFW)
+        runtime = MaaFW.__new__(MaaFW)
         runtime._lifecycle_lock = threading.RLock()
         runtime._cleanup_condition = threading.Condition()
         runtime._cleanup_in_progress = False
