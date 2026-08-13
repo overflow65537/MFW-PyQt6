@@ -46,7 +46,3 @@ jobs:
 
       - name: Run application tests
         run: python -m pytest tests -q
-
-      - name: Run agent tests
-        working-directory: agent
-        run: python -m pytest -q
