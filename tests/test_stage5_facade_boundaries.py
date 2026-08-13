@@ -262,6 +262,19 @@ class RuntimeFacadeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, runner.shutdown_calls)
         self.assertEqual(1, runner.send_thread.stop_calls)
 
+    def test_context_backed_shutdown_uses_unified_context_lifecycle(self):
+        runner = _FakeRuntimeRunner()
+        context = SimpleNamespace(
+            task_runner=runner,
+            shutdown_runtime_sync=Mock(),
+        )
+        runtime = RuntimeFacade(lambda: context)
+
+        runtime.shutdown_runtime_sync()
+
+        context.shutdown_runtime_sync.assert_called_once_with()
+        self.assertEqual(0, runner.shutdown_calls)
+
     def test_monitor_factory_uses_independent_runner_events(self):
         runner = _FakeRuntimeRunner()
         runtime = RuntimeFacade(runner)  # type: ignore[arg-type]

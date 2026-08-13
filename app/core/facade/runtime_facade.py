@@ -121,6 +121,9 @@ class RuntimeFacade:
         return await self._runner.stop_task(manual=manual)
 
     def shutdown_runtime_sync(self) -> None:
+        if self._context_provider is not None:
+            self.context.shutdown_runtime_sync()
+            return
         self._runner.shutdown_runtime_sync()
 
     def stop_notification_thread(self, timeout_ms: int = 5000) -> None:

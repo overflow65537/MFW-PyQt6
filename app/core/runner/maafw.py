@@ -8,6 +8,7 @@ MFW-ChainFlow Assistant MaaFW核心
 
 import ast
 import importlib
+from contextlib import contextmanager
 import os
 import re
 import sys
@@ -466,10 +467,38 @@ class MaaFW(QObject):
         self._embedded_controller_sinks: List[ControllerEventSink] = []
         self._embedded_tasker_sinks: List[TaskerEventSink] = []
         self._embedded_context_sinks: List[ContextEventSink] = []
-        # 底层 maa 对象清理不是线程安全的，必须串行执行。
-        self._cleanup_lock = threading.Lock()
+        # Maa 原生对象的初始化、连接与清理必须串行，避免旧清理误伤新运行时。
+        self._lifecycle_lock = threading.RLock()
+        # 重复清理只等待当前清理完成，不能再次清理期间创建的新运行时。
+        self._cleanup_condition = threading.Condition()
+        self._cleanup_in_progress = False
+
+    @contextmanager
+    def _lifecycle_operation(self):
+        """进入不会与清理并发的 Maa 原生对象操作区。"""
+        while True:
+            with self._cleanup_condition:
+                while self._cleanup_in_progress:
+                    self._cleanup_condition.wait()
+
+            self._lifecycle_lock.acquire()
+            with self._cleanup_condition:
+                if not self._cleanup_in_progress:
+                    break
+            self._lifecycle_lock.release()
+
+        try:
+            yield
+        finally:
+            self._lifecycle_lock.release()
 
     def load_embedded_agent_custom(
+        self, agent_root: str | Path, agent_entry: str | Path | None = None
+    ) -> bool:
+        with self._lifecycle_operation():
+            return self._load_embedded_agent_custom(agent_root, agent_entry)
+
+    def _load_embedded_agent_custom(
         self, agent_root: str | Path, agent_entry: str | Path | None = None
     ) -> bool:
         """
@@ -1036,22 +1065,17 @@ class MaaFW(QObject):
         address: str,
         screencap_method: int = 0,
         input_method: int = 0,
-        config: Dict = {},
+        config: Dict | None = None,
     ) -> bool:
         screencap_method = MaaAdbScreencapMethodEnum(screencap_method)
-
         input_method = MaaAdbInputMethodEnum(input_method)
-
         controller = AdbController(
-            adb_path, address, screencap_method, input_method, config
+            adb_path, address, screencap_method, input_method, config or {}
         )
-        controller = self._init_controller(controller)
-        connected = controller.post_connection().wait().succeeded
-        if not connected:
-            print(f"Failed to connect {adb_path} {address}")
-            return False
-
-        return True
+        return self._connect_controller(
+            controller,
+            f"连接 ADB 设备失败: {adb_path} {address}",
+        )
 
     @asyncify
     def connect_win32hwnd(
@@ -1072,26 +1096,20 @@ class MaaFW(QObject):
             mouse_method=mouse_method,
             keyboard_method=keyboard_method,
         )
-        controller = self._init_controller(controller)
-
-        connected = controller.post_connection().wait().succeeded
-        if not connected:
-            print(f"Failed to connect {hwnd}")
-            return False
-
-        return True
+        return self._connect_controller(
+            controller,
+            f"连接 Win32 窗口失败: {hwnd}",
+        )
 
     @asyncify
     def connect_playcover(self, address: str, uuid: str) -> bool:
         if PlayCoverController is None:
             raise RuntimeError("当前安装的 maa 版本不支持 PlayCoverController")
         controller = PlayCoverController(address, uuid)
-        controller = self._init_controller(controller)
-        connected = controller.post_connection().wait().succeeded
-        if not connected:
-            print(f"Failed to connect {address} {uuid}")
-            return False
-        return True
+        return self._connect_controller(
+            controller,
+            f"连接 PlayCover 失败: {address} {uuid}",
+        )
 
     @asyncify
     def connect_gamepad(
@@ -1103,12 +1121,10 @@ class MaaFW(QObject):
         if GamepadController is None:
             raise RuntimeError("当前安装的 maa 版本不支持 GamepadController")
         controller = GamepadController(hwnd, gamepad_type, screencap_method)
-        controller = self._init_controller(controller)
-        connected = controller.post_connection().wait().succeeded
-        if not connected:
-            print(f"Failed to connect {hwnd} {gamepad_type}")
-            return False
-        return True
+        return self._connect_controller(
+            controller,
+            f"连接手柄控制器失败: {hwnd} {gamepad_type}",
+        )
 
     @asyncify
     def connect_wlroots(
@@ -1119,12 +1135,10 @@ class MaaFW(QObject):
         if WlRootsController is None:
             raise RuntimeError("当前安装的 maa 版本不支持 WlRootsController")
         controller = WlRootsController(wlr_socket_path, use_win32_vk_code)
-        controller = self._init_controller(controller)
-        connected = controller.post_connection().wait().succeeded
-        if not connected:
-            print(f"Failed to connect wlroots socket {wlr_socket_path}")
-            return False
-        return True
+        return self._connect_controller(
+            controller,
+            f"连接 wlroots socket 失败: {wlr_socket_path}",
+        )
 
     @asyncify
     def connect_macos(
@@ -1140,46 +1154,103 @@ class MaaFW(QObject):
         )
         input_method = input_method or MaaMacOSInputMethodEnum.GlobalEvent
         controller = MacOSController(window_id, screencap_method, input_method)
-        controller = self._init_controller(controller)
-        connected = controller.post_connection().wait().succeeded
-        if not connected:
-            print(f"Failed to connect macOS window {window_id}")
-            return False
-        return True
+        return self._connect_controller(
+            controller,
+            f"连接 macOS 窗口失败: {window_id}",
+        )
 
-    def _init_controller(self, controller: Controller) -> Controller:
+    def _attach_controller_sinks(self, controller: Controller) -> Controller:
         if self.maa_controller_sink:
             controller.add_sink(self.maa_controller_sink)
         for sink in self._embedded_controller_sinks:
             controller.add_sink(sink)
-        self.controller = controller
-        return self.controller
+        return controller
+
+    @staticmethod
+    def _deactivate_controller(controller: Controller) -> None:
+        controller.post_inactive().wait()
+
+    def _connect_controller(
+        self, controller: Controller, failure_message: str
+    ) -> bool:
+        # 连接完成前仅使用局部变量；失败/半初始化对象不能暴露给其它运行时逻辑。
+        with self._lifecycle_operation():
+            controller = self._attach_controller_sinks(controller)
+            try:
+                connected = controller.post_connection().wait().succeeded
+            except Exception:
+                try:
+                    self._deactivate_controller(controller)
+                except Exception as exc:
+                    logger.debug("回收连接异常的控制器失败: %s", exc)
+                raise
+
+            if not connected:
+                logger.error(failure_message)
+                try:
+                    self._deactivate_controller(controller)
+                except Exception as exc:
+                    logger.debug("回收连接失败的控制器失败: %s", exc)
+                return False
+
+            previous_controller = self.controller
+            if previous_controller is not None and previous_controller is not controller:
+                try:
+                    self._deactivate_controller(previous_controller)
+                except Exception as exc:
+                    logger.error("停用旧控制器失败，放弃发布新控制器: %s", exc)
+                    try:
+                        self._deactivate_controller(controller)
+                    except Exception as cleanup_exc:
+                        logger.debug("回收新控制器失败: %s", cleanup_exc)
+                    return False
+            self.controller = controller
+            return True
+
+    def deactivate_controller(self) -> None:
+        """串行停用并移除当前控制器，供重连流程安全调用。"""
+        with self._lifecycle_operation():
+            controller = self.controller
+            if controller is None:
+                return
+            try:
+                self._deactivate_controller(controller)
+            finally:
+                if self.controller is controller:
+                    self.controller = None
+
+    def teardown_agents(self) -> None:
+        """串行断开并终止当前 Agent，供控制器重连流程调用。"""
+        with self._lifecycle_operation():
+            self._teardown_agents()
 
     def _init_resource(self) -> Resource:
-        if self.resource is None:
-            self.resource = Resource()
-            if self.maa_resource_sink:
-                self.resource.add_sink(self.maa_resource_sink)
-            for sink in self._embedded_resource_sinks:
-                self.resource.add_sink(sink)
-        return self.resource
+        with self._lifecycle_lock:
+            if self.resource is None:
+                self.resource = Resource()
+                if self.maa_resource_sink:
+                    self.resource.add_sink(self.maa_resource_sink)
+                for sink in self._embedded_resource_sinks:
+                    self.resource.add_sink(sink)
+            return self.resource
 
     def _init_tasker(self) -> Tasker:
-        if self.tasker is None:
-            self.tasker = Tasker()
-            if self.maa_context_sink:
-                self.tasker.add_context_sink(self.maa_context_sink)
-            for sink in self._embedded_context_sinks:
-                self.tasker.add_context_sink(sink)
+        with self._lifecycle_lock:
+            if self.tasker is None:
+                self.tasker = Tasker()
+                if self.maa_context_sink:
+                    self.tasker.add_context_sink(self.maa_context_sink)
+                for sink in self._embedded_context_sinks:
+                    self.tasker.add_context_sink(sink)
 
-            for sink in self._embedded_tasker_sinks:
-                self.tasker.add_sink(sink)
-            if self.maa_tasker_sink:
-                self.tasker.add_sink(self.maa_tasker_sink)
-        if not self.resource or not self.controller:
-            raise RuntimeError("Resource 与 Controller 必须先初始化再初始化 Tasker")
-        self.tasker.bind(self.resource, self.controller)
-        return self.tasker
+                for sink in self._embedded_tasker_sinks:
+                    self.tasker.add_sink(sink)
+                if self.maa_tasker_sink:
+                    self.tasker.add_sink(self.maa_tasker_sink)
+            if not self.resource or not self.controller:
+                raise RuntimeError("Resource 与 Controller 必须先初始化再初始化 Tasker")
+            self.tasker.bind(self.resource, self.controller)
+            return self.tasker
 
     def _init_agent(self, agent_data_raw: Any) -> bool:
         if not (self.resource and self.controller):
@@ -1379,51 +1450,75 @@ class MaaFW(QObject):
         self.agent_thread = None
         self.agent_output_thread = None
 
+    def clear_resource(self) -> None:
+        """串行清空当前资源，避免与加载或运行时清理并发。"""
+        with self._lifecycle_operation():
+            resource = self.resource
+            if resource is not None:
+                resource.clear()
+
+    def clear_resource_custom(self) -> None:
+        """串行清空当前资源中的自定义识别与动作。"""
+        with self._lifecycle_operation():
+            resource = self.resource
+            if resource is None:
+                return
+            resource.clear_custom_recognition()
+            resource.clear_custom_action()
+
     @asyncify
     def load_resource(self, dir: str | Path, gpu_index: int = -1) -> bool:
-        resource = self._init_resource()
-        if not isinstance(gpu_index, int):
-            logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
-            gpu_index = -1
-        if gpu_index == -2:
-            logger.debug("设置CPU推理")
-            resource.use_cpu()
-        elif gpu_index == -1:
-            logger.debug("设置自动")
-            resource.use_auto_ep()
-        else:
-            logger.debug(f"设置GPU推理: {gpu_index}")
-            resource.use_directml(gpu_index)
-        return resource.post_bundle(dir).wait().succeeded
+        with self._lifecycle_operation():
+            resource = self._init_resource()
+            if not isinstance(gpu_index, int):
+                logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
+                gpu_index = -1
+            if gpu_index == -2:
+                logger.debug("设置CPU推理")
+                resource.use_cpu()
+            elif gpu_index == -1:
+                logger.debug("设置自动")
+                resource.use_auto_ep()
+            else:
+                logger.debug(f"设置GPU推理: {gpu_index}")
+                resource.use_directml(gpu_index)
+            return resource.post_bundle(dir).wait().succeeded
 
     @asyncify
     def run_task(
         self,
         entry: str,
-        pipeline_override: dict = {},
+        pipeline_override: dict | None = None,
         save_draw: bool = False,
     ) -> bool:
-        if not self.resource or not self.controller:
-            self._send_custom_info(MaaFWError.RESOURCE_OR_CONTROLLER_NOT_INITIALIZED)
-            return False
-
-        tasker = self._init_tasker()
-
-        if self.agent_data_raw:
-            if not self._init_agent(self.agent_data_raw):
+        with self._lifecycle_operation():
+            if not self.resource or not self.controller:
+                self._send_custom_info(
+                    MaaFWError.RESOURCE_OR_CONTROLLER_NOT_INITIALIZED
+                )
                 return False
-        if not tasker.inited:
-            self._send_custom_info(MaaFWError.TASKER_NOT_INITIALIZED)
-            return False
-        tasker.set_save_draw(save_draw)
-        return tasker.post_task(entry, pipeline_override).wait().succeeded
+
+            tasker = self._init_tasker()
+
+            if self.agent_data_raw and not self._init_agent(self.agent_data_raw):
+                return False
+            if not tasker.inited:
+                self._send_custom_info(MaaFWError.TASKER_NOT_INITIALIZED)
+                return False
+            tasker.set_save_draw(save_draw)
+            request = tasker.post_task(entry, pipeline_override or {})
+
+        # wait 期间允许 stop_task 获取生命周期锁并向 Tasker 发送停止请求。
+        return request.wait().succeeded
 
     @asyncify
     def stop_task(self):
         self._cleanup_runtime()
 
     def has_active_runtime(self) -> bool:
-        return any(
+        with self._cleanup_condition:
+            cleanup_in_progress = self._cleanup_in_progress
+        return cleanup_in_progress or any(
             (
                 self.tasker is not None,
                 self.resource is not None,
@@ -1456,44 +1551,62 @@ class MaaFW(QObject):
         )
 
     def _cleanup_runtime(self) -> None:
-        if not self._cleanup_lock.acquire(blocking=False):
-            logger.debug("MaaFW 清理已在进行中，忽略重复请求")
-            return
+        # 重复 stop/shutdown 必须等待同一轮清理完成，不能提前向上层报告已停止。
+        with self._cleanup_condition:
+            if self._cleanup_in_progress:
+                while self._cleanup_in_progress:
+                    self._cleanup_condition.wait()
+                return
+            self._cleanup_in_progress = True
 
         try:
-            if self.tasker:
+            with self._lifecycle_lock:
                 tasker = self.tasker
-                try:
-                    tasker.post_stop().wait()
-                    self._wait_for_tasker_idle(tasker)
-                except Exception as e:
-                    logger.error(f"停止任务失败: {e}")
-                finally:
-                    self.tasker = None
-            if self.resource:
-                try:
-                    self.resource.clear()
-                except Exception as e:
-                    logger.error(f"清除资源失败: {e}")
-                finally:
-                    self.resource = None
-            if self.controller:
+                controller = self.controller
+                resource = self.resource
+
+                if tasker is not None:
+                    try:
+                        tasker.post_stop().wait()
+                        self._wait_for_tasker_idle(tasker)
+                    except Exception as exc:
+                        logger.error("停止任务失败: %s", exc)
+
+                # Agent 绑定了 Resource/Controller/Tasker，必须先断开并终止进程。
+                self._teardown_agents()
+
+                if controller is not None:
+                    try:
+                        self._deactivate_controller(controller)
+                    except Exception as exc:
+                        logger.error("停用控制器失败: %s", exc)
+
+                if resource is not None:
+                    try:
+                        resource.clear()
+                    except Exception as exc:
+                        logger.error("清除资源失败: %s", exc)
+
+                self.tasker = None
                 self.controller = None
-            self._teardown_agents()
-            self.agent_data_raw = None
-            self.agent_project_dir = None
-            self.agent_env_vars = {}
-            self.agent_connection_timeout_seconds = None
-            self._last_agent_connect_timeout_seconds = None
-            self._purge_modules_under_root(self._last_custom_root)
-            self._last_custom_root = None
-            self._embedded_resource_sinks.clear()
-            self._embedded_controller_sinks.clear()
-            self._embedded_tasker_sinks.clear()
-            self._embedded_context_sinks.clear()
-            self._remove_custom_sys_paths()
+                self.resource = None
+                self.agent_data_raw = None
+                self.agent_project_dir = None
+                self.agent_env_vars = {}
+                self.agent_connection_timeout_seconds = None
+                self._last_agent_connect_timeout_seconds = None
+                self._purge_modules_under_root(self._last_custom_root)
+                self._last_custom_root = None
+                self._embedded_resource_sinks.clear()
+                self._embedded_controller_sinks.clear()
+                self._embedded_tasker_sinks.clear()
+                self._embedded_context_sinks.clear()
+                self._remove_custom_sys_paths()
+
         finally:
-            self._cleanup_lock.release()
+            with self._cleanup_condition:
+                self._cleanup_in_progress = False
+                self._cleanup_condition.notify_all()
 
     def _send_custom_info(self, error: MaaFWError):
         self.custom_info.emit(error.value)

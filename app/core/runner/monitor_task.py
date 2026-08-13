@@ -56,5 +56,3 @@ class MonitorTask(TaskFlowRunner):
 
     async def teardown_controller(self) -> None:
         await self.maafw.stop_task()
-        if self.maafw.controller:
-            self.maafw.controller = None

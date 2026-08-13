@@ -171,6 +171,13 @@ class RuntimeContext(QObject):
         self.events.monitor_recognition_roi.connect(self.monitor.update_roi)
         self.events.task_flow_finished.connect(self._on_task_flow_finished)
 
+    def shutdown_runtime_sync(self) -> None:
+        """同步清理当前配置拥有的主任务与监控 MaaFW 运行时。"""
+        try:
+            self.task_runner.shutdown_runtime_sync()
+        finally:
+            self.monitor_task.shutdown_runtime_sync()
+
     @property
     def is_running(self) -> bool:
         try:

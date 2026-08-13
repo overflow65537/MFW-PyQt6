@@ -424,8 +424,7 @@ class TaskFlowRunner(QObject):
         Args:
             manual: 是否为手动停止，用于文件名标记。
         """
-        # controller 会在 MaaFW 连接完成前就被赋值。连接阶段对这个半初始化
-        # controller 截图会触发原生 ADB 重连重试，导致停止操作长时间卡住。
+        # 连接阶段的原生控制器尚未对外发布；同时避免与连接工作线程争用。
         if self._active_controller_raw is None or self._is_connecting_device:
             return
         if not getattr(self, "maafw", None) or not getattr(
@@ -510,16 +509,13 @@ class TaskFlowRunner(QObject):
             logger.error("无法重新连接控制器：缺少控制器配置")
             return False
 
-        old_controller = self.maafw.controller
-        self.maafw.controller = None
-        if old_controller is not None:
-            try:
-                await asyncio.to_thread(lambda: old_controller.post_inactive().wait())
-            except Exception as exc:
-                logger.debug("断开旧控制器 post_inactive 异常: %s", exc)
+        try:
+            await asyncio.to_thread(self.maafw.deactivate_controller)
+        except Exception as exc:
+            logger.debug("断开旧控制器 post_inactive 异常: %s", exc)
 
         if self.maafw.agents:
-            await asyncio.to_thread(self.maafw._teardown_agents)
+            await asyncio.to_thread(self.maafw.teardown_agents)
 
         self._connect_error_reason = None
         connected = await self.connect_device(
@@ -1879,7 +1875,7 @@ class TaskFlowRunner(QObject):
     async def load_resources(self, resource_raw: Dict[str, Any]):
         """根据配置加载资源"""
         if self.maafw.resource:
-            self.maafw.resource.clear()
+            await asyncio.to_thread(self.maafw.clear_resource)
 
         resource_target = resource_raw.get("resource")
         resource_path = []
@@ -2051,11 +2047,7 @@ class TaskFlowRunner(QObject):
 
     async def _clear_embedded_agent_custom(self) -> None:
         """在线程池中清理 MaaResource 自定义注册，避免短暂阻塞 UI。"""
-        resource = self.maafw.resource
-        if resource is None:
-            return
-        await asyncio.to_thread(resource.clear_custom_recognition)
-        await asyncio.to_thread(resource.clear_custom_action)
+        await asyncio.to_thread(self.maafw.clear_resource_custom)
 
     async def _load_embedded_agent_custom(
         self,

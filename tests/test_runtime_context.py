@@ -68,6 +68,17 @@ class RuntimeContextIsolationTests(unittest.TestCase):
         self.assertIs(context_b.events, context_b.task_runner.runner_events)
         self.assertIs(context_b.events, context_b.monitor_task.runner_events)
 
+    def test_shutdown_cleans_task_and_monitor_runtimes(self):
+        context_a, _, runners, monitors = self._create_contexts()
+        runners[0].shutdown_runtime_sync = Mock(side_effect=RuntimeError("main failed"))
+        monitors[0].shutdown_runtime_sync = Mock()
+
+        with self.assertRaisesRegex(RuntimeError, "main failed"):
+            context_a.shutdown_runtime_sync()
+
+        runners[0].shutdown_runtime_sync.assert_called_once_with()
+        monitors[0].shutdown_runtime_sync.assert_called_once_with()
+
     def test_logs_and_clear_requests_do_not_cross_contexts(self):
         context_a, context_b, _, _ = self._create_contexts()
         context_a.task_runner._current_running_task_id = "task-a"
