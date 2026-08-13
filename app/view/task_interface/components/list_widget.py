@@ -160,15 +160,15 @@ class TaskDragListWidget(BaseListWidget):
         self._init_loading_overlay()
 
         self.item_selected.connect(self._on_item_selected_to_service)
-        self.service_coordinator.signal_bus.config_changed.connect(
+        self.service_coordinator.view_signals.config_changed.connect(
             self._on_config_changed
         )
         # 监听资源变化信号，更新任务列表
-        self.service_coordinator.signal_bus.option_updated.connect(
+        self.service_coordinator.view_signals.option_updated.connect(
             self._on_resource_changed
         )
-        service_coordinator.fs_signal_bus.fs_task_modified.connect(self.modify_task)
-        service_coordinator.fs_signal_bus.fs_task_removed.connect(self.remove_task)
+        service_coordinator.view_signals.fs_task_modified.connect(self.modify_task)
+        service_coordinator.view_signals.fs_task_removed.connect(self.remove_task)
         
         # 监听任务状态变化信号
         from app.common.signal_bus import signalBus
@@ -1005,11 +1005,11 @@ class ConfigListWidget(BaseListWidget):
 
         self.item_selected.connect(self._on_item_selected_to_service)
 
-        self.service_coordinator.fs_signal_bus.fs_config_added.connect(self.add_config)
-        self.service_coordinator.fs_signal_bus.fs_config_removed.connect(
+        self.service_coordinator.view_signals.fs_config_added.connect(self.add_config)
+        self.service_coordinator.view_signals.fs_config_removed.connect(
             self.remove_config
         )
-        self.service_coordinator.signal_bus.config_changed.connect(
+        self.service_coordinator.view_signals.config_changed.connect(
             self._on_config_changed
         )
         self.update_list()
@@ -1101,7 +1101,7 @@ class ConfigListWidget(BaseListWidget):
         # 选中当前配置
         current_config_id = self.service_coordinator.config.current_config_id
         if current_config_id:
-            self._select_config_by_id(current_config_id, emit_signal=False)
+            self._select_config_by_id(current_config_id)
 
     def _add_config_to_list(self, config: ConfigItem):
         """添加单个配置项到列表"""
@@ -1112,21 +1112,18 @@ class ConfigListWidget(BaseListWidget):
         self.addItem(list_item)
         self.setItemWidget(list_item, config_widget)
 
-    def _select_config_by_id(self, config_id: str, emit_signal: bool = True):
+    def _select_config_by_id(self, config_id: str):
         """根据配置ID选中对应的列表项"""
         for i in range(self.count()):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, ConfigListItem) and widget.item.item_id == config_id:
                 self.setCurrentRow(i)
-                # 直接触发 config_changed 信号以更新任务列表标题
-                if emit_signal:
-                    self.service_coordinator.signal_bus.config_changed.emit(config_id)
                 break
 
     def _on_config_changed(self, config_id: str):
         """服务层配置切换时同步高亮配置项。"""
-        self._select_config_by_id(config_id, emit_signal=False)
+        self._select_config_by_id(config_id)
         signalBus.title_changed.emit()
 
     def add_config(self, config: ConfigItem):

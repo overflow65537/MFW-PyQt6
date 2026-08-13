@@ -168,8 +168,6 @@ class ResourceSettingMixin:
                 self._update_resource_options_hidden_state(resource_option_names)
                 # 更新资源选项（如果有）
                 self._update_resource_options()
-                # 资源变化时，通知任务列表更新（仅携带 resource 字段）
-                self._notify_task_list_update()
                 break
 
     def _auto_save_resource_option(self, resource_name: str, skip_sync_check: bool = False):
@@ -182,51 +180,12 @@ class ResourceSettingMixin:
         if not skip_sync_check and self._resource_syncing:
             return
         try:
-            from app.common.constants import _RESOURCE_
             option_service = self.service_coordinator.option_service
-            # 更新当前配置
             self.current_config["resource"] = resource_name
-            # 保存到Resource任务
-            resource_task = option_service.task_service.get_task(_RESOURCE_)
-            if resource_task:
-                # 只保存 resource 字段，不保存其他字段（如 gpu, agent_timeout, custom, speedrun_config 等）
-                resource_task.task_option["resource"] = resource_name
-                # 确保不包含不应该保存到 Resource 任务的字段
-                fields_to_remove = [
-                    "gpu",
-                    "agent_timeout",
-                    "agent_embedded",
-                    "custom",
-                    "_speedrun_config",
-                    "controller_type",
-                    "adb",
-                    "win32",
-                ]
-                for field in fields_to_remove:
-                    if field in resource_task.task_option:
-                        del resource_task.task_option[field]
-                if not option_service.task_service.update_task(resource_task):
-                    logger.warning("资源选项保存失败")
-            else:
+            if not option_service.update_resource_selection(resource_name):
                 logger.warning("未找到 Resource 任务，无法保存资源选项")
-            
-            # 同时通过OptionService保存（用于触发信号）
-            option_service.update_options({"resource": resource_name})
         except Exception as e:
             logger.error(f"自动保存资源选项失败: {e}")
-
-    def _notify_task_list_update(self):
-        """通知任务列表更新（资源变化时调用）"""
-        try:
-            # 通过信号总线通知任务列表更新
-            if hasattr(self, "service_coordinator"):
-                # 发出 option_updated 信号，任务列表可以监听此信号来更新
-                # 仅携带 resource 字段，避免其他字段变化导致任务列表重载
-                self.service_coordinator.signal_bus.option_updated.emit(
-                    {"resource": self.current_config.get("resource")}
-                )
-        except Exception:
-            pass
 
     def _fill_resource_option(self):
         """填充资源选项"""
@@ -493,14 +452,12 @@ class ResourceSettingMixin:
 
     def _on_global_option_changed(self, key: str, value: Any):
         """Setting 选项变化时写回 Setting 基础任务。"""
-        option_service = self.service_coordinator.option_service
         if not self.global_option_form_widgets:
             return
         all_options: dict[str, Any] = {}
         for form_widget in self.global_option_form_widgets:
             all_options.update(form_widget.get_options())
-        if self.service_coordinator.config_service.update_current_global_options(all_options):
-            option_service.signal_bus.option_updated.emit(all_options)
+        self.service_coordinator.config_service.update_current_global_options(all_options)
 
     def _update_resource_options_hidden_state(self, current_resource_option_names: list):
         """更新资源选项的 hidden 状态（当资源切换时调用）
@@ -731,91 +688,12 @@ class ResourceSettingMixin:
                 if k in resource_option_names
             }
             
-            # 保存到 Resource 任务的 task_option
-            from app.common.constants import _RESOURCE_
             option_service = self.service_coordinator.option_service
-            resource_task = option_service.task_service.get_task(_RESOURCE_)
-            
-            if resource_task:
-                # 更新 task_option（保留 resource 字段，将资源选项保存到 resource_options 字段）
-                if not isinstance(resource_task.task_option, dict):
-                    resource_task.task_option = {}
-                
-                # 初始化 resource_options 字段（如果不存在）
-                if "resource_options" not in resource_task.task_option:
-                    resource_task.task_option["resource_options"] = {}
-                
-                # 获取所有可能的资源选项名称（从所有资源中收集）
-                interface = self.service_coordinator.interface
-                all_resource_option_names = set()
-                for resource in interface.get("resource", []):
-                    resource_opts = resource.get("option", [])
-                    all_resource_option_names.update(resource_opts)
-                
-                # 对于不在当前资源选项列表中的选项，标记为 hidden（保留其值）
-                # 对于当前资源的选项，移除 hidden 标记（如果有）
-                existing_resource_options = resource_task.task_option["resource_options"].copy()
-                
-                for option_name in all_resource_option_names:
-                    if option_name not in resource_option_names:
-                        # 不属于当前资源的选项，如果存在值，标记为 hidden
-                        if option_name in existing_resource_options:
-                            existing_value = existing_resource_options[option_name]
-                            # 如果已经是字典格式，添加或保留 hidden 标记
-                            if isinstance(existing_value, dict):
-                                existing_resource_options[option_name] = {**existing_value, "hidden": True}
-                            else:
-                                # 简单值转换为字典格式并标记为 hidden
-                                existing_resource_options[option_name] = {"value": existing_value, "hidden": True}
-                    else:
-                        # 属于当前资源的选项，移除 hidden 标记（如果有）
-                        if option_name in existing_resource_options:
-                            existing_value = existing_resource_options[option_name]
-                            if isinstance(existing_value, dict) and "hidden" in existing_value:
-                                # 移除 hidden 字段
-                                existing_resource_options[option_name] = {k: v for k, v in existing_value.items() if k != "hidden"}
-                                # 如果只剩下 value 字段，直接使用 value
-                                if len(existing_resource_options[option_name]) == 1 and "value" in existing_resource_options[option_name]:
-                                    existing_resource_options[option_name] = existing_resource_options[option_name]["value"]
-                
-                # 更新当前资源的选项值到 resource_options 字段（覆盖隐藏的选项）
-                existing_resource_options.update(resource_options)
-                resource_task.task_option["resource_options"] = existing_resource_options
-                
-                # 确保不包含不应该保存到 Resource 任务的字段
-                fields_to_remove = [
-                    "gpu",
-                    "agent_timeout",
-                    "agent_embedded",
-                    "custom",
-                    "_speedrun_config",
-                    "controller_type",
-                    "adb",
-                    "win32",
-                ]
-                for field in fields_to_remove:
-                    if field in resource_task.task_option:
-                        del resource_task.task_option[field]
-                
-                # 清理根级别的旧资源选项（向后兼容，迁移到 resource_options）
-                old_keys_to_remove = [
-                    k for k in resource_task.task_option.keys() 
-                    if k != "resource" and k != "resource_options" and k in all_resource_option_names
-                ]
-                for k in old_keys_to_remove:
-                    del resource_task.task_option[k]
-                
-                # 保存任务
-                if not option_service.task_service.update_task(resource_task):
-                    logger.warning("资源选项保存失败")
-                    return
-                
-                # 如果当前选中的是 Resource 任务，同时更新 OptionService 的 current_options
-                if option_service.current_task_id == _RESOURCE_:
-                    # 更新 OptionService 的本地选项字典
-                    option_service.current_options.update(resource_options)
-                    # 触发选项更新信号（用于通知UI更新）
-                    option_service.signal_bus.option_updated.emit(resource_options)
+            if not option_service.update_resource_options(
+                resource_options,
+                resource_option_names,
+            ):
+                logger.warning("资源选项保存失败")
         except Exception as e:
             logger.error(f"保存资源选项失败: {e}")
 

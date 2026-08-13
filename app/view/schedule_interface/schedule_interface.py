@@ -128,7 +128,7 @@ class ScheduleInterface(QWidget):
 
     def _connect_signals(self) -> None:
         self.schedule_service.schedules_changed.connect(self._refresh_schedule_table)
-        self.service_coordinator.signals.config_changed.connect(
+        self.service_coordinator.view_signals.config_changed.connect(
             lambda _: self._refresh_config_selector()
         )
         self.trigger_group.buttonClicked.connect(self._on_trigger_button_clicked)

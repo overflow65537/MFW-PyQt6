@@ -1,8 +1,20 @@
 from typing import Any, Dict, List, Optional
 
 from app.core.service.task_service import TaskService
-from app.core.item import CoreSignalBus
-from app.common.constants import _PRETASK_
+from app.core.item import CoreSignalBus, TaskItem
+from app.common.constants import _PRETASK_, _RESOURCE_
+
+
+_RESOURCE_EXCLUDED_FIELDS = {
+    "gpu",
+    "agent_timeout",
+    "agent_embedded",
+    "custom",
+    "_speedrun_config",
+    "controller_type",
+    "adb",
+    "win32",
+}
 
 
 class OptionService:
@@ -153,6 +165,100 @@ class OptionService:
         # 批量更新本地选项字典
         self.current_options.update(options)
         return self._on_option_updated(options)
+
+    def update_resource_selection(self, resource_name: str) -> bool:
+        """更新 Resource 基础任务，并在持久化成功后通知资源上下文变化。"""
+        resource_task = self.task_service.get_task(_RESOURCE_)
+        if not resource_task:
+            return False
+        if not isinstance(resource_task.task_option, dict):
+            resource_task.task_option = {}
+
+        resource_task.task_option["resource"] = resource_name
+        for field in _RESOURCE_EXCLUDED_FIELDS:
+            resource_task.task_option.pop(field, None)
+
+        if not self.task_service.update_task(resource_task):
+            return False
+
+        if self.current_task_id == _RESOURCE_:
+            self.current_options = resource_task.task_option
+        self.task_service.refresh_hidden_flags()
+        self._refresh_current_task_form_structure()
+        self.signal_bus.option_updated.emit({"resource": resource_name})
+        return True
+
+    def update_resource_options(
+        self,
+        resource_options: Dict[str, Any],
+        active_option_names: List[str],
+    ) -> bool:
+        """保存当前资源的子选项，并维护其他资源选项的 hidden 状态。"""
+        resource_task = self.task_service.get_task(_RESOURCE_)
+        if not resource_task:
+            return False
+        if not isinstance(resource_task.task_option, dict):
+            resource_task.task_option = {}
+
+        stored_options = resource_task.task_option.get("resource_options")
+        if not isinstance(stored_options, dict):
+            stored_options = {}
+        else:
+            stored_options = dict(stored_options)
+
+        all_option_names: set[str] = set()
+        interface = self.task_service.interface or {}
+        for resource in interface.get("resource", []):
+            if isinstance(resource, dict):
+                option_names = resource.get("option", [])
+                if isinstance(option_names, list):
+                    all_option_names.update(
+                        name for name in option_names if isinstance(name, str)
+                    )
+
+        active_names = set(active_option_names)
+        for option_name in all_option_names:
+            if option_name not in stored_options:
+                continue
+            stored_value = stored_options[option_name]
+            if option_name not in active_names:
+                if isinstance(stored_value, dict):
+                    stored_options[option_name] = {
+                        **stored_value,
+                        "hidden": True,
+                    }
+                else:
+                    stored_options[option_name] = {
+                        "value": stored_value,
+                        "hidden": True,
+                    }
+            elif isinstance(stored_value, dict) and "hidden" in stored_value:
+                visible_value = {
+                    key: value
+                    for key, value in stored_value.items()
+                    if key != "hidden"
+                }
+                stored_options[option_name] = (
+                    visible_value["value"]
+                    if set(visible_value) == {"value"}
+                    else visible_value
+                )
+
+        stored_options.update(resource_options)
+        resource_task.task_option["resource_options"] = stored_options
+        for field in _RESOURCE_EXCLUDED_FIELDS:
+            resource_task.task_option.pop(field, None)
+        for key in all_option_names:
+            if key not in {"resource", "resource_options"}:
+                resource_task.task_option.pop(key, None)
+
+        if not self.task_service.update_task(resource_task):
+            return False
+
+        if self.current_task_id == _RESOURCE_:
+            self.current_options = resource_task.task_option
+        self.signal_bus.option_updated.emit(dict(resource_options))
+        return True
 
     def get_form_structure(self) -> Optional[Dict[str, Any]]:
         """获取当前表单结构"""

@@ -1,4 +1,4 @@
-﻿import jsonc
+import jsonc
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -483,7 +483,10 @@ class ConfigService:
         )
         resource_task.task_option.pop("global_options", None)
         config.global_options = {}
-        return self.update_config(config.item_id, config)
+        success = self.update_config(config.item_id, config)
+        if success:
+            self.signal_bus.option_updated.emit(dict(setting_options))
+        return success
 
     def get_current_global_options(self) -> Dict[str, Any]:
         """兼容旧 API：全局选项现从 Setting 任务读取。"""

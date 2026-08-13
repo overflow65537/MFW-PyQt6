@@ -86,6 +86,26 @@ class _RunnerUiSignalBridge(QObject):
         signalBus.monitor_recognition_roi.emit(payload)
 
 
+class _CoreUiSignalBridge(QObject):
+    """将 Core 内部状态事件安全转发到 View 域信号。"""
+
+    def __init__(self, view_signals: FromeServiceCoordinator):
+        super().__init__()
+        self._view_signals = view_signals
+
+    @Slot(str)
+    def forward_config_changed(self, config_id: str):
+        self._view_signals.config_changed.emit(config_id)
+
+    @Slot()
+    def forward_options_loaded(self):
+        self._view_signals.options_loaded.emit()
+
+    @Slot(object)
+    def forward_option_updated(self, payload: object):
+        self._view_signals.option_updated.emit(payload)
+
+
 class ServiceCoordinator:
     """服务协调器，整合配置、任务和选项服务"""
 
@@ -96,8 +116,8 @@ class ServiceCoordinator:
         interface_path: Path | str | None = None,
     ):
         # 初始化信号总线
-        self.signal_bus = CoreSignalBus()
-        self.fs_signal_bus = FromeServiceCoordinator()
+        self._core_signals = CoreSignalBus()
+        self._view_signals = FromeServiceCoordinator()
         self.runner_events = RunnerEvents()
         
         # 存储待显示的错误信息（用于在 UI 初始化完成后显示）
@@ -126,10 +146,10 @@ class ServiceCoordinator:
         
         # 尝试初始化 ConfigService 和 TaskService，如果配置加载失败则重置配置
         try:
-            self.config_service = ConfigService(self.config_repo, self.signal_bus)
+            self.config_service = ConfigService(self.config_repo, self._core_signals)
             self.task_service = TaskService(
                 self.config_service,
-                self.signal_bus,
+                self._core_signals,
                 self._interface,
             )
         except (IndexError, ValueError, jsonc.JSONDecodeError, FileNotFoundError, Exception) as e:
@@ -138,10 +158,12 @@ class ServiceCoordinator:
             if self._handle_config_load_error(main_config_path, configs_dir, e):
                 # 重置成功后重新初始化
                 try:
-                    self.config_service = ConfigService(self.config_repo, self.signal_bus)
+                    self.config_service = ConfigService(
+                        self.config_repo, self._core_signals
+                    )
                     self.task_service = TaskService(
                         self.config_service,
-                        self.signal_bus,
+                        self._core_signals,
                         self._interface,
                     )
                 except Exception as retry_error:
@@ -151,7 +173,7 @@ class ServiceCoordinator:
                 # 重置失败，抛出原始错误
                 raise
         
-        self.option_service = OptionService(self.task_service, self.signal_bus)
+        self.option_service = OptionService(self.task_service, self._core_signals)
         self.telemetry_service = TelemetryService(
             self.runner_events, self._interface
         )
@@ -169,6 +191,7 @@ class ServiceCoordinator:
         # 初始化日志处理器（将 callback 信号转换为 log_output 信号）
         self.log_processor = CallbackLogProcessor(self.runner_events)
         self._runner_ui_bridge = _RunnerUiSignalBridge()
+        self._core_ui_bridge = _CoreUiSignalBridge(self._view_signals)
 
         # 连接信号
         self._connect_signals()
@@ -846,10 +869,21 @@ class ServiceCoordinator:
 
     def _connect_signals(self):
         """连接所有信号"""
-        # UI请求保存配置
-        self.signal_bus.need_save.connect(self._on_need_save)
         # 热更新完成后重新初始化
         signalBus.fs_reinit_requested.connect(self.reinit)
+        # Core 事件只在内部流转，由协调器统一桥接为 View 域通知。
+        self._core_signals.config_changed.connect(
+            self._core_ui_bridge.forward_config_changed,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self._core_signals.options_loaded.connect(
+            self._core_ui_bridge.forward_options_loaded,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self._core_signals.option_updated.connect(
+            self._core_ui_bridge.forward_option_updated,
+            Qt.ConnectionType.QueuedConnection,
+        )
         # 使用 QObject 槽转发，确保来自 runner/底层回调线程的信号稳定回到 UI 线程。
         self.runner_events.callback.connect(
             self._runner_ui_bridge.forward_callback, Qt.ConnectionType.QueuedConnection
@@ -1058,7 +1092,7 @@ class ServiceCoordinator:
                 self.task_service.init_new_config()
 
             # Notify UI incrementally
-            self.fs_signal_bus.fs_config_added.emit(
+            self._view_signals.fs_config_added.emit(
                 self.config_service.get_config(new_id)
             )
         return new_id
@@ -1113,7 +1147,7 @@ class ServiceCoordinator:
                 else:
                     self.task_service.init_new_config()
                 try:
-                    self.fs_signal_bus.fs_config_added.emit(
+                    self._view_signals.fs_config_added.emit(
                         self.config_service.get_config(cid)
                     )
                 except Exception:
@@ -1183,7 +1217,7 @@ class ServiceCoordinator:
         ok = self.config_service.delete_config(config_id)
         if ok:
             # notify UI incremental removal
-            self.fs_signal_bus.fs_config_removed.emit(config_id)
+            self._view_signals.fs_config_removed.emit(config_id)
         return ok
 
     def select_config(self, config_id: str) -> bool:
@@ -1209,7 +1243,7 @@ class ServiceCoordinator:
         """
         ok = self.task_service.update_task(task, idx)
         if ok:
-            self.fs_signal_bus.fs_task_modified.emit(task)
+            self._view_signals.fs_task_modified.emit(task)
         return ok
 
     def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
@@ -1229,8 +1263,8 @@ class ServiceCoordinator:
         if ok:
             for task in changed_tasks:
                 # UI 通知：保持与旧行为兼容
-                self.signal_bus.task_updated.emit(task)
-                self.fs_signal_bus.fs_task_modified.emit(task)
+                self._core_signals.task_updated.emit(task)
+                self._view_signals.fs_task_modified.emit(task)
 
         return ok
 
@@ -1244,7 +1278,7 @@ class ServiceCoordinator:
             # 兼容：对于希望逐项更新的监听者，仍发出逐项 task_updated 信号
             try:
                 for t in tasks:
-                    self.fs_signal_bus.fs_task_modified.emit(t)
+                    self._view_signals.fs_task_modified.emit(t)
             except Exception:
                 pass
         return ok
@@ -1261,7 +1295,7 @@ class ServiceCoordinator:
                 return False
         ok = self.task_service.delete_task(task_id)
         if ok:
-            self.fs_signal_bus.fs_task_removed.emit(task_id)
+            self._view_signals.fs_task_removed.emit(task_id)
         return ok
 
     def select_task(self, task_id: str) -> bool:
@@ -1275,11 +1309,6 @@ class ServiceCoordinator:
         return self.task_service.reorder_tasks(new_order)
 
     # endregion
-    def _on_need_save(self):
-        """当UI请求保存时保存所有配置"""
-        self.config_service.save_main_config()
-        self.signal_bus.config_saved.emit(True)
-
     def reinit(self):
         """重新初始化服务协调器，用于热更新完成后刷新资源"""
         logger.info("开始重新初始化服务协调器...")
@@ -1299,7 +1328,7 @@ class ServiceCoordinator:
             # 通知 UI 配置已更新
             current_config_id = self.config_service.current_config_id
             if current_config_id:
-                self.signal_bus.config_changed.emit(current_config_id)
+                self._core_signals.config_changed.emit(current_config_id)
 
             logger.info("服务协调器重新初始化完成")
         except Exception as e:
@@ -1383,12 +1412,9 @@ class ServiceCoordinator:
         return self.option_service
 
     @property
-    def fs_signals(self) -> FromeServiceCoordinator:
-        return self.fs_signal_bus
-
-    @property
-    def signals(self) -> CoreSignalBus:
-        return self.signal_bus
+    def view_signals(self) -> FromeServiceCoordinator:
+        """供 View 只读订阅的域事件入口。"""
+        return self._view_signals
     
     def get_pending_error_message(self) -> tuple[str, str] | None:
         """获取并清除待显示的错误信息

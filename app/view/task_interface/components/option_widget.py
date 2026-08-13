@@ -130,15 +130,6 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
                             self._auto_save_resource_option(
                                 current_resource, skip_sync_check=True
                             )
-                            # 触发任务列表更新（延迟触发，确保资源已保存）
-                            from PySide6.QtCore import QTimer
-
-                            QTimer.singleShot(
-                                50,
-                                lambda: self.service_coordinator.signal_bus.option_updated.emit(
-                                    {"resource": current_resource}
-                                ),
-                            )
             else:
                 # 即使资源下拉框不存在，也需要更新资源任务的配置
                 # 检查当前资源是否在新控制器的资源列表中
@@ -182,23 +173,10 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
                             first_resource = current_resources[0]
                             first_resource_name = first_resource.get("name", "")
 
-                            # 更新配置并保存
                             if resource_task:
-                                resource_task.task_option["resource"] = (
-                                    first_resource_name
-                                )
-                                self.service_coordinator.task_service.update_task(
-                                    resource_task
-                                )
-
-                                # 触发任务列表更新（延迟触发，确保资源任务已保存）
-                                from PySide6.QtCore import QTimer
-
-                                QTimer.singleShot(
-                                    50,
-                                    lambda: self.service_coordinator.signal_bus.option_updated.emit(
-                                        {"resource": first_resource_name}
-                                    ),
+                                self._auto_save_resource_option(
+                                    first_resource_name,
+                                    skip_sync_check=True,
                                 )
                             else:
                                 logger.warning(f"未找到 Resource 任务，无法保存资源")
@@ -211,14 +189,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
                                     "resource", ""
                                 )
                                 if final_resource:
-                                    # 使用 QTimer 延迟触发，确保资源任务已保存
-                                    from PySide6.QtCore import QTimer
-
-                                    QTimer.singleShot(
-                                        50,
-                                        lambda: self.service_coordinator.signal_bus.option_updated.emit(
-                                            {"resource": final_resource}
-                                        ),
+                                    self._auto_save_resource_option(
+                                        final_resource,
+                                        skip_sync_check=True,
                                     )
 
         # 将回调设置到控制器组件
@@ -229,9 +202,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
         )
         self.speedrun_widget.config_changed.connect(self._on_speedrun_changed)
 
-        # 连接CoreSignalBus的options_loaded信号
-        service_coordinator.signal_bus.options_loaded.connect(self._on_options_loaded)
-        service_coordinator.signal_bus.config_changed.connect(self._on_config_changed)
+        # 监听由 ServiceCoordinator 转发的域状态事件
+        service_coordinator.view_signals.options_loaded.connect(self._on_options_loaded)
+        service_coordinator.view_signals.config_changed.connect(self._on_config_changed)
         
         # 监听运行状态变化，禁用/启用选项编辑
         signalBus.task_status_changed.connect(self._on_task_status_changed)

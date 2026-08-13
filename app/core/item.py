@@ -11,22 +11,14 @@ class CoreSignalBus(QObject):
 
     # 配置相关信号 (多数使用 object 以传递 dataclass 对象)
     config_changed = Signal(str)  # 配置ID
-    config_loaded = Signal(object)  # ConfigItem 或 dict (向后兼容)
-    config_saved = Signal(bool)  # 保存结果
 
     # 任务相关信号
     tasks_loaded = Signal(object)  # List[TaskItem]
     task_updated = Signal(object)  # TaskItem
-    task_selected = Signal(str)  # 任务ID
-    task_order_updated = Signal(object)  # List[str]
 
     # 选项相关信号
     options_loaded = Signal()  # 选项加载完成信号，不携带数据
     option_updated = Signal(object)  # 选项更新(dict)
-
-    # UI 操作信号
-    need_save = Signal()
-    # UI 操作信号（仅保留通用保存信号，具体操作通过 ServiceCoordinator 的方法调用）
 
 
 class FromeServiceCoordinator(QObject):
@@ -38,6 +30,9 @@ class FromeServiceCoordinator(QObject):
     fs_task_removed = Signal(str)  # 文件系统任务移除，载荷为 task_id
     fs_config_added = Signal(object)  # 文件系统配置新增，载荷为 config
     fs_config_removed = Signal(str)  # 文件系统配置移除，载荷为 config_id
+    config_changed = Signal(str)
+    options_loaded = Signal()
+    option_updated = Signal(object)
 
 
 class RunnerEvents(QObject):

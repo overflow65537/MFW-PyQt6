@@ -1154,9 +1154,6 @@ class ConfigListItem(BaseListItem):
                     if success:
                         # 更新显示的标签文本
                         self.name_label.setText(new_name)
-
-                        # 发送配置已保存的信号，触发刷新
-                        self.service_coordinator.signal_bus.config_saved.emit(True)
                     else:
                         from app.utils.logger import logger
 

@@ -35,7 +35,7 @@ app/
 
 | 信号总线 | 定义位置 | 作用域 | 允许的发射者 | 允许的监听者 |
 | ---------- | ---------- | -------- | -------------- | -------------- |
-| `CoreSignalBus` | `app/core/item.py` | Core↔Service 内部通信 | Service / Runner | Service / ServiceCoordinator |
+| `CoreSignalBus` | `app/core/item.py` | Core↔Service 内部通信 | Service / Core 组件 | Service / ServiceCoordinator |
 | `FromeServiceCoordinator` | `app/core/item.py` | Coordinator→View 单向域通知 | ServiceCoordinator | View 层 |
 | `signalBus` (全局) | `app/common/signal_bus.py` | View↔View / Core→View 运行时通知 | ServiceCoordinator 适配层 / View 层 / App 级组件 | View 层 / App 级组件 |
 
@@ -46,7 +46,8 @@ app/
 - **`app/core/service/` 中的代码禁止直接 import `signalBus`（全局信号总线）。**
   - 当前治理目标是保持 `app/core/` 不再回退到对全局 UI 总线的直接依赖。
   - 新增的 Core 层通信必须通过 `CoreSignalBus`、`RunnerEvents` 或 `FromeServiceCoordinator`。
-- View 层通过 `FromeServiceCoordinator` 信号或 `signalBus` 全局信号响应 Core 层事件，**不要在 View 中直接调用 Service 的内部方法改变业务状态**。
+- `ServiceCoordinator._core_signals` 是 Core 私有总线；View 禁止访问、监听或发射 `CoreSignalBus`。
+- View 层通过 `ServiceCoordinator.view_signals` 或 `signalBus` 全局信号响应 Core 层事件，**不要在 View 中直接调用 Service 的内部方法改变业务状态**。
 - Runner 日志、回调和运行状态等通知应通过 `RunnerEvents` / Runner 自身 `Signal` 向上层传递，由 `ServiceCoordinator` 或适配层转发给 `signalBus`。
 
 ### 2. MVC 职责划分
@@ -61,7 +62,7 @@ app/
 
 - `CoreSignalBus` 只承载 Core 内部状态变化事件，不承载命令型请求。
 - `RunnerEvents` 只承载 Runner 运行时事件上报，不直接暴露给 View。
-- `FromeServiceCoordinator` 只承载由 `ServiceCoordinator` 产生的配置/任务 CRUD 等单向域通知。
+- `FromeServiceCoordinator` 通过 `ServiceCoordinator.view_signals` 暴露，只承载 Coordinator 转发或产生的单向域通知。
 - 命令应通过 `ServiceCoordinator` 方法调用，不应伪装成信号。
 
 #### Service / Controller（`app/core/service/` + `app/core/core.py`）
@@ -69,7 +70,7 @@ app/
 - 负责业务逻辑、状态管理、配置持久化。
 - 通过 `CoreSignalBus` 通知状态变化。
 - 不直接操作 UI 组件或 import View/Widget 模块。
-- `ServiceCoordinator`（`core.py`）负责组装各 Service 并暴露给 View 层。
+- `ServiceCoordinator`（`core.py`）负责组装各 Service、桥接 Core 域事件，并通过 `view_signals` 暴露给 View 层。
 
 #### Runner（`app/core/runner/`）
 
@@ -82,7 +83,8 @@ app/
 
 - 负责 UI 展示与用户交互。
 - 通过 `ServiceCoordinator` 的方法执行业务操作。
-- 监听 `FromeServiceCoordinator` / `signalBus` 获取状态更新。
+- 监听 `ServiceCoordinator.view_signals` / `signalBus` 获取状态更新。
+- **不得访问、监听或发射 `CoreSignalBus`，也不得使用已废弃的 `signal_bus` / `signals` 别名。**
 - **不应直接修改 `TaskItem.is_checked` 等 Model 属性**，应通过 Service 方法。
 - **不应包含业务逻辑**（如 pipeline override 计算、资源路径拼接）。
 
@@ -97,7 +99,7 @@ app/
 ```text
 用户操作 → View → ServiceCoordinator.method() → Service → CoreSignalBus
                                                               ↓
-View ← signalBus / FromeServiceCoordinator ← ServiceCoordinator ← CoreSignalBus
+View ← view_signals ← ServiceCoordinator ← CoreSignalBus
 
 Runner(MaaFW/TaskFlow) → RunnerEvents/Runner Signal → ServiceCoordinator → signalBus → View
 ```
@@ -105,6 +107,7 @@ Runner(MaaFW/TaskFlow) → RunnerEvents/Runner Signal → ServiceCoordinator →
 **禁止方向：**
 
 - View → 直接修改 Model 属性（跳过 Service）
+- View → 直接监听或 emit CoreSignalBus（禁止）
 - Runner → 直接持有或 emit `signalBus` / `FromeServiceCoordinator`（禁止）
 - Widget → 直接 import Service
 - Service → 直接 import View / Widget
@@ -178,6 +181,7 @@ Runner(MaaFW/TaskFlow) → RunnerEvents/Runner Signal → ServiceCoordinator →
 - [ ] Runner 层（`app/core/runner/`）代码是否 **没有** 直接持有/import/emit `signalBus` 或 `FromeServiceCoordinator`？
 - [ ] Service 层（`app/core/service/`）新代码是否 **没有** import `signalBus`？
 - [ ] View 层是否通过 Service 方法修改业务状态，而非直接操作 Model？
+- [ ] View 层是否只监听 `view_signals` / `signalBus`，且没有访问或发射 `CoreSignalBus`？
 - [ ] View 层是否避免直接访问 `task_service`、`config_service`、`option_service` 内部实现？
 - [ ] Widget 是否不依赖任何 Service/Core 模块？
 - [ ] 新增信号是否放在了正确的信号总线上？
