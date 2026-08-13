@@ -1673,116 +1673,34 @@ class ControllerSettingWidget(QWidget):
                 # 如果没有找到匹配的控制器，返回
                 return
 
-        # 使用当前控制器信息变量
         current_controller_name = self.current_controller_name
         current_controller_type = self.current_controller_type
-        if current_controller_type == "adb":
-            self.current_config[current_controller_name] = self.current_config.get(
-                current_controller_name,
-                {
-                    "adb_path": "",
-                    "address": "",
-                    "emulator_path": "",
-                    "emulator_params": "",
-                    "wait_time": 30,  # 默认等待模拟器启动 30s
-                    "screencap_methods": 1,
-                    "input_methods": 1,
-                    "config": "{}",
-                },
-            )
+        ok = self.service_coordinator.options.update_controller_field(
+            current_controller_name,
+            current_controller_type,
+            key,
+            value,
+        )
+        if not ok:
+            logger.warning("控制器子字段保存失败: %s", key)
+            return
 
-        elif current_controller_type == "win32":
-            self.current_config[current_controller_name] = self.current_config.get(
-                current_controller_name,
-                {
-                    "hwnd": "",
-                    "program_path": "",
-                    "program_params": "",
-                    "wait_time": 30,  # 默认等待程序启动 30s
-                    "mouse_input_methods": int(MaaWin32InputMethodEnum.Seize.value),
-                    "keyboard_input_methods": int(MaaWin32InputMethodEnum.Seize.value),
-                    "win32_screencap_methods": int(
-                        MaaWin32ScreencapMethodEnum.DXGI_DesktopDup.value
-                    ),
-                },
-            )
-        elif current_controller_type == "gamepad":
-            self.current_config[current_controller_name] = self.current_config.get(
-                current_controller_name,
-                {
-                    "hwnd": "",
-                    "program_path": "",
-                    "program_params": "",
-                    "wait_time": 30,  # 默认等待程序启动 30s
-                    "gamepad_type": 0,
-                },
-            )
-        elif current_controller_type == "playcover":
-            # 获取默认 UUID（从 interface 配置中）
-            default_uuid = "maa.playcover"
-            if (
-                self.current_controller_info
-                and "playcover" in self.current_controller_info
-            ):
-                playcover_config = self.current_controller_info.get("playcover", {})
-                default_uuid = playcover_config.get("uuid", "maa.playcover")
+        latest = self.service_coordinator.options.get_options()
+        self.current_config.clear()
+        self.current_config.update(latest)
 
-            self.current_config[current_controller_name] = self.current_config.get(
-                current_controller_name,
-                {
-                    "uuid": default_uuid,
-                    "address": "",
-                },
+        if key in (
+            "adb_wait_time",
+            "win32_wait_time",
+            "gamepad_wait_time",
+            "macos_wait_time",
+        ):
+            controller_options = self.current_config.get(current_controller_name, {})
+            wait_time = (
+                controller_options.get("wait_time", 0)
+                if isinstance(controller_options, dict)
+                else 0
             )
-            # 确保 uuid 字段存在（如果配置中已有但为空，使用默认值）
-            if "uuid" not in self.current_config[
-                current_controller_name
-            ] or not self.current_config[current_controller_name].get("uuid"):
-                self.current_config[current_controller_name]["uuid"] = default_uuid
-        elif current_controller_type == "wlroots":
-            self.current_config[current_controller_name] = self.current_config.get(
-                current_controller_name,
-                {
-                    "wlr_socket_path": "",
-                },
-            )
-        elif current_controller_type == "macos":
-            self.current_config[current_controller_name] = self.current_config.get(
-                current_controller_name,
-                {
-                    "window_id": "",
-                    "program_path": "",
-                    "program_params": "",
-                    "wait_time": 30,
-                    "macos_screencap_methods": int(
-                        MaaMacOSScreencapMethodEnum.ScreenCaptureKit.value
-                    ),
-                    "macos_input_methods": int(
-                        MaaMacOSInputMethodEnum.GlobalEvent.value
-                    ),
-                },
-            )
-        # Parse JSON string back to dict for "config" key
-        if key == "config":
-            try:
-                self.current_config[current_controller_name][key] = jsonc.loads(value)
-            except (jsonc.JSONDecodeError, ValueError):
-                # If parsing fails, keep the string as-is or use an empty dict
-                self.current_config[current_controller_name][key] = value
-        elif key in ("adb_wait_time", "win32_wait_time", "gamepad_wait_time", "macos_wait_time"):
-            # 必须存在一个整数（不能为负数），空值自动回填为 0
-            text = "" if value is None else str(value).strip()
-            if text == "":
-                wait_time = 0
-            else:
-                try:
-                    wait_time = int(text)
-                except ValueError:
-                    wait_time = 0
-            if wait_time < 0:
-                wait_time = 0
-
-            # 同步回输入框，避免出现空字符串/非法值
             edit = self.resource_setting_widgets.get(key)
             if isinstance(edit, (LineEdit, PathLineEdit)):
                 canonical = str(wait_time)
@@ -1792,38 +1710,6 @@ class ControllerSettingWidget(QWidget):
                         edit.setText(canonical)
                     finally:
                         self._syncing = False
-
-            # 配置层仍然统一使用 wait_time 存储（避免 adb_wait_time/win32_wait_time 混入配置）
-            self.current_config[current_controller_name]["wait_time"] = wait_time
-        elif key == "gamepad_hwnd":
-            self.current_config[current_controller_name]["hwnd"] = value
-        elif key == "gamepad_program_path":
-            self.current_config[current_controller_name]["program_path"] = value
-        elif key == "gamepad_program_params":
-            self.current_config[current_controller_name]["program_params"] = value
-        elif key == "playcover_address":
-            # 将 playcover_address 映射到 address
-            self.current_config[current_controller_name]["address"] = value
-        elif key == "wlroots_socket_path":
-            self.current_config[current_controller_name]["wlr_socket_path"] = value
-        elif key == "macos_window_id":
-            self.current_config[current_controller_name]["window_id"] = value
-        elif key == "macos_program_path":
-            self.current_config[current_controller_name]["program_path"] = value
-        elif key == "macos_program_params":
-            self.current_config[current_controller_name]["program_params"] = value
-        else:
-            self.current_config[current_controller_name][key] = value
-
-        # 如果是 playcover 类型，清理掉旧的 playcover_uuid 字段
-        if current_controller_type == "playcover":
-            if "playcover_uuid" in self.current_config[current_controller_name]:
-                del self.current_config[current_controller_name]["playcover_uuid"]
-
-        # 仅提交当前控制器的配置，避免无关字段触发任务列表误刷新
-        self._auto_save_options(
-            {current_controller_name: self.current_config[current_controller_name]}
-        )
 
     def _auto_save_options(self, changed_options: dict[str, Any] | None = None):
         """向 OptionFacade 提交控制器表单值。"""
@@ -2322,48 +2208,19 @@ class ControllerSettingWidget(QWidget):
         ctrl_info = self.current_controller_info
         new_type = self.current_controller_type
 
-        # 更新当前配置
-        self.current_config["controller_type"] = ctrl_info["name"]
-
-        # interface.json 新增字段：permission_required / display_* 写入到“当前控制器子配置”
         controller_name = ctrl_info["name"]
-        meta_changed = self._sync_controller_meta_fields(
-            controller_name, ctrl_info, persist=False
-        )
+        if not self.service_coordinator.options.update_controller_selection(
+            controller_name,
+            ctrl_info,
+        ):
+            logger.warning("控制器类型保存失败: %s", controller_name)
+            return
+        latest = self.service_coordinator.options.get_options()
+        self.current_config.clear()
+        self.current_config.update(latest)
 
         # interface.json 新增字段：permission_required（需要管理员权限时显示红字提示）
         self._update_admin_permission_hint(ctrl_info)
-
-        # 如果是 playcover 类型，确保 uuid 字段存在并保存
-        if new_type == "playcover":
-            if controller_name not in self.current_config:
-                self.current_config[controller_name] = {}
-            # 获取默认 UUID（从 interface 配置中）
-            default_uuid = "maa.playcover"
-            if "playcover" in ctrl_info:
-                playcover_config = ctrl_info.get("playcover", {})
-                default_uuid = playcover_config.get("uuid", "maa.playcover")
-            # 如果配置中没有 uuid 或为空，设置默认值
-            if "uuid" not in self.current_config[
-                controller_name
-            ] or not self.current_config[controller_name].get("uuid"):
-                self.current_config[controller_name]["uuid"] = default_uuid
-            # 确保 address 字段存在
-            if "address" not in self.current_config[controller_name]:
-                self.current_config[controller_name]["address"] = ""
-            # 清理掉旧的 playcover_uuid 字段（如果存在）
-            if "playcover_uuid" in self.current_config[controller_name]:
-                del self.current_config[controller_name]["playcover_uuid"]
-            # 保存 playcover 配置（包括 uuid 和 address）
-            self._auto_save_options(
-                {"controller_type": ctrl_info["name"], controller_name: self.current_config[controller_name]}
-            )
-        else:
-            # 默认只提交 controller_type；若 meta 字段有变化则连同控制器子配置一起提交，确保落盘
-            payload: dict[str, Any] = {"controller_type": ctrl_info["name"]}
-            if meta_changed:
-                payload[controller_name] = self.current_config.get(controller_name, {})
-            self._auto_save_options(payload)
 
         # 更换搜索设备类型（playcover 不显示搜索设备）
         search_option: DeviceFinderWidget = self.resource_setting_widgets[
