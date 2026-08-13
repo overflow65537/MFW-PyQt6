@@ -6,9 +6,17 @@ on:
       - "v*"
     branches:
       - main
+    # Android PoC has an independent workflow; do not run the full desktop
+    # packaging matrix for Android-only changes. Tag pushes are unaffected.
+    paths-ignore:
+      - "android_app/**"
+      - ".github/workflows/android.yml"
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - "android_app/**"
+      - ".github/workflows/android.yml"
   workflow_dispatch:
 
 jobs:
