@@ -365,12 +365,66 @@ class OptionService:
             controller_options.setdefault("address", "")
             controller_options.pop("playcover_uuid", None)
 
-        return self.update_controller_options(
-            {
-                "controller_type": controller_name,
-                controller_name: controller_options,
-            }
+        controller_options_payload, accepted_changes = (
+            self._sanitize_controller_options(
+                options,
+                {
+                    "controller_type": controller_name,
+                    controller_name: controller_options,
+                },
+            )
         )
+        controller_changed = controller_options_payload != options
+        task.task_option = controller_options_payload
+
+        resource_task = self.task_service.get_task(_RESOURCE_)
+        resource_changed = False
+        selected_resource = ""
+        if resource_task:
+            resource_source = (
+                resource_task.task_option
+                if isinstance(resource_task.task_option, dict)
+                else {}
+            )
+            selected_resource = str(resource_source.get("resource", "") or "")
+            compatible_resources: list[str] = []
+            interface = self.task_service.interface or {}
+            for resource in interface.get("resource", []):
+                if not isinstance(resource, dict) or not resource.get("name"):
+                    continue
+                allowed = resource.get("controller")
+                if allowed in (None, "", [], {}):
+                    compatible_resources.append(str(resource["name"]))
+                elif isinstance(allowed, str) and allowed == controller_name:
+                    compatible_resources.append(str(resource["name"]))
+                elif isinstance(allowed, list) and controller_name in allowed:
+                    compatible_resources.append(str(resource["name"]))
+            if compatible_resources and selected_resource not in compatible_resources:
+                selected_resource = compatible_resources[0]
+                resource_task.task_option = self._normalize_resource_task_options(
+                    resource_source,
+                    selected_resource,
+                )
+                resource_changed = resource_task.task_option != resource_source
+
+        if not controller_changed and not resource_changed:
+            return True
+        if resource_changed and resource_task:
+            success = self.task_service.update_tasks([task, resource_task])
+        else:
+            success = self.task_service.update_task(task)
+        if not success:
+            return False
+
+        if self.current_task_id == _CONTROLLER_:
+            self.current_options = task.task_option
+        self.task_service.refresh_hidden_flags()
+        self._refresh_current_task_form_structure()
+        event_payload = dict(accepted_changes)
+        if resource_changed:
+            event_payload["resource"] = selected_resource
+        self.signal_bus.option_updated.emit(event_payload)
+        return True
 
     @staticmethod
     def normalize_post_action(action: Dict[str, Any] | None) -> Dict[str, Any]:

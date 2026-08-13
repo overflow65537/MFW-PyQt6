@@ -562,6 +562,38 @@ class ConfigService:
                 return list(bundle.keys())
         return []
 
+    def update_bundle(
+        self,
+        bundle_name: str,
+        path: str,
+        display_name: str | None = None,
+    ) -> bool:
+        """新增或更新主配置中的 bundle 索引。"""
+        if self._main_config is None or not bundle_name:
+            return False
+        bundles = self._main_config.setdefault("bundle", {})
+        if not isinstance(bundles, dict):
+            bundles = {}
+            self._main_config["bundle"] = bundles
+        current = bundles.get(bundle_name, {})
+        if not isinstance(current, dict):
+            current = {}
+        current["path"] = path
+        current["name"] = display_name or str(current.get("name") or bundle_name)
+        bundles[bundle_name] = current
+        return self.save_main_config()
+
+    def delete_bundle(self, bundle_name: str) -> bool:
+        """从主配置移除 bundle 索引，不删除资源目录。"""
+        if self._main_config is None:
+            return False
+        bundles = self._main_config.get("bundle", {})
+        if not isinstance(bundles, dict) or bundle_name not in bundles:
+            return True
+        bundles.pop(bundle_name, None)
+        self._main_config["bundle"] = bundles
+        return self.save_main_config()
+
     def get_current_bundle(self) -> dict:
         """获取当前bundle"""
         # 使用当前配置中保存的 bundle 名称，在主配置中查找 bundle 详情

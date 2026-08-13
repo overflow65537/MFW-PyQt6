@@ -117,6 +117,10 @@ class _CoreUiSignalBridge(QObject):
     def forward_task_updated(self, task: object):
         self._view_signals.task_modified.emit(task)
 
+    @Slot(list)
+    def forward_schedules_changed(self, entries: list):
+        self._view_signals.schedules_changed.emit(entries)
+
 
 class ServiceCoordinator:
     """服务协调器，整合配置、任务和选项服务"""
@@ -160,7 +164,7 @@ class ServiceCoordinator:
         try:
             self._config_service = ConfigService(self._config_repo, self._core_signals)
             self._task_service = TaskService(
-                self.config_service,
+                self._config_service,
                 self._core_signals,
                 self._interface,
             )
@@ -174,7 +178,7 @@ class ServiceCoordinator:
                         self._config_repo, self._core_signals
                     )
                     self._task_service = TaskService(
-                        self.config_service,
+                        self._config_service,
                         self._core_signals,
                         self._interface,
                     )
@@ -185,26 +189,30 @@ class ServiceCoordinator:
                 # 重置失败，抛出原始错误
                 raise
         
-        self._option_service = OptionService(self.task_service, self._core_signals)
+        self._option_service = OptionService(self._task_service, self._core_signals)
         self.telemetry_service = TelemetryService(
             self.runner_events, self._interface
         )
-        self.config_service.register_on_change(self._on_config_changed)
+        self._config_service.register_on_change(self._on_config_changed)
 
         # 运行器
 
         self._task_runner = TaskFlowRunner(
-            task_service=self.task_service,
-            config_service=self.config_service,
+            task_service=self._task_service,
+            config_service=self._config_service,
             runner_events=self.runner_events,
         )
         self._schedule_service = ScheduleService()
 
-        self._configs = ConfigFacade(self.config_service, self._config_repo)
-        self._tasks = TaskFacade(self.task_service)
+        self._configs = ConfigFacade(
+            self._config_service,
+            self._config_repo,
+            self._find_interface_file_in_dir,
+        )
+        self._tasks = TaskFacade(self._task_service)
         self._options = OptionFacade(self._option_service)
-        self._schedules = ScheduleFacade(self.schedule_service)
-        self._runtime = RuntimeFacade(self.task_runner)
+        self._schedules = ScheduleFacade(self._schedule_service)
+        self._runtime = RuntimeFacade(self._task_runner)
         self._interface_api = InterfaceFacade(
             self._interface_manager,
             lambda: self._interface_path,
@@ -389,10 +397,10 @@ class ServiceCoordinator:
         """收集主配置中已正确指向 interface 的 bundle 目录。"""
         assigned: set[Path] = set()
         try:
-            if not hasattr(self, "config_service") or not self.config_service:
+            if not hasattr(self, "_config_service") or not self._config_service:
                 return assigned
-            for bundle_key in self.config_service.list_bundles():
-                bundle_info = self.config_service.get_bundle(bundle_key)
+            for bundle_key in self._config_service.list_bundles():
+                bundle_info = self._config_service.get_bundle(bundle_key)
                 bundle_path_str = str(bundle_info.get("path", "")).strip()
                 if not bundle_path_str:
                     continue
@@ -449,12 +457,12 @@ class ServiceCoordinator:
     ) -> Path | None:
         """多资源迁移后，在 ./bundle/*/ 下搜索 interface 配置文件。"""
         sibling_candidates: list[Path] = []
-        if bundle_name and hasattr(self, "config_service") and self.config_service:
+        if bundle_name and hasattr(self, "_config_service") and self._config_service:
             try:
-                for key in self.config_service.list_bundles():
+                for key in self._config_service.list_bundles():
                     if key == bundle_name:
                         continue
-                    bundle_info = self.config_service.get_bundle(key)
+                    bundle_info = self._config_service.get_bundle(key)
                     bundle_path_str = str(bundle_info.get("path", "")).strip()
                     if not bundle_path_str or bundle_path_str.rstrip("/") in (".", "./"):
                         continue
@@ -524,11 +532,11 @@ class ServiceCoordinator:
             new_path = str(interface_path.parent)
 
         try:
-            if hasattr(self, "config_service") and self.config_service:
-                current = self.config_service.get_bundle(bundle_name)
+            if hasattr(self, "_config_service") and self._config_service:
+                current = self._config_service.get_bundle(bundle_name)
                 current_path = str(current.get("path", "")).strip()
                 if current_path != new_path:
-                    self.update_bundle_path(bundle_name, new_path)
+                    self._configs.update_bundle_path(bundle_name, new_path)
         except Exception as exc:
             logger.warning(f"回写 bundle '{bundle_name}' 路径失败: {exc}")
 
@@ -541,8 +549,8 @@ class ServiceCoordinator:
 
         try:
             bundle_info = None
-            if hasattr(self, "config_service") and self.config_service:
-                bundle_info = self.config_service.get_bundle(bundle_name)
+            if hasattr(self, "_config_service") and self._config_service:
+                bundle_info = self._config_service.get_bundle(bundle_name)
             else:
                 bundle_path_str = self._get_bundle_path_from_main_config(
                     bundle_name
@@ -630,8 +638,8 @@ class ServiceCoordinator:
             
             # 优先尝试从 config_service 获取当前配置ID（如果已初始化）
             try:
-                if hasattr(self, 'config_service') and self.config_service:
-                    current_config_id = self.config_service.current_config_id
+                if hasattr(self, "_config_service") and self._config_service:
+                    current_config_id = self._config_service.current_config_id
             except Exception:
                 pass
             
@@ -797,7 +805,7 @@ class ServiceCoordinator:
         注意：不会删除引用这些 bundle 的配置，交由后续逻辑按需处理。
         """
         try:
-            bundle_names = self.config_service.list_bundles()
+            bundle_names = self._config_service.list_bundles()
         except Exception as exc:
             logger.warning(f"读取 bundle 列表失败，跳过清理: {exc}")
             return
@@ -817,29 +825,10 @@ class ServiceCoordinator:
         if not invalid_bundles:
             return
 
-        try:
-            main_cfg = self.config_service._main_config
-        except AttributeError as exc:
-            logger.error("ConfigService 缺少 _main_config，无法清理无效 bundle 索引")
-            raise
-        if not isinstance(main_cfg, dict):
-            logger.warning("主配置结构缺失或损坏，跳过无效 bundle 清理")
-            return
-
-        bundle_dict = main_cfg.get("bundle") or {}
-        if not isinstance(bundle_dict, dict):
-            bundle_dict = {}
-
         for name in invalid_bundles:
-            if name in bundle_dict:
-                logger.info(f"从主配置中移除无效 bundle 索引: {name}")
-                bundle_dict.pop(name, None)
-
-        main_cfg["bundle"] = bundle_dict
-        try:
-            self.config_service.save_main_config()
-        except Exception as exc:
-            logger.warning(f"保存主配置时出错（清理无效 bundle 索引后）: {exc}")
+            logger.info(f"从主配置中移除无效 bundle 索引: {name}")
+            if not self._config_service.delete_bundle(name):
+                logger.warning(f"保存主配置时出错（清理无效 bundle '{name}' 后）")
 
     def _update_interface_path_for_config(self, config_id: str):
         """根据配置的 bundle 更新 interface 路径（如果需要）。
@@ -850,7 +839,7 @@ class ServiceCoordinator:
         if not config_id:
             return
 
-        config = self.config_service.get_config(config_id)
+        config = self._config_service.get_config(config_id)
         if not config:
             return
         try:
@@ -887,7 +876,7 @@ class ServiceCoordinator:
 
         # 更新相关服务的 interface 数据
         self._config_repo.interface = self._interface
-        self.task_service.reload_interface(self._interface)
+        self._task_service.reload_interface(self._interface)
         self.telemetry_service.configure_from_interface(self._interface)
 
     def _connect_signals(self):
@@ -976,106 +965,23 @@ class ServiceCoordinator:
         # 检查并更新 interface 路径（如果配置的 bundle 发生变化）
         self._update_interface_path_for_config(config_id)
 
-        self.task_service.on_config_changed(config_id)
+        self._task_service.on_config_changed(config_id)
         self._option_service.clear_selection()
 
     # region 配置相关方法
     def update_bundle_path(
         self, bundle_name: str, new_path: str, bundle_display_name: str | None = None
     ) -> bool:
-        """
-        更新 multi_config.json 中指定 bundle 的路径。
-
-        Args:
-            bundle_name: bundle 的名称（作为字典的 key）
-            new_path: 新的路径（相对路径或绝对路径）
-            bundle_display_name: bundle 的显示名称（可选，如果提供会更新 name 字段）
-
-        Returns:
-            是否更新成功
-        """
-        main_config_path = self._config_repo.main_config_path
-        if not main_config_path.exists():
-            logger.error(f"主配置文件不存在: {main_config_path}")
-            return False
-
-        try:
-            # 读取当前配置
-            with open(main_config_path, "r", encoding="utf-8") as f:
-                config_data: Dict[str, Any] = jsonc.load(f)
-
-            # 确保 bundle 字段存在且为字典
-            if "bundle" not in config_data:
-                config_data["bundle"] = {}
-            if not isinstance(config_data["bundle"], dict):
-                config_data["bundle"] = {}
-
-            # 更新或创建 bundle 信息
-            if bundle_name not in config_data["bundle"]:
-                config_data["bundle"][bundle_name] = {}
-
-            bundle_info = config_data["bundle"][bundle_name]
-            if not isinstance(bundle_info, dict):
-                bundle_info = {}
-
-            # 更新路径
-            bundle_info["path"] = new_path
-            # 如果提供了显示名称，也更新 name 字段
-            if bundle_display_name is not None:
-                bundle_info["name"] = bundle_display_name
-            # 如果 name 字段不存在，使用 bundle_name 作为默认值
-            elif "name" not in bundle_info:
-                bundle_info["name"] = bundle_name
-
-            config_data["bundle"][bundle_name] = bundle_info
-
-            # 保存回文件
-            with open(main_config_path, "w", encoding="utf-8") as f:
-                jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
-
-            logger.info(
-                f"已更新 bundle '{bundle_name}' 的路径为: {new_path} "
-                f"(显示名称: {bundle_info.get('name', bundle_name)})"
-            )
-
-            # 如果当前激活配置使用的是这个 bundle，可能需要重新解析 interface 路径
-            # 这里可以选择性地触发重新加载，但为了安全，先不自动触发
-            # 调用方可以根据需要手动调用相关刷新方法
-
-            return True
-
-        except Exception as e:
-            logger.error(f"更新 bundle 路径失败: {e}")
-            return False
+        """兼容入口；新调用应使用 configs.update_bundle_path。"""
+        return self._configs.update_bundle_path(
+            bundle_name,
+            new_path,
+            bundle_display_name,
+        )
 
     def delete_bundle(self, bundle_name: str) -> bool:
-        """从主配置中移除指定 bundle 的索引"""
-        try:
-            main_config = self.config_service._main_config
-        except AttributeError as exc:
-            logger.error("ConfigService 缺少 _main_config，无法删除 bundle")
-            raise
-        if not isinstance(main_config, dict):
-            logger.warning("主配置缺失，无法删除 bundle")
-            return False
-
-        bundle_dict = main_config.get("bundle")
-        if not isinstance(bundle_dict, dict):
-            bundle_dict = {}
-
-        if bundle_name not in bundle_dict:
-            logger.info(f"Bundle '{bundle_name}' 不存在于主配置，跳过删除")
-            return True
-
-        bundle_dict.pop(bundle_name, None)
-        main_config["bundle"] = bundle_dict
-        success = self.config_service.save_main_config()
-        if success:
-            logger.info(f"已从主配置中移除 bundle: {bundle_name}")
-            return True
-
-        logger.error(f"保存主配置失败，bundle '{bundle_name}' 未被删除")
-        return False
+        """兼容入口；新调用应使用 configs.delete_bundle。"""
+        return self._configs.delete_bundle(bundle_name)
 
     def get_presets(self) -> List[Dict[str, Any]]:
         """获取 interface 中定义的所有预设配置列表。

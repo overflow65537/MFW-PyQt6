@@ -9,8 +9,6 @@ from qfluentwidgets import (
     SwitchButton,
     ToolTipPosition,
 )
-from pathlib import Path
-
 import jsonc
 import sys
 from app.common.fluent_tooltip import apply_fluent_tooltip
@@ -164,65 +162,20 @@ class ControllerSettingWidget(QWidget):
         except (TypeError, ValueError):
             return None
 
-    def _sync_controller_meta_fields(
-        self,
-        controller_name: str,
-        controller_info: dict[str, Any] | None,
-        *,
-        persist: bool,
-    ) -> dict[str, Any]:
-        """
-        将 interface 中控制器的元信息字段复制到“该控制器自己的子配置字典”中：
-        例如 config 里的 "Win32控制器": {...}
-
-        规则：
-        - 控制器里写了什么（同名键），配置里就记什么
-        - 如果为 None 或不存在就不记
-        - 仅在值发生变化时才触发保存，避免无意义刷新
-        """
-        if not controller_name:
-            return {}
-
-        info = controller_info or {}
-        controller_cfg = self.current_config.setdefault(controller_name, {})
-        if not isinstance(controller_cfg, dict):
-            controller_cfg = {}
-            self.current_config[controller_name] = controller_cfg
-
-        changed: dict[str, Any] = {}
-        for key in ("permission_required", "display_short_side", "display_long_side", "display_raw"):
-            if key not in info:
-                continue
-            value = info.get(key)
-            if value is None:
-                continue
-            if controller_cfg.get(key) != value:
-                controller_cfg[key] = value
-                changed[key] = value
-
-        if persist and changed:
-            # 仅提交当前控制器子配置，确保落盘到 configs/*.json 的对应控制器块中
-            self._auto_save_options({controller_name: controller_cfg})
-
-        return changed
-
     def _persist_current_controller_meta_if_needed(self) -> None:
-        """初始化阶段补偿：将当前控制器的 meta 字段复制到子配置并落盘。"""
+        """初始化阶段由 Service 补齐当前控制器元信息。"""
         controller_name = self.current_controller_name
         ctrl_info = self.current_controller_info
         if not controller_name or not isinstance(ctrl_info, dict):
             return
 
-        changed = self._sync_controller_meta_fields(
-            controller_name, ctrl_info, persist=False
-        )
-        if not changed:
-            return
-
-        payload: dict[str, Any] = {controller_name: self.current_config[controller_name]}
-        if "controller_type" in self.current_config:
-            payload["controller_type"] = self.current_config["controller_type"]
-        self._auto_save_options(payload)
+        if self.service_coordinator.options.update_controller_selection(
+            controller_name,
+            ctrl_info,
+        ):
+            latest = self.service_coordinator.options.get_options()
+            self.current_config.clear()
+            self.current_config.update(latest)
 
     @staticmethod
     def _normalize_method_name(value: str) -> str:
@@ -2342,44 +2295,21 @@ class ControllerSettingWidget(QWidget):
                 break
         if not current_controller_type:
             return
-        # 使用控制器名称作为键
-        current_controller_config = self.current_config.setdefault(
-            current_controller_name, {}
-        )
         find_device_info = self.resource_setting_widgets[
             "search_combo"
         ].device_mapping.get(device_name)
         if find_device_info is None:
             return
-        for key, value in find_device_info.items():
-            # 处理所有路径类型（Path 基类检查会匹配 WindowsPath 和 PosixPath）
-            if isinstance(value, Path):
-                value = str(value)
-            current_controller_config[key] = value
-        current_controller_config["device_name"] = device_name
-
-        # 确保 emulator_path 和 emulator_params 被正确设置（并转换为字符串）
-        if "emulator_path" in find_device_info:
-            emulator_path = find_device_info["emulator_path"]
-            if isinstance(emulator_path, Path):
-                emulator_path = str(emulator_path)
-            current_controller_config["emulator_path"] = emulator_path
-        if "emulator_params" in find_device_info:
-            emulator_params = find_device_info["emulator_params"]
-            # emulator_params 通常是字符串，但为了安全也检查一下
-            if isinstance(emulator_params, Path):
-                emulator_params = str(emulator_params)
-            current_controller_config["emulator_params"] = emulator_params
-
-        # 打印所有设备配置
-        logger.info(f"[设备配置] 设备名称: {device_name}")
-        logger.info(f"[设备配置] 控制器类型: {current_controller_type}")
-        logger.info(
-            f"[设备配置] 完整配置: {jsonc.dumps(current_controller_config, indent=2, ensure_ascii=False)}"
-        )
-
-        # 仅提交当前控制器配置，避免无关字段导致任务列表重载
-        self._auto_save_options({current_controller_name: current_controller_config})
+        if not self.service_coordinator.options.update_controller_device(
+            current_controller_name,
+            device_name,
+            find_device_info,
+        ):
+            logger.warning("控制器设备配置保存失败: %s", device_name)
+            return
+        latest = self.service_coordinator.options.get_options()
+        self.current_config.clear()
+        self.current_config.update(latest)
         self._fill_children_option(current_controller_name)
 
     def _toggle_children_visible(self, option_list: list, visible: bool):

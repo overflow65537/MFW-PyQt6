@@ -31,6 +31,7 @@ class ViewSignalBus(QObject):
     config_changed = Signal(str)
     options_loaded = Signal()
     option_updated = Signal(object)
+    schedules_changed = Signal(list)
 
 
 class RunnerEvents(QObject):

@@ -7,7 +7,6 @@ from typing import Any, List, Optional
 
 from PySide6.QtCore import QObject, Signal
 
-from app.common.signal_bus import signalBus
 from app.core.service.system_scheduler import get_system_scheduler_backend
 from app.utils.logger import logger
 
@@ -228,6 +227,7 @@ class ScheduleEntry:
 
 class ScheduleService(QObject):
     schedules_changed = Signal(list)
+    notification_requested = Signal(str, str)
 
     def __init__(self):
         super().__init__()
@@ -447,8 +447,8 @@ class ScheduleService(QObject):
 
     def _log_info(self, message: str) -> None:
         logger.info(message)
-        signalBus.info_bar_requested.emit("info", message)
+        self.notification_requested.emit("info", message)
 
     def _log_warning(self, message: str) -> None:
         logger.warning(message)
-        signalBus.info_bar_requested.emit("warning", message)
+        self.notification_requested.emit("warning", message)

@@ -1,4 +1,5 @@
 from app.core.runner.task_flow import TaskFlowRunner
+from app.core.item import RunnerEvents
 from app.core.service.task_service import TaskService
 from app.core.service.config_service import ConfigService
 
@@ -10,8 +11,13 @@ class MonitorTask(TaskFlowRunner):
         self,
         task_service: TaskService,
         config_service: ConfigService,
+        runner_events: RunnerEvents | None = None,
     ):
-        super().__init__(task_service, config_service, None)
+        super().__init__(
+            task_service,
+            config_service,
+            runner_events or RunnerEvents(),
+        )
         self.screen_pixmap = None
 
     async def _connect(self):

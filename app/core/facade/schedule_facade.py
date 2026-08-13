@@ -1,21 +1,19 @@
-from PySide6.QtCore import QObject, Signal
-
 from app.core.facade._snapshot import snapshot
-from app.core.service.schedule_service import ScheduleEntry, ScheduleService
+from app.core.service.schedule_service import (
+    SCHEDULE_DAILY,
+    SCHEDULE_MONTHLY,
+    SCHEDULE_SINGLE,
+    SCHEDULE_WEEKLY,
+    ScheduleEntry,
+    ScheduleService,
+)
 
 
-class ScheduleFacade(QObject):
+class ScheduleFacade:
     """计划任务域的显式 API。"""
 
-    schedules_changed = Signal(list)
-
     def __init__(self, service: ScheduleService) -> None:
-        super().__init__()
         self._service = service
-        self._service.schedules_changed.connect(self._forward_schedules_changed)
-
-    def _forward_schedules_changed(self, entries: list[ScheduleEntry]) -> None:
-        self.schedules_changed.emit(snapshot(entries))
 
     def get_schedules(self) -> list[ScheduleEntry]:
         return snapshot(self._service.get_schedules())
@@ -37,3 +35,13 @@ class ScheduleFacade(QObject):
 
     def set_schedule_enabled(self, entry_id: str, enabled: bool) -> bool:
         return self._service.set_schedule_enabled(entry_id, enabled)
+
+
+__all__ = [
+    "SCHEDULE_DAILY",
+    "SCHEDULE_MONTHLY",
+    "SCHEDULE_SINGLE",
+    "SCHEDULE_WEEKLY",
+    "ScheduleEntry",
+    "ScheduleFacade",
+]

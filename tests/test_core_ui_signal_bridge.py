@@ -205,6 +205,46 @@ class OptionServiceDomainEventTests(unittest.TestCase):
             received,
         )
 
+    def test_controller_field_alias_is_normalized_by_service(self):
+        controller_task = TaskItem(
+            name="Controller",
+            item_id=_CONTROLLER_,
+            is_checked=True,
+            task_option={"controller_type": "demo", "demo": {}},
+        )
+
+        class _ControllerTaskService:
+            interface = {"controller": [{"name": "demo"}]}
+
+            def __init__(self):
+                self.update_calls = 0
+
+            def get_task(self, task_id: str):
+                return controller_task if task_id == _CONTROLLER_ else None
+
+            def update_task(self, task: TaskItem) -> bool:
+                self.update_calls += 1
+                return True
+
+        task_service = _ControllerTaskService()
+        core_signals = CoreSignalBus()
+        service = OptionService(task_service, core_signals)  # type: ignore[arg-type]
+        received: list[object] = []
+        core_signals.option_updated.connect(received.append)
+
+        self.assertTrue(
+            service.update_controller_field(
+                "demo",
+                "adb",
+                "adb_wait_time",
+                "-3",
+            )
+        )
+
+        self.assertEqual(1, task_service.update_calls)
+        self.assertEqual({"wait_time": 0}, controller_task.task_option["demo"])
+        self.assertEqual([{"demo": {"wait_time": 0}}], received)
+
     def test_post_action_is_normalized_and_persisted_once(self):
         post_task = TaskItem(
             name="Post-Action",
