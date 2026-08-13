@@ -861,6 +861,16 @@ class ServiceCoordinator:
             )
             self._reload_interface(new_interface_path)
 
+    def refresh_interface_for_current_config(self) -> None:
+        """按当前配置和最新 bundle 路径刷新 interface。"""
+        config_id = self._config_service.current_config_id
+        if config_id:
+            self._update_interface_path_for_config(config_id)
+            return
+        new_path = self._resolve_interface_path(self._main_config_path, None)
+        if new_path and new_path != self._interface_path:
+            self._reload_interface(new_path)
+
     def _reload_interface(self, interface_path: Path | str | None):
         """重新加载 interface 并更新相关服务。
 
@@ -898,6 +908,14 @@ class ServiceCoordinator:
         )
         self._core_signals.task_updated.connect(
             self._core_ui_bridge.forward_task_updated,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self._schedule_service.schedules_changed.connect(
+            self._core_ui_bridge.forward_schedules_changed,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self._schedule_service.notification_requested.connect(
+            self._runner_ui_bridge.forward_info_bar_requested,
             Qt.ConnectionType.QueuedConnection,
         )
         # 使用 QObject 槽转发，确保来自 runner/底层回调线程的信号稳定回到 UI 线程。
@@ -1008,25 +1026,25 @@ class ServiceCoordinator:
             preset_name: 可选的预设名称。若指定且能找到预设，则仅物化 preset.task 中的任务（含 enabled/option）；否则按全 interface 物化。
             shared_tasks: 可选的分享任务列表。若指定则优先于 preset 用于初始化任务。
         """
-        new_id = self.config_service.create_config(config_item)
+        new_id = self._config_service.create_config(config_item)
         if new_id:
             # Select the new config
-            self.config_service.current_config_id = new_id
+            self._config_service.current_config_id = new_id
 
             if shared_tasks is not None:
-                self.task_service.init_config_from_shared(shared_tasks)
+                self._task_service.init_config_from_shared(shared_tasks)
             elif preset_name:
                 preset = self._find_preset(preset_name)
                 if preset:
-                    self.task_service.init_config_from_preset(preset)
+                    self._task_service.init_config_from_preset(preset)
                 else:
-                    self.task_service.init_new_config()
+                    self._task_service.init_new_config()
             else:
-                self.task_service.init_new_config()
+                self._task_service.init_new_config()
 
             # Notify UI incrementally
             self._view_signals.config_added.emit(
-                self.config_service.get_config(new_id)
+                self._config_service.get_config(new_id)
             )
         return new_id
 
@@ -1048,7 +1066,7 @@ class ServiceCoordinator:
     def _collect_config_display_names(self) -> set[str]:
         names: set[str] = set()
         try:
-            for entry in self.config_service.list_configs():
+            for entry in self._config_service.list_configs():
                 n = entry.get("name")
                 if isinstance(n, str) and n.strip():
                     names.add(n.strip())
@@ -1068,7 +1086,7 @@ class ServiceCoordinator:
 
     def _finalize_bootstrap_interfaces(self) -> None:
         """首次无主配置：有可用 preset 时物化 N 条子配置；否则走「单默认 + 可选追加 preset」逻辑。"""
-        pairs = self.config_service.consume_bootstrap_preset_pairs()
+        pairs = self._config_service.consume_bootstrap_preset_pairs()
         if pairs:
             for cid, preset_key in pairs:
                 if not self.select_config(cid):
@@ -1076,12 +1094,12 @@ class ServiceCoordinator:
                     continue
                 preset = self._find_preset(preset_key)
                 if preset:
-                    self.task_service.init_config_from_preset(preset)
+                    self._task_service.init_config_from_preset(preset)
                 else:
-                    self.task_service.init_new_config()
+                    self._task_service.init_new_config()
                 try:
                     self._view_signals.config_added.emit(
-                        self.config_service.get_config(cid)
+                        self._config_service.get_config(cid)
                     )
                 except Exception:
                     pass
@@ -1091,16 +1109,16 @@ class ServiceCoordinator:
 
     def _maybe_bootstrap_configs_from_presets(self) -> None:
         """首次无主配置仅创建 Default Config 后：若 interface 含 preset，为除 default 外的每项再建子配置并应用预设。"""
-        if not self.config_service.consume_bootstrap_without_curr_config():
+        if not self._config_service.consume_bootstrap_without_curr_config():
             return
         presets = self.get_presets()
         if not presets:
             return
-        original_id = self.config_service.current_config_id
+        original_id = self._config_service.current_config_id
         if not original_id:
             return
         try:
-            seed = self.config_service.get_config(original_id)
+            seed = self._config_service.get_config(original_id)
         except Exception:
             logger.exception("从预设物化子配置：无法读取种子配置")
             return
@@ -1147,7 +1165,7 @@ class ServiceCoordinator:
 
     def delete_config(self, config_id: str) -> bool:
         """删除配置，传入 config id"""
-        ok = self.config_service.delete_config(config_id)
+        ok = self._config_service.delete_config(config_id)
         if ok:
             # notify UI incremental removal
             self._view_signals.config_removed.emit(config_id)
@@ -1156,12 +1174,12 @@ class ServiceCoordinator:
     def select_config(self, config_id: str) -> bool:
         """选择配置，传入 config id"""
         # 验证配置存在
-        if not self.config_service.get_config(config_id):
+        if not self._config_service.get_config(config_id):
             return False
 
         # 使用 ConfigService setter，回调将同步任务和选项
-        self.config_service.current_config_id = config_id
-        return self.config_service.current_config_id == config_id
+        self._config_service.current_config_id = config_id
+        return self._config_service.current_config_id == config_id
 
     # endregion
 
@@ -1174,7 +1192,7 @@ class ServiceCoordinator:
             task: 任务对象
             idx: 插入位置索引，默认为-2（倒数第二个位置）
         """
-        ok = self.task_service.update_task(task, idx)
+        ok = self._task_service.update_task(task, idx)
         if ok:
             self._view_signals.task_modified.emit(task)
         return ok
@@ -1188,7 +1206,7 @@ class ServiceCoordinator:
         if not tasks:
             return True
 
-        ok = self.task_service.update_tasks(tasks)
+        ok = self._task_service.update_tasks(tasks)
         if ok:
             # 兼容：对于希望逐项更新的监听者，仍发出逐项 task_updated 信号
             try:
@@ -1200,7 +1218,7 @@ class ServiceCoordinator:
 
     def delete_task(self, task_id: str) -> bool:
         """删除任务，传入 task id，基础任务不可删除（通过特殊 id 区分）"""
-        config = self.config_service.get_current_config()
+        config = self._config_service.get_current_config()
         if not config:
             return False
         # 基础任务 id 以 r_ f_ 开头（资源和完成后操作）
@@ -1208,7 +1226,7 @@ class ServiceCoordinator:
         for t in config.tasks:
             if t.item_id == task_id and t.item_id.startswith(base_prefix):
                 return False
-        ok = self.task_service.delete_task(task_id)
+        ok = self._task_service.delete_task(task_id)
         if ok:
             self._view_signals.task_removed.emit(task_id)
         return ok
@@ -1216,12 +1234,12 @@ class ServiceCoordinator:
     def select_task(self, task_id: str) -> bool:
         """选中任务，传入 task id，并自动检查已知任务"""
         selected = self._option_service.select_task(task_id)
-        self.task_service._check_know_task()
+        self._task_service._check_know_task()
         return selected
 
     def reorder_tasks(self, new_order: List[str]) -> bool:
         """任务顺序更改，new_order 为 task_id 列表（新顺序）"""
-        return self.task_service.reorder_tasks(new_order)
+        return self._task_service.reorder_tasks(new_order)
 
     # endregion
     def reinit(self):
@@ -1237,11 +1255,11 @@ class ServiceCoordinator:
             self._config_repo.interface = self._interface
 
             # 重新初始化任务服务（刷新 interface 数据）
-            self.task_service.reload_interface(self._interface)
+            self._task_service.reload_interface(self._interface)
             self.telemetry_service.configure_from_interface(self._interface)
 
             # 通知 UI 配置已更新
-            current_config_id = self.config_service.current_config_id
+            current_config_id = self._config_service.current_config_id
             if current_config_id:
                 self._core_signals.config_changed.emit(current_config_id)
 
@@ -1252,36 +1270,16 @@ class ServiceCoordinator:
     async def run_tasks_flow(
         self, task_id: str | None = None
     ):
-        """运行任务流的对外封装。
-
-        :param task_id: 指定只运行某个任务（可选）
-        """
-        restore_checked = False
-        if task_id:
-            task = self.task_service.get_task(task_id)
-            if task and not task.is_checked:
-                restore_checked = self.update_task_checked(task_id, True)
-
-        # 任务流执行前刷新一次 is_hidden，确保 runner 只需读取 is_checked/is_hidden
-        try:
-            self.task_service.refresh_hidden_flags()
-        except Exception:
-            pass
-        try:
-            return await self.task_runner.run_tasks_flow(task_id)
-        finally:
-            if restore_checked:
-                if task_id is None:
-                    raise RuntimeError("restore_checked is True but task_id is None")
-                self.update_task_checked(task_id, False)
+        """兼容入口；新调用应使用 runtime.run。"""
+        return await self._runtime.run(task_id)
 
     async def stop_task_flow(self):
-        """停止当前任务流（UI/外部调用，视为手动停止）。"""
-        return await self.task_runner.stop_task(manual=True)
+        """兼容入口；新调用应使用 runtime.stop。"""
+        return await self._runtime.stop(manual=True)
 
     async def stop_task(self, *, manual: bool = False):
-        """停止当前任务流（供内部/调度等模块调用，可指定是否视为手动停止）。"""
-        return await self.task_runner.stop_task(manual=manual)
+        """兼容入口；新调用应使用 runtime.stop。"""
+        return await self._runtime.stop(manual=manual)
 
     def set_telemetry_enabled(self, enabled: bool) -> None:
         """更新用户遥测授权并立即应用。"""
@@ -1294,24 +1292,6 @@ class ServiceCoordinator:
     def shutdown_telemetry(self) -> None:
         """退出应用前刷新并关闭遥测。"""
         self.telemetry_service.shutdown()
-
-    # 以下 Service/Runner 属性仅为阶段边界保留：
-    # MonitorTask 构造、Schedule CRUD、Bundle reload、MainWindow shutdown。
-    @property
-    def config_service(self) -> ConfigService:
-        return self._config_service
-
-    @property
-    def task_service(self) -> TaskService:
-        return self._task_service
-
-    @property
-    def schedule_service(self) -> ScheduleService:
-        return self._schedule_service
-
-    @property
-    def task_runner(self) -> TaskFlowRunner:
-        return self._task_runner
 
     @property
     def interface(self) -> Dict[str, Any]:

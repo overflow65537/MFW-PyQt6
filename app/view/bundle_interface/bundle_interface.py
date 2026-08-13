@@ -1275,7 +1275,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         logger.info("收到多资源适配启用信号，刷新 bundle 列表")
         # 重新加载配置服务的主配置
         try:
-            self.service_coordinator.config_service.load_main_config()
+            self.service_coordinator.configs.load_main_config()
             logger.debug("已重新加载主配置")
         except Exception as e:
             logger.warning(f"重新加载主配置失败: {e}")
@@ -1313,7 +1313,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         # 重新加载配置服务的主配置，确保能获取到新添加的 bundle
         try:
-            self.service_coordinator.config_service.load_main_config()
+            self.service_coordinator.configs.load_main_config()
             logger.debug("已重新加载主配置，确保获取到新添加的 bundle")
         except Exception as e:
             logger.warning(f"重新加载主配置失败: {e}")
@@ -1471,7 +1471,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
                     logger.error(f"删除配置 '{config_name}' 时出错: {e}")
 
             # 删除 bundle
-            success = self.service_coordinator.delete_bundle(bundle_name)
+            success = self.service_coordinator.configs.delete_bundle(bundle_name)
             if success:
                 logger.info(f"已删除 bundle: {bundle_display_name} ({bundle_name})")
                 signalBus.info_bar_requested.emit(
@@ -1483,7 +1483,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 
                 # 重新加载配置服务的主配置
                 try:
-                    self.service_coordinator.config_service.load_main_config()
+                    self.service_coordinator.configs.load_main_config()
                 except Exception as e:
                     logger.warning(f"重新加载主配置失败: {e}")
                 
@@ -1709,13 +1709,13 @@ class AddBundleDialog(MessageBoxBase):
             logger.info("[步骤4] 服务协调器可用")
 
             coordinator = self._service_coordinator
-            config_service = coordinator.configs
-            logger.info(f"[步骤4] 获取配置服务: {type(config_service).__name__}")
+            config_api = coordinator.configs
+            logger.info(f"[步骤4] 获取配置接口: {type(config_api).__name__}")
 
             # 检查是否已存在同名的 bundle
             logger.info("[步骤5] 检查是否已存在同名的 bundle")
             try:
-                existing_bundles = config_service.list_bundles()
+                existing_bundles = config_api.list_bundles()
                 logger.info(f"[步骤5] 现有 bundle 列表: {existing_bundles}")
                 logger.info(f"[步骤5] 检查 bundle 名称 '{bundle_name}' 是否已存在")
                 if bundle_name in existing_bundles:
@@ -1927,7 +1927,7 @@ class AddBundleDialog(MessageBoxBase):
             logger.info(f"[步骤13] bundle 名称: {bundle_name}")
             logger.info(f"[步骤13] bundle 路径: {normalized}")
             try:
-                success = coordinator.update_bundle_path(
+                success = config_api.update_bundle_path(
                     bundle_name=bundle_name,
                     new_path=normalized,
                     bundle_display_name=bundle_name,

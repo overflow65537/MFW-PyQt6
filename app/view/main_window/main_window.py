@@ -472,8 +472,8 @@ class MainWindow(MSFluentWindow):
             event_loop = None
         self._hotkey_manager = GlobalHotkeyManager(event_loop)
         self._hotkey_manager.setup(
-            start_factory=lambda: self.service_coordinator.run_tasks_flow(),
-            stop_factory=lambda: self.service_coordinator.stop_task_flow(),
+            start_factory=lambda: self.service_coordinator.runtime.run(),
+            stop_factory=lambda: self.service_coordinator.runtime.stop(),
         )
         signalBus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
 
@@ -859,7 +859,7 @@ class MainWindow(MSFluentWindow):
 
         async def _start_flow():
             try:
-                await self.service_coordinator.run_tasks_flow()
+                await self.service_coordinator.runtime.run()
             except Exception as exc:
                 logger.error("首页 Start 按钮触发任务运行失败: %s", exc)
                 signalBus.info_bar_requested.emit(
@@ -2675,7 +2675,7 @@ class MainWindow(MSFluentWindow):
 
         async def _start_flow():
             try:
-                await self.service_coordinator.run_tasks_flow()
+                await self.service_coordinator.runtime.run()
             except Exception as exc:
                 logger.error("启动后自动运行失败: %s", exc)
 
@@ -3116,15 +3116,7 @@ class MainWindow(MSFluentWindow):
         QApplication.restoreOverrideCursor()
 
     def _is_task_shutdown_pending(self) -> bool:
-        task_runner = getattr(self.service_coordinator, "task_runner", None)
-        if task_runner is None:
-            return False
-        try:
-            return bool(
-                task_runner.is_running or task_runner.maafw.has_active_runtime()
-            )
-        except Exception:
-            return False
+        return self.service_coordinator.runtime.is_running
 
     def _continue_close_after_task_shutdown(self) -> None:
         if self._shutdown_cleanup_started:
@@ -3187,20 +3179,11 @@ class MainWindow(MSFluentWindow):
 
     def clear_thread_async(self):
         """异步清理线程和资源"""
-        send_thread = getattr(self.service_coordinator.task_runner, "send_thread", None)
-        # 兼容：旧版本 task_runner 可能没有暴露 send_thread，这里直接回落到全局单例
-        if send_thread is None:
-            try:
-                from app.utils.notice import send_thread as global_send_thread
-
-                send_thread = global_send_thread
-            except Exception:
-                send_thread = None
         try:
 
             self.service_coordinator.shutdown_telemetry()
             self._clear_maafw_sync()
-            self._stop_notice_thread(send_thread)
+            self.service_coordinator.runtime.stop_notification_thread()
             self._stop_update_workers()
             # self._terminate_child_processes()
         except Exception as e:
@@ -3209,25 +3192,9 @@ class MainWindow(MSFluentWindow):
     def _clear_maafw_sync(self):
         """同步清理 maafw（回退逻辑）"""
         try:
-            self.service_coordinator.task_runner.shutdown_runtime_sync()
+            self.service_coordinator.runtime.shutdown_runtime_sync()
         except Exception as e:
             logger.exception("清理 maafw 失败", exc_info=e)
-
-    def _stop_notice_thread(self, send_thread):
-        """关闭通知线程，确保队列循环退出。"""
-        if not send_thread:
-            return
-        try:
-            stop_fn = getattr(send_thread, "stop", None)
-            if callable(stop_fn):
-                stop_fn()
-            else:
-                send_thread.quit()
-                if not send_thread.wait(5000):
-                    send_thread.terminate()
-            logger.debug("关闭发送线程")
-        except Exception as e:
-            logger.exception("关闭发送线程失败", exc_info=e)
 
     def _stop_update_workers(self):
         """停止更新相关线程/进程，避免退出时残留。"""

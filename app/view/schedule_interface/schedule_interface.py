@@ -40,7 +40,7 @@ from qfluentwidgets import (
 from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
-from app.core.service.schedule_service import (
+from app.core.facade.schedule_facade import (
     SCHEDULE_DAILY,
     SCHEDULE_MONTHLY,
     SCHEDULE_SINGLE,
@@ -93,16 +93,15 @@ class ScheduleInterface(QWidget):
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(parent=parent)
         self.setObjectName("ScheduleInterface")
-        self.service_coordinator = service_coordinator
-        self.schedules = service_coordinator.schedules
-        # 下一阶段迁移 Schedule CRUD；本阶段仅保留写边界。
-        self.schedule_service = service_coordinator.schedule_service
+        self.schedule_api = service_coordinator.schedules
+        self.config_api = service_coordinator.configs
+        self.view_signals = service_coordinator.view_signals
         self._config_map: dict[str, str] = {}
         self._schedule_entries: list[ScheduleEntry] = []
         self._setup_ui()
         self._connect_signals()
         self._refresh_config_selector()
-        self._refresh_schedule_table(self.schedules.get_schedules())
+        self._refresh_schedule_table(self.schedule_api.get_schedules())
 
     def _setup_ui(self) -> None:
         main_layout = QVBoxLayout(self)
@@ -129,8 +128,8 @@ class ScheduleInterface(QWidget):
         main_layout.addWidget(self.scroll_area)
 
     def _connect_signals(self) -> None:
-        self.schedules.schedules_changed.connect(self._refresh_schedule_table)
-        self.service_coordinator.view_signals.config_changed.connect(
+        self.view_signals.schedules_changed.connect(self._refresh_schedule_table)
+        self.view_signals.config_changed.connect(
             lambda _: self._refresh_config_selector()
         )
         self.trigger_group.buttonClicked.connect(self._on_trigger_button_clicked)
@@ -540,7 +539,7 @@ class ScheduleInterface(QWidget):
         return card
 
     def _refresh_config_selector(self) -> None:
-        configs = self.service_coordinator.configs.list_configs()
+        configs = self.config_api.list_configs()
 
         self.config_selector.blockSignals(True)
         self.config_selector.clear()
@@ -588,12 +587,12 @@ class ScheduleInterface(QWidget):
         self.schedule_table.setItem(
             row,
             1,
-            _item(self.schedules.format_entry_type(entry)),
+            _item(self.schedule_api.format_entry_type(entry)),
         )
         self.schedule_table.setItem(
             row,
             2,
-            _item(self.schedules.format_entry_pattern(entry)),
+            _item(self.schedule_api.format_entry_pattern(entry)),
         )
 
         next_run = (
@@ -666,10 +665,10 @@ class ScheduleInterface(QWidget):
         return wrapper
 
     def _on_enabled_toggled(self, entry_id: str, state: int) -> None:
-        self.schedule_service.set_schedule_enabled(entry_id, state != 0)
+        self.schedule_api.set_schedule_enabled(entry_id, state != 0)
 
     def _on_remove_schedule(self, entry_id: str) -> None:
-        self.schedule_service.remove_schedule(entry_id)
+        self.schedule_api.remove_schedule(entry_id)
 
     def _on_add_schedule(self) -> None:
         current_index = self.config_selector.currentIndex()
@@ -746,7 +745,7 @@ class ScheduleInterface(QWidget):
             enabled=self.enabled_checkbox.isChecked(),
             created_at=datetime.now(),
         )
-        if not self.schedule_service.add_schedule(entry):
+        if not self.schedule_api.add_schedule(entry):
             self._info_with_log(
                 "warning", self.tr("Failed to persist the schedule.")
             )

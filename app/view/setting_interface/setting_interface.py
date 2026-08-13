@@ -2059,31 +2059,13 @@ class SettingInterface(QWidget):
             return False
 
         try:
-            main_config_path = self._service_coordinator.configs.main_config_path
-            if not main_config_path.exists():
-                return False
-
-            with open(main_config_path, "r", encoding="utf-8") as f:
-                config_data = json.load(f)
-
-            # 检查 bundle 配置是否存在且路径正确
-            bundle_config = config_data.get("bundle", {})
-            if not isinstance(bundle_config, dict):
-                return False
-
-            bundle_info = bundle_config.get(bundle_name)
-            if not isinstance(bundle_info, dict):
-                return False
-
-            bundle_path = bundle_info.get("path", "")
             expected_path = f"./bundle/{bundle_name}"
-
-            # 路径匹配（支持相对路径和绝对路径的变体）
-            if bundle_path == expected_path or bundle_path.endswith(
-                f"/bundle/{bundle_name}"
+            if self._service_coordinator.configs.is_bundle_path_configured(
+                bundle_name,
+                expected_path,
             ):
                 logger.debug(
-                    f"检测到 bundle 配置已更新: {bundle_name} -> {bundle_path}"
+                    f"检测到 bundle 配置已更新: {bundle_name} -> {expected_path}"
                 )
                 return True
 
@@ -2113,37 +2095,18 @@ class SettingInterface(QWidget):
             logger.error("bundle 名称为空，无法更新配置")
             return
 
-        bundle_path = f"./bundle/{name}"
-        bundles_to_update: dict[str, str] = {name: bundle_path}
-
         try:
-            for bundle_key in self._service_coordinator.configs.list_bundles():
-                info = self._service_coordinator.configs.get_bundle(bundle_key)
-                current_path = str(info.get("path", "")).strip().replace("\\", "/")
-                normalized = current_path.rstrip("/")
-                if normalized in ("", ".", "./"):
-                    bundles_to_update[bundle_key] = bundle_path
-                    continue
-
-                base_dir = Path(current_path)
-                if not base_dir.is_absolute():
-                    base_dir = Path.cwd() / base_dir
-                if not self._service_coordinator.interface_api.find_interface_file(
-                    base_dir
-                ):
-                    bundles_to_update[bundle_key] = bundle_path
-        except Exception as exc:
-            logger.warning(f"扫描待修正 bundle 路径时出错: {exc}")
-
-        for bundle_key, new_path in bundles_to_update.items():
-            display_name = name if bundle_key == name else None
-            success = self._service_coordinator.update_bundle_path(
-                bundle_name=bundle_key,
-                new_path=new_path,
-                bundle_display_name=display_name,
+            results = self._service_coordinator.configs.repair_bundle_paths(
+                name,
+                bundle_dir,
             )
+        except Exception as exc:
+            logger.warning(f"修正 bundle 路径时出错: {exc}")
+            return
+
+        for bundle_key, success in results.items():
             if success:
-                logger.info(f"已更新 bundle 配置: {bundle_key} -> {new_path}")
+                logger.info(f"已更新 bundle 配置: {bundle_key} -> {bundle_dir}")
             else:
                 logger.error(f"更新 bundle 配置失败: {bundle_key}")
 
@@ -2152,17 +2115,7 @@ class SettingInterface(QWidget):
         if not self._service_coordinator:
             return
         try:
-            coordinator = self._service_coordinator
-            config_id = coordinator.configs.current_config_id
-            if config_id:
-                coordinator._update_interface_path_for_config(config_id)
-                return
-
-            new_path = coordinator._resolve_interface_path(
-                coordinator.configs.main_config_path, None
-            )
-            if new_path and new_path != coordinator._interface_path:
-                coordinator._reload_interface(new_path)
+            self._service_coordinator.refresh_interface_for_current_config()
         except Exception as exc:
             logger.warning(f"多资源迁移后重新加载 interface 失败: {exc}")
 
