@@ -21,15 +21,13 @@ class CoreSignalBus(QObject):
     option_updated = Signal(object)  # 选项更新(dict)
 
 
-class FromeServiceCoordinator(QObject):
-    """
-    从服务协调器发送的信号,用来通知UI层进行更新
-    """
+class ViewSignalBus(QObject):
+    """由 ServiceCoordinator 暴露给 View 的单向域事件总线。"""
 
-    fs_task_modified = Signal(object)  # 文件系统任务修改，载荷为 task
-    fs_task_removed = Signal(str)  # 文件系统任务移除，载荷为 task_id
-    fs_config_added = Signal(object)  # 文件系统配置新增，载荷为 config
-    fs_config_removed = Signal(str)  # 文件系统配置移除，载荷为 config_id
+    task_modified = Signal(object)  # TaskItem
+    task_removed = Signal(str)  # task_id
+    config_added = Signal(object)  # ConfigItem
+    config_removed = Signal(str)  # config_id
     config_changed = Signal(str)
     options_loaded = Signal()
     option_updated = Signal(object)

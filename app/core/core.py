@@ -9,7 +9,7 @@ from PySide6.QtCore import QTimer, QObject, Qt, Slot
 
 from app.core.item import (
     CoreSignalBus,
-    FromeServiceCoordinator,
+    ViewSignalBus,
     RunnerEvents,
     ConfigItem,
     TaskItem,
@@ -21,6 +21,14 @@ from app.core.service.option_service import OptionService
 from app.core.service.telemetry_service import TelemetryService
 from app.core.service.interface_manager import get_interface_manager, InterfaceManager
 from app.core.runner.task_flow import TaskFlowRunner
+from app.core.facade import (
+    ConfigFacade,
+    InterfaceFacade,
+    OptionFacade,
+    RuntimeFacade,
+    ScheduleFacade,
+    TaskFacade,
+)
 from app.core.log_processor import CallbackLogProcessor
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
@@ -89,7 +97,7 @@ class _RunnerUiSignalBridge(QObject):
 class _CoreUiSignalBridge(QObject):
     """将 Core 内部状态事件安全转发到 View 域信号。"""
 
-    def __init__(self, view_signals: FromeServiceCoordinator):
+    def __init__(self, view_signals: ViewSignalBus):
         super().__init__()
         self._view_signals = view_signals
 
@@ -105,6 +113,10 @@ class _CoreUiSignalBridge(QObject):
     def forward_option_updated(self, payload: object):
         self._view_signals.option_updated.emit(payload)
 
+    @Slot(object)
+    def forward_task_updated(self, task: object):
+        self._view_signals.task_modified.emit(task)
+
 
 class ServiceCoordinator:
     """服务协调器，整合配置、任务和选项服务"""
@@ -117,7 +129,7 @@ class ServiceCoordinator:
     ):
         # 初始化信号总线
         self._core_signals = CoreSignalBus()
-        self._view_signals = FromeServiceCoordinator()
+        self._view_signals = ViewSignalBus()
         self.runner_events = RunnerEvents()
         
         # 存储待显示的错误信息（用于在 UI 初始化完成后显示）
@@ -134,20 +146,20 @@ class ServiceCoordinator:
             configs_dir = main_config_path.parent / "configs"
 
         # 先基于解析出的 interface 初始化管理器与数据，再交给仓库与服务使用
-        self.interface_manager: InterfaceManager = get_interface_manager(
+        self._interface_manager: InterfaceManager = get_interface_manager(
             interface_path=self._interface_path
         )
-        self._interface: Dict = self.interface_manager.get_interface()
+        self._interface: Dict = self._interface_manager.get_interface()
 
         # 初始化存储库和服务
-        self.config_repo = JsonConfigRepository(
+        self._config_repo = JsonConfigRepository(
             main_config_path, configs_dir, interface=self._interface
         )
         
         # 尝试初始化 ConfigService 和 TaskService，如果配置加载失败则重置配置
         try:
-            self.config_service = ConfigService(self.config_repo, self._core_signals)
-            self.task_service = TaskService(
+            self._config_service = ConfigService(self._config_repo, self._core_signals)
+            self._task_service = TaskService(
                 self.config_service,
                 self._core_signals,
                 self._interface,
@@ -158,10 +170,10 @@ class ServiceCoordinator:
             if self._handle_config_load_error(main_config_path, configs_dir, e):
                 # 重置成功后重新初始化
                 try:
-                    self.config_service = ConfigService(
-                        self.config_repo, self._core_signals
+                    self._config_service = ConfigService(
+                        self._config_repo, self._core_signals
                     )
-                    self.task_service = TaskService(
+                    self._task_service = TaskService(
                         self.config_service,
                         self._core_signals,
                         self._interface,
@@ -173,7 +185,7 @@ class ServiceCoordinator:
                 # 重置失败，抛出原始错误
                 raise
         
-        self.option_service = OptionService(self.task_service, self._core_signals)
+        self._option_service = OptionService(self.task_service, self._core_signals)
         self.telemetry_service = TelemetryService(
             self.runner_events, self._interface
         )
@@ -181,12 +193,23 @@ class ServiceCoordinator:
 
         # 运行器
 
-        self.task_runner = TaskFlowRunner(
+        self._task_runner = TaskFlowRunner(
             task_service=self.task_service,
             config_service=self.config_service,
             runner_events=self.runner_events,
         )
-        self.schedule_service = ScheduleService()
+        self._schedule_service = ScheduleService()
+
+        self._configs = ConfigFacade(self.config_service, self._config_repo)
+        self._tasks = TaskFacade(self.task_service)
+        self._options = OptionFacade(self._option_service)
+        self._schedules = ScheduleFacade(self.schedule_service)
+        self._runtime = RuntimeFacade(self.task_runner)
+        self._interface_api = InterfaceFacade(
+            self._interface_manager,
+            lambda: self._interface_path,
+            self._find_interface_file_in_dir,
+        )
 
         # 初始化日志处理器（将 callback 信号转换为 log_output 信号）
         self.log_processor = CallbackLogProcessor(self.runner_events)
@@ -747,7 +770,7 @@ class ServiceCoordinator:
                 return False
             
             # 重新初始化配置仓库和服务
-            self.config_repo = JsonConfigRepository(
+            self._config_repo = JsonConfigRepository(
                 main_config_path, configs_dir, interface=self._interface
             )
             
@@ -859,18 +882,18 @@ class ServiceCoordinator:
         self._interface_path = interface_path
 
         # 重新加载 interface
-        self.interface_manager.reload(interface_path=self._interface_path)
-        self._interface = self.interface_manager.get_interface()
+        self._interface_manager.reload(interface_path=self._interface_path)
+        self._interface = self._interface_manager.get_interface()
 
         # 更新相关服务的 interface 数据
-        self.config_repo.interface = self._interface
+        self._config_repo.interface = self._interface
         self.task_service.reload_interface(self._interface)
         self.telemetry_service.configure_from_interface(self._interface)
 
     def _connect_signals(self):
         """连接所有信号"""
         # 热更新完成后重新初始化
-        signalBus.fs_reinit_requested.connect(self.reinit)
+        signalBus.coordinator_reinit_requested.connect(self.reinit)
         # Core 事件只在内部流转，由协调器统一桥接为 View 域通知。
         self._core_signals.config_changed.connect(
             self._core_ui_bridge.forward_config_changed,
@@ -882,6 +905,10 @@ class ServiceCoordinator:
         )
         self._core_signals.option_updated.connect(
             self._core_ui_bridge.forward_option_updated,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self._core_signals.task_updated.connect(
+            self._core_ui_bridge.forward_task_updated,
             Qt.ConnectionType.QueuedConnection,
         )
         # 使用 QObject 槽转发，确保来自 runner/底层回调线程的信号稳定回到 UI 线程。
@@ -950,7 +977,7 @@ class ServiceCoordinator:
         self._update_interface_path_for_config(config_id)
 
         self.task_service.on_config_changed(config_id)
-        self.option_service.clear_selection()
+        self._option_service.clear_selection()
 
     # region 配置相关方法
     def update_bundle_path(
@@ -967,7 +994,7 @@ class ServiceCoordinator:
         Returns:
             是否更新成功
         """
-        main_config_path = self.config_repo.main_config_path
+        main_config_path = self._config_repo.main_config_path
         if not main_config_path.exists():
             logger.error(f"主配置文件不存在: {main_config_path}")
             return False
@@ -1092,7 +1119,7 @@ class ServiceCoordinator:
                 self.task_service.init_new_config()
 
             # Notify UI incrementally
-            self._view_signals.fs_config_added.emit(
+            self._view_signals.config_added.emit(
                 self.config_service.get_config(new_id)
             )
         return new_id
@@ -1147,7 +1174,7 @@ class ServiceCoordinator:
                 else:
                     self.task_service.init_new_config()
                 try:
-                    self._view_signals.fs_config_added.emit(
+                    self._view_signals.config_added.emit(
                         self.config_service.get_config(cid)
                     )
                 except Exception:
@@ -1217,7 +1244,7 @@ class ServiceCoordinator:
         ok = self.config_service.delete_config(config_id)
         if ok:
             # notify UI incremental removal
-            self._view_signals.fs_config_removed.emit(config_id)
+            self._view_signals.config_removed.emit(config_id)
         return ok
 
     def select_config(self, config_id: str) -> bool:
@@ -1243,33 +1270,15 @@ class ServiceCoordinator:
         """
         ok = self.task_service.update_task(task, idx)
         if ok:
-            self._view_signals.fs_task_modified.emit(task)
+            self._view_signals.task_modified.emit(task)
         return ok
 
     def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
         """更新任务选中状态"""
-        tasks = self.task_service.get_tasks()
-        target_task = None
-        for t in tasks:
-            if t.item_id == task_id:
-                t.is_checked = is_checked
-                target_task = t
-                break
-        else:
-            return False
-
-        changed_tasks = [target_task]
-        ok = self.task_service.update_tasks(changed_tasks)
-        if ok:
-            for task in changed_tasks:
-                # UI 通知：保持与旧行为兼容
-                self._core_signals.task_updated.emit(task)
-                self._view_signals.fs_task_modified.emit(task)
-
-        return ok
+        return self.tasks.update_task_checked(task_id, is_checked)
 
     def modify_tasks(self, tasks: List[TaskItem]) -> bool:
-        """批量修改/新增任务，减少多次磁盘写入。成功后发出 fs_task_updated（逐项或 tasks_loaded 已由 service 发出）。"""
+        """批量修改/新增任务，成功后逐项发出 View 域更新事件。"""
         if not tasks:
             return True
 
@@ -1278,7 +1287,7 @@ class ServiceCoordinator:
             # 兼容：对于希望逐项更新的监听者，仍发出逐项 task_updated 信号
             try:
                 for t in tasks:
-                    self._view_signals.fs_task_modified.emit(t)
+                    self._view_signals.task_modified.emit(t)
             except Exception:
                 pass
         return ok
@@ -1295,12 +1304,12 @@ class ServiceCoordinator:
                 return False
         ok = self.task_service.delete_task(task_id)
         if ok:
-            self._view_signals.fs_task_removed.emit(task_id)
+            self._view_signals.task_removed.emit(task_id)
         return ok
 
     def select_task(self, task_id: str) -> bool:
         """选中任务，传入 task id，并自动检查已知任务"""
-        selected = self.option_service.select_task(task_id)
+        selected = self._option_service.select_task(task_id)
         self.task_service._check_know_task()
         return selected
 
@@ -1314,12 +1323,12 @@ class ServiceCoordinator:
         logger.info("开始重新初始化服务协调器...")
         try:
             # 重新加载主配置
-            self.config_repo.load_main_config()
+            self._config_repo.load_main_config()
 
             # 刷新 interface 数据
-            self.interface_manager.reload(self._interface_path)
-            self._interface = self.interface_manager.get_interface()
-            self.config_repo.interface = self._interface
+            self._interface_manager.reload(self._interface_path)
+            self._interface = self._interface_manager.get_interface()
+            self._config_repo.interface = self._interface
 
             # 重新初始化任务服务（刷新 interface 数据）
             self.task_service.reload_interface(self._interface)
@@ -1380,19 +1389,28 @@ class ServiceCoordinator:
         """退出应用前刷新并关闭遥测。"""
         self.telemetry_service.shutdown()
 
+    # 以下 Service/Runner 属性仅为阶段边界保留：
+    # MonitorTask 构造、Schedule CRUD、Bundle reload、MainWindow shutdown。
     @property
-    def run_manager(self) -> TaskFlowRunner:
-        return self.task_runner
+    def config_service(self) -> ConfigService:
+        return self._config_service
 
-    # 提供获取服务的属性，以便UI层访问
     @property
-    def interface_obj(self) -> InterfaceManager:
-        return self.interface_manager
+    def task_service(self) -> TaskService:
+        return self._task_service
+
+    @property
+    def schedule_service(self) -> ScheduleService:
+        return self._schedule_service
+
+    @property
+    def task_runner(self) -> TaskFlowRunner:
+        return self._task_runner
 
     @property
     def interface(self) -> Dict[str, Any]:
-        """返回当前加载的 interface 字典"""
-        return self._interface
+        """兼容旧调用；新 View 代码应使用 interface_api.data。"""
+        return self.interface_api.data
 
     @property
     def interface_path(self) -> Path | str | None:
@@ -1400,19 +1418,31 @@ class ServiceCoordinator:
         return self._interface_path
 
     @property
-    def config(self) -> ConfigService:
-        return self.config_service
+    def configs(self) -> ConfigFacade:
+        return self._configs
 
     @property
-    def task(self) -> TaskService:
-        return self.task_service
+    def tasks(self) -> TaskFacade:
+        return self._tasks
 
     @property
-    def option(self) -> OptionService:
-        return self.option_service
+    def options(self) -> OptionFacade:
+        return self._options
 
     @property
-    def view_signals(self) -> FromeServiceCoordinator:
+    def schedules(self) -> ScheduleFacade:
+        return self._schedules
+
+    @property
+    def runtime(self) -> RuntimeFacade:
+        return self._runtime
+
+    @property
+    def interface_api(self) -> InterfaceFacade:
+        return self._interface_api
+
+    @property
+    def view_signals(self) -> ViewSignalBus:
         """供 View 只读订阅的域事件入口。"""
         return self._view_signals
     

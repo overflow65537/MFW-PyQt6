@@ -71,7 +71,7 @@ class RunnerArchitectureTests(unittest.TestCase):
                                 f"{relative_path}:{node.lineno}: signalBus import"
                             )
                 elif isinstance(node, ast.Name) and node.id in {
-                    "FromeServiceCoordinator",
+                    "ViewSignalBus",
                     "signalBus",
                 }:
                     violations.append(f"{relative_path}:{node.lineno}: {node.id}")

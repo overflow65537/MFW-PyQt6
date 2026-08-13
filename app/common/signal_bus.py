@@ -75,7 +75,7 @@ class SignalBus(QObject):
     hotkey_shortcuts_changed = Signal()
 
     # 服务协调器重新初始化
-    fs_reinit_requested = Signal()  # 热更新完成后请求服务协调器重新初始化
+    coordinator_reinit_requested = Signal()
 
     # 多资源适配启用后通知主界面等组件初始化相关 UI
     multi_resource_adaptation_enabled = Signal()
