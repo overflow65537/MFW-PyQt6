@@ -1,10 +1,7 @@
 import asyncio
 
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import (
-    QWidget,
-    QApplication,
-)
+from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import QHideEvent, QShowEvent
 from qfluentwidgets import (
     FluentIcon as FIF,
@@ -110,9 +107,6 @@ class TaskInterface(UI_TaskInterface, QWidget):
         if self.start_bar.run_button.text() == self.tr("Start"):
             # 立即禁用按钮
             self.start_bar.run_button.setDisabled(True)
-            # 强制处理UI事件，确保按钮状态立即更新
-            QApplication.processEvents()
-
             def _start_task():
                 self.log_output_widget.clear_log()
                 asyncio.create_task(self.service_coordinator.runtime.run())
@@ -122,9 +116,6 @@ class TaskInterface(UI_TaskInterface, QWidget):
         else:
             # 立即禁用按钮
             self.start_bar.run_button.setDisabled(True)
-            # 强制处理UI事件，确保按钮状态立即更新
-            QApplication.processEvents()
-
             def _stop_task():
                 asyncio.create_task(self.service_coordinator.runtime.stop())
 

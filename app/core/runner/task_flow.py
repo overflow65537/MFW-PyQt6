@@ -708,6 +708,8 @@ class TaskFlowRunner(QObject):
             self.runner_events.start_button_status.emit(
                 {"text": "STOP", "status": "disabled"}
             )
+            # 先把按钮状态交还给 Qt 事件循环绘制，再继续启动阶段。
+            await asyncio.sleep(0)
             self._reload_interface_for_current_bundle()
             controller_cfg = self.task_service.get_task(_CONTROLLER_)
             if not controller_cfg:
@@ -826,8 +828,9 @@ class TaskFlowRunner(QObject):
                     "INFO", self.tr("Starting to load custom components...")
                 )
 
-                self.maafw.resource.clear_custom_recognition()
-                self.maafw.resource.clear_custom_action()
+                await self._clear_embedded_agent_custom()
+                # 让“加载自定义模块”日志先完成布局和绘制。
+                await asyncio.sleep(0)
 
                 bundle_path_str = self.bundle_path or "./"
                 base_dir = Path(bundle_path_str)
@@ -863,9 +866,9 @@ class TaskFlowRunner(QObject):
                     agent_entry_path,
                 )
 
-                if not self.maafw.load_embedded_agent_custom(
-                    agent_root=agent_root_path,
-                    agent_entry=agent_entry_path,
+                if not await self._load_embedded_agent_custom(
+                    agent_root_path,
+                    agent_entry_path,
                 ):
                     logger.error("内置 agent 自定义组件加载失败")
                     self.log_output.emit(
@@ -1982,7 +1985,7 @@ class TaskFlowRunner(QObject):
                 return False
 
             logger.debug(f"加载资源: {resource}")
-            if not self._precheck_resource_pipeline(resource):
+            if not await self._precheck_resource_pipeline(resource):
                 return False
             res_cfg = self.task_service.get_task(_RESOURCE_)
             gpu_idx = res_cfg.task_option.get("gpu", -1) if res_cfg else -1
@@ -2035,7 +2038,7 @@ class TaskFlowRunner(QObject):
                 logger.warning(f"控制器附加资源不存在，已跳过: {resource}")
                 continue
             logger.debug(f"加载控制器附加资源: {resource}")
-            if not self._precheck_resource_pipeline(resource):
+            if not await self._precheck_resource_pipeline(resource):
                 return False
             if not await self.maafw.load_resource(resource, gpu_idx):
                 logger.error(f"控制器附加资源加载失败: {resource}")
@@ -2046,9 +2049,29 @@ class TaskFlowRunner(QObject):
                 return False
         return True
 
-    def _precheck_resource_pipeline(self, resource_dir: Path) -> bool:
-        """加载前预检 pipeline；发现问题则输出日志并返回 False。"""
-        issues = check_resource_pipeline(resource_dir)
+    async def _clear_embedded_agent_custom(self) -> None:
+        """在线程池中清理 MaaResource 自定义注册，避免短暂阻塞 UI。"""
+        resource = self.maafw.resource
+        if resource is None:
+            return
+        await asyncio.to_thread(resource.clear_custom_recognition)
+        await asyncio.to_thread(resource.clear_custom_action)
+
+    async def _load_embedded_agent_custom(
+        self,
+        agent_root: Path,
+        agent_entry: Path | None,
+    ) -> bool:
+        """在线程池中扫描并导入 embedded agent，避免阻塞 Qt 主线程。"""
+        return await asyncio.to_thread(
+            self.maafw.load_embedded_agent_custom,
+            agent_root=agent_root,
+            agent_entry=agent_entry,
+        )
+
+    async def _precheck_resource_pipeline(self, resource_dir: Path) -> bool:
+        """加载前异步预检 pipeline；发现问题则输出日志并返回 False。"""
+        issues = await asyncio.to_thread(check_resource_pipeline, resource_dir)
         if not issues:
             return True
 

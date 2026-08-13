@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib
 import logging
+import os
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -58,7 +59,17 @@ def _is_logging_logger(obj: Any) -> bool:
 
 
 def _normalize_path(file_path: str) -> str:
-    return str(file_path).replace("\\", "/").lower()
+    return os.path.normcase(str(file_path)).replace("\\", "/").lower()
+
+
+def _normalize_absolute_path(file_path: str | Path) -> str:
+    """低开销规范化路径，避免遍历 sys.modules 时反复调用 Path.resolve()。"""
+    try:
+        raw = os.fspath(file_path)
+        absolute = raw if os.path.isabs(raw) else os.path.abspath(raw)
+        return _normalize_path(os.path.normpath(absolute))
+    except (TypeError, ValueError, OSError):
+        return _normalize_path(str(file_path))
 
 
 def _build_allowed_roots(
@@ -73,31 +84,12 @@ def _build_allowed_roots(
     prefixes: list[str] = []
     seen: set[str] = set()
     for raw in ordered:
-        try:
-            resolved = raw.resolve()
-        except OSError:
-            continue
-        prefix = str(resolved).replace("\\", "/").lower() + "/"
+        prefix = _normalize_absolute_path(raw).rstrip("/") + "/"
         if prefix in seen:
             continue
         seen.add(prefix)
         prefixes.append(prefix)
     return tuple(prefixes)
-
-
-def _resolve_log_path(file_path: str) -> str:
-    if not file_path:
-        return ""
-    path = Path(file_path)
-    try:
-        if path.is_absolute():
-            return str(path.resolve())
-    except OSError:
-        pass
-    try:
-        return str((Path.cwd() / path).resolve())
-    except OSError:
-        return str(path)
 
 
 def _is_client_log_path(file_path: str) -> bool:
@@ -109,18 +101,8 @@ def _is_client_log_path(file_path: str) -> bool:
 def _is_under_custom_roots(file_path: str, allowed_roots: tuple[str, ...]) -> bool:
     if not file_path or not allowed_roots or _is_client_log_path(file_path):
         return False
-    resolved = _normalize_path(_resolve_log_path(file_path))
-    if any(resolved.startswith(root) for root in allowed_roots):
-        return True
-    try:
-        path_obj = Path(_resolve_log_path(file_path)).resolve()
-        for root in allowed_roots:
-            root_path = Path(root.rstrip("/"))
-            if path_obj.is_relative_to(root_path):
-                return True
-    except (OSError, ValueError):
-        pass
-    return False
+    normalized = _normalize_absolute_path(file_path)
+    return any(normalized.startswith(root) for root in allowed_roots)
 
 
 def _should_skip_logging_logger(logger_obj: logging.Logger) -> bool:
