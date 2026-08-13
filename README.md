@@ -66,9 +66,13 @@ MFW 开关写在分隔符 `--` 之前；之后仅传给 Qt。
 - `--config-id <ID>`：使用指定配置 ID 启动（可用 `--config-id=<ID>`）
 - `--direct-run`：启动后直接运行任务
 - `--force-restart`：强制启动，会关闭同目录下正在运行的其他 MFW 实例
+- `--reuse-existing`：复用已有实例执行指定配置（已有实例忙时跳过；与 `--force-restart` 同时使用时先停止当前任务再运行，不关闭进程）
 - `--dev`：启用调试模式（显示测试页）
 
-示例：`MFW.exe --direct-run --force-restart --config-id c_xxx`
+示例：
+
+- `MFW.exe --direct-run --force-restart --config-id c_xxx`
+- `MFW.exe --direct-run --reuse-existing --config-id c_xxx`
 
 ## 外部通知
 

@@ -64,9 +64,13 @@ MFW flags go before the `--` separator; everything after is passed to Qt only.
 - `--config-id <ID>`: start with the specified config ID (`--config-id=<ID>` also works)
 - `--direct-run`: run tasks immediately after launch
 - `--force-restart`: force-start by shutting down other MFW instances in the same directory
+- `--reuse-existing`: reuse an already-running instance to execute the specified config (skip if that instance is busy; combined with `--force-restart`, stop the current task then run without closing the process)
 - `--dev`: enable developer test page
 
-Example: `MFW.exe --direct-run --force-restart --config-id c_xxx`
+Examples:
+
+- `MFW.exe --direct-run --force-restart --config-id c_xxx`
+- `MFW.exe --direct-run --reuse-existing --config-id c_xxx`
 
 ## External Notifications
 
