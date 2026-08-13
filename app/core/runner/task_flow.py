@@ -165,6 +165,7 @@ class TaskFlowRunner(QObject):
         self._active_resource_target: str | None = None
         self._cached_image_error_seen: bool = False
         self._controller_reconnect_used: bool = False
+        self._is_connecting_device: bool = False
 
     def _resolve_current_bundle_base(self) -> Path:
         bundle_base = Path(self.bundle_path or "./")
@@ -423,6 +424,10 @@ class TaskFlowRunner(QObject):
         Args:
             manual: 是否为手动停止，用于文件名标记。
         """
+        # controller 会在 MaaFW 连接完成前就被赋值。连接阶段对这个半初始化
+        # controller 截图会触发原生 ADB 重连重试，导致停止操作长时间卡住。
+        if self._active_controller_raw is None or self._is_connecting_device:
+            return
         if not getattr(self, "maafw", None) or not getattr(
             self.maafw, "controller", None
         ):
@@ -611,6 +616,7 @@ class TaskFlowRunner(QObject):
         self._active_controller_raw = None
         self._active_resource_target = None
         self._cached_image_error_seen = False
+        self._is_connecting_device = False
         # 清空任务开始时间记录
         self._task_start_times.clear()
         # 跟踪任务流是否成功启动并执行了任务
@@ -1826,22 +1832,26 @@ class TaskFlowRunner(QObject):
         self.runner_events.start_button_status.emit(
             {"text": "STOP", "status": "enabled"}
         )
-        if controller_type == "adb":
-            controller = await self._connect_adb_controller(controller_raw)
-        elif controller_type == "win32":
-            controller = await self._connect_win32_controller(controller_raw)
-        elif controller_type == "gamepad":
-            controller = await self._connect_gamepad_controller(controller_raw)
-        elif controller_type == "playcover":
-            controller = await self._connect_playcover_controller(controller_raw)
-        elif controller_type == "wlroots":
-            controller = await self._connect_wlroots_controller(controller_raw)
-        elif controller_type == "macos":
-            controller = await self._connect_macos_controller(controller_raw)
-        else:
-            raise ValueError("不支持的控制器类型")
+        self._is_connecting_device = True
+        try:
+            if controller_type == "adb":
+                controller = await self._connect_adb_controller(controller_raw)
+            elif controller_type == "win32":
+                controller = await self._connect_win32_controller(controller_raw)
+            elif controller_type == "gamepad":
+                controller = await self._connect_gamepad_controller(controller_raw)
+            elif controller_type == "playcover":
+                controller = await self._connect_playcover_controller(controller_raw)
+            elif controller_type == "wlroots":
+                controller = await self._connect_wlroots_controller(controller_raw)
+            elif controller_type == "macos":
+                controller = await self._connect_macos_controller(controller_raw)
+            else:
+                raise ValueError("不支持的控制器类型")
+        finally:
+            self._is_connecting_device = False
 
-        if not controller or not self.maafw.controller:
+        if self.need_stop or not controller or not self.maafw.controller:
             return False
 
         if display_short_side or display_long_side:
@@ -2292,6 +2302,12 @@ class TaskFlowRunner(QObject):
         # 手动停止时截图保存到 debug/stop/（控制器仍可工作时执行）
         if manual:
             await self._save_stop_screenshot(manual=True)
+        # 连接调用正在 MaaFW 工作线程中使用 controller。此时并发清理会与
+        # 原生连接过程争用同一对象；只记录停止意图，由任务流在连接返回后的
+        # finally 中统一清理。
+        if self._is_connecting_device:
+            logger.debug("设备仍在连接中，延后清理运行时")
+            return
         await self.maafw.stop_task()
         self.runner_events.start_button_status.emit(
             {"text": "START", "status": "enabled"}
@@ -2518,7 +2534,7 @@ class TaskFlowRunner(QObject):
 
         logger.info("每次连接前自动搜索 ADB 设备...")
         self.log_output.emit("INFO", self.tr("Auto searching ADB devices..."))
-        if await self._try_prepare_and_connect_adb(
+        connected = await self._try_prepare_and_connect_adb(
             controller_raw=controller_raw,
             controller_type=controller_type,
             controller_name=controller_name,
@@ -2527,10 +2543,13 @@ class TaskFlowRunner(QObject):
             has_raw_screen_method=has_raw_screen_method,
             raw_screen_method=raw_screen_method,
             force_refresh=True,
-        ):
+        )
+        if connected:
             # 连接成功后额外等待 5 秒，防止程序初始化未完成
             return await self._wait_after_controller_connect()
-        elif controller_config.get("emulator_path", ""):
+        if self.need_stop:
+            return False
+        if controller_config.get("emulator_path", ""):
             logger.info("尝试启动模拟器")
             self.log_output.emit("INFO", self.tr("try to start emulator"))
             emu_path = controller_config.get("emulator_path", "")
@@ -3649,13 +3668,23 @@ class TaskFlowRunner(QObject):
     ) -> Dict[str, Any] | None:
         """自动搜索 ADB 设备并找到与旧配置一致的那一项"""
         try:
-            devices = Toolkit.find_adb_devices()
+            if self.need_stop:
+                return None
+
+            # Toolkit 的设备探测是同步阻塞调用。模拟器未启动时，ADB 探测可能
+            # 长时间等待；放到工作线程中，避免阻塞 Qt/asyncio 主事件循环，
+            # 使连接阶段的“停止”操作仍能及时响应。
+            devices = await asyncio.to_thread(Toolkit.find_adb_devices)
+            if self.need_stop:
+                return None
             if not devices:
                 logger.warning("未找到任何 ADB 设备")
                 return None
 
             all_device_infos = []
             for device in devices:
+                if self.need_stop:
+                    return None
                 # 优先使用设备自身的 pid，如果没有则使用配置中的 pid
                 device_ld_pid = (
                     (

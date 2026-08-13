@@ -1514,7 +1514,8 @@ class MaaFW(QObject):
         self.agent_output_threads.append(watcher)
         self.agent_output_thread = watcher
 
-    async def screencap_test(self) -> numpy.ndarray:
+    @asyncify
+    def screencap_test(self) -> numpy.ndarray:
         if not self.controller:
             raise RuntimeError("Controller not initialized")
 
