@@ -290,8 +290,10 @@ class MainWindow(MSFluentWindow):
         self._shutdown_sub_label = None
         self._shutdown_cleanup_started = False
         self._shutdown_cleanup_completed = False
+        self._shutdown_ui_cleanup_completed = False
+        self._shutdown_cleanup_thread: threading.Thread | None = None
         self._allow_window_close = False
-        
+
         super().__init__()
         self._loop = loop
         self._cli_auto_run = bool(auto_run)
@@ -3116,33 +3118,45 @@ class MainWindow(MSFluentWindow):
     def _show_shutdown_overlay(self) -> None:
         if not self._shutdown_overlay or not self._shutdown_indicator:
             return
+        was_visible = self._shutdown_overlay.isVisible()
         self._shutdown_overlay.setGeometry(self.rect())
         self._shutdown_overlay.raise_()
         self._shutdown_overlay.show()
         self._shutdown_indicator.start()
-        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        if not was_visible:
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         QApplication.processEvents()
 
     def _hide_shutdown_overlay(self) -> None:
+        was_visible = bool(
+            self._shutdown_overlay and self._shutdown_overlay.isVisible()
+        )
         if self._shutdown_indicator:
             self._shutdown_indicator.stop()
         if self._shutdown_overlay:
             self._shutdown_overlay.hide()
-        QApplication.restoreOverrideCursor()
+        if was_visible:
+            QApplication.restoreOverrideCursor()
 
-    def _is_task_shutdown_pending(self) -> bool:
-        return self.service_coordinator.runtime.is_running
-
-    def _continue_close_after_task_shutdown(self) -> None:
-        if self._shutdown_cleanup_started:
+    def _prepare_ui_shutdown(self) -> None:
+        """先停用 UI 侧入口，避免后台清理期间又启动任务或留下托盘资源。"""
+        if self._shutdown_ui_cleanup_completed:
             return
-        self._shutdown_cleanup_started = True
-        try:
-            self.clear_thread_async()
-        finally:
-            self._shutdown_cleanup_completed = True
-            self._allow_window_close = True
-            self.close()
+        self._shutdown_ui_cleanup_completed = True
+
+        cleanup_steps: list[tuple[str, Callable[[], None]]] = [
+            ("托盘图标", self._dispose_tray_icon),
+            ("主题监听器", self.themeListener.terminate),
+            ("主题监听器对象", self.themeListener.deleteLater),
+        ]
+        hotkey_manager = getattr(self, "_hotkey_manager", None)
+        if hotkey_manager is not None:
+            cleanup_steps.insert(1, ("全局快捷键", hotkey_manager.shutdown))
+        for step_name, cleanup in cleanup_steps:
+            try:
+                cleanup()
+            except Exception:
+                logger.exception("关闭阶段清理%s失败", step_name)
 
     def _save_window_geometry_if_needed(self):
         """在关闭时保存当前窗口的位置与大小，用于下次恢复。"""
@@ -3155,33 +3169,18 @@ class MainWindow(MSFluentWindow):
         )
 
     def closeEvent(self, e):
-        """关闭事件"""
-        if not self._allow_window_close and self._is_task_shutdown_pending():
+        """关闭事件。资源清理完成前保持窗口存活，避免事件循环提前退出。"""
+        if not (self._allow_window_close and self._shutdown_cleanup_completed):
             e.ignore()
             self._save_window_geometry_if_needed()
             self._save_last_active_page()
+            self._prepare_ui_shutdown()
             self._show_shutdown_overlay()
-            QTimer.singleShot(50, self._continue_close_after_task_shutdown)
+            QTimer.singleShot(0, self.clear_thread_async)
             return
 
-        self._save_window_geometry_if_needed()
-        self._save_last_active_page()
-
-        # 清理托盘图标，避免 Windows 托盘残影
-        self._dispose_tray_icon()
-
-        # Shutdown hotkey manager first to unhook keyboard listeners
-        if getattr(self, "_hotkey_manager", None):
-            self._hotkey_manager.shutdown()
-
-        self.themeListener.terminate()
-        self.themeListener.deleteLater()
-
+        self._hide_shutdown_overlay()
         e.accept()
-        if not self._shutdown_cleanup_completed:
-            QTimer.singleShot(0, self.clear_thread_async)
-        else:
-            self._hide_shutdown_overlay()
         super().closeEvent(e)
 
     def _onThemeChangedFinished(self):
@@ -3192,24 +3191,61 @@ class MainWindow(MSFluentWindow):
         if self.isMicaEffectEnabled():
             QTimer.singleShot(100, self._reapply_mica_after_theme_change)
 
-    def clear_thread_async(self):
-        """异步清理线程和资源"""
-        try:
+    def clear_thread_async(self) -> None:
+        """在后台幂等清理线程和运行时，完成后再关闭窗口。"""
+        if self._shutdown_cleanup_completed:
+            self._allow_window_close = True
+            QTimer.singleShot(0, self.close)
+            return
+        if self._shutdown_cleanup_started:
+            return
 
-            self.service_coordinator.shutdown_telemetry()
-            self._clear_maafw_sync()
-            self.service_coordinator.runtime.stop_notification_thread()
-            self._stop_update_workers()
-            # self._terminate_child_processes()
-        except Exception as e:
-            logger.exception("异步清理失败", exc_info=e)
-
-    def _clear_maafw_sync(self):
-        """同步清理 maafw（回退逻辑）"""
+        self._shutdown_cleanup_started = True
+        cleanup_thread = threading.Thread(
+            target=self._run_shutdown_cleanup,
+            name="MainWindowShutdownCleanup",
+            daemon=True,
+        )
+        self._shutdown_cleanup_thread = cleanup_thread
         try:
-            self.service_coordinator.runtime.shutdown_runtime_sync()
-        except Exception as e:
-            logger.exception("清理 maafw 失败", exc_info=e)
+            cleanup_thread.start()
+        except Exception:
+            self._shutdown_cleanup_thread = None
+            logger.exception("启动后台清理线程失败，改为同步清理")
+            self._run_shutdown_cleanup()
+
+    def _run_shutdown_cleanup(self) -> None:
+        """执行可能阻塞的退出清理；每个步骤独立失败，避免阻断后续回收。"""
+        cleanup_steps: tuple[tuple[str, Callable[[], None]], ...] = (
+            ("遥测", self.service_coordinator.shutdown_telemetry),
+            ("MaaFW 运行时", self._clear_maafw_sync),
+            (
+                "通知线程",
+                self.service_coordinator.runtime.stop_notification_thread,
+            ),
+            ("更新线程", self._stop_update_workers),
+        )
+        try:
+            for step_name, cleanup in cleanup_steps:
+                try:
+                    cleanup()
+                except Exception:
+                    logger.exception("关闭阶段清理%s失败", step_name)
+        finally:
+            self._invoke_in_ui(self._finish_shutdown_cleanup)
+
+    def _finish_shutdown_cleanup(self) -> None:
+        """回到 UI 线程提交最终关闭。"""
+        if self._shutdown_cleanup_completed:
+            return
+        self._shutdown_cleanup_completed = True
+        self._shutdown_cleanup_thread = None
+        self._allow_window_close = True
+        self.close()
+
+    def _clear_maafw_sync(self) -> None:
+        """同步清理 MaaFW 主任务与监控运行时。"""
+        self.service_coordinator.runtime.shutdown_runtime_sync()
 
     def _stop_update_workers(self):
         """停止更新相关线程/进程，避免退出时残留。"""
