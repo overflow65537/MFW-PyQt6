@@ -29,8 +29,8 @@ permission/path surprises in Gradle and Android tools.
 
 Required tools:
 
-1. A Python 3.12 virtual environment, aligned with the selected Qt wheels.
-2. JDK 17 with `JAVA_HOME` configured.
+1. A Python 3.11 virtual environment, aligned with the official PySide6 Android wheels.
+2. JDK 21 with `JAVA_HOME` configured for the pinned Qt 6.11 toolchain.
 3. Android SDK and an NDK version compatible with the selected Qt/PySide6 release.
 4. Buildozer/python-for-android prerequisites.
 5. `pyside6-android-deploy` from a desktop PySide6 installation.
@@ -95,6 +95,32 @@ pyside6-android-deploy --config-file pysidedeploy.spec
 Use `--keep-deployment-files` when debugging generated Buildozer, Gradle or
 python-for-android files. Generated outputs are ignored by repository-level
 Android-specific `.gitignore` rules.
+
+
+## GitHub Actions build
+
+The independent `.github/workflows/android.yml` workflow validates and builds
+this PoC without changing the existing desktop packaging workflow. It runs when
+Android files or the workflow itself change on `main` pushes and pull requests,
+and it can also be started manually with `workflow_dispatch`.
+
+The CI toolchain is deliberately pinned as one compatible set:
+
+- Python 3.11;
+- PySide6/shiboken6 Android aarch64 6.11.1 wheels;
+- JDK 21;
+- Android platform 36 and Build Tools 36.0.0;
+- Android NDK 27.2.12479018.
+
+The workflow downloads the official Android wheels with `qtpip`, creates an
+untracked `pysidedeploy.ci.spec` containing runner-specific absolute paths,
+runs a deployment dry-run, builds the arm64 debug APK and uploads it as the
+`MFW-Android-PoC-arm64-debug` artifact. Deployment logs and the generated CI
+spec are uploaded separately for diagnosis, including when the build fails.
+
+The workflow currently builds only the minimal Qt shell. A green APK build does
+not mean MaaFramework is available; MaaFramework native integration remains the
+next Go/No-Go phase.
 
 ## Device smoke test
 

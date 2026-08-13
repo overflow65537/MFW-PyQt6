@@ -508,3 +508,4 @@ i18n
 /android_app/*.apk
 /android_app/*.aab
 /android_app/pysidedeploy.spec.seed
+/android_app/pysidedeploy.ci.spec
