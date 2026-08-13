@@ -49,6 +49,10 @@ class _RunnerUiSignalBridge(QObject):
     def forward_task_flow_finished(self, payload: dict):
         signalBus.task_flow_finished.emit(payload)
 
+    @Slot(dict)
+    def forward_start_button_status(self, payload: dict):
+        signalBus.start_button_status.emit(payload)
+
     @Slot()
     def forward_log_clear_requested(self):
         signalBus.log_clear_requested.emit()
@@ -159,7 +163,6 @@ class ServiceCoordinator:
             task_service=self.task_service,
             config_service=self.config_service,
             runner_events=self.runner_events,
-            fs_signal_bus=self.fs_signal_bus,
         )
         self.schedule_service = ScheduleService()
 
@@ -865,6 +868,10 @@ class ServiceCoordinator:
         )
         self.runner_events.task_flow_finished.connect(
             self._runner_ui_bridge.forward_task_flow_finished,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.start_button_status.connect(
+            self._runner_ui_bridge.forward_start_button_status,
             Qt.ConnectionType.QueuedConnection,
         )
         self.runner_events.log_clear_requested.connect(

@@ -36,12 +36,12 @@ app/
 | 信号总线 | 定义位置 | 作用域 | 允许的发射者 | 允许的监听者 |
 | ---------- | ---------- | -------- | -------------- | -------------- |
 | `CoreSignalBus` | `app/core/item.py` | Core↔Service 内部通信 | Service / Runner | Service / ServiceCoordinator |
-| `FromeServiceCoordinator` | `app/core/item.py` | Core→View 单向通知 | ServiceCoordinator / Runner | View 层 |
-| `signalBus` (全局) | `app/common/signal_bus.py` | View↔View / View↔App | View 层 / App 级组件 | View 层 / App 级组件 |
+| `FromeServiceCoordinator` | `app/core/item.py` | Coordinator→View 单向域通知 | ServiceCoordinator | View 层 |
+| `signalBus` (全局) | `app/common/signal_bus.py` | View↔View / Core→View 运行时通知 | ServiceCoordinator 适配层 / View 层 / App 级组件 | View 层 / App 级组件 |
 
 **规则：**
 
-- **`app/core/runner/` 中的代码禁止直接 import 或直接 emit `signalBus`（全局信号总线）。**
+- **`app/core/runner/` 中的代码禁止直接持有、import 或 emit `signalBus`（全局信号总线）和 `FromeServiceCoordinator`。**
   - `Runner` 运行时事件统一通过 `RunnerEvents` / Runner 自身 `Signal` 上报给 `ServiceCoordinator`，再由其转发到 `signalBus`。
 - **`app/core/service/` 中的代码禁止直接 import `signalBus`（全局信号总线）。**
   - 当前治理目标是保持 `app/core/` 不再回退到对全局 UI 总线的直接依赖。
@@ -61,7 +61,7 @@ app/
 
 - `CoreSignalBus` 只承载 Core 内部状态变化事件，不承载命令型请求。
 - `RunnerEvents` 只承载 Runner 运行时事件上报，不直接暴露给 View。
-- `FromeServiceCoordinator` 只承载 Core→View 单向通知。
+- `FromeServiceCoordinator` 只承载由 `ServiceCoordinator` 产生的配置/任务 CRUD 等单向域通知。
 - 命令应通过 `ServiceCoordinator` 方法调用，不应伪装成信号。
 
 #### Service / Controller（`app/core/service/` + `app/core/core.py`）
@@ -75,7 +75,7 @@ app/
 
 - 负责异步任务执行（MaaFW 控制、任务流编排）。
 - 可发射自身定义的 `Signal`（如 `MaaFW.custom_info`, `MaaFW.agent_info`）。
-- **不应直接 import 或直接 emit 全局 `signalBus`**。
+- **不应直接持有、import 或 emit 全局 `signalBus` 或 `FromeServiceCoordinator`**。
 - Runner 对外通知统一通过 `RunnerEvents` / Runner Signal → `ServiceCoordinator` → `signalBus` 链路传递。
 
 #### View（`app/view/`）
@@ -105,7 +105,7 @@ Runner(MaaFW/TaskFlow) → RunnerEvents/Runner Signal → ServiceCoordinator →
 **禁止方向：**
 
 - View → 直接修改 Model 属性（跳过 Service）
-- Runner → 直接 emit signalBus（禁止）
+- Runner → 直接持有或 emit `signalBus` / `FromeServiceCoordinator`（禁止）
 - Widget → 直接 import Service
 - Service → 直接 import View / Widget
 
@@ -175,7 +175,7 @@ Runner(MaaFW/TaskFlow) → RunnerEvents/Runner Signal → ServiceCoordinator →
 
 在生成或修改代码前，请确认：
 
-- [ ] Runner 层（`app/core/runner/`）代码是否 **没有** 直接 import/emit `signalBus`？
+- [ ] Runner 层（`app/core/runner/`）代码是否 **没有** 直接持有/import/emit `signalBus` 或 `FromeServiceCoordinator`？
 - [ ] Service 层（`app/core/service/`）新代码是否 **没有** import `signalBus`？
 - [ ] View 层是否通过 Service 方法修改业务状态，而非直接操作 Model？
 - [ ] View 层是否避免直接访问 `task_service`、`config_service`、`option_service` 内部实现？

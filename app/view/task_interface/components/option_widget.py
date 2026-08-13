@@ -47,6 +47,7 @@ from app.view.task_interface.components.panel_splitter import (
     panel_column_margins,
     splitter_handle_stylesheet,
 )
+from app.common.signal_bus import signalBus
 from ....core.core import ServiceCoordinator
 
 
@@ -233,11 +234,8 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
         service_coordinator.signal_bus.config_changed.connect(self._on_config_changed)
         
         # 监听运行状态变化，禁用/启用选项编辑
-        from app.common.signal_bus import signalBus
         signalBus.task_status_changed.connect(self._on_task_status_changed)
-        service_coordinator.fs_signals.fs_start_button_status.connect(
-            self._on_run_status_changed
-        )
+        signalBus.start_button_status.connect(self._on_run_status_changed)
         
         # 初始化时隐藏描述区域
         self._toggle_description(visible=False, animate=False)

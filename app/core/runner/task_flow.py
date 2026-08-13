@@ -54,7 +54,7 @@ from app.core.runner.maafw import (
 from app.utils.controller_utils import ControllerHelper
 from app.utils.screencap_lock import screencap_guard
 
-from app.core.item import FromeServiceCoordinator, RunnerEvents, TaskItem
+from app.core.item import RunnerEvents, TaskItem
 from app.core.builtin_task_loader import BuiltinTaskContext
 
 # 进程级休眠阻止引用计数：多实例共享 SetThreadExecutionState，
@@ -96,7 +96,6 @@ class TaskFlowRunner(QObject):
         task_service: TaskService,
         config_service: ConfigService,
         runner_events: RunnerEvents | None = None,
-        fs_signal_bus: FromeServiceCoordinator | None = None,
     ):
         super().__init__()
         self.task_service = task_service
@@ -105,12 +104,7 @@ class TaskFlowRunner(QObject):
         # 提供给主窗口退出清理使用：停止外部通知线程
         # 注意：send_thread 定义于 app.utils.notice，为全局单例
         self.send_thread = send_thread
-        if fs_signal_bus:
-            self.maafw = MaaFW()
-            self.fs_signal_bus = fs_signal_bus
-        else:
-            self.maafw = MaaFW()
-            self.fs_signal_bus = None
+        self.maafw = MaaFW()
         self.maafw.callback.connect(self.callback.emit)
         self.maafw.custom_info.connect(self._handle_maafw_custom_info)
         self.maafw.agent_info.connect(self._handle_agent_info)
@@ -702,10 +696,9 @@ class TaskFlowRunner(QObject):
                 current_config
             )
         try:
-            if self.fs_signal_bus:
-                self.fs_signal_bus.fs_start_button_status.emit(
-                    {"text": "STOP", "status": "disabled"}
-                )
+            self.runner_events.start_button_status.emit(
+                {"text": "STOP", "status": "disabled"}
+            )
             self._reload_interface_for_current_bundle()
             controller_cfg = self.task_service.get_task(_CONTROLLER_)
             if not controller_cfg:
@@ -1812,11 +1805,10 @@ class TaskFlowRunner(QObject):
             except Exception:
                 pass
             return False
-        if self.fs_signal_bus:
-            # 连接阶段允许点击停止；此时不要带 device_ready，避免监控并行抢连 ADB
-            self.fs_signal_bus.fs_start_button_status.emit(
-                {"text": "STOP", "status": "enabled"}
-            )
+        # 连接阶段允许点击停止；此时不要带 device_ready，避免监控并行抢连 ADB
+        self.runner_events.start_button_status.emit(
+            {"text": "STOP", "status": "enabled"}
+        )
         if controller_type == "adb":
             controller = await self._connect_adb_controller(controller_raw)
         elif controller_type == "win32":
@@ -1849,10 +1841,9 @@ class TaskFlowRunner(QObject):
             logger.debug("设置控制器分辨率: 原始大小")
 
         # 主任务流连上后再通知监控启动，避免与任务流并发 connect_adb（MuMu 会卡死）
-        if self.fs_signal_bus:
-            self.fs_signal_bus.fs_start_button_status.emit(
-                {"text": "STOP", "status": "enabled", "device_ready": True}
-            )
+        self.runner_events.start_button_status.emit(
+            {"text": "STOP", "status": "enabled", "device_ready": True}
+        )
         return True
 
     async def load_resources(self, resource_raw: Dict[str, Any]):
@@ -2277,19 +2268,17 @@ class TaskFlowRunner(QObject):
             return
         self.need_stop = True
         self._stop_task_timeout()
-        if self.fs_signal_bus:
-            self.log_output.emit("INFO", self.tr("Stopping task..."))
-            self.fs_signal_bus.fs_start_button_status.emit(
-                {"text": "STOP", "status": "disabled"}
-            )
+        self.log_output.emit("INFO", self.tr("Stopping task..."))
+        self.runner_events.start_button_status.emit(
+            {"text": "STOP", "status": "disabled"}
+        )
         # 手动停止时截图保存到 debug/stop/（控制器仍可工作时执行）
         if manual:
             await self._save_stop_screenshot(manual=True)
         await self.maafw.stop_task()
-        if self.fs_signal_bus:
-            self.fs_signal_bus.fs_start_button_status.emit(
-                {"text": "START", "status": "enabled"}
-            )
+        self.runner_events.start_button_status.emit(
+            {"text": "START", "status": "enabled"}
+        )
         self._is_running = False
         # 写入稳定的任务流结束标记，供日志打包按"运行记录"切分（不依赖语言/文案）
         logger.info("[RUN_RECORD] TASK_FLOW_STOP manual=%s", bool(self._manual_stop))

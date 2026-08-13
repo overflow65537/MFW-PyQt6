@@ -424,10 +424,7 @@ class MonitorInterface(QWidget):
             self._fps_overlay.move(x, y)
 
     def _bind_auto_task_monitoring(self) -> None:
-        if hasattr(self.service_coordinator, "fs_signals"):
-            self.service_coordinator.fs_signals.fs_start_button_status.connect(
-                self._on_task_status_changed
-            )
+        signalBus.start_button_status.connect(self._on_task_status_changed)
         signalBus.task_flow_finished.connect(self._on_task_flow_finished)
 
     def _set_loading(self, loading: bool) -> None:

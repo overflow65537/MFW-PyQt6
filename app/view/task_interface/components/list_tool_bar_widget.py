@@ -139,12 +139,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         self.set_title(self.tr("Configurations"))
 
         # 任务运行中锁定配置列表（禁止切换/增删）
-        try:
-            self.service_coordinator.fs_signal_bus.fs_start_button_status.connect(
-                self._on_start_button_status_changed
-            )
-        except Exception:
-            pass
+        signalBus.start_button_status.connect(self._on_start_button_status_changed)
 
     def _on_start_button_status_changed(self, status: dict):
         """根据任务流状态锁定/解锁配置列表。"""

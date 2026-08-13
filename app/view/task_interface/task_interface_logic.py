@@ -31,10 +31,8 @@ class TaskInterface(UI_TaskInterface, QWidget):
         # 连接启动/停止按钮事件
         self.start_bar.run_button.clicked.connect(self._on_run_button_clicked)
 
-        # 连接服务协调器的信号，用于更新按钮状态
-        self.service_coordinator.fs_signals.fs_start_button_status.connect(
-            self._on_button_status_changed
-        )
+        # 监听任务运行状态，用于更新按钮状态
+        signalBus.start_button_status.connect(self._on_button_status_changed)
 
         # 进入任务页后的 UI 重置需避开主窗口 StackedWidget 的入场位移动画（约 300ms），否则内外纵向变化叠加会抖动
         self._show_reset_timer = QTimer(self)

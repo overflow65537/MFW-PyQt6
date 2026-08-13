@@ -90,6 +90,8 @@ class SignalBus(QObject):
     # 任务流结束信号：无论正常结束/异常/手动停止/中止，都会在任务流退出时发射
     # payload: dict（包含原因/标志位等，字段可扩展）
     task_flow_finished = Signal(dict)
+    # 任务流开始按钮状态；device_ready 仅在主控制器连接完成后出现
+    start_button_status = Signal(dict)
 
     # 控制器配置不完整时请求主窗口遮罩引导；payload 包含当前控制器和资源支持控制器列表
     controller_setup_hint_requested = Signal(dict)

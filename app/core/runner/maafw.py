@@ -333,7 +333,6 @@ class MaaControllerEventSink(ControllerEventSink):
         noti_type: NotificationType,
         detail: ControllerEventSink.ControllerActionDetail,
     ):
-        # signalBus.callback.emit({"name": "controller", "status": noti_type.value})
         pass
 
 
