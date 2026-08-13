@@ -1,0 +1,141 @@
+# MFW Android deployment PoC
+
+This directory is an isolated **Phase-0 Android deployment skeleton** for a
+minimal PySide6 Qt Widgets application built with `pyside6-android-deploy`.
+It does not import the repository's desktop `main.py` or existing desktop
+`MainWindow`, so desktop startup and packaging behavior remain unchanged.
+
+> Status: skeleton only. No APK/AAB has been produced in this workspace, and
+> the MaaFramework native runtime is **not integrated**.
+
+## Contents
+
+- `main.py` - Android-only minimal Qt Widgets entry point.
+- `android.pyproject` - explicit deployment file list.
+- `requirements-android.txt` - intentionally minimal Android dependency list.
+- `pysidedeploy.spec` - arm64 configuration seed with unfilled wheel paths.
+
+## Scope of the first APK
+
+The window reports Android/runtime detection, `sys.platform`, CPU architecture,
+Python/PySide6/Qt versions and the Qt installation prefix. Its button runs a
+basic Python/Qt smoke test. MaaFw is reported as skipped.
+
+## Supported build host
+
+Use **Linux**. On Windows, use WSL2 Ubuntu or a Linux CI runner. Building from a
+Linux-native path is preferable to `/mnt/d/...` for performance and fewer
+permission/path surprises in Gradle and Android tools.
+
+Required tools:
+
+1. A Python 3.12 virtual environment, aligned with the selected Qt wheels.
+2. JDK 17 with `JAVA_HOME` configured.
+3. Android SDK and an NDK version compatible with the selected Qt/PySide6 release.
+4. Buildozer/python-for-android prerequisites.
+5. `pyside6-android-deploy` from a desktop PySide6 installation.
+6. Matching **Android aarch64** PySide6 and shiboken6 wheels.
+
+Do not use desktop PyPI PySide6 wheels as Android target wheels. Download a
+matching official Android wheel pair, for example when `qtpip` is available:
+
+```bash
+qtpip download PySide6 --android --arch aarch64
+```
+
+Do not commit developer-specific absolute wheel, SDK or NDK paths.
+
+## Initialize the deployment configuration
+
+The checked-in `pysidedeploy.spec` follows the current Qt for Python section
+layout, but intentionally contains wheel placeholders. The installed tool's
+`--help` and generated configuration are authoritative for that PySide6
+release.
+
+To let the tool create a fresh configuration, temporarily move the checked-in
+seed and run `--init`. Android wheels are still required during initialization:
+
+```bash
+cd android_app
+mv pysidedeploy.spec pysidedeploy.spec.seed
+pyside6-android-deploy --init \
+  --name "MFW Android PoC" \
+  --wheel-pyside /absolute/path/to/PySide6-android-aarch64.whl \
+  --wheel-shiboken /absolute/path/to/shiboken6-android-aarch64.whl \
+  --ndk-path /absolute/path/to/android-ndk \
+  --sdk-path /absolute/path/to/android-sdk
+```
+
+The SDK/NDK flags may be omitted when the installed tool detects its supported
+cache. Compare the generated spec with `pysidedeploy.spec.seed` and retain:
+
+- `project_dir = .` and `input_file = main.py`;
+- `project_file = android.pyproject`;
+- `modules = Core,Widgets`;
+- `mode = debug`;
+- `arch = aarch64` (Android/NDK name: `arm64-v8a`).
+
+Restore the committed filename after merging the generated fields.
+
+## Inspect and build
+
+With real wheel paths filled in locally, inspect the generated commands first:
+
+```bash
+cd android_app
+pyside6-android-deploy --dry-run --config-file pysidedeploy.spec
+```
+
+Then build a debug APK:
+
+```bash
+pyside6-android-deploy --config-file pysidedeploy.spec
+```
+
+Use `--keep-deployment-files` when debugging generated Buildozer, Gradle or
+python-for-android files. Generated outputs are ignored by repository-level
+Android-specific `.gitignore` rules.
+
+## Device smoke test
+
+Install the first debug APK on an arm64 device and verify:
+
+1. The window opens without importing desktop-only modules.
+2. Platform information is visible.
+3. The smoke-test button reports Python and Qt checks as PASS.
+4. Logcat has no Qt plugin, missing shared-library or Python import errors.
+
+## MaaFramework Go/No-Go phase
+
+**This skeleton has not integrated MaaFw or its native runtime.** Do not add
+`MaaFw` to `requirements-android.txt`: a desktop/manylinux wheel is not an
+Android wheel.
+
+After the Qt shell passes, deliberately package:
+
+- the MaaFramework Python binding;
+- `libMaaFramework.so` for `arm64-v8a`;
+- `libMaaAndroidNativeControlUnit.so` for `arm64-v8a`;
+- every matching transitive native dependency;
+- a custom python-for-android recipe and/or `buildozer.local_libs` mapping.
+
+Go/No-Go test order on a real device:
+
+1. `import maa` succeeds.
+2. The native loader reports the MaaFramework version.
+3. `AndroidNativeController` can be created.
+4. Screenshot succeeds.
+5. Tap and swipe succeed.
+6. A minimal Resource/Tasker pipeline executes.
+
+Do not port the full desktop UI until this chain works. Expected blockers include
+Android linker paths, ABI mismatches, transitive OpenCV/Boost/Maa libraries,
+Android control permissions and device-specific behavior.
+
+## Intentional exclusions
+
+The Android dependency set excludes `keyboard`, `wmi`, `psutil` and
+`MaaFw`. This phase also excludes qasync, Fluent Widgets, the desktop
+single-instance guard, tray integration, updater, scheduler, ADB emulator scan,
+external agent processes and desktop configuration/resource path handling. Add
+each feature separately only after its Android behavior is validated.
