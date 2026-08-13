@@ -99,7 +99,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-          cache: gradle
 
       - name: Set up Android SDK command-line tools
         uses: android-actions/setup-android@v3
