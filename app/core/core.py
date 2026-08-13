@@ -900,17 +900,38 @@ class ServiceCoordinator:
 
     async def _run_configuration_from_post_action(self, config_id: str) -> None:
         """在目标配置的 RuntimeContext 中继续完成后任务链。"""
-        if self._config_service.get_config(config_id) is None:
-            logger.warning("完成后指定的配置已不存在: %s", config_id)
-            return
-        if self._config_service.current_config_id != config_id:
-            self._config_service.current_config_id = config_id
-        if self._config_service.current_config_id != config_id:
-            logger.warning("切换至完成后配置失败: %s", config_id)
-            return
-        context = self._activate_runtime_context(config_id)
-        context.logs.clear()
-        await context.task_runner.run_tasks_flow()
+        if not await self.run_configuration(config_id, clear_logs=True):
+            logger.warning("完成后指定的配置无法运行: %s", config_id)
+
+    async def run_configuration(
+        self,
+        config_id: str,
+        *,
+        clear_logs: bool = False,
+    ) -> bool:
+        """切换到指定配置，并在它所属的 RuntimeContext 中启动任务流。
+
+        该入口用于 CLI、计划任务和完成后操作等“按配置 ID 启动”的场景，
+        避免延迟执行时仅依赖届时的全局当前配置。
+        """
+        target_id = str(config_id or "").strip()
+        if not target_id or self._config_service.get_config(target_id) is None:
+            return False
+
+        if self._config_service.current_config_id != target_id:
+            if not self.select_config(target_id):
+                return False
+        if self._config_service.current_config_id != target_id:
+            return False
+
+        context = self._activate_runtime_context(target_id)
+        if clear_logs:
+            context.logs.clear()
+
+        # RuntimeFacade 在协程入口捕获当前 Context 的 runner，并保留运行前的
+        # hidden flag 刷新等统一行为。
+        await self._runtime.run()
+        return True
 
     def get_runtime_context(self, config_id: str | None = None) -> RuntimeContext:
         """Return a configuration runtime, defaulting to the active one."""

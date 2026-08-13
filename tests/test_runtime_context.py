@@ -111,17 +111,22 @@ class PostActionRuntimeRoutingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(["config-b"], routed)
 
     async def test_coordinator_runs_and_clears_target_context(self):
-        target_runner = SimpleNamespace(run_tasks_flow=AsyncMock())
         target_context = SimpleNamespace(
             logs=SimpleNamespace(clear=Mock()),
-            task_runner=target_runner,
         )
         coordinator = ServiceCoordinator.__new__(ServiceCoordinator)
         coordinator._config_service = SimpleNamespace(
             current_config_id="config-a",
             get_config=lambda config_id: object() if config_id == "config-b" else None,
         )
+        coordinator.select_config = Mock(
+            side_effect=lambda config_id: setattr(
+                coordinator._config_service, "current_config_id", config_id
+            )
+            or True
+        )
         coordinator._activate_runtime_context = Mock(return_value=target_context)
+        coordinator._runtime = SimpleNamespace(run=AsyncMock())
 
         await ServiceCoordinator._run_configuration_from_post_action(
             coordinator, "config-b"
@@ -130,7 +135,26 @@ class PostActionRuntimeRoutingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("config-b", coordinator._config_service.current_config_id)
         coordinator._activate_runtime_context.assert_called_once_with("config-b")
         target_context.logs.clear.assert_called_once_with()
-        target_runner.run_tasks_flow.assert_awaited_once_with()
+        coordinator._runtime.run.assert_awaited_once_with()
+
+    async def test_explicit_configuration_run_rejects_missing_target(self):
+        coordinator = ServiceCoordinator.__new__(ServiceCoordinator)
+        coordinator._config_service = SimpleNamespace(
+            current_config_id="config-a",
+            get_config=lambda _config_id: None,
+        )
+        coordinator.select_config = Mock()
+        coordinator._activate_runtime_context = Mock()
+        coordinator._runtime = SimpleNamespace(run=AsyncMock())
+
+        started = await ServiceCoordinator.run_configuration(
+            coordinator, "missing-config"
+        )
+
+        self.assertFalse(started)
+        coordinator.select_config.assert_not_called()
+        coordinator._activate_runtime_context.assert_not_called()
+        coordinator._runtime.run.assert_not_awaited()
 
 
 class TelemetryRuntimeBindingTests(unittest.TestCase):

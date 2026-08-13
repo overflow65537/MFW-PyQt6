@@ -404,10 +404,8 @@ def _run() -> int:
                         return
                     await window.service_coordinator.runtime.stop(manual=True)
 
-                if not window.service_coordinator.select_config(config_id):
+                if not await window.service_coordinator.run_configuration(config_id):
                     logger.warning("复用执行请求指定的配置不存在: %s", config_id)
-                    return
-                await window.service_coordinator.runtime.run()
             except Exception:
                 logger.exception("复用已有实例执行任务失败")
             finally:

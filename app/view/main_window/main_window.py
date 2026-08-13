@@ -295,6 +295,9 @@ class MainWindow(MSFluentWindow):
         self._loop = loop
         self._cli_auto_run = bool(auto_run)
         self._cli_switch_config_id = (switch_config_id or "").strip() or None
+        # 只要 CLI 显式指定了配置，就把后续自动运行绑定到该 ID。自动更新可能
+        # 延迟 direct-run；无效 ID 也应拒绝启动，不能回退运行原配置。
+        self._cli_run_config_id: str | None = self._cli_switch_config_id
         self._cli_force_enable_test = bool(force_enable_test)
         self._auto_update_thread = None
         self._auto_update_in_progress = False
@@ -2675,6 +2678,14 @@ class MainWindow(MSFluentWindow):
 
         async def _start_flow():
             try:
+                target_id = self._cli_run_config_id
+                if target_id:
+                    started = await self.service_coordinator.run_configuration(
+                        target_id
+                    )
+                    if not started:
+                        logger.warning("启动参数指定的配置无法运行: %s", target_id)
+                    return
                 await self.service_coordinator.runtime.run()
             except Exception as exc:
                 logger.error("启动后自动运行失败: %s", exc)

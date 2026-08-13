@@ -58,6 +58,23 @@ class Stage4ServiceCommandTests(unittest.TestCase):
         self.assertEqual("new", config.name)
         self.assertEqual(1, service.update_calls)
 
+    def test_config_selection_save_failure_restores_previous_id(self):
+        service = ConfigService.__new__(ConfigService)
+        service._main_config = {
+            "curr_config_id": "config-a",
+            "config_list": ["config-a", "config-b"],
+        }
+        service.save_main_config = lambda: False
+        service._config_changed_callback = None
+        service.signal_bus = CoreSignalBus()
+        received: list[str] = []
+        service.signal_bus.config_changed.connect(received.append)
+
+        service.current_config_id = "config-b"
+
+        self.assertEqual("config-a", service.current_config_id)
+        self.assertEqual([], received)
+
 
 class _Checkbox:
     def __init__(self):

@@ -272,19 +272,22 @@ class ConfigService:
             print(f"配置ID {value} 不存在")
             return False
 
+        previous_value = self._main_config.get("curr_config_id", "")
         self._main_config["curr_config_id"] = value
 
-        # 保存主配置并发出信号
-        if self.save_main_config():
-            if self._config_changed_callback:
-                try:
-                    self._config_changed_callback(value)
-                except Exception as exc:
-                    logger.error(f"配置变更回调执行失败: {exc}")
-            self.signal_bus.config_changed.emit(value)
-            return True
+        # 只有持久化成功后才对外发布配置切换。保存失败时恢复内存状态，
+        # 避免调用方误以为目标配置已经激活。
+        if not self.save_main_config():
+            self._main_config["curr_config_id"] = previous_value
+            return False
 
-        return False
+        if self._config_changed_callback:
+            try:
+                self._config_changed_callback(value)
+            except Exception as exc:
+                logger.error(f"配置变更回调执行失败: {exc}")
+        self.signal_bus.config_changed.emit(value)
+        return True
 
     def _get_first_interface_name(self, key: str) -> str:
         items = self.repo.interface.get(key, []) if isinstance(self.repo.interface, dict) else []
