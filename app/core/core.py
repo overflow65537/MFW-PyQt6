@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import List, Dict, Any
+from copy import deepcopy
 import time
 import shutil
 
@@ -20,7 +21,7 @@ from app.core.service.task_service import TaskService
 from app.core.service.option_service import OptionService
 from app.core.service.telemetry_service import TelemetryService
 from app.core.service.interface_manager import get_interface_manager, InterfaceManager
-from app.core.runner.task_flow import TaskFlowRunner
+from app.core.runner.runtime_context import RuntimeContext
 from app.core.facade import (
     ConfigFacade,
     InterfaceFacade,
@@ -29,7 +30,6 @@ from app.core.facade import (
     ScheduleFacade,
     TaskFacade,
 )
-from app.core.log_processor import CallbackLogProcessor
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 
@@ -119,7 +119,7 @@ class _CoreUiSignalBridge(QObject):
 
     @Slot(list)
     def forward_schedules_changed(self, entries: list):
-        self._view_signals.schedules_changed.emit(entries)
+        self._view_signals.schedules_changed.emit(deepcopy(entries))
 
 
 class ServiceCoordinator:
@@ -134,7 +134,7 @@ class ServiceCoordinator:
         # 初始化信号总线
         self._core_signals = CoreSignalBus()
         self._view_signals = ViewSignalBus()
-        self.runner_events = RunnerEvents()
+        self._runtime_contexts: dict[str, RuntimeContext] = {}
         
         # 存储待显示的错误信息（用于在 UI 初始化完成后显示）
         self._pending_error_message: tuple[str, str] | None = None
@@ -190,18 +190,13 @@ class ServiceCoordinator:
                 raise
         
         self._option_service = OptionService(self._task_service, self._core_signals)
+        self._active_runtime_context = self._get_or_create_runtime_context(
+            self._config_service.current_config_id
+        )
         self.telemetry_service = TelemetryService(
-            self.runner_events, self._interface
+            self._active_runtime_context.events, self._interface
         )
         self._config_service.register_on_change(self._on_config_changed)
-
-        # 运行器
-
-        self._task_runner = TaskFlowRunner(
-            task_service=self._task_service,
-            config_service=self._config_service,
-            runner_events=self.runner_events,
-        )
         self._schedule_service = ScheduleService()
 
         self._configs = ConfigFacade(
@@ -212,15 +207,13 @@ class ServiceCoordinator:
         self._tasks = TaskFacade(self._task_service)
         self._options = OptionFacade(self._option_service)
         self._schedules = ScheduleFacade(self._schedule_service)
-        self._runtime = RuntimeFacade(self._task_runner)
+        self._runtime = RuntimeFacade(lambda: self._active_runtime_context)
         self._interface_api = InterfaceFacade(
             self._interface_manager,
             lambda: self._interface_path,
             self._find_interface_file_in_dir,
         )
 
-        # 初始化日志处理器（将 callback 信号转换为 log_output 信号）
-        self.log_processor = CallbackLogProcessor(self.runner_events)
         self._runner_ui_bridge = _RunnerUiSignalBridge()
         self._core_ui_bridge = _CoreUiSignalBridge(self._view_signals)
 
@@ -889,11 +882,97 @@ class ServiceCoordinator:
         self._task_service.reload_interface(self._interface)
         self.telemetry_service.configure_from_interface(self._interface)
 
+    def _get_or_create_runtime_context(self, config_id: str) -> RuntimeContext:
+        """Return the runtime context owned by one persistent configuration."""
+        normalized_id = str(config_id or "")
+        if not normalized_id:
+            raise ValueError("Cannot create RuntimeContext without config_id")
+        context = self._runtime_contexts.get(normalized_id)
+        if context is None:
+            context = RuntimeContext(
+                normalized_id,
+                task_service=self._task_service,
+                config_service=self._config_service,
+                run_config_callback=self._run_configuration_from_post_action,
+            )
+            self._runtime_contexts[normalized_id] = context
+        return context
+
+    async def _run_configuration_from_post_action(self, config_id: str) -> None:
+        """在目标配置的 RuntimeContext 中继续完成后任务链。"""
+        if self._config_service.get_config(config_id) is None:
+            logger.warning("完成后指定的配置已不存在: %s", config_id)
+            return
+        if self._config_service.current_config_id != config_id:
+            self._config_service.current_config_id = config_id
+        if self._config_service.current_config_id != config_id:
+            logger.warning("切换至完成后配置失败: %s", config_id)
+            return
+        context = self._activate_runtime_context(config_id)
+        context.logs.clear()
+        await context.task_runner.run_tasks_flow()
+
+    def get_runtime_context(self, config_id: str | None = None) -> RuntimeContext:
+        """Return a configuration runtime, defaulting to the active one."""
+        target_id = config_id or self._config_service.current_config_id
+        return self._get_or_create_runtime_context(target_id)
+
+    @staticmethod
+    def _runtime_signal_bindings(context: RuntimeContext, bridge: _RunnerUiSignalBridge):
+        events = context.events
+        return (
+            (events.callback, bridge.forward_callback),
+            (events.log_output, bridge.forward_log_output),
+            (events.set_window_title, bridge.forward_set_window_title),
+            (events.task_status_changed, bridge.forward_task_status_changed),
+            (events.task_flow_finished, bridge.forward_task_flow_finished),
+            (events.start_button_status, bridge.forward_start_button_status),
+            (events.log_clear_requested, bridge.forward_log_clear_requested),
+            (events.info_bar_requested, bridge.forward_info_bar_requested),
+            (events.focus_toast, bridge.forward_focus_toast),
+            (events.focus_notification, bridge.forward_focus_notification),
+            (events.focus_dialog, bridge.forward_focus_dialog),
+            (events.focus_modal, bridge.forward_focus_modal),
+            (
+                events.controller_setup_hint_requested,
+                bridge.forward_controller_setup_hint_requested,
+            ),
+            (events.monitor_recognition_roi, bridge.forward_monitor_recognition_roi),
+        )
+
+    def _connect_runtime_context(self, context: RuntimeContext) -> None:
+        """Bridge only the active configuration's runner events to the UI."""
+        for signal, slot in self._runtime_signal_bindings(
+            context, self._runner_ui_bridge
+        ):
+            signal.connect(slot, Qt.ConnectionType.QueuedConnection)
+
+    def _disconnect_runtime_context(self, context: RuntimeContext) -> None:
+        for signal, slot in self._runtime_signal_bindings(
+            context, self._runner_ui_bridge
+        ):
+            try:
+                signal.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
+
+    def _activate_runtime_context(self, config_id: str) -> RuntimeContext:
+        context = self._get_or_create_runtime_context(config_id)
+        previous = getattr(self, "_active_runtime_context", None)
+        if previous is context:
+            return context
+        if previous is not None and hasattr(self, "_runner_ui_bridge"):
+            self._disconnect_runtime_context(previous)
+        self._active_runtime_context = context
+        if hasattr(self, "telemetry_service"):
+            self.telemetry_service.set_runner_events(context.events)
+        if hasattr(self, "_runner_ui_bridge"):
+            self._connect_runtime_context(context)
+        return context
+
     def _connect_signals(self):
-        """连接所有信号"""
-        # 热更新完成后重新初始化
+        """Connect stable domain signals and the active runtime UI bridge."""
         signalBus.coordinator_reinit_requested.connect(self.reinit)
-        # Core 事件只在内部流转，由协调器统一桥接为 View 域通知。
         self._core_signals.config_changed.connect(
             self._core_ui_bridge.forward_config_changed,
             Qt.ConnectionType.QueuedConnection,
@@ -918,75 +997,19 @@ class ServiceCoordinator:
             self._runner_ui_bridge.forward_info_bar_requested,
             Qt.ConnectionType.QueuedConnection,
         )
-        # 使用 QObject 槽转发，确保来自 runner/底层回调线程的信号稳定回到 UI 线程。
-        self.runner_events.callback.connect(
-            self._runner_ui_bridge.forward_callback, Qt.ConnectionType.QueuedConnection
-        )
-        self.runner_events.log_output.connect(
-            self._runner_ui_bridge.forward_log_output,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.set_window_title.connect(
-            self._runner_ui_bridge.forward_set_window_title,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.task_status_changed.connect(
-            self._runner_ui_bridge.forward_task_status_changed,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.task_flow_finished.connect(
-            self._runner_ui_bridge.forward_task_flow_finished,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.start_button_status.connect(
-            self._runner_ui_bridge.forward_start_button_status,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.log_clear_requested.connect(
-            self._runner_ui_bridge.forward_log_clear_requested,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.info_bar_requested.connect(
-            self._runner_ui_bridge.forward_info_bar_requested,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.focus_toast.connect(
-            self._runner_ui_bridge.forward_focus_toast,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.focus_notification.connect(
-            self._runner_ui_bridge.forward_focus_notification,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.focus_dialog.connect(
-            self._runner_ui_bridge.forward_focus_dialog,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.focus_modal.connect(
-            self._runner_ui_bridge.forward_focus_modal,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.controller_setup_hint_requested.connect(
-            self._runner_ui_bridge.forward_controller_setup_hint_requested,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        self.runner_events.monitor_recognition_roi.connect(
-            self._runner_ui_bridge.forward_monitor_recognition_roi,
-            Qt.ConnectionType.QueuedConnection,
-        )
+        self._connect_runtime_context(self._active_runtime_context)
 
     def _on_config_changed(self, config_id: str):
-        """配置变化后刷新内部服务状态"""
+        """Activate the config runtime, then refresh shared single-instance services."""
         if not config_id:
             return
 
-        # 检查并更新 interface 路径（如果配置的 bundle 发生变化）
+        self._activate_runtime_context(config_id)
         self._update_interface_path_for_config(config_id)
-
         self._task_service.on_config_changed(config_id)
         self._option_service.clear_selection()
 
-    # region 配置相关方法
+    # region configuration compatibility methods
     def update_bundle_path(
         self, bundle_name: str, new_path: str, bundle_display_name: str | None = None
     ) -> bool:
@@ -1165,8 +1188,18 @@ class ServiceCoordinator:
 
     def delete_config(self, config_id: str) -> bool:
         """删除配置，传入 config id"""
+        context = self._runtime_contexts.get(config_id)
+        if context is not None and context.is_running:
+            logger.warning(
+                "Configuration %s is still running; deletion refused",
+                config_id,
+            )
+            return False
         ok = self._config_service.delete_config(config_id)
         if ok:
+            removed = self._runtime_contexts.pop(config_id, None)
+            if removed is not None and removed is not self._active_runtime_context:
+                removed.deleteLater()
             # notify UI incremental removal
             self._view_signals.config_removed.emit(config_id)
         return ok
@@ -1322,6 +1355,12 @@ class ServiceCoordinator:
     @property
     def runtime(self) -> RuntimeFacade:
         return self._runtime
+
+    @property
+    def runner_events(self) -> RunnerEvents:
+        """Compatibility alias for the active configuration events."""
+        return self._active_runtime_context.events
+
 
     @property
     def interface_api(self) -> InterfaceFacade:

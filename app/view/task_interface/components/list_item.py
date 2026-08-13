@@ -700,7 +700,9 @@ class TaskListItem(BaseListItem):
     def _run_single_task(self):
         if not self.service_coordinator:
             return
-        asyncio.create_task(self.service_coordinator.run_tasks_flow(self.task.item_id))
+        asyncio.create_task(
+            self.service_coordinator.runtime.run(self.task.item_id)
+        )
 
     def _run_from_task(self):
         if not self.service_coordinator or self.task.is_base_task():
@@ -1041,11 +1043,10 @@ class ConfigListItem(BaseListItem):
                 return None
 
             # 使用 preview_interface 获取 interface 数据（不改变当前激活的 interface）
-            from app.core.service.interface_manager import get_interface_manager
-
-            interface_manager = get_interface_manager()
-            current_language = interface_manager.get_language()
-            interface_data = interface_manager.preview_interface(
+            current_language = (
+                self.service_coordinator.interface_api.get_current_language()
+            )
+            interface_data = self.service_coordinator.interface_api.preview_interface(
                 interface_path, language=current_language
             )
 

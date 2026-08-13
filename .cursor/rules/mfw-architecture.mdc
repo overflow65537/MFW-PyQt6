@@ -6,13 +6,18 @@ alwaysApply: true
 # MFW-PyQt6 AI Rules
 
 - Treat `.github/copilot-instructions.md` as the canonical project architecture guide.
-- `app/core/runner/` must not directly import or emit `app.common.signal_bus.signalBus`; route runtime events through `RunnerEvents`/Runner signals to `ServiceCoordinator`.
+- Treat `TaskItem`/`ConfigItem` in `app/core/item.py` as dataclass Models; `CoreSignalBus`, `ViewSignalBus`, and `RunnerEvents` are QObject event channels, not Models.
+- Single-domain View commands must follow `View -> Facade -> Service`; use `ServiceCoordinator` for cross-domain orchestration, application lifecycle, and event bridging.
+- View code must use `ServiceCoordinator.configs`, `tasks`, `options`, `schedules`, `runtime`, or `interface_api` instead of service internals or direct Model mutation.
+- Core state notifications must follow `Service -> CoreSignalBus -> ServiceCoordinator/Core UI Bridge -> ViewSignalBus -> View`; View must not access or emit `CoreSignalBus`.
+- `app/core/runner/` must not directly import or emit `app.common.signal_bus.signalBus` or `ViewSignalBus`; route UI runtime events through `RunnerEvents`/Runner signals to `ServiceCoordinator`.
 - `app/core/service/` must not add new direct imports of `app.common.signal_bus.signalBus`.
-- Prefer `RunnerEvents/Runner Signal -> ServiceCoordinator -> signalBus -> View` for runtime notifications.
-- View code should call `ServiceCoordinator` methods instead of mutating model state or reaching into service internals.
+- Route Runner UI notifications through `RunnerEvents/Runner Signal -> ServiceCoordinator -> signalBus -> View`, and telemetry through `RunnerEvents.telemetry -> TelemetryService`.
+- Route schedule domain notifications through `ScheduleService -> ServiceCoordinator/Core UI Bridge -> ViewSignalBus -> View`.
 - Widget code must stay UI-only and must not import Core, Service, or `ServiceCoordinator`.
 - Keep business logic out of View; keep UI logic out of Core/Service.
 - Use snake_case for modules, functions, methods, variables, attributes, and signals.
 - Use PascalCase for classes and exceptions; use UPPER_SNAKE_CASE for constants.
 - Use `self.tr("...")` for user-visible text in View and Runner code.
-- Avoid blocking the UI thread; prefer `@asyncify`, async flows, and `QTimer.singleShot` for delayed UI actions.
+- Keep blocking work off the UI thread: use native `async`/`await` with the qasync event loop, `@asyncify` or `asyncio.to_thread` only for thread-safe synchronous blocking work, `asyncio.create_subprocess_exec` for async subprocesses, and `QThread` for long-lived Qt workers.
+- Do not move Qt-affine QObject/Widget operations into thread pools; use queued signals to return to the UI thread, process-based execution for CPU-bound work, and `QTimer.singleShot` only for delayed UI actions.

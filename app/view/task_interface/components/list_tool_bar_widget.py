@@ -181,13 +181,13 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
             return
         # 通过对话框创建新配置
         bundles = []
-        config_service = self.service_coordinator.configs
+        config_api = self.service_coordinator.configs
         try:
-            # 优先通过 ConfigService 的接口获取 bundle 列表，避免直接依赖内部结构
-            bundle_names = config_service.list_bundles()
+            # 通过配置 Facade 获取 bundle 列表，避免依赖内部结构
+            bundle_names = config_api.list_bundles()
             for name in bundle_names:
                 try:
-                    info = config_service.get_bundle(name)
+                    info = config_api.get_bundle(name)
                 except FileNotFoundError:
                     continue
                 bundle_info = {

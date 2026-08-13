@@ -4,6 +4,7 @@ import math
 import re
 import time
 from pathlib import Path
+from typing import Any
 
 from PySide6.QtCore import Qt, QSize, QTimer, QByteArray, QBuffer, QIODevice, QEvent
 from PySide6.QtGui import QFont, QPalette, QImage, QIcon, QColor, QResizeEvent
@@ -76,6 +77,7 @@ class LogoutputWidget(QWidget):
         # 级别颜色映射（随主题自动更新）
         self._level_color: dict[str, str] = {}
         self._log_items: list[LogItemWidget] = []
+        self._bound_log_store: Any | None = None
         self._tail_spacer_item: QSpacerItem | None = None
         self._pending_scroll_to_bottom = False
         self._scroll_to_bottom_retry_count = 0
@@ -156,9 +158,14 @@ class LogoutputWidget(QWidget):
             self.main_layout.setStretch(1, 1)
 
         # 连接日志输出信号
-        signalBus.log_output.connect(self._on_log_output)
-
-        signalBus.log_clear_requested.connect(self.clear_log)
+        if self.service_coordinator:
+            self.service_coordinator.view_signals.config_changed.connect(
+                self._on_runtime_config_changed
+            )
+            self._bind_runtime_log_store()
+        else:
+            signalBus.log_output.connect(self._on_log_output)
+            signalBus.log_clear_requested.connect(self._clear_log_widgets)
         signalBus.log_zip_started.connect(
             lambda: self.generate_log_zip_button.setEnabled(False)
         )
@@ -327,29 +334,85 @@ class LogoutputWidget(QWidget):
         # 交互信号：由组件发射，外部处理
         self.generate_log_zip_button.clicked.connect(signalBus.request_log_zip)
 
+    def _bind_runtime_log_store(self) -> None:
+        if not self.service_coordinator:
+            return
+        store = self.service_coordinator.runtime.logs
+        if store is self._bound_log_store:
+            self._reload_runtime_logs()
+            return
+        if self._bound_log_store is not None:
+            for signal, slot in (
+                (self._bound_log_store.entry_added, self._on_runtime_log_entry),
+                (self._bound_log_store.cleared, self._clear_log_widgets),
+            ):
+                try:
+                    signal.disconnect(slot)
+                except (RuntimeError, TypeError):
+                    pass
+        self._bound_log_store = store
+        store.set_max_entries(self._max_log_entries)
+        store.entry_added.connect(self._on_runtime_log_entry)
+        store.cleared.connect(self._clear_log_widgets)
+        self._reload_runtime_logs()
+
+    def _on_runtime_config_changed(self, _config_id: str) -> None:
+        self._bind_runtime_log_store()
+
+    def _reload_runtime_logs(self) -> None:
+        self._clear_log_widgets()
+        if self._bound_log_store is None:
+            return
+        for entry in self._bound_log_store.entries:
+            self._render_runtime_log_entry(entry, capture_image=False)
+
     def clear_log(self):
-        """清空日志内容，清除缓存图像并重置序号"""
+        """Clear the active configuration's retained logs and widgets."""
+        if self._bound_log_store is not None:
+            self._bound_log_store.clear()
+            return
+        self._clear_log_widgets()
+
+    def _clear_log_widgets(self):
+        """Clear only rendered widgets while switching runtime contexts."""
         self._remove_tail_spacer()
         while self.log_list_layout.count():
             item = self.log_list_layout.takeAt(0)
-            w = item.widget()
-            if w:
-                w.deleteLater()
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
         self._log_items.clear()
-        
-        # 清除缓存图像，避免跨 session 复用旧图
         self._last_image_bytes = None
         self._last_image_small_gray = None
-        logger.info("[日志清除] 已清除所有日志条目和缓存图像，序号已重置")
-        
         self._add_tail_spacer()
 
     def _on_log_output(self, level: str, text: str):
-        """处理日志输出信号"""
+        """Compatibility handler used without a ServiceCoordinator."""
         normalized_level = self._normalize_level_by_text(level, text)
         if normalized_level in {"ERROR", "CRITICAL"}:
             self._start_log_zip_attention_effect()
         self.add_structured_log(normalized_level, text)
+
+    def _on_runtime_log_entry(self, entry: Any) -> None:
+        self._render_runtime_log_entry(entry, capture_image=True)
+
+    def _render_runtime_log_entry(
+        self, entry: Any, *, capture_image: bool
+    ) -> None:
+        normalized_level = self._normalize_level_by_text(entry.level, entry.text)
+        if normalized_level in {"ERROR", "CRITICAL"}:
+            self._start_log_zip_attention_effect()
+        self._add_log_row(
+            entry.timestamp,
+            entry.text,
+            normalized_level,
+            task_id=entry.task_id,
+            image_bytes=entry.image_bytes,
+            capture_image=capture_image,
+        )
+        if capture_image and entry.image_bytes is None and self._log_items:
+            entry.image_bytes = self._log_items[-1]._data.image_bytes
+        logger.info(f"[{entry.level}] {entry.text}")
 
     def _normalize_level_by_text(self, level: str, text: str) -> str:
         """根据日志级别与关键词将消息归一化到最终显示级别。"""
@@ -495,7 +558,16 @@ class LogoutputWidget(QWidget):
         # 2. 正确处理换行符（在同一个日志条目内换行显示）
         self._add_log_row(timestamp, raw_text, level)
 
-    def _add_log_row(self, timestamp: str, text: str, level: str):
+    def _add_log_row(
+        self,
+        timestamp: str,
+        text: str,
+        level: str,
+        *,
+        task_id: str | None = None,
+        image_bytes: QByteArray | None = None,
+        capture_image: bool = True,
+    ):
         """新增一条日志（LogItemWidget）"""
         formatted_text, has_rich_content = self._format_colored_text(text)
         self._remove_tail_spacer()
@@ -507,17 +579,13 @@ class LogoutputWidget(QWidget):
             self._placeholder_icon = new_placeholder_icon
 
         # 任务名：使用 TaskFlowRunner 当前任务映射（可靠，不依赖翻译后的文本）
-        task_name = self._get_current_task_name()
+        task_name = self._get_task_name(task_id) if task_id else self._get_current_task_name()
 
-        # System 任务：不捕获图片，使用图标 icon，不占用 500 张配额
-        # 其他任务：正常捕获图片
-        if task_name == self.tr("System"):
-            image_bytes = None
-        else:
-            # 日志出现时抓取一帧作为预览（优先 cached_image；None 则不显示）
+        # Replayed entries retain their image; only a new runtime entry captures.
+        if image_bytes is None and capture_image and task_name != self.tr("System"):
             image_bytes = self._try_capture_cached_image_bytes()
-            if image_bytes is not None and image_bytes.isEmpty():
-                image_bytes = None
+        if image_bytes is not None and image_bytes.isEmpty():
+            image_bytes = None
 
         data = LogItemData(
             level=level,
@@ -860,31 +928,36 @@ class LogoutputWidget(QWidget):
         except Exception:
             return 0.0
 
+    def _get_task_name(self, task_id: str | None) -> str:
+        if not self.service_coordinator or not task_id:
+            return self.tr("System")
+        try:
+            task_api = self.service_coordinator.tasks
+            for task in task_api.get_tasks() or []:
+                if getattr(task, "item_id", None) == task_id:
+                    return self._display_name_for_task(task, task_api) or self.tr("System")
+        except Exception:
+            pass
+        return self.tr("System")
+
     def _get_current_task_name(self) -> str:
-        """获取当前正在执行的任务名（如果无法获取则返回 'System'）。"""
+        """Return the task name associated with the active runtime entry."""
         if not self.service_coordinator:
             return self.tr("System")
         try:
             task_id = self.service_coordinator.runtime.current_running_task_id
-            if not task_id:
-                return self.tr("System")
-            task_service = self.service_coordinator.tasks
-            tasks = task_service.get_tasks()
-            for t in tasks or []:
-                if getattr(t, "item_id", None) == task_id:
-                    return self._display_name_for_task(t, task_service) or self.tr("System")
         except Exception:
-            return self.tr("System")
-        return self.tr("System")
+            task_id = None
+        return self._get_task_name(task_id)
 
-    def _display_name_for_task(self, task, task_service) -> str:
+    def _display_name_for_task(self, task, task_api) -> str:
         """返回日志中显示的任务名，内置任务显示翻译后的 label。"""
         try:
             if getattr(task, "is_builtin_task", lambda: False)():
-                label = task_service.get_builtin_task_label(task)
+                label = task_api.get_builtin_task_label(task)
                 if label:
                     return label
-            interface = task_service.interface
+            interface = task_api.interface
             for task_def in interface.get("task", []):
                 if task_def.get("name") == getattr(task, "name", ""):
                     label = task_def.get("label") or task_def.get("name")

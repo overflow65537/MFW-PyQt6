@@ -3026,10 +3026,10 @@ class MainWindow(MSFluentWindow):
 
     def set_title(self):
         """设置窗口标题"""
-        from app.core.service.interface_manager import get_interface_manager
-
         default_name = self.tr("ChainFlow Assistant")
-        base_title = get_interface_manager().resolve_display_title(default_name)
+        base_title = self.service_coordinator.interface_api.resolve_display_title(
+            default_name
+        )
 
         if cfg.get(cfg.multi_resource_adaptation):
             from app.common.__version__ import __version__

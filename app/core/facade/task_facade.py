@@ -2,7 +2,7 @@ from typing import Any
 
 from app.core.facade._snapshot import snapshot
 from app.core.item import TaskItem
-from app.core.service.task_service import TaskService
+from app.core.service.task_service import DEFAULT_SPEEDRUN_CONFIG, TaskService
 
 
 class TaskFacade:
@@ -51,3 +51,6 @@ class TaskFacade:
         return self._service.builtin_task_loader.i18n_service.translate_text(
             definition.label
         )
+
+
+__all__ = ["DEFAULT_SPEEDRUN_CONFIG", "TaskFacade"]

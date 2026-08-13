@@ -32,7 +32,6 @@ from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.common.config import cfg
 from app.core.core import ServiceCoordinator
 from app.core.builtin_task_loader import BUILTIN_TASK_GROUP_NAME
-from app.core.service.i18n_service import I18nService
 from app.common.signal_bus import signalBus
 
 
@@ -273,18 +272,18 @@ class AddConfigDialog(BaseAddDialog):
         except Exception:
             return []
 
-        language = "zh_cn"
+        translated_interface = bundle_interface
         if self._service_coordinator:
             try:
-                language = (
-                    self._service_coordinator.interface_api.get_current_language()
+                translated_interface = (
+                    self._service_coordinator.interface_api.translate_interface_data(
+                        bundle_interface,
+                        interface_dir,
+                    )
                 )
             except Exception:
                 pass
 
-        i18n_service = I18nService(language=language)
-        i18n_service.load_translations_from_interface(bundle_interface, interface_dir)
-        translated_interface = i18n_service.translate_any(bundle_interface)
         presets = translated_interface.get("preset", [])
         return presets if isinstance(presets, list) else []
 

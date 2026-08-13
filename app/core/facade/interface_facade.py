@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from app.core.facade._snapshot import snapshot
+from app.core.service.i18n_service import I18nService
 from app.core.service.interface_manager import InterfaceManager
 
 
@@ -51,6 +52,18 @@ class InterfaceFacade:
         return snapshot(
             self._manager.preview_interface(interface_path, language=language)
         )
+
+    def translate_interface_data(
+        self,
+        interface_data: dict[str, Any],
+        base_dir: Path,
+        language: str | None = None,
+    ) -> dict[str, Any]:
+        """翻译未激活 bundle 的 interface 快照，不改变全局 InterfaceManager。"""
+        i18n_service = I18nService(language=language or self.get_current_language())
+        data = snapshot(interface_data)
+        i18n_service.load_translations_from_interface(data, base_dir)
+        return snapshot(i18n_service.translate_any(data))
 
     def find_interface_file(self, base_dir: Path) -> Path | None:
         return self._interface_file_finder(base_dir)

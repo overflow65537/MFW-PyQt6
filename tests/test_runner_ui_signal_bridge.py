@@ -1,11 +1,12 @@
 import ast
+import inspect
 import unittest
 from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication, Qt
 
 from app.common.signal_bus import signalBus
-from app.core.core import _RunnerUiSignalBridge
+from app.core.core import _RunnerUiSignalBridge, ServiceCoordinator
 from app.core.item import RunnerEvents
 
 
@@ -50,6 +51,11 @@ class RunnerUiSignalBridgeTests(unittest.TestCase):
 
 
 class RunnerArchitectureTests(unittest.TestCase):
+    def test_telemetry_stays_on_core_private_path(self):
+        source = inspect.getsource(ServiceCoordinator._connect_signals)
+        self.assertNotIn("runner_events.telemetry.connect", source)
+        self.assertFalse(hasattr(_RunnerUiSignalBridge, "forward_telemetry"))
+
     def test_runner_does_not_depend_on_ui_signal_buses(self):
         violations: list[str] = []
 

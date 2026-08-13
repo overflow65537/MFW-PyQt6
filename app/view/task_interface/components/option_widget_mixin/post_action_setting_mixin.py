@@ -373,12 +373,12 @@ class PostActionSettingMixin:
     # region 数据 & 持久化
     def _load_available_configs(self) -> List[Tuple[str, str]]:
         configs: List[Tuple[str, str]] = []
-        config_service = getattr(self.service_coordinator, "configs", None)
-        if not config_service:
+        config_api = getattr(self.service_coordinator, "configs", None)
+        if not config_api:
             return configs
 
         try:
-            for info in config_service.list_configs():
+            for info in config_api.list_configs():
                 configs.append(
                     (
                         info.get("item_id", ""),

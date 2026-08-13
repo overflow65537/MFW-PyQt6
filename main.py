@@ -365,9 +365,9 @@ def _run() -> int:
     def _schedule_graceful_shutdown(window) -> None:
         async def _stop_and_close() -> None:
             try:
-                task_runner = window.service_coordinator.task_runner
-                if task_runner.is_running or task_runner.maafw.has_active_runtime():
-                    await window.service_coordinator.stop_task(manual=True)
+                runtime = window.service_coordinator.runtime
+                if runtime.is_running:
+                    await runtime.stop(manual=True)
             except Exception:
                 logger.exception("收到 --force-restart 关闭请求后停止任务失败")
             window._allow_window_close = True
@@ -393,8 +393,7 @@ def _run() -> int:
     single_instance.set_shutdown_callback(_handle_force_shutdown_request)
 
     def _is_task_running(window: MainWindow) -> bool:
-        task_runner = window.service_coordinator.task_runner
-        return task_runner.is_running or task_runner.maafw.has_active_runtime()
+        return window.service_coordinator.runtime.is_running
 
     def _schedule_reused_run(window: MainWindow, config_id: str, force_start: bool) -> None:
         async def _run() -> None:
@@ -403,12 +402,12 @@ def _run() -> int:
                     if not force_start:
                         logger.info("已有任务正在执行，跳过复用执行请求")
                         return
-                    await window.service_coordinator.stop_task(manual=True)
+                    await window.service_coordinator.runtime.stop(manual=True)
 
                 if not window.service_coordinator.select_config(config_id):
                     logger.warning("复用执行请求指定的配置不存在: %s", config_id)
                     return
-                await window.service_coordinator.run_tasks_flow()
+                await window.service_coordinator.runtime.run()
             except Exception:
                 logger.exception("复用已有实例执行任务失败")
             finally:

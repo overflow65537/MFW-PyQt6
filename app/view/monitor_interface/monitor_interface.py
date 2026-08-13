@@ -31,7 +31,6 @@ from qfluentwidgets import (
 from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.common.config import cfg
 from app.core.core import ServiceCoordinator
-from app.core.runner.monitor_task import MonitorTask
 from app.view.monitor import MonitorSession
 from app.view.monitor.recognition_roi_store import RecognitionRoiStore
 from app.view.monitor.roi_overlay import draw_roi_on_pixmap
@@ -74,6 +73,7 @@ class MonitorInterface(QWidget):
         self._image_height: Optional[int] = None
         self._is_landscape: Optional[bool] = None
         self._roi_store = RecognitionRoiStore()
+        self._runtime_monitor_state = None
 
         self._starting_monitoring = False
         self._stopping_monitoring = False
@@ -87,24 +87,88 @@ class MonitorInterface(QWidget):
 
         self._setup_ui()
 
-        self.monitor_task = MonitorTask(
-            task_service=self.service_coordinator.task_service,
-            config_service=self.service_coordinator.config_service,
-        )
-        self._session = MonitorSession(self.monitor_task, log_prefix="Monitor")
-        self._session.set_callbacks(
-            on_frame=self._apply_preview_from_pil,
-            on_capture_failure_clear=self._emit_preview_cleared,
-            on_controller_disconnected=self._on_session_controller_disconnected,
-        )
+        self._bind_runtime_context()
         self._bind_auto_task_monitoring()
         self._bind_roi_signals()
+        self.service_coordinator.view_signals.config_changed.connect(
+            self._on_runtime_config_changed
+        )
         self._update_monitor_status()
         self._update_empty_state()
         self._reposition_preview_overlays()
 
+    def _create_monitor_session(self) -> None:
+        self.monitor_task = self.service_coordinator.runtime.create_monitor_task()
+        session = MonitorSession(self.monitor_task, log_prefix="Monitor")
+        self._session = session
+        session.set_callbacks(
+            on_frame=lambda image: self._on_session_frame(session, image),
+            on_capture_failure_clear=lambda: self._on_session_capture_failure(
+                session
+            ),
+            on_controller_disconnected=lambda: (
+                self._on_session_controller_disconnected()
+                if self._session is session
+                else None
+            ),
+        )
+
+    def _on_session_frame(
+        self, session: MonitorSession, pil_image: Image.Image
+    ) -> None:
+        if self._session is session:
+            self._apply_preview_from_pil(pil_image)
+
+    def _on_session_capture_failure(self, session: MonitorSession) -> None:
+        if self._session is session:
+            self._on_capture_failure_clear()
+
+    def _bind_runtime_context(self) -> None:
+        previous_state = self._runtime_monitor_state
+        if previous_state is not None:
+            try:
+                previous_state.roi_changed.disconnect(self._on_recognition_roi)
+            except (RuntimeError, TypeError):
+                pass
+
+        self._runtime_monitor_state = self.service_coordinator.runtime.monitor
+        self._runtime_monitor_state.roi_changed.connect(self._on_recognition_roi)
+        self._create_monitor_session()
+        self._restore_runtime_monitor_state()
+
+    def _on_runtime_config_changed(self, _config_id: str) -> None:
+        old_session = getattr(self, "_session", None)
+        if old_session is not None:
+            old_session.stop_loop()
+            self._schedule_session_teardown(old_session)
+        self._starting_monitoring = False
+        self._stopping_monitoring = False
+        self._set_monitor_control_running(False)
+        self._bind_runtime_context()
+
+    @staticmethod
+    def _schedule_session_teardown(session: MonitorSession) -> None:
+        """异步释放旧配置的监控控制器，不阻塞 Qt 配置切换槽。"""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        if loop.is_running():
+            loop.create_task(session.stop())
+
+    def _restore_runtime_monitor_state(self) -> None:
+        self._clear_preview_widgets()
+        state = self._runtime_monitor_state
+        if state is None:
+            return
+        roi = state.latest_roi
+        if roi:
+            self._roi_store.update(roi)
+        frame = state.latest_frame
+        if frame is not None:
+            self._apply_preview_from_pil(frame, persist=False)
+
     def _bind_roi_signals(self) -> None:
-        signalBus.monitor_recognition_roi.connect(self._on_recognition_roi)
         cfg.monitor_recognition_roi_enabled.valueChanged.connect(
             self._on_recognition_roi_setting_changed
         )
@@ -116,11 +180,15 @@ class MonitorInterface(QWidget):
         if enabled:
             return
         self._roi_store.clear()
+        if self._runtime_monitor_state is not None:
+            self._runtime_monitor_state.clear_roi()
         if self._current_pil_image is not None:
             self._render_preview_from_current_frame()
 
     def _clear_recognition_roi(self) -> None:
         self._roi_store.clear()
+        if self._runtime_monitor_state is not None:
+            self._runtime_monitor_state.clear_roi()
 
     def _on_recognition_roi(self, payload: dict) -> None:
         """仅缓存最新 ROI，不在此处触发重绘；出图时由 _render_preview_from_current_frame 读取。"""
@@ -441,7 +509,16 @@ class MonitorInterface(QWidget):
         self._update_monitor_status()
         self._reposition_preview_overlays()
 
-    def _emit_preview_cleared(self) -> None:
+    def _on_capture_failure_clear(self) -> None:
+        self._emit_preview_cleared(persist=True)
+
+    def _emit_preview_cleared(self, *, persist: bool = True) -> None:
+        if persist and self._runtime_monitor_state is not None:
+            self._runtime_monitor_state.clear_frame()
+            self._runtime_monitor_state.clear_roi()
+        self._clear_preview_widgets()
+
+    def _clear_preview_widgets(self) -> None:
         self._preview_pixmap = None
         self._current_pil_image = None
         self._image_width = None
@@ -540,12 +617,16 @@ class MonitorInterface(QWidget):
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
 
-    def _apply_preview_from_pil(self, pil_image: Image.Image) -> None:
+    def _apply_preview_from_pil(
+        self, pil_image: Image.Image, *, persist: bool = True
+    ) -> None:
         image_width, image_height = pil_image.size
         self._update_preview_size_policy(image_width, image_height)
 
         rgb_image = pil_image.convert("RGB")
         self._current_pil_image = rgb_image.copy()
+        if persist and self._runtime_monitor_state is not None:
+            self._runtime_monitor_state.update_frame(rgb_image)
         self._render_preview_from_current_frame()
 
         current_timestamp = time()
@@ -729,13 +810,14 @@ class MonitorInterface(QWidget):
         coords = self._map_visual_click_to_device(x, y)
         if not coords:
             return
-        controller = getattr(self.monitor_task.maafw, "controller", None)
-        if controller is None:
-            return
-        try:
-            controller.post_click(*coords).wait()
-        except Exception as exc:
-            logger.exception("监控子页面：同步点击失败：%s", exc)
+
+        async def _click_device() -> None:
+            try:
+                await self._session.click_device(*coords)
+            except Exception as exc:
+                logger.exception("监控子页面：同步点击失败：%s", exc)
+
+        asyncio.create_task(_click_device())
 
     def _map_visual_click_to_device(self, x: int, y: int) -> tuple[int, int] | None:
         if (

@@ -39,7 +39,6 @@ from qfluentwidgets import (
 
 from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.core.core import ServiceCoordinator
-from app.core.service.interface_manager import get_interface_manager
 from app.utils.logger import logger
 from app.utils.update import Update, MultiResourceUpdate
 from app.common.signal_bus import signalBus
@@ -536,11 +535,12 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
                                 # 如果需要翻译，再使用 InterfaceManager 进行翻译
                                 if interface_data:
-                                    interface_manager = get_interface_manager()
-                                    current_language = interface_manager.get_language()
+                                    current_language = (
+                                        self.service_coordinator.interface_api.get_current_language()
+                                    )
                                     # 使用 preview_interface 进行翻译（会重新读取文件，但我们已经确保文件是最新的）
                                     translated_data = (
-                                        interface_manager.preview_interface(
+                                        self.service_coordinator.interface_api.preview_interface(
                                             interface_path, language=current_language
                                         )
                                     )
@@ -553,11 +553,12 @@ class BundleInterface(UI_BundleInterface, QWidget):
                             else:
                                 # 正常模式：使用 InterfaceManager 的 preview_interface 方法加载并翻译 interface 文件
                                 # 这样可以支持 i18n 功能
-                                interface_manager = get_interface_manager()
-                                current_language = interface_manager.get_language()
+                                current_language = (
+                                    self.service_coordinator.interface_api.get_current_language()
+                                )
 
                                 # 预览并翻译该 bundle 的 interface 文件
-                                interface_data = interface_manager.preview_interface(
+                                interface_data = self.service_coordinator.interface_api.preview_interface(
                                     interface_path, language=current_language
                                 )
 

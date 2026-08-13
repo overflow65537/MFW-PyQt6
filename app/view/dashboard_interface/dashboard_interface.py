@@ -40,7 +40,6 @@ from app.common.signal_bus import signalBus
 from app.common import __version__ as version_meta
 
 from app.core.core import ServiceCoordinator
-from app.core.service.interface_manager import get_interface_manager
 from app.view.task_interface.components.list_item import OptionLabel
 from app.utils.markdown_helper import render_markdown
 from app.utils.rich_text_helper import apply_rich_text_html
@@ -655,7 +654,7 @@ class DashboardInterface(QWidget):
         return interface_data or {}
 
     def _get_hero_title(self) -> str:
-        return get_interface_manager().resolve_display_name(
+        return self.service_coordinator.interface_api.resolve_display_name(
             self.tr("ChainFlow Assistant")
         )
 

@@ -103,15 +103,15 @@ class TestInterface(QWidget):
             )
             return
         signalBus.info_bar_requested.emit("info", "已触发任务流测试")
-        asyncio.create_task(self.service_coordinator.run_tasks_flow())
+        asyncio.create_task(self.service_coordinator.runtime.run())
 
     def _test_force_start(self) -> None:
         signalBus.info_bar_requested.emit("info", "已发起强制运行")
 
         async def _run() -> None:
             if self.service_coordinator.runtime.is_running:
-                await self.service_coordinator.stop_task()
-            await self.service_coordinator.run_tasks_flow()
+                await self.service_coordinator.runtime.stop(manual=False)
+            await self.service_coordinator.runtime.run()
 
         asyncio.create_task(_run())
 

@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import Optional
+from typing import Optional, Protocol
 
 from PIL import Image
 
 from app.common.config import cfg
-from app.core.runner.monitor_task import MonitorTask
 from app.utils.logger import (
     logger,
     restore_asyncify_logging,
@@ -17,7 +16,18 @@ from app.utils.logger import (
     suppress_asyncify_logging,
     suppress_qasync_logging,
 )
-from app.utils.screencap_lock import screencap_guard
+
+
+class MonitorRuntime(Protocol):
+    def is_controller_connected(self) -> bool: ...
+
+    async def connect_controller(self) -> bool: ...
+
+    def capture_frame(self) -> Image.Image: ...
+
+    def click(self, x: int, y: int) -> None: ...
+
+    async def teardown_controller(self) -> None: ...
 
 
 class MonitorSession:
@@ -25,7 +35,7 @@ class MonitorSession:
 
     def __init__(
         self,
-        monitor_task: MonitorTask,
+        monitor_task: MonitorRuntime,
         *,
         log_prefix: str = "Monitor",
         max_queue_size: int = 2,
@@ -63,30 +73,20 @@ class MonitorSession:
         self._on_controller_disconnected = on_controller_disconnected
 
     def is_controller_connected(self) -> bool:
-        controller = getattr(self.monitor_task.maafw, "controller", None)
-        if controller is None:
-            return False
-        connected = getattr(controller, "connected", None)
-        return connected is not False
+        return self.monitor_task.is_controller_connected()
 
     async def connect_controller(self) -> bool:
-        return bool(await self.monitor_task._connect())
+        return await self.monitor_task.connect_controller()
 
     def capture_frame(self) -> Image.Image:
         """在工作线程中调用：从监控专用控制器截取一帧。"""
-        controller = getattr(self.monitor_task.maafw, "controller", None)
-        if controller is None:
-            raise RuntimeError("控制器尚未初始化，无法抓取画面")
-        # 与任务流 screencap_test 等串行，避免原生截图缓冲并发访问崩溃
-        with screencap_guard():
-            raw_frame = controller.post_screencap().wait().get()
-            if raw_frame is None:
-                raise ValueError("采集返回空帧")
-            frame = raw_frame.copy()
-        return Image.fromarray(frame[..., ::-1])
+        return self.monitor_task.capture_frame()
 
     async def capture_frame_async(self) -> Image.Image:
         return await asyncio.to_thread(self.capture_frame)
+
+    async def click_device(self, x: int, y: int) -> None:
+        await asyncio.to_thread(self.monitor_task.click, x, y)
 
     def _get_target_interval(self) -> float:
         fps = max(1, int(cfg.get(cfg.monitor_capture_fps)))
@@ -152,14 +152,9 @@ class MonitorSession:
 
     async def teardown_controller(self) -> None:
         try:
-            await self.monitor_task.maafw.stop_task()
+            await self.monitor_task.teardown_controller()
         except Exception as exc:
-            logger.warning(f"[{self._log_prefix}] 停止监控任务时出错: {exc}")
-        try:
-            if self.monitor_task.maafw.controller:
-                self.monitor_task.maafw.controller = None
-        except Exception as exc:
-            logger.warning(f"[{self._log_prefix}] 清除控制器引用时出错: {exc}")
+            logger.warning(f"[{self._log_prefix}] 清理监控控制器时出错: {exc}")
 
     async def stop(self) -> None:
         self.stop_loop()

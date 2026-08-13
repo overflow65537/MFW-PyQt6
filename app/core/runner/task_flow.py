@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import io
 import os
 import platform
@@ -96,11 +97,13 @@ class TaskFlowRunner(QObject):
         task_service: TaskService,
         config_service: ConfigService,
         runner_events: RunnerEvents | None = None,
+        run_config_callback: Callable[[str], Awaitable[Any] | Any] | None = None,
     ):
         super().__init__()
         self.task_service = task_service
         self.config_service = config_service
         self.runner_events = runner_events or RunnerEvents()
+        self._run_config_callback = run_config_callback
         # 提供给主窗口退出清理使用：停止外部通知线程
         # 注意：send_thread 定义于 app.utils.notice，为全局单例
         self.send_thread = send_thread
@@ -1205,7 +1208,21 @@ class TaskFlowRunner(QObject):
                     self._config_switch_delay,
                 )
                 await asyncio.sleep(self._config_switch_delay)
-                asyncio.create_task(self.run_tasks_flow())
+                self._schedule_configuration_run(next_config)
+
+    def _schedule_configuration_run(self, config_id: str) -> None:
+        """把后续配置的启动交给其所属 RuntimeContext。"""
+        if self._run_config_callback is None:
+            # 兼容直接构造 TaskFlowRunner 的旧调用方。
+            asyncio.create_task(self.run_tasks_flow())
+            return
+
+        try:
+            result = self._run_config_callback(config_id)
+            if inspect.isawaitable(result):
+                asyncio.ensure_future(result)
+        except Exception as exc:
+            logger.error("启动完成后配置 %s 失败: %s", config_id, exc)
 
     def _collect_tasks_to_run(
         self,
@@ -3938,13 +3955,10 @@ class TaskFlowRunner(QObject):
             logger.warning(f"完成后操作指定的配置不存在: {config_id}")
             return
 
-        config_service.current_config_id = config_id
-        if config_service.current_config_id == config_id:
-            logger.debug(f"已切换至完成后指定配置: {config_id}")
-            self.log_clear_requested.emit()
-            self._next_config_to_run = config_id
-        else:
-            logger.warning(f"切换至配置 {config_id} 失败")
+        # 当前 Runner 仍在完成清理，不能在这里切换共享配置服务；
+        # finally 完成后由 Coordinator 激活目标 RuntimeContext。
+        logger.debug(f"已安排完成后运行配置: {config_id}")
+        self._next_config_to_run = config_id
 
     async def _close_software(self) -> None:
         """发出退出信号让程序自身关闭"""

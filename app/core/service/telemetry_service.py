@@ -131,9 +131,30 @@ class TelemetryService(QObject):
         self._traced_nodes: dict[int, int] = defaultdict(int)
         self._lock = threading.RLock()
 
-        self.runner_events.callback.connect(self._on_callback)
-        self.runner_events.telemetry.connect(self._on_telemetry_event)
+        self._connect_runner_events(self.runner_events)
         self.configure_from_interface(interface or {})
+
+    def _connect_runner_events(self, runner_events: RunnerEvents) -> None:
+        runner_events.callback.connect(self._on_callback)
+        runner_events.telemetry.connect(self._on_telemetry_event)
+
+    def _disconnect_runner_events(self, runner_events: RunnerEvents) -> None:
+        for signal, slot in (
+            (runner_events.callback, self._on_callback),
+            (runner_events.telemetry, self._on_telemetry_event),
+        ):
+            try:
+                signal.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
+
+    def set_runner_events(self, runner_events: RunnerEvents) -> None:
+        """切换当前运行配置对应的 Runner 事件源。"""
+        if runner_events is self.runner_events:
+            return
+        self._disconnect_runner_events(self.runner_events)
+        self.runner_events = runner_events
+        self._connect_runner_events(runner_events)
 
     @property
     def is_active(self) -> bool:

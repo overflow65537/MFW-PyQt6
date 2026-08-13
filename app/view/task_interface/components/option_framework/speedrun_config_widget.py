@@ -13,7 +13,7 @@ from qfluentwidgets import (
 )
 
 from app.common.fluent_tooltip import apply_fluent_tooltip
-from app.core.service.task_service import DEFAULT_SPEEDRUN_CONFIG
+from app.core.facade.task_facade import DEFAULT_SPEEDRUN_CONFIG
 from app.core.speedrun.conditions.cron import DEFAULT_CRON_EXPRESSION
 from app.core.speedrun.config import normalize_speedrun_config
 from app.view.task_interface.components.option_framework.animations import HeightAnimator

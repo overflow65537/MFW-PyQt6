@@ -20,11 +20,12 @@ def _attribute_path(node: ast.AST) -> str:
 
 class ViewCoreSignalBoundaryTests(unittest.TestCase):
     def test_legacy_view_signal_names_are_removed(self):
+        # 分段构造已废弃标识，既保留回归守卫，也避免旧名称继续作为源码字面量传播。
         forbidden_names = (
-            "FromeServiceCoordinator",
-            "fs_task_",
-            "fs_config_",
-            "fs_reinit_requested",
+            "From" + "eServiceCoordinator",
+            "fs_" + "task_",
+            "fs_" + "config_",
+            "fs_" + "reinit_requested",
         )
         violations: list[str] = []
 

@@ -53,7 +53,6 @@ from app.common.config import cfg, isWin11, Config
 from app.common import __version__ as version_meta
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
-from app.core.service.interface_manager import get_interface_manager
 from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
 from app.utils.update import Update, path_is_update_archive_readable
@@ -1791,7 +1790,7 @@ class SettingInterface(QWidget):
         description = metadata.get("description", "")
         contact = metadata.get("contact", "")
 
-        display_title = get_interface_manager().resolve_display_name(
+        display_title = self._service_coordinator.interface_api.resolve_display_name(
             self.tr("ChainFlow Assistant")
         )
         self.resource_name_label.setText(display_title)

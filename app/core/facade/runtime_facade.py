@@ -1,27 +1,79 @@
+from collections.abc import Callable
 from typing import Any
 
 from app.core.item import RunnerEvents
 from app.core.runner.monitor_task import MonitorTask
+from app.core.runner.runtime_context import RuntimeContext
 from app.core.runner.task_flow import TaskFlowRunner
 from app.utils.controller_utils import snapshot_cached_image
 from app.utils.logger import logger
 
 
 class RuntimeFacade:
-    """运行时的显式 View API。"""
+    """当前配置运行时的显式 View API。"""
 
-    def __init__(self, runner: TaskFlowRunner) -> None:
-        self._runner = runner
+    def __init__(
+        self,
+        runtime_source: Callable[[], RuntimeContext] | TaskFlowRunner,
+    ) -> None:
+        if callable(runtime_source) and not hasattr(runtime_source, "run_tasks_flow"):
+            self._context_provider: Callable[[], RuntimeContext] | None = runtime_source
+            self._legacy_runner: TaskFlowRunner | None = None
+        else:
+            self._context_provider = None
+            self._legacy_runner = runtime_source  # type: ignore[assignment]
+
+    @property
+    def context(self) -> RuntimeContext:
+        if self._context_provider is None:
+            raise RuntimeError("RuntimeContext 尚未接入")
+        return self._context_provider()
+
+    @property
+    def _runner(self) -> TaskFlowRunner:
+        if self._context_provider is not None:
+            return self.context.task_runner
+        if self._legacy_runner is None:
+            raise RuntimeError("运行时尚未初始化")
+        return self._legacy_runner
+
+    @property
+    def config_id(self) -> str | None:
+        if self._context_provider is None:
+            return None
+        return self.context.config_id
+
+    @property
+    def events(self) -> RunnerEvents:
+        if self._context_provider is not None:
+            return self.context.events
+        return self._runner.runner_events
+
+    @property
+    def logs(self):
+        return self.context.logs
+
+    @property
+    def monitor(self):
+        return self.context.monitor
+
+    def get_context(self, config_id: str | None = None) -> RuntimeContext:
+        """Return the active context; config lookup belongs to the coordinator."""
+        context = self.context
+        if config_id is not None and context.config_id != config_id:
+            raise ValueError(f"RuntimeContext {config_id!r} is not active")
+        return context
+
+    def clear_logs(self) -> None:
+        self.logs.clear()
 
     @property
     def is_running(self) -> bool:
+        runner = self._runner
         try:
-            return bool(
-                self._runner.is_running
-                or self._runner.maafw.has_active_runtime()
-            )
+            return bool(runner.is_running or runner.maafw.has_active_runtime())
         except Exception:
-            return bool(getattr(self._runner, "is_running", False))
+            return bool(getattr(runner, "is_running", False))
 
     @property
     def current_running_task_id(self) -> str | None:
@@ -45,7 +97,8 @@ class RuntimeFacade:
         start_task_id: str | None = None,
     ) -> Any:
         """运行任务流，并在单任务临时启用后恢复原状态。"""
-        task_api = self._runner.task_service
+        runner = self._runner
+        task_api = runner.task_service
         restore_checked = False
         if task_id:
             task = task_api.get_task(task_id)
@@ -56,7 +109,7 @@ class RuntimeFacade:
         except Exception:
             pass
         try:
-            return await self._runner.run_tasks_flow(
+            return await runner.run_tasks_flow(
                 task_id,
                 start_task_id=start_task_id,
             )
@@ -71,7 +124,7 @@ class RuntimeFacade:
         self._runner.shutdown_runtime_sync()
 
     def stop_notification_thread(self, timeout_ms: int = 5000) -> None:
-        """停止外部通知发送线程。"""
+        """停止当前运行时的外部通知发送线程。"""
         thread = getattr(self._runner, "send_thread", None)
         if thread is None:
             return
@@ -88,7 +141,9 @@ class RuntimeFacade:
             logger.exception("关闭发送线程失败", exc_info=exc)
 
     def create_monitor_task(self) -> MonitorTask:
-        """创建使用独立 RunnerEvents 的监控 Runner。"""
+        """返回 Context 监控 Runner，或为兼容模式创建独立实例。"""
+        if self._context_provider is not None:
+            return self.context.monitor_task
         return MonitorTask(
             task_service=self._runner.task_service,
             config_service=self._runner.config_service,
