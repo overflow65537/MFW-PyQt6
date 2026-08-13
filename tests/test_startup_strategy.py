@@ -2,7 +2,9 @@ import unittest
 
 from app.utils.startup_strategy import (
     ExistingInstanceAction,
+    ReuseExistingCommand,
     decide_existing_instance_action,
+    decide_reuse_existing_command,
 )
 
 
@@ -41,6 +43,23 @@ class ExistingInstanceStrategyTests(unittest.TestCase):
                         existing_instance=True,
                         reuse_existing=reuse_existing,
                         force_restart=force_restart,
+                    ),
+                )
+
+    def test_reuse_only_runs_when_direct_run_is_explicit(self) -> None:
+        cases = (
+            (False, None, ReuseExistingCommand.ACTIVATE),
+            (False, "config-a", ReuseExistingCommand.SWITCH_CONFIG),
+            (True, None, ReuseExistingCommand.RUN),
+            (True, "config-a", ReuseExistingCommand.RUN),
+        )
+        for direct_run, config_id, expected in cases:
+            with self.subTest(direct_run=direct_run, config_id=config_id):
+                self.assertEqual(
+                    expected,
+                    decide_reuse_existing_command(
+                        direct_run=direct_run,
+                        config_id=config_id,
                     ),
                 )
 

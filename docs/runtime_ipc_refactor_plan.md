@@ -443,7 +443,7 @@ MAX_IPC_PAYLOAD = 64 * 1024
 - 不能要求客户端先 `switch_config` 再 `run`，否则两条请求之间可能发生竞态；
 - 本阶段仍然只允许一个 TaskFlow 运行。
 
-`force_restart` 在该命令中的使用仅用于兼容当前 `reuse_existing + force_restart` 行为，不新增 `force_start`、`replace_running_task` 等第二套公开参数。
+`force_restart` 在该命令中的使用仅用于 `reuse_existing + direct_run + force_restart` 的停止后重跑行为，不新增 `force_start`、`replace_running_task` 等第二套公开参数。
 
 ### 8.4 `stop`
 
@@ -509,17 +509,20 @@ MAX_IPC_PAYLOAD = 64 * 1024
 
 ## 9. `force_restart` 与 `reuse_existing` 规则
 
-### 9.1 本次兼容矩阵
+### 9.1 启动语义矩阵
 
-本次重构不改变当前用户行为：
+`reuse_existing` 只决定是否优先复用已有进程，不再隐含“运行任务”。是否运行任务始终由 `direct_run` 决定。
 
-| 已有实例 | `reuse_existing` | `force_restart` | 行为 |
-|---|---:|---:|---|
-| 否 | 任意 | 任意 | 当前进程正常启动 |
-| 是 | 否 | 否 | 普通重复启动流程，优先激活旧实例 |
-| 是 | 否 | 是 | 旧实例停止任务并退出；新进程等待锁释放后继续启动 |
-| 是 | 是 | 否 | 复用旧实例运行目标配置；旧实例忙时返回 `busy` |
-| 是 | 是 | 是 | 复用优先；旧实例停止当前任务后运行目标配置，不关闭进程 |
+| 已有实例 | `reuse_existing` | `direct_run` | `force_restart` | 行为 |
+|---|---:|---:|---:|---|
+| 否 | 任意 | 否 | 任意 | 当前进程正常启动，不运行任务 |
+| 否 | 任意 | 是 | 任意 | 当前进程正常启动并运行任务 |
+| 是 | 否 | 任意 | 否 | 普通重复启动流程，优先激活旧实例 |
+| 是 | 否 | 否 | 是 | 旧实例停止任务并退出；新进程启动后不运行任务 |
+| 是 | 否 | 是 | 是 | 旧实例停止任务并退出；新进程启动后运行任务 |
+| 是 | 是 | 否 | 任意 | 有 `config_id` 时仅切换已有实例的配置；否则仅激活窗口；不运行任务 |
+| 是 | 是 | 是 | 否 | 复用旧实例运行目标配置；旧实例忙时返回 `busy` |
+| 是 | 是 | 是 | 是 | 复用优先；旧实例停止当前任务后运行目标配置，不关闭进程 |
 
 ### 9.2 决策位置
 
@@ -528,10 +531,15 @@ MAX_IPC_PAYLOAD = 64 * 1024
 ```python
 if existing_instance:
     if options.reuse_existing:
-        send_run(
-            config_id=options.config_id,
-            force_restart=options.force_restart,
-        )
+        if options.direct_run:
+            send_run(
+                config_id=options.config_id,
+                force_restart=options.force_restart,
+            )
+        elif options.config_id:
+            send_switch_config(config_id=options.config_id)
+        else:
+            send_activate()
     elif options.force_restart:
         send_shutdown(reason="restart")
         wait_for_instance_available()
@@ -543,10 +551,10 @@ if existing_instance:
 关键规则：
 
 ```text
-reuse_existing 的分支优先于 force_restart 的进程关闭分支。
+reuse_existing 决定复用哪个进程；direct_run 决定是否运行任务。
 ```
 
-因此两个参数同时开启时，绝不会关闭已有实例。
+因此 `reuse_existing + force_restart` 仍不会关闭已有实例；但只有再显式指定 `direct_run` 时，`force_restart` 才会表示“停止当前任务后重新运行”。
 
 ### 9.3 能力保留
 
@@ -774,8 +782,8 @@ app/
 
 - 将启动参数解析结果转换为应用命令或启动决策；
 - 新实例启动后的 direct-run 通过 dispatcher 执行；
-- 已有实例复用时通过 IPC 提交同一种 run 命令；
-- 保留 `force_restart/reuse_existing` 当前组合矩阵。
+- 已有实例复用时根据 `direct_run/config_id` 选择 run、switch_config 或 activate；
+- 保留 `reuse_existing` 优先于进程重启的规则，并由 `direct_run` 独立控制任务执行。
 
 完成标准：同一运行请求在新实例和复用实例中具有一致的 config 校验、日志和返回语义。
 
@@ -827,7 +835,7 @@ app/
 - run 指定配置；
 - run 的原子切换；
 - busy 时拒绝普通复用；
-- `reuse_existing + force_restart` 时先停止后运行；
+- `reuse_existing + direct_run + force_restart` 时先停止后运行；
 - stop 幂等；
 - shutdown 先停止任务再退出；
 - shutdown 后拒绝新运行请求；
@@ -848,7 +856,7 @@ app/
 覆盖第 9.1 节完整矩阵，特别是：
 
 ```text
-reuse_existing=True + force_restart=True
+reuse_existing=True + direct_run=True + force_restart=True
 ```
 
 必须验证：
@@ -900,7 +908,7 @@ IPC failed request_id=...
 ### 15.4 重构导致计划任务行为变化
 
 风险：`force_start/reuse_existing` 已被计划任务配置使用。  
-处理：本次保留现有组合矩阵，并为每个组合增加测试。
+处理：计划任务始终显式携带 `direct_run`，因此复用运行行为不变；同时为“仅复用、不运行”增加单独测试。
 
 ### 15.5 多个状态变更请求竞态
 
@@ -931,7 +939,7 @@ IPC failed request_id=...
 - 不同配置日志/监控互不影响；
 - IPC 可激活、切换、运行、停止、关闭和查询状态；
 - 运行指定配置是单条原子命令；
-- `force_restart/reuse_existing` 行为与重构前一致；
+- `reuse_existing` 不隐式启动任务，任务执行只由 `direct_run` 触发；
 - 强制重启时旧实例优雅停止后，新实例才能取得锁并启动；
 - 复用优先时旧实例不会被关闭。
 

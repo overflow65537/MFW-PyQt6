@@ -138,7 +138,7 @@ def _build_parser() -> argparse.ArgumentParser:
             f"  {FLAG_DIRECT_RUN}      启动后直接运行任务流\n"
             f"  {FLAG_DEV}             显示测试页面\n"
             f"  {FLAG_FORCE_RESTART}   请求同目录下已有实例退出后启动本进程\n"
-            f"  {FLAG_REUSE_EXISTING}  复用已有实例执行指定配置\n"
+            f"  {FLAG_REUSE_EXISTING}  优先复用已有实例（不会隐式运行任务）\n"
             "\n"
             "示例:\n"
             f"  %(prog)s {FLAG_CONFIG_ID} default {FLAG_DIRECT_RUN}\n"
@@ -173,7 +173,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         FLAG_REUSE_EXISTING,
         action="store_true",
-        help="已有实例时复用它执行指定配置",
+        help="优先复用已有实例；仅与 --direct-run 同用时才运行任务",
     )
     return parser
 

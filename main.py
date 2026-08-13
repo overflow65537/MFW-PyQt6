@@ -121,7 +121,9 @@ def _run() -> int:
     from app.utils.startup_cli import parse_startup_cli
     from app.utils.startup_strategy import (
         ExistingInstanceAction,
+        ReuseExistingCommand,
         decide_existing_instance_action,
+        decide_reuse_existing_command,
     )
 
     # 启动参数解析（单实例检查前处理 --force-restart）
@@ -171,18 +173,38 @@ def _run() -> int:
                 ipc_app = QCoreApplication.instance()
                 if ipc_app is None:
                     _ = QCoreApplication([sys.argv[0]])
-                response = single_instance.run(
-                    options.config_id,
-                    force_restart=options.force_restart,
+                reuse_command = decide_reuse_existing_command(
+                    direct_run=options.direct_run,
+                    config_id=options.config_id,
                 )
-                if response.status == IpcStatus.ACCEPTED:
-                    logger.info("已有实例已接收复用执行请求")
+
+                if reuse_command == ReuseExistingCommand.RUN:
+                    response = single_instance.run(
+                        options.config_id,
+                        force_restart=options.force_restart,
+                    )
+                    success_message = "已有实例已接收复用执行请求"
+                    busy_message = "已有实例正在执行任务，跳过复用执行请求"
+                elif reuse_command == ReuseExistingCommand.SWITCH_CONFIG:
+                    response = single_instance.switch_config(
+                        options.config_id or ""
+                    )
+                    success_message = "已有实例已接收配置切换请求"
+                    busy_message = "已有实例暂时无法切换配置"
+                else:
+                    response = single_instance.activate()
+                    success_message = "已有实例已激活"
+                    busy_message = "已有实例暂时无法激活"
+
+                if response.status in {IpcStatus.OK, IpcStatus.ACCEPTED}:
+                    logger.info(success_message)
                     return 0
                 if response.status == IpcStatus.BUSY:
-                    logger.info("已有实例正在执行任务，跳过复用执行请求")
+                    logger.info(busy_message)
                     return 2
                 logger.warning(
-                    "向已有实例发送复用执行请求失败: status=%s code=%s",
+                    "向已有实例发送复用请求失败: command=%s status=%s code=%s",
+                    reuse_command.value,
                     response.status.value,
                     response.code,
                 )
