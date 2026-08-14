@@ -330,13 +330,14 @@ jobs:
 
       - name: Collect APK
         run: |
-          mapfile -t packages < <(find android_app -type f -iname "*.apk" -print)
-          if (( ${#packages[@]} == 0 )); then
-            echo "pyside6-android-deploy completed but no APK was found" >&2
+          package="$(find android_app -maxdepth 1 -type f -iname "*-arm64-v8a-debug.apk" -print -quit)"
+          if [[ -z "$package" ]]; then
+            echo "pyside6-android-deploy completed but the final arm64 APK was not found" >&2
+            find android_app -type f -iname "*.apk" -print >&2
             exit 1
           fi
-          printf 'Found package: %s\n' "${packages[@]}"
-          cp "${packages[@]}" android-artifacts/
+          printf 'Found final package: %s\n' "$package"
+          cp "$package" android-artifacts/MFW-Android-PoC-arm64-debug.apk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v7
