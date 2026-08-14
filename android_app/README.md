@@ -115,7 +115,7 @@ and it can also be started manually with `workflow_dispatch`.
 
 The CI toolchain is deliberately pinned as one compatible set:
 
-- Python 3.11;
+- CPython 3.11.15 for both the Android target runtime and python-for-android hostpython;
 - PySide6/shiboken6 Android aarch64 6.11.1 wheels;
 - JDK 21;
 - Android platform 36, minimum API 28 and Build Tools 36.0.0;
@@ -123,8 +123,12 @@ The CI toolchain is deliberately pinned as one compatible set:
 - python-for-android develop commit `7af1d1325ef460def993cc7871c43d04bc877a94`.
 
 The workflow installs and pins its deployment tools first, patches the Buildozer
-template, and disables dependency reinstallation in the generated CI spec. It
-then downloads the pinned official Android wheels directly from Qt,
+template, and disables dependency reinstallation in the generated CI spec.
+PySide6 6.11.1 generates an unversioned `python3` Buildozer requirement, while
+the pinned python-for-android revision defaults to a newer CPython runtime. CI
+therefore pins both `python3` and `hostpython3` to 3.11.15 so they match the
+official `cp311` PySide6/shiboken6 Android wheels. It then downloads those
+pinned official Android wheels directly from Qt,
 creates an untracked `pysidedeploy.ci.spec` containing runner-specific
 absolute paths, and also passes the SDK/NDK paths explicitly on the command
 line. The explicit flags are required because PySide6 6.11.1 does not read
@@ -134,8 +138,10 @@ Buildozer 1.5.0 otherwise defaults to target API 31 and minimum API 21, CI
 patches its generated-config template to target API 36 with minimum API 28.
 PySide6 forces python-for-android's moving `develop` branch, so CI also pins
 the selected commit through Buildozer's `p4a.commit` setting.
-The CI then runs a deployment dry-run, builds the arm64 debug APK and uploads
-it as the
+The CI then runs a deployment dry-run, builds the arm64 debug APK, and verifies
+that the package contains `lib/arm64-v8a/libpython3.11.so` together with the
+PySide6 and shiboken6 native libraries, with no conflicting versioned
+`libpython` library. Only a package that passes this check is uploaded as the
 `MFW-Android-PoC-arm64-debug` artifact. Deployment logs and the generated CI
 spec are uploaded separately for diagnosis, including when the build fails.
 

@@ -24,6 +24,9 @@ env:
   # PySide6 6.11.1 still prints an outdated r26b hint in its CLI help.
   PYSIDE_VERSION: "6.11.1"
   PYTHON_VERSION: "3.11"
+  # PySide6/Shiboken6 Android wheels are tagged cp311. Keep both p4a's
+  # target Python and hostpython on the same CPython 3.11 patch release.
+  ANDROID_PYTHON_VERSION: "3.11.15"
   ANDROID_API_LEVEL: "36"
   ANDROID_MIN_API_LEVEL: "28"
   ANDROID_BUILD_TOOLS_VERSION: "36.0.0"
@@ -179,6 +182,7 @@ jobs:
           import os
           from pathlib import Path
           import buildozer
+          import PySide6
 
           default_spec = Path(buildozer.__file__).resolve().parent / "default.spec"
           text = default_spec.read_text(encoding="utf-8")
@@ -195,6 +199,42 @@ jobs:
               text = text.replace(old, new, 1)
           default_spec.write_text(text, encoding="utf-8")
           print(f"Configured Buildozer template: {default_spec}")
+
+          # PySide6 6.11.1 writes an unversioned `python3` requirement. The
+          # pinned p4a revision currently defaults that recipe to CPython 3.14,
+          # while the official Android PySide6/Shiboken6 wheels are cp311.
+          # Pin both recipes so the APK contains libpython3.11.so rather than
+          # an incompatible libpython3.14.so.
+          android_python = os.environ["ANDROID_PYTHON_VERSION"]
+          deploy_script = (
+              Path(PySide6.__file__).resolve().parent
+              / "scripts"
+              / "deploy_lib"
+              / "android"
+              / "buildozer.py"
+          )
+          deploy_text = deploy_script.read_text(encoding="utf-8")
+          old_requirements = (
+              'self.set_value("app", "requirements", '
+              '"python3,shiboken6,PySide6")'
+          )
+          new_requirements = (
+              'self.set_value("app", "requirements", '
+              f'"python3=={android_python},hostpython3=={android_python},'
+              'shiboken6,PySide6")'
+          )
+          if old_requirements not in deploy_text:
+              raise SystemExit(
+                  f"PySide6 Buildozer requirements entry not found: {deploy_script}"
+              )
+          deploy_script.write_text(
+              deploy_text.replace(old_requirements, new_requirements, 1),
+              encoding="utf-8",
+          )
+          print(
+              "Configured Android Python requirements: "
+              f"python3=={android_python}, hostpython3=={android_python}"
+          )
           PY
 
           pyside6-android-deploy --help
@@ -296,6 +336,9 @@ jobs:
             exit 1
           fi
 
+          expected_requirements="requirements = python3==$ANDROID_PYTHON_VERSION,hostpython3==$ANDROID_PYTHON_VERSION,shiboken6,PySide6"
+          grep -Fx "$expected_requirements" buildozer.spec
+
       - name: Build debug APK
         working-directory: android_app
         run: |
@@ -336,6 +379,49 @@ jobs:
             find android_app -type f -iname "*.apk" -print >&2
             exit 1
           fi
+
+          export package
+          python - <<'PY'
+          import os
+          import re
+          import zipfile
+          from pathlib import Path
+
+          apk = Path(os.environ["package"])
+          expected_minor = ".".join(
+              os.environ["ANDROID_PYTHON_VERSION"].split(".")[:2]
+          )
+          expected_library = f"lib/arm64-v8a/libpython{expected_minor}.so"
+
+          with zipfile.ZipFile(apk) as archive:
+              names = set(archive.namelist())
+
+          python_libraries = sorted(
+              name
+              for name in names
+              if re.fullmatch(r"lib/arm64-v8a/libpython\d+\.\d+\.so", name)
+          )
+          if expected_library not in names:
+              raise SystemExit(
+                  f"Expected {expected_library} in {apk}, found {python_libraries}"
+              )
+          unexpected = [name for name in python_libraries if name != expected_library]
+          if unexpected:
+              raise SystemExit(
+                  f"Unexpected Android Python runtime libraries in {apk}: {unexpected}"
+              )
+
+          required_libraries = {
+              "lib/arm64-v8a/libshiboken6.abi3.so",
+              "lib/arm64-v8a/libpyside6.abi3.so",
+          }
+          missing = sorted(required_libraries - names)
+          if missing:
+              raise SystemExit(f"Missing required PySide libraries in {apk}: {missing}")
+
+          print(f"Verified Android runtime: {expected_library}")
+          PY
+
           printf 'Found final package: %s\n' "$package"
           cp "$package" android-artifacts/MFW-Android-PoC-arm64-debug.apk
 
