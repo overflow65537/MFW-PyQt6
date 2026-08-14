@@ -143,6 +143,16 @@ jobs:
             "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" \
             "ndk;${ANDROID_NDK_VERSION}"
 
+          # Buildozer 1.5.0 still looks for the command-line tools under the
+          # legacy SDK tools/bin directory. Point that path at the tools that
+          # setup-android installed under cmdline-tools/latest/bin.
+          mkdir -p "$ANDROID_SDK_ROOT/tools/bin"
+          for tool in sdkmanager avdmanager; do
+            tool_path="$(command -v "$tool")"
+            test -n "$tool_path"
+            ln -sfn "$tool_path" "$ANDROID_SDK_ROOT/tools/bin/$tool"
+          done
+
       - name: Install Qt for Python deployment tooling
         run: |
           python -m pip install --upgrade pip setuptools wheel
@@ -305,11 +315,10 @@ jobs:
             python - <<'PY'
           from pathlib import Path
 
-          log = Path("../android-artifacts/android-build.log").read_text()
-          marker = "Exception occurred:"
-          traceback = log[log.rfind(marker):].strip()[-6000:]
+          log = Path("../android-artifacts/android-build.log").read_text(errors="replace")
+          diagnostic = log.strip()[-6000:]
           escaped = (
-              traceback.replace("%", "%25")
+              diagnostic.replace("%", "%25")
               .replace("\r", "%0D")
               .replace("\n", "%0A")
           )
