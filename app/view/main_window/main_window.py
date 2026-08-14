@@ -292,6 +292,7 @@ class MainWindow(MSFluentWindow):
         self._shutdown_cleanup_completed = False
         self._shutdown_ui_cleanup_completed = False
         self._shutdown_cleanup_thread: threading.Thread | None = None
+        self._shutdown_stop_task: asyncio.Task | None = None
         self._allow_window_close = False
 
         super().__init__()
@@ -3192,7 +3193,7 @@ class MainWindow(MSFluentWindow):
             QTimer.singleShot(100, self._reapply_mica_after_theme_change)
 
     def clear_thread_async(self) -> None:
-        """在后台幂等清理线程和运行时，完成后再关闭窗口。"""
+        """先异步请求全部运行时停止，再在后台执行同步兜底清理。"""
         if self._shutdown_cleanup_completed:
             self._allow_window_close = True
             QTimer.singleShot(0, self.close)
@@ -3201,6 +3202,41 @@ class MainWindow(MSFluentWindow):
             return
 
         self._shutdown_cleanup_started = True
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            logger.exception("无法调度异步 stop-all，直接进入同步兜底清理")
+            self._start_shutdown_cleanup_thread()
+            return
+        self._shutdown_stop_task = loop.create_task(
+            self._stop_all_runtimes_before_cleanup(),
+            name="mfw-window-shutdown-stop-all",
+        )
+
+    async def _stop_all_runtimes_before_cleanup(self) -> None:
+        """在 Qt/qasync 事件循环中给予每个 RuntimeContext 有界的优雅退出时间。"""
+        try:
+            pending = await self.service_coordinator.shutdown_all_configurations(
+                timeout=5.0
+            )
+            if pending:
+                logger.warning(
+                    "部分运行时未在优雅退出期限内停止，将执行同步兜底: %s",
+                    ", ".join(pending),
+                )
+        except asyncio.CancelledError:
+            logger.warning("异步 stop-all 被取消，将执行同步兜底")
+            raise
+        except Exception:
+            logger.exception("异步 stop-all 失败，将执行同步兜底")
+        finally:
+            self._shutdown_stop_task = None
+            self._start_shutdown_cleanup_thread()
+
+    def _start_shutdown_cleanup_thread(self) -> None:
+        """启动不会阻塞 Qt 主线程的同步资源清理线程。"""
+        if self._shutdown_cleanup_completed or self._shutdown_cleanup_thread is not None:
+            return
         cleanup_thread = threading.Thread(
             target=self._run_shutdown_cleanup,
             name="MainWindowShutdownCleanup",
@@ -3245,7 +3281,7 @@ class MainWindow(MSFluentWindow):
 
     def _clear_maafw_sync(self) -> None:
         """同步清理 MaaFW 主任务与监控运行时。"""
-        self.service_coordinator.runtime.shutdown_runtime_sync()
+        self.service_coordinator.shutdown_all_runtimes_sync()
 
     def _stop_update_workers(self):
         """停止更新相关线程/进程，避免退出时残留。"""

@@ -69,6 +69,8 @@ class RuntimeFacade:
 
     @property
     def is_running(self) -> bool:
+        if self._context_provider is not None:
+            return self.context.is_running
         runner = self._runner
         try:
             return bool(runner.is_running or runner.maafw.has_active_runtime())
@@ -96,8 +98,17 @@ class RuntimeFacade:
         *,
         start_task_id: str | None = None,
     ) -> Any:
-        """运行任务流，并在单任务临时启用后恢复原状态。"""
+        """Start the bound runtime without redirecting through UI state."""
+        if self._context_provider is not None:
+            return await self.context.start(
+                task_id,
+                start_task_id=start_task_id,
+            )
+
+        # Compatibility path for tests and legacy callers that still bind a
+        # bare TaskFlowRunner.
         runner = self._runner
+        runner.need_stop = False
         task_api = runner.task_service
         restore_checked = False
         if task_id:
@@ -118,6 +129,8 @@ class RuntimeFacade:
                 task_api.update_task_checked(task_id, False)
 
     async def stop(self, *, manual: bool = True) -> Any:
+        if self._context_provider is not None:
+            return await self.context.stop(manual=manual)
         return await self._runner.stop_task(manual=manual)
 
     def shutdown_runtime_sync(self) -> None:

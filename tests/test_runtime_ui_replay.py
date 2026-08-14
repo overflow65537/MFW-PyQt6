@@ -1,10 +1,15 @@
+import asyncio
 import unittest
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 from PySide6.QtCore import QCoreApplication
 
-from app.core.runner.runtime_context import RuntimeLogStore, RuntimeMonitorState
+from app.core.runner.runtime_context import (
+    RuntimeLogStore,
+    RuntimeMonitorState,
+    RuntimeState,
+)
 from app.view.monitor_interface.monitor_interface import MonitorInterface
 from app.view.task_interface.components.logoutput_widget import LogoutputWidget
 
@@ -82,6 +87,128 @@ class RuntimeUiReplayTests(unittest.TestCase):
         monitor._on_recognition_roi.assert_not_called()
         state_b.update_roi({"x": 4})
         monitor._on_recognition_roi.assert_called_once_with({"x": 4})
+
+    def test_switching_away_from_running_config_detaches_preview_only(self):
+        old_session = SimpleNamespace(
+            stop_loop=Mock(),
+            monitor_task=SimpleNamespace(config_id="config-a"),
+        )
+        monitor = SimpleNamespace(
+            _session=old_session,
+            service_coordinator=SimpleNamespace(
+                get_runtime_state=Mock(return_value=RuntimeState.RUNNING),
+            ),
+            _schedule_session_detach=Mock(),
+            _schedule_session_teardown=Mock(),
+            _starting_monitoring=True,
+            _stopping_monitoring=True,
+            _set_monitor_control_running=Mock(),
+            _bind_runtime_context=Mock(),
+            _resume_monitoring_for_active_runtime=Mock(),
+        )
+
+        MonitorInterface._on_runtime_config_changed(monitor, "config-b")
+
+        old_session.stop_loop.assert_called_once_with()
+        monitor._schedule_session_detach.assert_called_once_with(old_session)
+        monitor._schedule_session_teardown.assert_not_called()
+        monitor._bind_runtime_context.assert_called_once_with()
+        monitor._resume_monitoring_for_active_runtime.assert_called_once_with(
+            "config-b"
+        )
+
+    def test_switching_away_from_idle_config_releases_monitor_controller(self):
+        old_session = SimpleNamespace(
+            stop_loop=Mock(),
+            monitor_task=SimpleNamespace(config_id="config-a"),
+        )
+        monitor = SimpleNamespace(
+            _session=old_session,
+            service_coordinator=SimpleNamespace(
+                get_runtime_state=Mock(return_value=RuntimeState.IDLE),
+            ),
+            _schedule_session_detach=Mock(),
+            _schedule_session_teardown=Mock(),
+            _starting_monitoring=False,
+            _stopping_monitoring=False,
+            _set_monitor_control_running=Mock(),
+            _bind_runtime_context=Mock(),
+            _resume_monitoring_for_active_runtime=Mock(),
+        )
+
+        MonitorInterface._on_runtime_config_changed(monitor, "config-b")
+
+        old_session.stop_loop.assert_called_once_with()
+        monitor._schedule_session_detach.assert_not_called()
+        monitor._schedule_session_teardown.assert_called_once_with(old_session)
+        monitor._bind_runtime_context.assert_called_once_with()
+        monitor._resume_monitoring_for_active_runtime.assert_called_once_with(
+            "config-b"
+        )
+
+
+class RuntimeUiMonitorResumeTests(unittest.TestCase):
+    def test_running_target_with_connected_controller_resumes_preview(self):
+        session = SimpleNamespace(
+            monitoring_active=False,
+            is_controller_connected=Mock(return_value=True),
+            start_loop=Mock(),
+        )
+        monitor = SimpleNamespace(
+            service_coordinator=SimpleNamespace(
+                get_runtime_state=Mock(return_value=RuntimeState.RUNNING),
+            ),
+            _session=session,
+            _starting_monitoring=False,
+            _set_monitor_control_running=Mock(),
+        )
+
+        MonitorInterface._resume_monitoring_for_active_runtime(
+            monitor,
+            "config-b",
+        )
+
+        session.start_loop.assert_called_once_with()
+        monitor._set_monitor_control_running.assert_called_once_with(True)
+
+    def test_disconnected_target_does_not_attempt_monitor_reconnect(self):
+        session = SimpleNamespace(
+            monitoring_active=False,
+            is_controller_connected=Mock(return_value=False),
+            start_loop=Mock(),
+        )
+        monitor = SimpleNamespace(
+            service_coordinator=SimpleNamespace(
+                get_runtime_state=Mock(return_value=RuntimeState.RUNNING),
+            ),
+            _session=session,
+            _starting_monitoring=False,
+            _set_monitor_control_running=Mock(),
+        )
+
+        MonitorInterface._resume_monitoring_for_active_runtime(
+            monitor,
+            "config-b",
+        )
+
+        session.start_loop.assert_not_called()
+        monitor._set_monitor_control_running.assert_not_called()
+
+
+class RuntimeUiDetachTests(unittest.IsolatedAsyncioTestCase):
+    async def test_detach_finishes_preview_processing_without_stopping_session(self):
+        session = SimpleNamespace(
+            wait_for_image_processing_complete=AsyncMock(),
+            stop=AsyncMock(),
+        )
+
+        MonitorInterface._schedule_session_detach(session)
+        await asyncio.sleep(0)
+
+        session.wait_for_image_processing_complete.assert_awaited_once_with(
+            timeout=1.0
+        )
+        session.stop.assert_not_awaited()
 
 
 if __name__ == "__main__":

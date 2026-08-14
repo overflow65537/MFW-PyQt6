@@ -29,6 +29,7 @@ from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.panel_splitter import PANEL_SECTION_SPACING
 from app.view.task_interface.components.list_item import TaskListItem, ConfigListItem
 from app.common.signal_bus import signalBus
+from app.common.config import cfg
 from app.common.constants import _RESOURCE_, _CONTROLLER_, PRE_CONFIGURATION
 
 
@@ -128,6 +129,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
         self.service_coordinator = service_coordinator
         self._locked: bool = False
+        self._runtime_running: bool = False
 
         self.select_all_button.hide()
         self.deselect_all_button.hide()
@@ -140,11 +142,31 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
         # 任务运行中锁定配置列表（禁止切换/增删）
         signalBus.start_button_status.connect(self._on_start_button_status_changed)
+        cfg.multi_instance_enabled.valueChanged.connect(
+            self._on_multi_instance_enabled_changed
+        )
+        self.service_coordinator.view_signals.runtime_state_changed.connect(
+            self._on_runtime_state_changed
+        )
 
     def _on_start_button_status_changed(self, status: dict):
-        """根据任务流状态锁定/解锁配置列表。"""
-        is_running = status.get("text") == "STOP"
-        self.set_locked(is_running)
+        """Refresh the configuration lock when the active runtime changes."""
+        self._runtime_running = status.get("text") == "STOP"
+        self._refresh_runtime_lock()
+
+    def _on_multi_instance_enabled_changed(self, _enabled):
+        """Apply the setting immediately while a runtime is active."""
+        self._refresh_runtime_lock()
+
+    def _on_runtime_state_changed(self, _config_id: str, _state: str):
+        """Refresh locking when a background configuration starts or stops."""
+        self._refresh_runtime_lock()
+
+    def _refresh_runtime_lock(self):
+        """Lock configuration switching only when multi-instance is disabled."""
+        running_config_ids = self.service_coordinator.get_running_config_ids()
+        is_running = self._runtime_running or bool(running_config_ids)
+        self.set_locked(is_running and not cfg.get(cfg.multi_instance_enabled))
 
     def set_locked(self, locked: bool):
         """锁定后禁止新增/删除配置，并通知列表组件拦截点击切换。"""

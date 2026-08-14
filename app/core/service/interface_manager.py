@@ -47,6 +47,28 @@ class InterfaceManager:
             self._initialized = False
 
     # 内部工具: 重置状态, 保留当前语言设置
+    @classmethod
+    def create_isolated(
+        cls,
+        interface_path: Optional[Path | str] = None,
+        language: Optional[str] = None,
+    ) -> "InterfaceManager":
+        """Create a non-singleton manager for one runtime snapshot.
+
+        The UI uses the process-wide singleton. Runners use isolated managers so
+        starting one bundle cannot replace another running bundle's interface.
+        """
+        manager = object.__new__(cls)
+        manager._initialized = False
+        manager._current_language = language or cls._current_language
+        manager._translated_interface = {}
+        manager._original_interface = {}
+        manager._interface_path = None
+        manager._interface_dir = Path.cwd()
+        manager._i18n_service = I18nService(language=manager._current_language)
+        manager.initialize(interface_path=interface_path, language=manager._current_language)
+        return manager
+
     def _reset_state(self):
         self._initialized = False
         self._original_interface = {}

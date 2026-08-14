@@ -9,6 +9,7 @@ import subprocess
 import sys
 import time as _time
 
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict
@@ -56,7 +57,7 @@ from app.utils.controller_utils import ControllerHelper
 from app.utils.screencap_lock import screencap_guard
 
 from app.core.item import RunnerEvents, TaskItem
-from app.core.builtin_task_loader import BuiltinTaskContext
+from app.core.builtin_task_loader import BuiltinTaskContext, BuiltinTaskLoader
 
 # 进程级休眠阻止引用计数：多实例共享 SetThreadExecutionState，
 # 仅当全部实例都停止后才清除 ES_SYSTEM_REQUIRED 标记。
@@ -98,19 +99,24 @@ class TaskFlowRunner(QObject):
         config_service: ConfigService,
         runner_events: RunnerEvents | None = None,
         run_config_callback: Callable[[str], Awaitable[Any] | Any] | None = None,
+        config_id: str | None = None,
+        maafw: MaaFW | None = None,
+        connect_maafw_signals: bool = True,
     ):
         super().__init__()
         self.task_service = task_service
         self.config_service = config_service
         self.runner_events = runner_events or RunnerEvents()
         self._run_config_callback = run_config_callback
+        self.config_id = str(config_id or "")
         # 提供给主窗口退出清理使用：停止外部通知线程
         # 注意：send_thread 定义于 app.utils.notice，为全局单例
         self.send_thread = send_thread
-        self.maafw = MaaFW()
-        self.maafw.callback.connect(self.callback.emit)
-        self.maafw.custom_info.connect(self._handle_maafw_custom_info)
-        self.maafw.agent_info.connect(self._handle_agent_info)
+        self.maafw = maafw if maafw is not None else MaaFW()
+        if connect_maafw_signals:
+            self.maafw.callback.connect(self.callback.emit)
+            self.maafw.custom_info.connect(self._handle_maafw_custom_info)
+            self.maafw.agent_info.connect(self._handle_agent_info)
         self._embedded_agent_log_bridge = EmbeddedAgentLogBridge()
         self.process = None
 
@@ -166,6 +172,142 @@ class TaskFlowRunner(QObject):
         self._cached_image_error_seen: bool = False
         self._controller_reconnect_used: bool = False
         self._is_connecting_device: bool = False
+        self._runtime_snapshot_ready = False
+        self._runtime_config = None
+        self._runtime_tasks: list[TaskItem] = []
+        self._runtime_interface: Dict[str, Any] = deepcopy(
+            getattr(self.task_service, "interface", {}) or {}
+        )
+        self._runtime_interface_manager = None
+        self._runtime_setting_options: Dict[str, Any] = {}
+        source_i18n = self.task_service.builtin_task_loader.i18n_service
+        runtime_i18n = source_i18n.clone()
+        self._builtin_task_loader = BuiltinTaskLoader(i18n_service=runtime_i18n)
+
+    def _target_config_id(self) -> str:
+        return self.config_id or str(self.config_service.current_config_id or "")
+
+    def _prepare_runtime_snapshot(self) -> bool:
+        config_id = self._target_config_id()
+        config = self.config_service.get_config(config_id) if config_id else None
+        if config is None:
+            return False
+        self._runtime_config = deepcopy(config)
+        self._runtime_tasks = self._runtime_config.tasks
+        self._runtime_snapshot_ready = True
+        self.bundle_path = self.config_service.get_bundle_path_for_config(
+            self._runtime_config
+        )
+        resource_task = next(
+            (task for task in self._runtime_tasks if task.item_id == _RESOURCE_),
+            None,
+        )
+        options = {}
+        if resource_task is not None and isinstance(resource_task.task_option, dict):
+            raw = resource_task.task_option.get("setting_options")
+            if isinstance(raw, dict):
+                options = deepcopy(raw)
+        self._runtime_setting_options = options
+        return True
+
+    def _get_tasks(self) -> list[TaskItem]:
+        if self._runtime_snapshot_ready:
+            return self._runtime_tasks
+        config_id = self._target_config_id()
+        config = self.config_service.get_config(config_id) if config_id else None
+        if config is not None:
+            return list(config.tasks)
+        # Compatibility for legacy runners constructed without a fixed id.
+        return list(self.task_service.get_tasks())
+
+    def _get_task(self, task_id: str) -> TaskItem | None:
+        for task in self._get_tasks():
+            if task.item_id == task_id:
+                return task
+        return None
+
+    def _persist_runtime_task_update(self, task: TaskItem) -> bool:
+        if self._runtime_snapshot_ready and self._runtime_config is not None:
+            for index, current in enumerate(self._runtime_tasks):
+                if current.item_id == task.item_id:
+                    self._runtime_tasks[index] = task
+                    break
+            else:
+                self._runtime_tasks.append(task)
+            self._runtime_config.tasks = self._runtime_tasks
+
+            # Persist only this task into the latest config. Writing the whole
+            # startup snapshot would overwrite unrelated edits made while the
+            # runtime is active.
+            config_id = self._target_config_id()
+            latest = self.config_service.get_config(config_id)
+            if latest is None:
+                return False
+            latest = deepcopy(latest)
+            persisted_task = deepcopy(task)
+            for index, current in enumerate(latest.tasks):
+                if current.item_id == task.item_id:
+                    latest.tasks[index] = persisted_task
+                    break
+            else:
+                latest.tasks.append(persisted_task)
+            return bool(self.config_service.update_config(config_id, latest))
+        return bool(self.task_service.update_task(task))
+
+    def _get_task_execution_info(self, task_id: str) -> Dict[str, Any] | None:
+        """Resolve execution data entirely from this runtime snapshot."""
+        task = self._get_task(task_id)
+        if task is None:
+            return None
+        if task.is_builtin_task():
+            return {
+                "builtin": True,
+                "builtin_key": task.builtin_key,
+                "pipeline_override": {},
+            }
+
+        interface_task = self._get_task_by_name(task.name)
+        if not interface_task:
+            return None
+        entry = str(interface_task.get("entry", "") or "")
+        if not entry:
+            return None
+
+        from app.core.utils.hotkey_keycode import resolve_controller_type
+        from app.core.utils.pipeline_helper import (
+            _deep_merge_dict,
+            get_pipeline_override_from_task_option,
+        )
+
+        controller_name = ""
+        controller_task = self._get_task(_CONTROLLER_)
+        if controller_task and isinstance(controller_task.task_option, dict):
+            raw_name = controller_task.task_option.get("controller_type", "")
+            if isinstance(raw_name, dict):
+                controller_name = str(raw_name.get("value", "") or "").strip()
+            else:
+                controller_name = str(raw_name or "").strip()
+        controller_type = resolve_controller_type(
+            self._runtime_interface, controller_name
+        )
+        option_override = get_pipeline_override_from_task_option(
+            self._runtime_interface,
+            task.task_option,
+            task.item_id,
+            (
+                self._runtime_setting_options
+                if task.item_id == _RESOURCE_
+                else None
+            ),
+            controller_type=controller_type,
+        )
+        merged: Dict[str, Any] = {}
+        raw_task_override = interface_task.get("pipeline_override", {})
+        if isinstance(raw_task_override, dict):
+            _deep_merge_dict(merged, deepcopy(raw_task_override))
+        if isinstance(option_override, dict):
+            _deep_merge_dict(merged, option_override)
+        return {"entry": entry, "pipeline_override": merged}
 
     def _resolve_current_bundle_base(self) -> Path:
         bundle_base = Path(self.bundle_path or "./")
@@ -195,9 +337,11 @@ class TaskFlowRunner(QObject):
             return
 
         logger.info("运行前按当前 bundle 刷新 interface: %s", interface_path)
-        interface_manager = InterfaceManager()
-        interface_manager.reload(interface_path=interface_path)
-        self.task_service.update_runtime_interface(interface_manager.get_interface() or {})
+        interface_manager = InterfaceManager.create_isolated(
+            interface_path=interface_path
+        )
+        self._runtime_interface_manager = interface_manager
+        self._runtime_interface = deepcopy(interface_manager.get_interface() or {})
 
 
     @property
@@ -295,7 +439,7 @@ class TaskFlowRunner(QObject):
         from app.core.service.interface_manager import InterfaceManager
 
         env_vars: Dict[str, str] = {}
-        interface = self.task_service.interface or {}
+        interface = self._runtime_interface or {}
 
         # PI_INTERFACE_VERSION: Client 实现的 PI 扩展能力版本
         env_vars["PI_INTERFACE_VERSION"] = "v2.9.1"
@@ -606,7 +750,9 @@ class TaskFlowRunner(QObject):
         self._is_running = True
         # 写入稳定的任务流开始标记，供日志打包按"运行记录"切分（不依赖语言/文案）
         logger.info("[RUN_RECORD] TASK_FLOW_START")
-        self.need_stop = False
+        # The caller resets stop intent before scheduling this coroutine. Do not
+        # clear it here: a user may press Stop after create_task() but before
+        # this coroutine gets its first timeslice.
         self._manual_stop = False
         self._task_flow_finished_emitted = False
         self._active_controller_raw = None
@@ -632,7 +778,7 @@ class TaskFlowRunner(QObject):
         self._is_single_task_mode = is_single_task_mode
         effective_start_task_id = None
         if not is_single_task_mode and start_task_id:
-            current_tasks = self.task_service.current_tasks
+            current_tasks = self._get_tasks()
             for task in current_tasks:
                 if task.item_id == start_task_id:
                     effective_start_task_id = start_task_id
@@ -653,7 +799,7 @@ class TaskFlowRunner(QObject):
         def set_waiting_status():
             # 只在完整运行模式（非单任务模式）时设置等待状态
             if not is_single_task_mode:
-                all_tasks = self.task_service.get_tasks()
+                all_tasks = self._get_tasks()
                 start_reached = effective_start_task_id is None
                 for task in all_tasks:
                     if effective_start_task_id and not start_reached:
@@ -690,27 +836,29 @@ class TaskFlowRunner(QObject):
             lambda level, text: self.log_output.emit(level, text),
             lambda title: self.set_window_title.emit(title),
         )
-        current_config = self.config_service.get_config(
-            self.config_service.current_config_id
-        )
-        if not current_config:
-            # 保持 bundle_path 的安全默认值
-            self.bundle_path = "./"
-        else:
-            self.bundle_path = self.config_service.get_bundle_path_for_config(
-                current_config
-            )
         try:
+            if not self._prepare_runtime_snapshot():
+                self.log_output.emit(
+                    "ERROR",
+                    self.tr(
+                        "Configuration no longer exists; task flow was not started"
+                    ),
+                )
+                return
             self.runner_events.start_button_status.emit(
                 {"text": "STOP", "status": "disabled"}
             )
             # 先把按钮状态交还给 Qt 事件循环绘制，再继续启动阶段。
             await asyncio.sleep(0)
+            if self.need_stop:
+                return
             self._reload_interface_for_current_bundle()
-            controller_cfg = self.task_service.get_task(_CONTROLLER_)
+            if self.need_stop:
+                return
+            controller_cfg = self._get_task(_CONTROLLER_)
             if not controller_cfg:
                 raise ValueError("未找到基础预配置任务")
-            resource_cfg = self.task_service.get_task(_RESOURCE_)
+            resource_cfg = self._get_task(_RESOURCE_)
             if not resource_cfg:
                 raise ValueError("未找到资源设置任务")
 
@@ -731,12 +879,16 @@ class TaskFlowRunner(QObject):
             if not await self._execute_pretasks():
                 logger.error("前置任务执行失败，中止任务流")
                 return
+            if self.need_stop:
+                return
 
             # 先加载资源，再连接控制器
             logger.info("开始加载资源...")
             self.log_output.emit("INFO", self.tr("Starting to load resources..."))
             if not await self.load_resources(resource_cfg.task_option):
                 logger.error("资源加载失败")
+                return
+            if self.need_stop:
                 return
             logger.info("资源加载完成")
 
@@ -751,7 +903,9 @@ class TaskFlowRunner(QObject):
 
             from app.core.service.interface_manager import InterfaceManager
 
-            interface_manager = InterfaceManager()
+            interface_manager = self._runtime_interface_manager
+            if interface_manager is None:
+                interface_manager = InterfaceManager.create_isolated()
             embedded_override: bool | None = None
             controller_option = controller_cfg.task_option or {}
             if (
@@ -762,8 +916,8 @@ class TaskFlowRunner(QObject):
             embedded_ready = interface_manager.apply_agent_customization(
                 embedded_override=embedded_override
             )
-            runner_interface = interface_manager.get_interface() or {}
-            self.task_service.update_runtime_interface(runner_interface)
+            runner_interface = deepcopy(interface_manager.get_interface() or self._runtime_interface)
+            self._runtime_interface = runner_interface
             self.runner_events.telemetry.emit(
                 {"event": "configure", "interface": runner_interface}
             )
@@ -776,7 +930,7 @@ class TaskFlowRunner(QObject):
                 runner_interface,
                 resource_cfg.task_option,
                 _RESOURCE_,
-                self.config_service.get_current_setting_options(),
+                self._runtime_setting_options,
                 controller_type=controller_type,
             )
 
@@ -1163,7 +1317,7 @@ class TaskFlowRunner(QObject):
             # - 若完成后操作配置启用 always_run：即使流程因"非手动停止"的失败而触发 stop_task()，也会执行完成后操作
             always_run_post_action = False
             try:
-                post_task = self.task_service.get_task(POST_ACTION)
+                post_task = self._get_task(POST_ACTION)
                 post_cfg = (
                     post_task.task_option.get("post_action") if post_task else None
                 )
@@ -1199,7 +1353,7 @@ class TaskFlowRunner(QObject):
             self._is_running = False
 
             # 清除所有任务状态
-            all_tasks = self.task_service.get_tasks()
+            all_tasks = self._get_tasks()
             for task in all_tasks:
                 if not task.is_base_task():
                     self.task_status_changed.emit(task.item_id, "")
@@ -1240,7 +1394,7 @@ class TaskFlowRunner(QObject):
         if is_single_task_mode:
             if not task_id:
                 return tasks
-            task = self.task_service.get_task(task_id)
+            task = self._get_task(task_id)
             if not task:
                 logger.error(f"任务 ID '{task_id}' 不存在")
                 return tasks
@@ -1253,7 +1407,7 @@ class TaskFlowRunner(QObject):
             return tasks
 
         start_reached = effective_start_task_id is None
-        for task in self.task_service.current_tasks:
+        for task in self._get_tasks():
             if effective_start_task_id and not start_reached:
                 if task.item_id == effective_start_task_id:
                     start_reached = True
@@ -1298,7 +1452,7 @@ class TaskFlowRunner(QObject):
 
     def _get_current_pretask_filter_name(self, item_id: str) -> str:
         """获取当前选中的控制器或资源 name，用于 pretask 条目过滤。"""
-        task = self.task_service.get_task(item_id)
+        task = self._get_task(item_id)
         if not task or not isinstance(task.task_option, dict):
             return ""
         raw = task.task_option.get(
@@ -1318,11 +1472,11 @@ class TaskFlowRunner(QObject):
         """
         import json
 
-        pretask_task = self.task_service.get_task(_PRETASK_)
+        pretask_task = self._get_task(_PRETASK_)
         if not pretask_task:
             return True
 
-        interface = self.task_service.interface or {}
+        interface = self._runtime_interface or {}
         pretask_entries: list = list(interface.get("pretask", []) or [])
         if not pretask_entries:
             return True
@@ -1453,7 +1607,7 @@ class TaskFlowRunner(QObject):
 
     def _validate_base_controller_and_resource(self) -> str | None:
         """校验当前配置中的控制器/资源是否存在于 interface。"""
-        interface = self.task_service.interface or {}
+        interface = self._runtime_interface or {}
         controller_names = {
             str(item.get("name", "")).strip()
             for item in interface.get("controller", [])
@@ -1465,8 +1619,8 @@ class TaskFlowRunner(QObject):
             if isinstance(item, dict) and str(item.get("name", "")).strip()
         }
 
-        controller_task = self.task_service.get_task(_CONTROLLER_)
-        resource_task = self.task_service.get_task(_RESOURCE_)
+        controller_task = self._get_task(_CONTROLLER_)
+        resource_task = self._get_task(_RESOURCE_)
         if not controller_task or not resource_task:
             return self.tr("Base controller/resource task is missing.")
 
@@ -1514,7 +1668,7 @@ class TaskFlowRunner(QObject):
 
     def _reset_base_controller_and_resource_to_default(self) -> None:
         """将基础控制器/资源重置到 interface 的首项（资源需满足控制器约束）。"""
-        interface = self.task_service.interface or {}
+        interface = self._runtime_interface or {}
         default_controller = ""
         default_resource = ""
 
@@ -1551,20 +1705,15 @@ class TaskFlowRunner(QObject):
                         default_resource = name
                         break
 
-        controller_task = self.task_service.get_task(_CONTROLLER_)
+        controller_task = self._get_task(_CONTROLLER_)
         if controller_task and isinstance(controller_task.task_option, dict):
             controller_task.task_option["controller_type"] = default_controller
-            self.task_service.update_task(controller_task)
+            self._persist_runtime_task_update(controller_task)
 
-        resource_task = self.task_service.get_task(_RESOURCE_)
+        resource_task = self._get_task(_RESOURCE_)
         if resource_task and isinstance(resource_task.task_option, dict):
             resource_task.task_option["resource"] = default_resource
-            self.task_service.update_task(resource_task)
-
-        try:
-            self.task_service.refresh_hidden_flags()
-        except Exception:
-            pass
+            self._persist_runtime_task_update(resource_task)
 
         logger.warning(
             "检测到无效控制器/资源配置，已重置为默认。controller=%s, resource=%s",
@@ -1612,13 +1761,13 @@ class TaskFlowRunner(QObject):
         return ""
 
     def _get_current_resource_name(self) -> str:
-        resource_task = self.task_service.get_task(_RESOURCE_)
+        resource_task = self._get_task(_RESOURCE_)
         if not resource_task or not isinstance(resource_task.task_option, dict):
             return ""
         return str(resource_task.task_option.get("resource", "") or "").strip()
 
     def _get_resource_supported_controller_names(self, resource_name: str) -> list[str]:
-        interface = self.task_service.interface or {}
+        interface = self._runtime_interface or {}
         all_controller_names = [
             str(item.get("name", "") or "").strip()
             for item in interface.get("controller", [])
@@ -1663,7 +1812,7 @@ class TaskFlowRunner(QObject):
         current_controller = (
             str(controller_name or "").strip()
             or self._extract_configured_controller_name(
-                getattr(self.task_service.get_task(_CONTROLLER_), "task_option", None)
+                getattr(self._get_task(_CONTROLLER_), "task_option", None)
             )
         )
         self.runner_events.controller_setup_hint_requested.emit(
@@ -1738,7 +1887,7 @@ class TaskFlowRunner(QObject):
         # interface 中控制器可带 option，作为默认项与 task_option 合并（task 覆盖 interface）
         # option 可含 resource/controller 列表：仅当当前 resource/controller 在列表中时才应用（为空则全部显示）
         if isinstance(controller_name, str) and controller_name:
-            for ctrl in (self.task_service.interface or {}).get("controller", []):
+            for ctrl in (self._runtime_interface or {}).get("controller", []):
                 if not isinstance(ctrl, dict) or ctrl.get("name") != controller_name:
                     continue
                 opt = ctrl.get("option")
@@ -1786,7 +1935,7 @@ class TaskFlowRunner(QObject):
         if permission_required is None:
             if isinstance(controller_name, str) and controller_name:
                 try:
-                    for ctrl in (self.task_service.interface or {}).get("controller", []):
+                    for ctrl in (self._runtime_interface or {}).get("controller", []):
                         if not isinstance(ctrl, dict):
                             continue
                         if ctrl.get("name") == controller_name:
@@ -1881,7 +2030,7 @@ class TaskFlowRunner(QObject):
         resource_path = []
         resource_expected_hash = ""
 
-        controller_cfg = self.task_service.get_task(_CONTROLLER_)
+        controller_cfg = self._get_task(_CONTROLLER_)
         gpu_idx = -1
         if controller_cfg:
             controller_type_raw = controller_cfg.task_option.get("controller_type", "")
@@ -1928,7 +2077,7 @@ class TaskFlowRunner(QObject):
             await self.stop_task()
             return False
 
-        for resource in self.task_service.interface.get("resource", []):
+        for resource in self._runtime_interface.get("resource", []):
             if resource["name"] == resource_target:
                 logger.debug(f"加载资源: {resource['path']}")
                 resource_path = resource["path"]
@@ -1983,7 +2132,7 @@ class TaskFlowRunner(QObject):
             logger.debug(f"加载资源: {resource}")
             if not await self._precheck_resource_pipeline(resource):
                 return False
-            res_cfg = self.task_service.get_task(_RESOURCE_)
+            res_cfg = self._get_task(_RESOURCE_)
             gpu_idx = res_cfg.task_option.get("gpu", -1) if res_cfg else -1
             if not cfg.get(cfg.enable_gpu_acceleration):
                 # -2 means forcing CPU inference mode in maafw
@@ -2094,7 +2243,7 @@ class TaskFlowRunner(QObject):
 
     async def run_task(self, task_id: str, skip_speedrun: bool = False):
         """执行指定任务"""
-        task = self.task_service.get_task(task_id)
+        task = self._get_task(task_id)
         if not task:
             logger.error(f"任务 ID '{task_id}' 不存在")
             return
@@ -2118,7 +2267,7 @@ class TaskFlowRunner(QObject):
                 f"任务 '{task.name}' 开始速通条件评估: 条件类型={condition_type}, 执行类型={action_type}"
             )
             def _update_speedrun_task(t: TaskItem) -> None:
-                self.task_service.update_task(t)
+                self._persist_runtime_task_update(t)
 
             speedrun_result = evaluate_speedrun(
                 task,
@@ -2145,7 +2294,7 @@ class TaskFlowRunner(QObject):
                     f"任务 '{task.name}' 速通条件评估通过, 允许执行: {speedrun_result.reason or '无条件通过'}"
                 )
 
-        raw_info = self.task_service.get_task_execution_info(task_id)
+        raw_info = self._get_task_execution_info(task_id)
         logger.info(f"任务 '{task.name}' 的执行信息: {raw_info}")
         if raw_info is None:
             logger.error(f"无法获取任务 '{task.name}' 的执行信息")
@@ -2206,18 +2355,18 @@ class TaskFlowRunner(QObject):
         self._stop_task_timeout()
         # 仅在任务未被 abort 且正常完成时记录速通耗时
         if self._current_task_ok and speedrun_cfg and speedrun_cfg.get("enabled"):
-            record_speedrun_runtime(task, speedrun_cfg, self.task_service.update_task)
+            record_speedrun_runtime(task, speedrun_cfg, self._persist_runtime_task_update)
 
     async def _run_builtin_task(self, task: TaskItem):
         """执行 Core 外部模块声明的内置任务。"""
-        definition = self.task_service.get_builtin_task_definition(task)
+        definition = self._builtin_task_loader.get_by_key(task.builtin_key)
         if definition is None:
             logger.error("内置任务未找到或未加载: %s", task.builtin_key)
             return False
 
         context = self._create_builtin_task_context()
         try:
-            result = await self.task_service.builtin_task_loader.execute(
+            result = await self._builtin_task_loader.execute(
                 task.builtin_key,
                 context,
                 task.task_option if isinstance(task.task_option, dict) else {},
@@ -2245,7 +2394,7 @@ class TaskFlowRunner(QObject):
             ),
             start_process=self._builtin_start_process,
             play_system_sound=self._builtin_play_system_sound,
-            tr=lambda text: self.task_service.builtin_task_loader.i18n_service.translate_text(
+            tr=lambda text: self._builtin_task_loader.i18n_service.translate_text(
                 str(text)
             ),
         )
@@ -3300,9 +3449,9 @@ class TaskFlowRunner(QObject):
             controller_config["screencap_methods"] = raw_screen_method
         # 设备刷新后再次写回用户截图/输入方式，确保磁盘配置与本次连接一致
         if found_device and (has_raw_input_method or has_raw_screen_method):
-            if controller_cfg := self.task_service.get_task(_CONTROLLER_):
+            if controller_cfg := self._get_task(_CONTROLLER_):
                 controller_cfg.task_option.update(controller_raw)
-                self.task_service.update_task(controller_cfg)
+                self._persist_runtime_task_update(controller_cfg)
 
         adb_path = (controller_config.get("adb_path", "") or "").strip()
         raw_address = (controller_config.get("address", "") or "").strip()
@@ -3438,7 +3587,7 @@ class TaskFlowRunner(QObject):
         if not controller_name:
             return None
         controller_lower = controller_name.strip().lower()
-        for controller in self.task_service.interface.get("controller", []):
+        for controller in self._runtime_interface.get("controller", []):
             if controller.get("name", "").lower() == controller_lower:
                 return controller
         return None
@@ -3647,7 +3796,7 @@ class TaskFlowRunner(QObject):
 
         # 验证控制器名称是否存在
         controller_name_lower = controller_name.lower()
-        for controller in self.task_service.interface.get("controller", []):
+        for controller in self._runtime_interface.get("controller", []):
             if controller.get("name", "").lower() == controller_name_lower:
                 return controller.get("name", "")
 
@@ -3669,7 +3818,7 @@ class TaskFlowRunner(QObject):
             controller_name = ""
 
         controller_name = controller_name.lower()
-        for controller in self.task_service.interface.get("controller", []):
+        for controller in self._runtime_interface.get("controller", []):
             if controller.get("name", "").lower() == controller_name:
                 return controller.get("type", "").lower()
 
@@ -3886,9 +4035,9 @@ class TaskFlowRunner(QObject):
             controller_raw[controller_name].update(device_info)
 
             # 获取预配置任务并更新
-            if controller_cfg := self.task_service.get_task(_CONTROLLER_):
+            if controller_cfg := self._get_task(_CONTROLLER_):
                 controller_cfg.task_option.update(controller_raw)
-                self.task_service.update_task(controller_cfg)
+                self._persist_runtime_task_update(controller_cfg)
                 logger.info(f"设备配置已保存: {device_info.get('device_name', '')}")
 
         except Exception as e:
@@ -3903,7 +4052,7 @@ class TaskFlowRunner(QObject):
         - 切换配置：只要求前两者完成，不等待外部通知（因为不关软件）
         - 关机/退出软件：在执行前等待外部通知发送完成（避免通知丢失）
         """
-        post_task = self.task_service.get_task(POST_ACTION)
+        post_task = self._get_task(POST_ACTION)
         if not post_task:
             return
 
@@ -4051,7 +4200,7 @@ class TaskFlowRunner(QObject):
 
         # 再尽力等待真正关闭（仅对可检测的场景做等待；失败/超时不影响后续动作）
         try:
-            controller_cfg = self.task_service.get_task(_CONTROLLER_)
+            controller_cfg = self._get_task(_CONTROLLER_)
             if not controller_cfg or not isinstance(controller_cfg.task_option, dict):
                 return
             controller_raw = controller_cfg.task_option
@@ -4163,7 +4312,7 @@ class TaskFlowRunner(QObject):
 
     def _close_controller(self) -> None:
         """关闭控制器 - 根据当前运行的控制器类型执行不同的关闭操作"""
-        controller_cfg = self.task_service.get_task(_CONTROLLER_)
+        controller_cfg = self._get_task(_CONTROLLER_)
         if not controller_cfg:
             logger.warning("未找到控制器配置，无法关闭控制器")
             return
@@ -4268,19 +4417,36 @@ class TaskFlowRunner(QObject):
             logger.error(f"执行关机命令失败: {exc}")
 
     def _resolve_speedrun_config(self, task: TaskItem) -> Dict[str, Any] | None:
-        """优先使用任务保存的速通配置，其次使用 interface，最终回落默认值"""
+        """Merge speedrun settings from the runtime interface and snapshot."""
         try:
+            from app.core.service.task_service import DEFAULT_SPEEDRUN_CONFIG
+            from app.core.speedrun.config import normalize_speedrun_config
+            from app.core.utils.pipeline_helper import _deep_merge_dict
+
             if not isinstance(task.task_option, dict):
                 task.task_option = {}
-
-            existing_cfg = task.task_option.get("_speedrun_config")
-            merged_cfg = self.task_service.build_speedrun_config(
-                task.name, existing_cfg
+            interface_task = self._get_task_by_name(task.name)
+            interface_cfg = (
+                interface_task.get("speedrun", {})
+                if isinstance(interface_task, dict)
+                else {}
             )
-            if task.task_option.get("_speedrun_config") != merged_cfg:
-                task.task_option["_speedrun_config"] = merged_cfg
-                self.task_service.update_task(task)
-            return merged_cfg if isinstance(merged_cfg, dict) else {}
+            merged = deepcopy(DEFAULT_SPEEDRUN_CONFIG)
+            legacy_condition = bool(interface_cfg) and not isinstance(
+                interface_cfg.get("condition"), dict
+            )
+            if isinstance(interface_cfg, dict):
+                _deep_merge_dict(merged, deepcopy(interface_cfg))
+            existing = task.task_option.get("_speedrun_config")
+            if isinstance(existing, dict):
+                _deep_merge_dict(merged, deepcopy(existing))
+            normalized = normalize_speedrun_config(
+                merged, force_legacy_condition=legacy_condition
+            )
+            if existing != normalized:
+                task.task_option["_speedrun_config"] = normalized
+                self._persist_runtime_task_update(task)
+            return normalized
         except Exception as exc:
             logger.warning(f"合成速通配置失败，使用 interface 数据: {exc}")
             interface_task = self._get_task_by_name(task.name)
@@ -4291,7 +4457,7 @@ class TaskFlowRunner(QObject):
             )
 
     def _get_task_by_name(self, name: str) -> Dict[str, Any]:
-        interface = self.task_service.interface
+        interface = self._runtime_interface
         tasks = interface.get("task")
 
         if not isinstance(tasks, list):

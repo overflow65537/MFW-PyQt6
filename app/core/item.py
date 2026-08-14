@@ -29,6 +29,7 @@ class ViewSignalBus(QObject):
     config_added = Signal(object)  # ConfigItem
     config_removed = Signal(str)  # config_id
     config_changed = Signal(str)
+    runtime_state_changed = Signal(str, str)  # config_id, runtime state
     options_loaded = Signal()
     option_updated = Signal(object)
     schedules_changed = Signal(list)

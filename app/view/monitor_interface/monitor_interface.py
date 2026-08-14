@@ -140,15 +140,65 @@ class MonitorInterface(QWidget):
         old_session = getattr(self, "_session", None)
         if old_session is not None:
             old_session.stop_loop()
-            self._schedule_session_teardown(old_session)
+            old_config_id = str(
+                getattr(old_session.monitor_task, "config_id", "") or ""
+            )
+            old_state = self.service_coordinator.get_runtime_state(old_config_id)
+            old_state_value = str(getattr(old_state, "value", old_state)).lower()
+            task_flow_active = old_state_value in {
+                "starting",
+                "running",
+                "stopping",
+            }
+            # MonitorTask and TaskFlowRunner share one MaaFW inside a
+            # RuntimeContext. Tearing down the old monitor controller while its
+            # task flow is active would therefore stop the background instance.
+            if task_flow_active:
+                self._schedule_session_detach(old_session)
+            else:
+                self._schedule_session_teardown(old_session)
         self._starting_monitoring = False
         self._stopping_monitoring = False
         self._set_monitor_control_running(False)
         self._bind_runtime_context()
+        self._resume_monitoring_for_active_runtime(_config_id)
+
+    def _resume_monitoring_for_active_runtime(self, config_id: str) -> None:
+        """Resume preview capture for an already-connected active runtime."""
+        state = self.service_coordinator.get_runtime_state(config_id)
+        state_value = str(getattr(state, "value", state)).lower()
+        if state_value not in {"starting", "running"}:
+            return
+        if self._session.monitoring_active or self._starting_monitoring:
+            return
+        if not self._session.is_controller_connected():
+            return
+
+        try:
+            self._session.start_loop()
+        except Exception as exc:
+            logger.warning(
+                "[Monitor] Failed to resume preview after config switch: %s",
+                exc,
+            )
+            return
+        self._set_monitor_control_running(True)
+
+    @staticmethod
+    def _schedule_session_detach(session: MonitorSession) -> None:
+        """Finish preview processing without touching the shared controller."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        if loop.is_running():
+            loop.create_task(
+                session.wait_for_image_processing_complete(timeout=1.0)
+            )
 
     @staticmethod
     def _schedule_session_teardown(session: MonitorSession) -> None:
-        """异步释放旧配置的监控控制器，不阻塞 Qt 配置切换槽。"""
+        """Release an idle monitor session without blocking config switching."""
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:

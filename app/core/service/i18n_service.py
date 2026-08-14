@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -52,6 +53,12 @@ class I18nService:
         base = dict(self._translations.get(language, {}))
         base.update(translations or {})
         self._translations[language] = base
+
+    def clone(self) -> "I18nService":
+        """Return an independent copy suitable for a long-lived runtime snapshot."""
+        cloned = I18nService(language=self._current_language)
+        cloned._translations = deepcopy(self._translations)
+        return cloned
 
     def load_translations_from_interface(
         self, interface_data: Dict[str, Any], interface_dir: Path

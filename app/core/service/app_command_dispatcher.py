@@ -42,7 +42,7 @@ class AppCommandDispatcher:
         self._command_queue: asyncio.Queue[IpcRequest] = asyncio.Queue()
         self._worker_task: asyncio.Task[Any] | None = None
         self._shutting_down = False
-        self._run_reserved = False
+        self._run_reservations: set[str] = set()
         self._closed = False
 
     @property
@@ -128,7 +128,7 @@ class AppCommandDispatcher:
         if request.command == IpcCommand.SHUTDOWN:
             self._shutting_down = True
         elif request.command == IpcCommand.RUN:
-            self._run_reserved = True
+            self._run_reservations.add(self._run_reservation_key(request.params))
 
         if not self.ready:
             self._pending_commands.append(request)
@@ -154,7 +154,7 @@ class AppCommandDispatcher:
     async def close(self) -> None:
         self._closed = True
         self._pending_commands.clear()
-        self._run_reserved = False
+        self._run_reservations.clear()
         task = self._worker_task
         self._worker_task = None
         if task is not None and not task.done():
@@ -218,18 +218,21 @@ class AppCommandDispatcher:
                     request_id=request.request_id,
                     code="config_not_found",
                 )
-            if self._run_reserved:
+            reservation_key = self._run_reservation_key(params)
+            if reservation_key in self._run_reservations:
                 return IpcResponse(
                     status=IpcStatus.BUSY,
                     request_id=request.request_id,
                     code="command_in_progress",
                 )
-            if self.ready and self._is_running() and not force_restart:
-                return IpcResponse(
-                    status=IpcStatus.BUSY,
-                    request_id=request.request_id,
-                    code="task_running",
-                )
+            if self.ready and not force_restart:
+                target_id = config_id or self._coordinator.configs.current_config_id
+                if target_id and str(target_id) in self._running_config_ids():
+                    return IpcResponse(
+                        status=IpcStatus.BUSY,
+                        request_id=request.request_id,
+                        code="task_running",
+                    )
 
         if command == IpcCommand.STOP:
             config_id = self._optional_config_id(params)
@@ -270,6 +273,13 @@ class AppCommandDispatcher:
         if not isinstance(value, str):
             return False
         return value.strip() or None
+
+    @staticmethod
+    def _run_reservation_key(params: dict[str, Any]) -> str:
+        value = params.get("config_id")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        return "__active__"
 
     def _config_exists(self, config_id: str) -> bool:
         return bool(self._coordinator.configs.get_config(config_id))
@@ -340,7 +350,9 @@ class AppCommandDispatcher:
                 )
             finally:
                 if request.command == IpcCommand.RUN:
-                    self._run_reserved = False
+                    self._run_reservations.discard(
+                        self._run_reservation_key(request.params)
+                    )
                 self._command_queue.task_done()
 
     async def _execute(self, request: IpcRequest) -> None:
@@ -360,11 +372,26 @@ class AppCommandDispatcher:
 
     async def _run(self, request: IpcRequest) -> None:
         force_restart = bool(request.params.get("force_restart", False))
-        if self._is_running():
-            if not force_restart:
-                logger.info("Run skipped because a task is already running")
-                return
-            await self._stop()
+        if force_restart and self._is_running():
+            shutdown_all = getattr(
+                self._coordinator, "shutdown_all_configurations", None
+            )
+            if callable(shutdown_all):
+                result = shutdown_all(manual=True)
+                pending = await result if inspect.isawaitable(result) else result
+                if pending:
+                    logger.warning(
+                        "Force-restart runtimes missed the graceful deadline: %s",
+                        ", ".join(map(str, pending)),
+                    )
+            else:
+                stop_all = getattr(self._coordinator, "stop_all_configurations", None)
+                if callable(stop_all):
+                    result = stop_all(manual=True)
+                    if inspect.isawaitable(result):
+                        await result
+                else:
+                    await self._stop()
 
         config_id = self._optional_config_id(request.params)
         if isinstance(config_id, str):
@@ -378,14 +405,24 @@ class AppCommandDispatcher:
         if active_config_id and callable(run_configuration):
             started = await run_configuration(active_config_id)
             if not started:
-                logger.warning("Active configuration could not be started: %s", active_config_id)
+                logger.warning(
+                    "Active configuration could not be started: %s",
+                    active_config_id,
+                )
             return
         await self._coordinator.runtime.run()
 
     async def _stop(self, config_id: str | None = None) -> None:
+        target_id = config_id or self._coordinator.configs.current_config_id
+        stop_configuration = getattr(self._coordinator, "stop_configuration", None)
+        if target_id and callable(stop_configuration):
+            result = stop_configuration(target_id, manual=True)
+            if inspect.isawaitable(result):
+                await result
+            return
         stop_running = getattr(self._coordinator, "stop_running_configuration", None)
         if callable(stop_running):
-            result = stop_running(config_id=config_id, manual=True)
+            result = stop_running(config_id=target_id, manual=True)
             if inspect.isawaitable(result):
                 await result
             return
@@ -393,7 +430,23 @@ class AppCommandDispatcher:
             await self._coordinator.runtime.stop(manual=True)
 
     async def _shutdown(self) -> None:
-        await self._stop()
+        shutdown_all = getattr(self._coordinator, "shutdown_all_configurations", None)
+        if callable(shutdown_all):
+            result = shutdown_all(manual=False)
+            pending = await result if inspect.isawaitable(result) else result
+            if pending:
+                logger.warning(
+                    "Shutdown runtimes missed the graceful deadline: %s",
+                    ", ".join(map(str, pending)),
+                )
+        else:
+            stop_all = getattr(self._coordinator, "stop_all_configurations", None)
+            if callable(stop_all):
+                result = stop_all(manual=False)
+                if inspect.isawaitable(result):
+                    await result
+            else:
+                await self._stop()
         callback = self._close_callback
         if callback is not None:
             result = callback()

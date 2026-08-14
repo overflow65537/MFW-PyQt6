@@ -51,6 +51,7 @@ class FakeSentry:
     def __init__(self):
         self.guard = FakeGuard()
         self.transaction: FakeSpan | None = None
+        self.transactions: list[FakeSpan] = []
         self.init_kwargs: dict[str, object] = {}
 
     def init(self, **kwargs):
@@ -65,6 +66,7 @@ class FakeSentry:
 
     def start_transaction(self, name: str, op: str):
         self.transaction = FakeSpan(op, name)
+        self.transactions.append(self.transaction)
         return self.transaction
 
     def flush(self, timeout: int):
@@ -218,6 +220,67 @@ class TestTelemetryConfiguration(unittest.TestCase):
             service.set_user_enabled(False)
         self.assertFalse(service.is_active)
         self.assertTrue(fake_sentry.guard.closed)
+
+    def test_concurrent_runner_sources_keep_independent_transactions(self):
+        fake_sentry = FakeSentry()
+        interface = {
+            "name": "demo",
+            "version": "1.0.0",
+            "telemetry": {"sentry": {"dsn": "https://example.invalid/1"}},
+            "option": {},
+        }
+        events_a = RunnerEvents()
+        events_b = RunnerEvents()
+
+        def get_config(item):
+            return True if item is cfg.telemetry_enabled else 2
+
+        with (
+            patch.object(cfg, "get", side_effect=get_config),
+            patch(
+                "app.core.service.telemetry_service.importlib.import_module",
+                return_value=fake_sentry,
+            ),
+        ):
+            service = TelemetryService(events_a, interface, debug_override=False)
+            service.add_runner_events(events_b)
+
+            events_a.telemetry.emit(
+                {"event": "run_start", "tasks": ["A"], "controller": None}
+            )
+            events_b.telemetry.emit(
+                {"event": "run_start", "tasks": ["B"], "controller": None}
+            )
+            transaction_a, transaction_b = fake_sentry.transactions
+
+            events_b.telemetry.emit({"event": "run_finished"})
+            self.assertTrue(transaction_b.finished)
+            self.assertFalse(transaction_a.finished)
+
+            events_a.telemetry.emit(
+                {"event": "prepare_task", "name": "EntryA", "options": {}}
+            )
+            events_a.callback.emit(
+                {"name": "task", "task_id": 101, "status": 1, "task": "EntryA"}
+            )
+            events_a.callback.emit(
+                {
+                    "name": "node",
+                    "message": "Node.PipelineNode.Failed",
+                    "details": {
+                        "task_id": 101,
+                        "node_id": 7,
+                        "name": "NodeA",
+                    },
+                }
+            )
+
+            self.assertEqual("mfw.task", transaction_a.children[0].op)
+            self.assertEqual("mfw.node", transaction_a.children[0].children[0].op)
+            self.assertEqual([], transaction_b.children)
+
+            events_a.telemetry.emit({"event": "run_finished"})
+            self.assertTrue(transaction_a.finished)
 
 
 if __name__ == "__main__":

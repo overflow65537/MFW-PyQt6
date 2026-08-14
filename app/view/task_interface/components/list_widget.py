@@ -1027,6 +1027,9 @@ class ConfigListWidget(BaseListWidget):
         self.service_coordinator.view_signals.config_changed.connect(
             self._on_config_changed
         )
+        self.service_coordinator.view_signals.runtime_state_changed.connect(
+            self._on_runtime_state_changed
+        )
         self.update_list()
 
     def set_locked(self, locked: bool):
@@ -1094,7 +1097,10 @@ class ConfigListWidget(BaseListWidget):
         if self._locked:
             # 运行中允许右键等操作，但不允许切换当前激活配置
             return
-        self.service_coordinator.select_config(item_id)
+        if not self.service_coordinator.select_config(item_id):
+            current_config_id = self.service_coordinator.configs.current_config_id
+            if current_config_id:
+                self._select_config_by_id(current_config_id)
 
     def update_list(self):
         """刷新配置列表UI"""
@@ -1124,8 +1130,22 @@ class ConfigListWidget(BaseListWidget):
         # 显式固定 item 高度，避免 hover/选中动画区域被 Qt 计算成更高
         list_item.setSizeHint(QSize(0, self._CONFIG_ITEM_HEIGHT))
         config_widget = ConfigListItem(config, self.service_coordinator)
+        config_widget.set_runtime_state(
+            self.service_coordinator.get_runtime_state(config.item_id)
+        )
         self.addItem(list_item)
         self.setItemWidget(list_item, config_widget)
+
+    def _on_runtime_state_changed(self, config_id: str, state: str) -> None:
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if (
+                isinstance(widget, ConfigListItem)
+                and widget.item.item_id == config_id
+            ):
+                widget.set_runtime_state(state)
+                break
 
     def _select_config_by_id(self, config_id: str):
         """根据配置ID选中对应的列表项"""

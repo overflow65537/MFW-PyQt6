@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from typing import Any, Awaitable, Callable
 
 from PySide6.QtCore import QByteArray, QObject, Signal, Slot
@@ -129,8 +131,20 @@ class RuntimeMonitorState(QObject):
         self.clear_roi()
 
 
+class RuntimeState(StrEnum):
+    """Lifecycle state of one configuration runtime."""
+
+    IDLE = "idle"
+    STARTING = "starting"
+    RUNNING = "running"
+    STOPPING = "stopping"
+    FAILED = "failed"
+
+
 class RuntimeContext(QObject):
     """All non-persistent runtime objects belonging to one configuration."""
+
+    state_changed = Signal(str)
 
     def __init__(
         self,
@@ -149,12 +163,15 @@ class RuntimeContext(QObject):
             config_service=config_service,
             runner_events=self.events,
             run_config_callback=run_config_callback,
+            config_id=self.config_id,
         )
         self.task_runner.setParent(self)
         self.monitor_task = MonitorTask(
             task_service=task_service,
             config_service=config_service,
             runner_events=self.events,
+            config_id=self.config_id,
+            maafw=self.task_runner.maafw,
         )
         self.monitor_task.setParent(self)
         self.logs = RuntimeLogStore(
@@ -165,21 +182,154 @@ class RuntimeContext(QObject):
         )
         self.monitor = RuntimeMonitorState(parent=self)
         self.log_processor = CallbackLogProcessor(self.events, parent=self)
+        self._state = RuntimeState.IDLE
+        self._lifecycle_lock = asyncio.Lock()
+        self._run_task: asyncio.Task[Any] | None = None
+        self._stop_requested = False
 
         self.events.log_output.connect(self.logs.append)
         self.events.log_clear_requested.connect(self.logs.clear)
         self.events.monitor_recognition_roi.connect(self.monitor.update_roi)
         self.events.task_flow_finished.connect(self._on_task_flow_finished)
+        self.events.start_button_status.connect(self._on_button_status_changed)
+
+    @property
+    def state(self) -> RuntimeState:
+        return self._state
+
+    @property
+    def run_task(self) -> asyncio.Task[Any] | None:
+        return self._run_task
+
+    @property
+    def button_status(self) -> dict[str, str]:
+        if self._state in (RuntimeState.STARTING, RuntimeState.RUNNING):
+            return {"text": "STOP", "status": "enabled"}
+        if self._state == RuntimeState.STOPPING:
+            return {"text": "STOP", "status": "disabled"}
+        return {"text": "START", "status": "enabled"}
+
+    def _set_state(self, state: RuntimeState) -> None:
+        if state == self._state:
+            return
+        self._state = state
+        self.state_changed.emit(state.value)
+
+    async def start(
+        self,
+        task_id: str | None = None,
+        *,
+        start_task_id: str | None = None,
+    ) -> bool:
+        """Start this configuration without waiting for the whole flow to finish."""
+        async with self._lifecycle_lock:
+            if self._run_task is not None and not self._run_task.done():
+                return False
+            if self._state in (
+                RuntimeState.STARTING,
+                RuntimeState.RUNNING,
+                RuntimeState.STOPPING,
+            ):
+                return False
+            self._stop_requested = False
+            self.task_runner.need_stop = False
+            self.task_runner._manual_stop = False
+            self._set_state(RuntimeState.STARTING)
+            self._run_task = asyncio.create_task(
+                self._drive_run(task_id, start_task_id=start_task_id),
+                name=f"mfw-runtime-{self.config_id}",
+            )
+            return True
+
+    async def _drive_run(
+        self,
+        task_id: str | None,
+        *,
+        start_task_id: str | None,
+    ) -> None:
+        failed = False
+        try:
+            if self._stop_requested:
+                return
+            await self.task_runner.run_tasks_flow(
+                task_id,
+                start_task_id=start_task_id,
+            )
+        except asyncio.CancelledError:
+            self._stop_requested = True
+            self.task_runner.need_stop = True
+            raise
+        except Exception as exc:
+            failed = True
+            self.logs.append("ERROR", f"Runtime {self.config_id} failed: {exc}")
+            self._set_state(RuntimeState.FAILED)
+        finally:
+            async with self._lifecycle_lock:
+                current = asyncio.current_task()
+                if self._run_task is current:
+                    self._run_task = None
+                if not failed:
+                    self._set_state(RuntimeState.IDLE)
+                terminal_button_status = self.button_status
+            # The runner may exit before it ever creates a MaaFW runtime (for
+            # example, Start followed immediately by Stop). Replay the terminal
+            # state so the active UI cannot remain stuck on disabled STOP.
+            self.events.start_button_status.emit(terminal_button_status)
+
+    async def stop(self, *, manual: bool = True) -> bool:
+        """Request an idempotent stop without blocking startup initialization."""
+        async with self._lifecycle_lock:
+            if self._state == RuntimeState.STOPPING and self._stop_requested:
+                return True
+            task = self._run_task
+            has_runtime = self.is_running
+            if task is None and not has_runtime:
+                if self._state != RuntimeState.FAILED:
+                    self._set_state(RuntimeState.IDLE)
+                return True
+            was_starting = self._state == RuntimeState.STARTING
+            self._stop_requested = True
+            self.task_runner.need_stop = True
+            if manual:
+                self.task_runner._manual_stop = True
+            self._set_state(RuntimeState.STOPPING)
+
+        # run_tasks_flow owns cleanup while STARTING. Entering MaaFW cleanup in
+        # parallel with resource/controller initialization can deadlock native locks.
+        if was_starting:
+            self.events.start_button_status.emit(
+                {"text": "STOP", "status": "disabled"}
+            )
+            return True
+
+        await self.task_runner.stop_task(manual=manual)
+        if task is None or task.done():
+            async with self._lifecycle_lock:
+                if self._run_task is None or self._run_task.done():
+                    self._set_state(RuntimeState.IDLE)
+        return True
 
     def shutdown_runtime_sync(self) -> None:
-        """同步清理当前配置拥有的主任务与监控 MaaFW 运行时。"""
+        """Synchronously clean the runtime owned by this configuration."""
+        shared_maafw = getattr(self.monitor_task, "maafw", None) is getattr(
+            self.task_runner, "maafw", None
+        )
         try:
             self.task_runner.shutdown_runtime_sync()
         finally:
-            self.monitor_task.shutdown_runtime_sync()
+            if not shared_maafw:
+                self.monitor_task.shutdown_runtime_sync()
 
     @property
     def is_running(self) -> bool:
+        if self._state in (
+            RuntimeState.STARTING,
+            RuntimeState.RUNNING,
+            RuntimeState.STOPPING,
+        ):
+            return True
+        if self._run_task is not None and not self._run_task.done():
+            return True
         try:
             return bool(
                 self.task_runner.is_running
@@ -191,3 +341,12 @@ class RuntimeContext(QObject):
     @Slot(dict)
     def _on_task_flow_finished(self, _payload: dict) -> None:
         self.monitor.clear_roi()
+
+    @Slot(dict)
+    def _on_button_status_changed(self, payload: dict) -> None:
+        if not isinstance(payload, dict):
+            return
+        text = str(payload.get("text", "")).upper()
+        enabled = payload.get("status") != "disabled"
+        if text == "STOP" and enabled and self._state == RuntimeState.STARTING:
+            self._set_state(RuntimeState.RUNNING)

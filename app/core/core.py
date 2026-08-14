@@ -1,4 +1,5 @@
 from pathlib import Path
+import asyncio
 from typing import List, Dict, Any
 from copy import deepcopy
 import time
@@ -21,7 +22,7 @@ from app.core.service.task_service import TaskService
 from app.core.service.option_service import OptionService
 from app.core.service.telemetry_service import TelemetryService
 from app.core.service.interface_manager import get_interface_manager, InterfaceManager
-from app.core.runner.runtime_context import RuntimeContext
+from app.core.runner.runtime_context import RuntimeContext, RuntimeState
 from app.core.facade import (
     ConfigFacade,
     InterfaceFacade,
@@ -31,6 +32,7 @@ from app.core.facade import (
     TaskFacade,
 )
 from app.utils.logger import logger
+from app.common.config import cfg
 from app.common.signal_bus import signalBus
 
 
@@ -135,6 +137,7 @@ class ServiceCoordinator:
         self._core_signals = CoreSignalBus()
         self._view_signals = ViewSignalBus()
         self._runtime_contexts: dict[str, RuntimeContext] = {}
+        self._runtime_state_slots: dict[str, Any] = {}
         
         # 存储待显示的错误信息（用于在 UI 初始化完成后显示）
         self._pending_error_message: tuple[str, str] | None = None
@@ -896,20 +899,63 @@ class ServiceCoordinator:
                 run_config_callback=self._run_configuration_from_post_action,
             )
             self._runtime_contexts[normalized_id] = context
+
+            def forward_runtime_state(
+                state: str,
+                bound_config_id: str = normalized_id,
+            ) -> None:
+                self._view_signals.runtime_state_changed.emit(
+                    bound_config_id,
+                    str(state),
+                )
+
+            context.state_changed.connect(forward_runtime_state)
+            self._runtime_state_slots[normalized_id] = forward_runtime_state
+            telemetry = getattr(self, "telemetry_service", None)
+            if telemetry is not None:
+                telemetry.add_runner_events(context.events)
         return context
 
     async def _run_configuration_from_post_action(self, config_id: str) -> None:
-        """在目标配置的 RuntimeContext 中继续完成后任务链。"""
+        """Continue a post-action chain without switching the active UI config."""
         if not await self.run_configuration(config_id, clear_logs=True):
-            logger.warning("完成后指定的配置无法运行: %s", config_id)
+            logger.warning("Post-action target configuration could not start: %s", config_id)
 
     def get_running_config_ids(self) -> list[str]:
-        """Return configuration ids whose RuntimeContext still owns a live runtime."""
+        """Return every configuration whose runtime is live or starting."""
         return [
             config_id
             for config_id, context in self._runtime_contexts.items()
             if context.is_running
         ]
+
+    def is_configuration_running(self, config_id: str) -> bool:
+        context = self._runtime_contexts.get(str(config_id or ""))
+        return bool(context is not None and context.is_running)
+
+    def get_runtime_state(self, config_id: str) -> RuntimeState:
+        context = self._runtime_contexts.get(str(config_id or ""))
+        if context is None:
+            return RuntimeState.IDLE
+        return getattr(context, "state", RuntimeState.RUNNING if context.is_running else RuntimeState.IDLE)
+
+    async def stop_configuration(
+        self,
+        config_id: str,
+        *,
+        manual: bool = True,
+    ) -> bool:
+        """Stop only the requested configuration runtime."""
+        target_id = str(config_id or "").strip()
+        context = self._runtime_contexts.get(target_id)
+        if context is None or not context.is_running:
+            return False
+        stop = getattr(context, "stop", None)
+        if callable(stop):
+            await stop(manual=manual)
+        else:
+            await context.task_runner.stop_task(manual=manual)
+        return True
 
     async def stop_running_configuration(
         self,
@@ -917,55 +963,93 @@ class ServiceCoordinator:
         config_id: str | None = None,
         manual: bool = True,
     ) -> bool:
-        """Stop the single live runtime without switching the active UI context."""
-        running_ids = self.get_running_config_ids()
-        if not running_ids:
+        """Compatibility alias; an omitted id targets the active UI config."""
+        target_id = str(
+            config_id or self._config_service.current_config_id or ""
+        ).strip()
+        if not target_id:
             return False
+        return await self.stop_configuration(target_id, manual=manual)
 
-        # The optional id is validated by the command layer. The current runtime
-        # model still permits only one live task, so stop that task without
-        # switching the UI context.
-        target_id = running_ids[0]
-        context = self._runtime_contexts[target_id]
-        await context.task_runner.stop_task(manual=manual)
-        return True
+    async def stop_all_configurations(self, *, manual: bool = False) -> None:
+        """Request every live runtime to stop; one failure cannot block others."""
+        targets = [
+            (config_id, context)
+            for config_id, context in self._runtime_contexts.items()
+            if context.is_running
+        ]
+        if not targets:
+            return
+        results = await asyncio.gather(
+            *(self.stop_configuration(config_id, manual=manual) for config_id, _ in targets),
+            return_exceptions=True,
+        )
+        for (config_id, _), result in zip(targets, results):
+            if isinstance(result, BaseException):
+                logger.error(
+                    "Failed to stop runtime %s during stop-all: %s",
+                    config_id,
+                    result,
+                )
+
+    async def shutdown_all_configurations(
+        self,
+        *,
+        timeout: float = 5.0,
+        manual: bool = False,
+    ) -> list[str]:
+        """Gracefully stop all runtimes, returning ids that missed the deadline."""
+        await self.stop_all_configurations(manual=manual)
+        pending_by_task: dict[asyncio.Task, str] = {}
+        for config_id, context in tuple(self._runtime_contexts.items()):
+            task = getattr(context, "run_task", None)
+            if isinstance(task, asyncio.Task) and not task.done():
+                pending_by_task[task] = config_id
+        if not pending_by_task:
+            return []
+
+        _done, pending = await asyncio.wait(
+            pending_by_task,
+            timeout=max(0.0, float(timeout)),
+        )
+        return [
+            pending_by_task[task]
+            for task in pending_by_task
+            if task in pending
+        ]
 
     async def run_configuration(
         self,
         config_id: str,
         *,
         clear_logs: bool = False,
+        activate_ui: bool = False,
     ) -> bool:
-        """Atomically select and run one configuration's RuntimeContext."""
+        """Start one config independently from the active UI selection."""
         target_id = str(config_id or "").strip()
         if not target_id or self._config_service.get_config(target_id) is None:
             return False
-
-        running_ids = self.get_running_config_ids()
-        if any(running_id != target_id for running_id in running_ids):
-            logger.warning(
-                "Cannot run %s while another configuration is active: %s",
-                target_id,
-                ", ".join(running_ids),
-            )
-            return False
-        if target_id in running_ids:
-            return False
-
-        if self._config_service.current_config_id != target_id:
+        if activate_ui and self._config_service.current_config_id != target_id:
             if not self.select_config(target_id):
                 return False
-        if self._config_service.current_config_id != target_id:
-            return False
 
-        context = self._activate_runtime_context(target_id)
+        context = self._get_or_create_runtime_context(target_id)
+        if context.is_running:
+            return False
         if clear_logs:
             context.logs.clear()
+        start_runtime = getattr(context, "start", None)
+        if callable(start_runtime):
+            return bool(await start_runtime())
+        return bool(await RuntimeFacade(lambda: context).run())
 
-        # Capture the target runner before awaiting so later UI switches cannot
-        # redirect this run to another RuntimeContext.
-        await RuntimeFacade(lambda: context).run()
-        return True
+    def shutdown_all_runtimes_sync(self) -> None:
+        """Best-effort synchronous shutdown for the window cleanup thread."""
+        for config_id, context in tuple(self._runtime_contexts.items()):
+            try:
+                context.shutdown_runtime_sync()
+            except Exception:
+                logger.exception("Failed to shut down runtime %s", config_id)
 
     def get_runtime_context(self, config_id: str | None = None) -> RuntimeContext:
         """Return a configuration runtime, defaulting to the active one."""
@@ -1015,14 +1099,15 @@ class ServiceCoordinator:
         context = self._get_or_create_runtime_context(config_id)
         previous = getattr(self, "_active_runtime_context", None)
         if previous is context:
+            if hasattr(self, "_runner_ui_bridge"):
+                self._runner_ui_bridge.forward_start_button_status(context.button_status)
             return context
         if previous is not None and hasattr(self, "_runner_ui_bridge"):
             self._disconnect_runtime_context(previous)
         self._active_runtime_context = context
-        if hasattr(self, "telemetry_service"):
-            self.telemetry_service.set_runner_events(context.events)
         if hasattr(self, "_runner_ui_bridge"):
             self._connect_runtime_context(context)
+            self._runner_ui_bridge.forward_start_button_status(context.button_status)
         return context
 
     def _connect_signals(self):
@@ -1253,19 +1338,44 @@ class ServiceCoordinator:
         ok = self._config_service.delete_config(config_id)
         if ok:
             removed = self._runtime_contexts.pop(config_id, None)
-            if removed is not None and removed is not self._active_runtime_context:
-                removed.deleteLater()
+            if removed is not None:
+                state_slot = getattr(self, "_runtime_state_slots", {}).pop(
+                    config_id, None
+                )
+                if state_slot is not None:
+                    try:
+                        removed.state_changed.disconnect(state_slot)
+                    except (RuntimeError, TypeError):
+                        pass
+                telemetry = getattr(self, "telemetry_service", None)
+                if telemetry is not None:
+                    telemetry.remove_runner_events(removed.events)
+                if removed is not self._active_runtime_context:
+                    removed.deleteLater()
             # notify UI incremental removal
             self._view_signals.config_removed.emit(config_id)
         return ok
 
     def select_config(self, config_id: str) -> bool:
-        """选择配置，传入 config id"""
-        # 验证配置存在
+        """Select the active UI configuration when switching is allowed."""
         if not self._config_service.get_config(config_id):
             return False
 
-        # 使用 ConfigService setter，回调将同步任务和选项
+        current_config_id = self._config_service.current_config_id
+        if config_id == current_config_id:
+            return True
+
+        if (
+            not cfg.get(cfg.multi_instance_enabled)
+            and self.get_running_config_ids()
+        ):
+            logger.warning(
+                "Configuration switch to %s refused while a runtime is active "
+                "and multi-instance mode is disabled",
+                config_id,
+            )
+            return False
+
         self._config_service.current_config_id = config_id
         return self._config_service.current_config_id == config_id
 

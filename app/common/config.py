@@ -154,6 +154,9 @@ class Config(QConfig):
     multi_resource_adaptation = ConfigItem(
         "Compatibility", "multi_resource_adaptation", False, BoolValidator()
     )
+    multi_instance_enabled = ConfigItem(
+        "Compatibility", "multi_instance_enabled", False, BoolValidator()
+    )
     save_screenshot = ConfigItem(
         "Compatibility", "save_screenshot", False, BoolValidator()
     )

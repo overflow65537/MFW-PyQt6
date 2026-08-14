@@ -1001,10 +1001,35 @@ class ConfigListItem(BaseListItem):
         self.name_label = self._create_name_label()
         layout.addWidget(self.name_label)
 
+        self.runtime_indicator = IndeterminateProgressRing(self)
+        self.runtime_indicator.setFixedSize(20, 20)
+        self.runtime_indicator.setStrokeWidth(2)
+        self.runtime_indicator.hide()
+        self._runtime_state = "idle"
+        layout.addWidget(self.runtime_indicator)
+
         # 创建设置按钮但不添加到布局（隐藏）
         self.setting_button = self._create_setting_button()
         self.setting_button.clicked.connect(self._select_in_parent_list)
         self.setting_button.hide()  # 隐藏设置按钮
+
+    def set_runtime_state(self, state: str) -> None:
+        """Show an animated indicator while this configuration is active."""
+        state_value = str(getattr(state, "value", state) or "idle").lower()
+        active_states = {"starting", "running", "stopping"}
+        is_active = state_value in active_states
+        was_active = self._runtime_state in active_states
+        self._runtime_state = state_value
+
+        if is_active:
+            self.runtime_indicator.show()
+            if not was_active:
+                self.runtime_indicator.start()
+            return
+
+        if was_active:
+            self.runtime_indicator.stop()
+        self.runtime_indicator.hide()
 
     def _get_bundle_icon_path(self) -> str | None:
         """从配置的 bundle 中获取图标路径
