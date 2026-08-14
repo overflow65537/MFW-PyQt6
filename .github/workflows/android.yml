@@ -128,6 +128,7 @@ jobs:
             libncurses-dev \
             libssl-dev \
             libtool \
+            libltdl-dev \
             ninja-build \
             pkg-config \
             unzip \
