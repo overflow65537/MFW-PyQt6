@@ -302,7 +302,19 @@ jobs:
             2>&1 | tee "$GITHUB_WORKSPACE/android-artifacts/android-build.log"
 
           if grep -Fq "Exception occurred:" "$GITHUB_WORKSPACE/android-artifacts/android-build.log"; then
-            echo "pyside6-android-deploy reported an exception while building the APK" >&2
+            python - <<'PY'
+          from pathlib import Path
+
+          log = Path("../android-artifacts/android-build.log").read_text()
+          marker = "Exception occurred:"
+          traceback = log[log.rfind(marker):].strip()[-6000:]
+          escaped = (
+              traceback.replace("%", "%25")
+              .replace("\r", "%0D")
+              .replace("\n", "%0A")
+          )
+          print(f"::error title=pyside6-android-deploy failed::{escaped}")
+          PY
             exit 1
           fi
 
