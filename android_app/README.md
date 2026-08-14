@@ -63,7 +63,7 @@ seed and run `--init`. Android wheels are still required during initialization:
 cd android_app
 mv pysidedeploy.spec pysidedeploy.spec.seed
 pyside6-android-deploy --init \
-  --name "MFW Android PoC" \
+  --name "mfwandroidpoc" \
   --wheel-pyside /absolute/path/to/PySide6-android-aarch64.whl \
   --wheel-shiboken /absolute/path/to/shiboken6-android-aarch64.whl \
   --ndk-path /absolute/path/to/android-ndk \
@@ -80,6 +80,11 @@ cache. Compare the generated spec with `pysidedeploy.spec.seed` and retain:
 - `arch = aarch64` (Android/NDK name: `arm64-v8a`).
 
 Restore the committed filename after merging the generated fields.
+
+`pyside6-android-deploy` currently reuses `[app] title` as both Buildozer's
+human-readable title and Android package identifier. Keep the committed value
+lowercase ASCII alphanumeric without spaces (`mfwandroidpoc`); the Qt window
+itself still displays the human-readable `MFW Android PoC` title.
 
 ## Inspect and build
 
@@ -113,13 +118,24 @@ The CI toolchain is deliberately pinned as one compatible set:
 - Python 3.11;
 - PySide6/shiboken6 Android aarch64 6.11.1 wheels;
 - JDK 21;
-- Android platform 36 and Build Tools 36.0.0;
-- Android NDK 26.1.10909125 (r26b).
+- Android platform 36, minimum API 28 and Build Tools 36.0.0;
+- Android NDK 27.2.12479018 (r27c);
+- python-for-android develop commit `7af1d1325ef460def993cc7871c43d04bc877a94`.
 
-The workflow downloads the pinned official Android wheels directly from Qt,
+The workflow installs and pins its deployment tools first, patches the Buildozer
+template, and disables dependency reinstallation in the generated CI spec. It
+then downloads the pinned official Android wheels directly from Qt,
 creates an untracked `pysidedeploy.ci.spec` containing runner-specific
-absolute paths,
-runs a deployment dry-run, builds the arm64 debug APK and uploads it as the
+absolute paths, and also passes the SDK/NDK paths explicitly on the command
+line. The explicit flags are required because PySide6 6.11.1 does not read
+the NDK value from an already-existing config file on this code path. The
+CLI help still mentions r26b, but Qt 6.11 officially requires r27c. Because
+Buildozer 1.5.0 otherwise defaults to target API 31 and minimum API 21, CI
+patches its generated-config template to target API 36 with minimum API 28.
+PySide6 forces python-for-android's moving `develop` branch, so CI also pins
+the selected commit through Buildozer's `p4a.commit` setting.
+The CI then runs a deployment dry-run, builds the arm64 debug APK and uploads
+it as the
 `MFW-Android-PoC-arm64-debug` artifact. Deployment logs and the generated CI
 spec are uploaded separately for diagnosis, including when the build fails.
 

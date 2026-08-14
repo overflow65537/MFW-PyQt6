@@ -20,12 +20,15 @@ permissions:
 
 env:
   # Keep these versions aligned. Official PySide6 6.11 Android wheels target
-  # CPython 3.11. Keep the NDK aligned with pyside6-android-deploy --help.
+  # CPython 3.11. Qt 6.11 officially uses JDK 21, API 36 and NDK r27c.
+  # PySide6 6.11.1 still prints an outdated r26b hint in its CLI help.
   PYSIDE_VERSION: "6.11.1"
   PYTHON_VERSION: "3.11"
   ANDROID_API_LEVEL: "36"
+  ANDROID_MIN_API_LEVEL: "28"
   ANDROID_BUILD_TOOLS_VERSION: "36.0.0"
-  ANDROID_NDK_VERSION: "26.1.10909125"
+  ANDROID_NDK_VERSION: "27.2.12479018"
+  P4A_COMMIT: "7af1d1325ef460def993cc7871c43d04bc877a94"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
@@ -58,6 +61,11 @@ jobs:
 
           spec = configparser.ConfigParser()
           spec.read("pysidedeploy.spec", encoding="utf-8")
+          title = spec.get("app", "title")
+          assert title.isascii(), title
+          assert title.isalnum(), title
+          assert title[0].isalpha(), title
+          assert title == title.lower(), title
           assert spec.get("app", "input_file") == "main.py"
           assert spec.get("app", "project_file") == "android.pyproject"
           assert spec.get("buildozer", "mode") == "debug"
@@ -101,7 +109,9 @@ jobs:
           java-version: "21"
 
       - name: Set up Android SDK command-line tools
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ""
 
       - name: Install Linux build prerequisites
         run: |
@@ -149,6 +159,33 @@ jobs:
           )"
           echo "Installing PySide6 Android deployment requirements from: $ANDROID_REQUIREMENTS"
           python -m pip install --requirement "$ANDROID_REQUIREMENTS"
+          python -m pip install "buildozer==1.5.0" "cython==0.29.33"
+
+          # Buildozer 1.5.0 leaves API 31/min API 21 commented in its template.
+          # PySide6 regenerates buildozer.spec for every deployment, so patch the
+          # installed template to make the Qt 6.11 API range explicit.
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import buildozer
+
+          default_spec = Path(buildozer.__file__).resolve().parent / "default.spec"
+          text = default_spec.read_text(encoding="utf-8")
+          replacements = {
+              "#android.api = 31": f"android.api = {os.environ['ANDROID_API_LEVEL']}",
+              "#android.minapi = 21": f"android.minapi = {os.environ['ANDROID_MIN_API_LEVEL']}",
+              "# android.skip_update = False": "android.skip_update = True",
+              "# android.accept_sdk_license = False": "android.accept_sdk_license = True",
+              "#p4a.commit = HEAD": f"p4a.commit = {os.environ['P4A_COMMIT']}",
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f"Buildozer template entry not found: {old}")
+              text = text.replace(old, new, 1)
+          default_spec.write_text(text, encoding="utf-8")
+          print(f"Configured Buildozer template: {default_spec}")
+          PY
+
           pyside6-android-deploy --help
 
       - name: Restore Android Qt wheels
@@ -209,6 +246,9 @@ jobs:
           config = configparser.ConfigParser()
           config.read(source, encoding="utf-8")
           config["python"]["python_path"] = sys.executable
+          # The CI has already installed and patched these tools; do not let the
+          # deploy command invoke pip again and replace the patched template.
+          config["python"]["android_packages"] = ""
           config["android"]["wheel_pyside"] = os.environ["PYSIDE_WHEEL"]
           config["android"]["wheel_shiboken"] = os.environ["SHIBOKEN_WHEEL"]
           config["buildozer"]["sdk_path"] = os.environ["ANDROID_SDK_ROOT"]
@@ -219,27 +259,52 @@ jobs:
 
           grep -F "wheel_pyside = $PYSIDE_WHEEL" android_app/pysidedeploy.ci.spec
           grep -F "wheel_shiboken = $SHIBOKEN_WHEEL" android_app/pysidedeploy.ci.spec
+          grep -F "sdk_path = $ANDROID_SDK_ROOT" android_app/pysidedeploy.ci.spec
+          grep -F "ndk_path = $ANDROID_NDK_ROOT" android_app/pysidedeploy.ci.spec
+          grep -Eq '^android_packages = *$' android_app/pysidedeploy.ci.spec
 
       - name: Preview deployment commands
         working-directory: android_app
         run: |
+          set -o pipefail
           mkdir -p "$GITHUB_WORKSPACE/android-artifacts"
+          ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk/$ANDROID_NDK_VERSION"
+          test -d "$ANDROID_NDK_ROOT"
+
           pyside6-android-deploy \
             --force \
             --verbose \
             --dry-run \
+            --ndk-path "$ANDROID_NDK_ROOT" \
+            --sdk-path "$ANDROID_SDK_ROOT" \
             --config-file pysidedeploy.ci.spec \
             2>&1 | tee "$GITHUB_WORKSPACE/android-artifacts/android-dry-run.log"
+
+          if grep -Fq "Exception occurred:" "$GITHUB_WORKSPACE/android-artifacts/android-dry-run.log"; then
+            echo "pyside6-android-deploy reported an exception during the dry-run" >&2
+            exit 1
+          fi
 
       - name: Build debug APK
         working-directory: android_app
         run: |
+          set -o pipefail
+          ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk/$ANDROID_NDK_VERSION"
+          test -d "$ANDROID_NDK_ROOT"
+
           pyside6-android-deploy \
             --force \
             --verbose \
             --keep-deployment-files \
+            --ndk-path "$ANDROID_NDK_ROOT" \
+            --sdk-path "$ANDROID_SDK_ROOT" \
             --config-file pysidedeploy.ci.spec \
             2>&1 | tee "$GITHUB_WORKSPACE/android-artifacts/android-build.log"
+
+          if grep -Fq "Exception occurred:" "$GITHUB_WORKSPACE/android-artifacts/android-build.log"; then
+            echo "pyside6-android-deploy reported an exception while building the APK" >&2
+            exit 1
+          fi
 
       - name: Collect APK
         run: |

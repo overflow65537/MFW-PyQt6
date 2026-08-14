@@ -5,8 +5,9 @@
 # because tool defaults may evolve between releases.
 
 [app]
-# Android packaging requires an entry point named main.py.
-title = MFW Android PoC
+# PySide6 also reuses title for package.name and package.domain, so keep it
+# lowercase ASCII alphanumeric without spaces. The in-app title stays human-readable.
+title = mfwandroidpoc
 project_dir = .
 input_file = main.py
 exec_directory = .
