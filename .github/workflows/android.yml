@@ -336,9 +336,6 @@ jobs:
             exit 1
           fi
 
-          expected_requirements="requirements = python3==$ANDROID_PYTHON_VERSION,hostpython3==$ANDROID_PYTHON_VERSION,shiboken6,PySide6"
-          grep -Fx "$expected_requirements" buildozer.spec
-
       - name: Build debug APK
         working-directory: android_app
         run: |
@@ -370,6 +367,30 @@ jobs:
           PY
             exit 1
           fi
+
+          # A dry-run only prints `buildozer init`; it does not create the spec.
+          # Validate the generated requirements after the real deployment instead.
+          python - <<'PY'
+          import configparser
+          import os
+          from pathlib import Path
+
+          path = Path("buildozer.spec")
+          if not path.is_file():
+              raise SystemExit(f"Generated Buildozer spec not found: {path.resolve()}")
+
+          config = configparser.ConfigParser()
+          config.read(path, encoding="utf-8")
+          actual = config.get("app", "requirements")
+          version = os.environ["ANDROID_PYTHON_VERSION"]
+          expected = f"python3=={version},hostpython3=={version},shiboken6,PySide6"
+          if actual != expected:
+              raise SystemExit(
+                  "Unexpected Buildozer requirements: "
+                  f"expected {expected!r}, got {actual!r}"
+              )
+          print(f"Verified Buildozer requirements: {actual}")
+          PY
 
       - name: Collect APK
         run: |
