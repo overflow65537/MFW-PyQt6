@@ -1,0 +1,467 @@
+name: Android PoC
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "android_app/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "android_app/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Keep these versions aligned. Official PySide6 6.11 Android wheels target
+  # CPython 3.11. Qt 6.11 officially uses JDK 21, API 36 and NDK r27c.
+  # PySide6 6.11.1 still prints an outdated r26b hint in its CLI help.
+  PYSIDE_VERSION: "6.11.1"
+  PYTHON_VERSION: "3.11"
+  # PySide6/Shiboken6 Android wheels are tagged cp311. Keep both p4a's
+  # target Python and hostpython on the same CPython 3.11 patch release.
+  ANDROID_PYTHON_VERSION: "3.11.15"
+  ANDROID_API_LEVEL: "36"
+  ANDROID_MIN_API_LEVEL: "28"
+  ANDROID_BUILD_TOOLS_VERSION: "36.0.0"
+  ANDROID_NDK_VERSION: "27.2.12479018"
+  P4A_COMMIT: "7af1d1325ef460def993cc7871c43d04bc877a94"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Android PoC
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Validate entry point and deployment files
+        working-directory: android_app
+        run: |
+          python -m py_compile main.py
+          python - <<'PY'
+          import configparser
+          import json
+          from pathlib import Path
+
+          project = json.loads(Path("android.pyproject").read_text(encoding="utf-8"))
+          assert project == {"files": ["main.py"]}, project
+
+          spec = configparser.ConfigParser()
+          spec.read("pysidedeploy.spec", encoding="utf-8")
+          title = spec.get("app", "title")
+          assert title.isascii(), title
+          assert title.isalnum(), title
+          assert title[0].isalpha(), title
+          assert title == title.lower(), title
+          assert spec.get("app", "input_file") == "main.py"
+          assert spec.get("app", "project_file") == "android.pyproject"
+          assert spec.get("buildozer", "mode") == "debug"
+          assert spec.get("buildozer", "arch") == "aarch64"
+          assert "Core" in spec.get("qt", "modules")
+          assert "Widgets" in spec.get("qt", "modules")
+
+          source = Path("main.py").read_text(encoding="utf-8")
+          for forbidden in ("import app", "from app", "import maa", "from maa"):
+              assert forbidden not in source, forbidden
+
+          requirements = Path("requirements-android.txt").read_text(encoding="utf-8").lower()
+          for forbidden in ("keyboard", "wmi", "psutil", "maafw"):
+              active = [
+                  line for line in requirements.splitlines()
+                  if line.strip() and not line.lstrip().startswith("#")
+              ]
+              assert not any(line.split("==", 1)[0].strip() == forbidden for line in active)
+          PY
+
+  build-apk:
+    name: Build Android arm64 debug APK
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ""
+
+      - name: Install Linux build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            autoconf \
+            automake \
+            build-essential \
+            ccache \
+            cmake \
+            git \
+            libffi-dev \
+            liblzma-dev \
+            libncurses-dev \
+            libssl-dev \
+            libtool \
+            libltdl-dev \
+            ninja-build \
+            pkg-config \
+            unzip \
+            zip \
+            zlib1g-dev
+
+      - name: Install Android SDK and NDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-${ANDROID_API_LEVEL}" \
+            "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" \
+            "ndk;${ANDROID_NDK_VERSION}"
+
+          # Buildozer 1.5.0 still looks for the command-line tools under the
+          # legacy SDK tools/bin directory. Point that path at the tools that
+          # setup-android installed under cmdline-tools/latest/bin.
+          mkdir -p "$ANDROID_SDK_ROOT/tools/bin"
+          for tool in sdkmanager avdmanager; do
+            tool_path="$(command -v "$tool")"
+            test -n "$tool_path"
+            ln -sfn "$tool_path" "$ANDROID_SDK_ROOT/tools/bin/$tool"
+          done
+
+      - name: Install Qt for Python deployment tooling
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install "PySide6==${PYSIDE_VERSION}"
+          ANDROID_REQUIREMENTS="$(python - <<'PY'
+          from pathlib import Path
+          import PySide6
+
+          path = Path(PySide6.__file__).resolve().parent / "scripts" / "requirements-android.txt"
+          if not path.is_file():
+              raise SystemExit(f"PySide6 Android requirements not found: {path}")
+          print(path)
+          PY
+          )"
+          echo "Installing PySide6 Android deployment requirements from: $ANDROID_REQUIREMENTS"
+          python -m pip install --requirement "$ANDROID_REQUIREMENTS"
+          python -m pip install "buildozer==1.5.0" "cython==0.29.33"
+
+          # Buildozer 1.5.0 leaves API 31/min API 21 commented in its template.
+          # PySide6 regenerates buildozer.spec for every deployment, so patch the
+          # installed template to make the Qt 6.11 API range explicit.
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import buildozer
+          import PySide6
+
+          default_spec = Path(buildozer.__file__).resolve().parent / "default.spec"
+          text = default_spec.read_text(encoding="utf-8")
+          replacements = {
+              "#android.api = 31": f"android.api = {os.environ['ANDROID_API_LEVEL']}",
+              "#android.minapi = 21": f"android.minapi = {os.environ['ANDROID_MIN_API_LEVEL']}",
+              "# android.skip_update = False": "android.skip_update = True",
+              "# android.accept_sdk_license = False": "android.accept_sdk_license = True",
+              "#p4a.commit = HEAD": f"p4a.commit = {os.environ['P4A_COMMIT']}",
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f"Buildozer template entry not found: {old}")
+              text = text.replace(old, new, 1)
+          default_spec.write_text(text, encoding="utf-8")
+          print(f"Configured Buildozer template: {default_spec}")
+
+          # PySide6 6.11.1 writes an unversioned `python3` requirement. The
+          # pinned p4a revision currently defaults that recipe to CPython 3.14,
+          # while the official Android PySide6/Shiboken6 wheels are cp311.
+          # Pin both recipes so the APK contains libpython3.11.so rather than
+          # an incompatible libpython3.14.so.
+          android_python = os.environ["ANDROID_PYTHON_VERSION"]
+          deploy_script = (
+              Path(PySide6.__file__).resolve().parent
+              / "scripts"
+              / "deploy_lib"
+              / "android"
+              / "buildozer.py"
+          )
+          deploy_text = deploy_script.read_text(encoding="utf-8")
+          old_requirements = (
+              'self.set_value("app", "requirements", '
+              '"python3,shiboken6,PySide6")'
+          )
+          new_requirements = (
+              'self.set_value("app", "requirements", '
+              f'"python3=={android_python},hostpython3=={android_python},'
+              'shiboken6,PySide6")'
+          )
+          if old_requirements not in deploy_text:
+              raise SystemExit(
+                  f"PySide6 Buildozer requirements entry not found: {deploy_script}"
+              )
+          deploy_script.write_text(
+              deploy_text.replace(old_requirements, new_requirements, 1),
+              encoding="utf-8",
+          )
+          print(
+              "Configured Android Python requirements: "
+              f"python3=={android_python}, hostpython3=={android_python}"
+          )
+          PY
+
+          pyside6-android-deploy --help
+
+      - name: Restore Android Qt wheels
+        id: android-wheel-cache
+        uses: actions/cache@v5
+        with:
+          path: .cache/android-wheels
+          key: pyside-android-aarch64-direct-v1-${{ env.PYSIDE_VERSION }}
+
+      - name: Download matching Android wheels
+        if: steps.android-wheel-cache.outputs.cache-hit != 'true'
+        env:
+          QT_FOR_PYTHON_RELEASES: https://download.qt.io/official_releases/QtForPython
+        run: |
+          mkdir -p .cache/android-wheels
+          cd .cache/android-wheels
+
+          PYSIDE_WHEEL="pyside6-${PYSIDE_VERSION}-${PYSIDE_VERSION}-cp311-cp311-android_aarch64.whl"
+          SHIBOKEN_WHEEL="shiboken6-${PYSIDE_VERSION}-${PYSIDE_VERSION}-cp311-cp311-android_aarch64.whl"
+
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output "$PYSIDE_WHEEL" \
+            "${QT_FOR_PYTHON_RELEASES}/pyside6/${PYSIDE_WHEEL}"
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output "$SHIBOKEN_WHEEL" \
+            "${QT_FOR_PYTHON_RELEASES}/shiboken6/${SHIBOKEN_WHEEL}"
+
+      - name: Verify Android wheels
+        run: |
+          PYSIDE_WHEEL=".cache/android-wheels/pyside6-$PYSIDE_VERSION-$PYSIDE_VERSION-cp311-cp311-android_aarch64.whl"
+          SHIBOKEN_WHEEL=".cache/android-wheels/shiboken6-$PYSIDE_VERSION-$PYSIDE_VERSION-cp311-cp311-android_aarch64.whl"
+
+          test -f "$PYSIDE_WHEEL"
+          test -f "$SHIBOKEN_WHEEL"
+          python -m zipfile --test "$PYSIDE_WHEEL"
+          python -m zipfile --test "$SHIBOKEN_WHEEL"
+          ls -lh .cache/android-wheels/*.whl
+
+      - name: Prepare CI deployment spec
+        run: |
+          PYSIDE_WHEEL="$(find "$GITHUB_WORKSPACE/.cache/android-wheels" -maxdepth 1 -type f -iname "pyside6-${PYSIDE_VERSION}-*android_aarch64.whl" -print -quit)"
+          SHIBOKEN_WHEEL="$(find "$GITHUB_WORKSPACE/.cache/android-wheels" -maxdepth 1 -type f -iname "shiboken6-${PYSIDE_VERSION}-*android_aarch64.whl" -print -quit)"
+
+          test -n "$PYSIDE_WHEEL" || { echo "PySide6 Android aarch64 wheel not found" >&2; exit 1; }
+          test -n "$SHIBOKEN_WHEEL" || { echo "shiboken6 Android aarch64 wheel not found" >&2; exit 1; }
+          test -d "$ANDROID_SDK_ROOT/ndk/$ANDROID_NDK_VERSION"
+
+          export PYSIDE_WHEEL SHIBOKEN_WHEEL
+          export ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk/$ANDROID_NDK_VERSION"
+          python - <<'PY'
+          import configparser
+          import os
+          import sys
+          from pathlib import Path
+
+          source = Path("android_app/pysidedeploy.spec")
+          target = Path("android_app/pysidedeploy.ci.spec")
+          config = configparser.ConfigParser()
+          config.read(source, encoding="utf-8")
+          config["python"]["python_path"] = sys.executable
+          # The CI has already installed and patched these tools; do not let the
+          # deploy command invoke pip again and replace the patched template.
+          config["python"]["android_packages"] = ""
+          config["android"]["wheel_pyside"] = os.environ["PYSIDE_WHEEL"]
+          config["android"]["wheel_shiboken"] = os.environ["SHIBOKEN_WHEEL"]
+          config["buildozer"]["sdk_path"] = os.environ["ANDROID_SDK_ROOT"]
+          config["buildozer"]["ndk_path"] = os.environ["ANDROID_NDK_ROOT"]
+          with target.open("w", encoding="utf-8") as stream:
+              config.write(stream)
+          PY
+
+          grep -F "wheel_pyside = $PYSIDE_WHEEL" android_app/pysidedeploy.ci.spec
+          grep -F "wheel_shiboken = $SHIBOKEN_WHEEL" android_app/pysidedeploy.ci.spec
+          grep -F "sdk_path = $ANDROID_SDK_ROOT" android_app/pysidedeploy.ci.spec
+          grep -F "ndk_path = $ANDROID_NDK_ROOT" android_app/pysidedeploy.ci.spec
+          grep -Eq '^android_packages = *$' android_app/pysidedeploy.ci.spec
+
+      - name: Preview deployment commands
+        working-directory: android_app
+        run: |
+          set -o pipefail
+          mkdir -p "$GITHUB_WORKSPACE/android-artifacts"
+          ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk/$ANDROID_NDK_VERSION"
+          test -d "$ANDROID_NDK_ROOT"
+
+          pyside6-android-deploy \
+            --force \
+            --verbose \
+            --dry-run \
+            --ndk-path "$ANDROID_NDK_ROOT" \
+            --sdk-path "$ANDROID_SDK_ROOT" \
+            --config-file pysidedeploy.ci.spec \
+            2>&1 | tee "$GITHUB_WORKSPACE/android-artifacts/android-dry-run.log"
+
+          if grep -Fq "Exception occurred:" "$GITHUB_WORKSPACE/android-artifacts/android-dry-run.log"; then
+            echo "pyside6-android-deploy reported an exception during the dry-run" >&2
+            exit 1
+          fi
+
+      - name: Build debug APK
+        working-directory: android_app
+        run: |
+          set -o pipefail
+          ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk/$ANDROID_NDK_VERSION"
+          test -d "$ANDROID_NDK_ROOT"
+
+          pyside6-android-deploy \
+            --force \
+            --verbose \
+            --keep-deployment-files \
+            --ndk-path "$ANDROID_NDK_ROOT" \
+            --sdk-path "$ANDROID_SDK_ROOT" \
+            --config-file pysidedeploy.ci.spec \
+            2>&1 | tee "$GITHUB_WORKSPACE/android-artifacts/android-build.log"
+
+          if grep -Fq "Exception occurred:" "$GITHUB_WORKSPACE/android-artifacts/android-build.log"; then
+            python - <<'PY'
+          from pathlib import Path
+
+          log = Path("../android-artifacts/android-build.log").read_text(errors="replace")
+          diagnostic = log.strip()[-6000:]
+          escaped = (
+              diagnostic.replace("%", "%25")
+              .replace("\r", "%0D")
+              .replace("\n", "%0A")
+          )
+          print(f"::error title=pyside6-android-deploy failed::{escaped}")
+          PY
+            exit 1
+          fi
+
+          # A dry-run only prints `buildozer init`; it does not create the spec.
+          # Validate the generated requirements after the real deployment instead.
+          python - <<'PY'
+          import configparser
+          import os
+          from pathlib import Path
+
+          path = Path("buildozer.spec")
+          if not path.is_file():
+              raise SystemExit(f"Generated Buildozer spec not found: {path.resolve()}")
+
+          config = configparser.ConfigParser()
+          config.read(path, encoding="utf-8")
+          actual = config.get("app", "requirements")
+          version = os.environ["ANDROID_PYTHON_VERSION"]
+          expected = f"python3=={version},hostpython3=={version},shiboken6,PySide6"
+          if actual != expected:
+              raise SystemExit(
+                  "Unexpected Buildozer requirements: "
+                  f"expected {expected!r}, got {actual!r}"
+              )
+          print(f"Verified Buildozer requirements: {actual}")
+          PY
+
+      - name: Collect APK
+        run: |
+          package="$(find android_app -maxdepth 1 -type f -iname "*-arm64-v8a-debug.apk" -print -quit)"
+          if [[ -z "$package" ]]; then
+            echo "pyside6-android-deploy completed but the final arm64 APK was not found" >&2
+            find android_app -type f -iname "*.apk" -print >&2
+            exit 1
+          fi
+
+          export package
+          python - <<'PY'
+          import os
+          import re
+          import zipfile
+          from pathlib import Path
+
+          apk = Path(os.environ["package"])
+          expected_minor = ".".join(
+              os.environ["ANDROID_PYTHON_VERSION"].split(".")[:2]
+          )
+          expected_library = f"lib/arm64-v8a/libpython{expected_minor}.so"
+
+          with zipfile.ZipFile(apk) as archive:
+              names = set(archive.namelist())
+
+          python_libraries = sorted(
+              name
+              for name in names
+              if re.fullmatch(r"lib/arm64-v8a/libpython\d+\.\d+\.so", name)
+          )
+          if expected_library not in names:
+              raise SystemExit(
+                  f"Expected {expected_library} in {apk}, found {python_libraries}"
+              )
+          unexpected = [name for name in python_libraries if name != expected_library]
+          if unexpected:
+              raise SystemExit(
+                  f"Unexpected Android Python runtime libraries in {apk}: {unexpected}"
+              )
+
+          required_libraries = {
+              "lib/arm64-v8a/libshiboken6.abi3.so",
+              "lib/arm64-v8a/libpyside6.abi3.so",
+          }
+          missing = sorted(required_libraries - names)
+          if missing:
+              raise SystemExit(f"Missing required PySide libraries in {apk}: {missing}")
+
+          print(f"Verified Android runtime: {expected_library}")
+          PY
+
+          printf 'Found final package: %s\n' "$package"
+          cp "$package" android-artifacts/MFW-Android-PoC-arm64-debug.apk
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: MFW-Android-PoC-arm64-debug
+          path: android-artifacts/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload deployment diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: MFW-Android-PoC-diagnostics
+          path: |
+            android-artifacts/*.log
+            android_app/pysidedeploy.ci.spec
+            android_app/buildozer.spec
+          if-no-files-found: warn
+          retention-days: 7
