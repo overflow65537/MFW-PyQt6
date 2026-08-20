@@ -50,6 +50,13 @@ def snapshot_cached_image(controller: Any) -> Optional[Any]:
         return None
 
 
+def should_search_desktop_windows_on_ui_thread(controller_type: str | None) -> bool:
+    """Win32/macOS 枚举窗口必须在 UI 线程执行，避免 GetWindowText 死锁。"""
+    if not controller_type:
+        return False
+    return controller_type.lower() in ("win32", "macos")
+
+
 class ControllerHelper:
     """控制器相关工具方法 - 包括 ADB 控制器（模拟器）、Win32 控制器等的管理功能"""
 

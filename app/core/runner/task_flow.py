@@ -41,6 +41,10 @@ from app.utils.notice import (
 from app.utils.logger import logger
 from app.core.service.config_service import ConfigService
 from app.core.utils.holiday import emit_holiday_startup_logs
+from app.core.utils.win32_methods import (
+    resolve_win32_input_method,
+    resolve_win32_screencap_method,
+)
 from app.core.utils.resource_pipeline_check import (
     check_resource_pipeline,
     format_pipeline_issue,
@@ -2798,41 +2802,45 @@ class TaskFlowRunner(QObject):
             if raw_keyboard_method is not None:
                 controller_config["keyboard_input_methods"] = raw_keyboard_method
 
+        interface_entry = self._get_interface_controller_entry(controller_name) or {}
+        win32_cfg = interface_entry.get("win32")
+        if not isinstance(win32_cfg, dict):
+            win32_cfg = {}
+
         def _collect_win32_params():
             hwnd_raw = controller_config.get("hwnd", 0)
             try:
                 hwnd_value = int(hwnd_raw)
             except (TypeError, ValueError):
                 hwnd_value = 0
-            screencap = (
+            # 配置缺失/0/-1 时回退到 interface.json 的 screencap/mouse/keyboard。
+            # 旧实现把截图默认成 GDI(1)，Unity 窗口会一直停在第一帧。
+            screencap = resolve_win32_screencap_method(
                 raw_screencap_method
                 if raw_screencap_method is not None
-                else controller_config.get("win32_screencap_methods", 1)
+                else controller_config.get("win32_screencap_methods"),
+                fallback=win32_cfg.get("screencap"),
             )
-            mouse = (
+            mouse = resolve_win32_input_method(
                 raw_mouse_method
                 if raw_mouse_method is not None
-                else controller_config.get("mouse_input_methods", 1)
+                else controller_config.get("mouse_input_methods"),
+                fallback=(
+                    win32_cfg.get("mouse")
+                    or win32_cfg.get("mouse_input")
+                    or win32_cfg.get("input")
+                ),
             )
-            keyboard = (
+            keyboard = resolve_win32_input_method(
                 raw_keyboard_method
                 if raw_keyboard_method is not None
-                else controller_config.get("keyboard_input_methods", 1)
+                else controller_config.get("keyboard_input_methods"),
+                fallback=(
+                    win32_cfg.get("keyboard")
+                    or win32_cfg.get("keyboard_input")
+                    or win32_cfg.get("input")
+                ),
             )
-
-            def _safe_int(value: Any) -> int | None:
-                try:
-                    return int(value)
-                except (TypeError, ValueError):
-                    return None
-
-            # 兼容旧配置里将 -1 作为 Win32 "default" 的写法。
-            if _safe_int(screencap) == -1:
-                screencap = int(MaaWin32ScreencapMethodEnum.DXGI_DesktopDup.value)
-            if _safe_int(mouse) == -1:
-                mouse = int(MaaWin32InputMethodEnum.Seize.value)
-            if _safe_int(keyboard) == -1:
-                keyboard = int(MaaWin32InputMethodEnum.Seize.value)
             return hwnd_value, screencap, mouse, keyboard
 
         logger.info("每次连接前自动搜索 Win32 窗口...")
@@ -2860,6 +2868,13 @@ class TaskFlowRunner(QObject):
                 return False
 
             # 需求：如果已搜索到窗口，则直接尝试连接并返回成功/失败（不再启动程序兜底）
+            logger.info(
+                "Win32 连接参数: hwnd=%s screencap=%s mouse=%s keyboard=%s",
+                hwnd,
+                screencap_method,
+                mouse_method,
+                keyboard_method,
+            )
             connect_success = await self.maafw.connect_win32hwnd(
                 hwnd,
                 screencap_method,
@@ -2903,6 +2918,13 @@ class TaskFlowRunner(QObject):
             )
             if not hwnd:
                 return False
+            logger.info(
+                "Win32 连接参数: hwnd=%s screencap=%s mouse=%s keyboard=%s",
+                hwnd,
+                screencap_method,
+                mouse_method,
+                keyboard_method,
+            )
             return await self.maafw.connect_win32hwnd(
                 hwnd, screencap_method, mouse_method, keyboard_method
             )
@@ -3902,7 +3924,12 @@ class TaskFlowRunner(QObject):
         controller_name: str,
         controller_config: Dict[str, Any],
     ) -> Dict[str, Any] | None:
-        """自动搜索 Win32 窗口并找到与旧配置一致的那一项"""
+        """自动搜索 Win32 窗口并找到与旧配置一致的那一项
+
+        必须在 qasync/UI 线程调用 Toolkit.find_desktop_windows()。
+        该 API 内部会对窗口 SendMessage(WM_GETTEXT)；放到其它线程且持有 GIL
+        时，会与本进程 Qt 窗口形成死锁。
+        """
         try:
             windows = Toolkit.find_desktop_windows()
             if not windows:

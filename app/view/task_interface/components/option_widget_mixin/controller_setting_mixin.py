@@ -525,7 +525,9 @@ class ControllerSettingWidget(QWidget):
             "keyboard_input_methods",
             "win32_screencap_methods",
         ]:
-            controller_cfg.setdefault(key, win32_defaults.get(key, 0))
+            if key not in win32_defaults:
+                continue
+            controller_cfg.setdefault(key, win32_defaults[key])
 
     def _get_win32_regex_filters(
         self, controller_name: str
