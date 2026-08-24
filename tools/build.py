@@ -152,14 +152,41 @@ elif sys.platform == "linux":
     ]  # 禁用控制台窗口
 
 # === 二进制文件处理 ===
-# 收集 MAA 的本地库文件
+# 保持 pip 布局：主库在 maa/bin，FastDeploy 等配件在 maa 的上一级（@rpath=../../）
 bin_dir = os.path.join(maa_path, "bin")
 bin_files = []
 for f in os.listdir(bin_dir):
+    src = os.path.join(bin_dir, f)
+    if os.path.isdir(src):
+        continue
     print(f"[DEBUG] Found binary file: {f}")
-    print(f"[DEBUG] Adding binary file: {os.path.join(bin_dir, f)}")
+    print(f"[DEBUG] Adding binary file: {src}")
     bin_files.append(f)
-    base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}."]
+    base_command += [f"--add-binary={src}{os.pathsep}maa/bin"]
+
+_maa_dep_prefixes = (
+    "libfastdeploy",
+    "fastdeploy",
+    "libonnxruntime",
+    "onnxruntime",
+    "libopencv",
+    "opencv_",
+)
+for item in Path(maa_path).parent.iterdir():
+    if not item.is_file():
+        continue
+    name = item.name.lower()
+    if not (
+        name.endswith((".dylib", ".so", ".dll"))
+        or ".so." in name
+    ):
+        continue
+    if not any(name.startswith(prefix) for prefix in _maa_dep_prefixes):
+        continue
+    if item.name in bin_files:
+        continue
+    print(f"[DEBUG] Found Maa third-party library: {item}")
+    base_command += [f"--add-binary={item}{os.pathsep}."]
 
 
 # === 开始构建 ===
@@ -178,32 +205,40 @@ if os.path.isdir(temp_files_dir):
 else:
     print(f"[WARN] Temporary files directory not found: {temp_files_dir}")
 
-
+# 迁入发行根 maafw/，但保留 pip 两层布局，满足 @loader_path/../../：
+#   maafw/maa/bin/*.dylib   主库
+#   maafw/libfastdeploy_*.dylib  等配件
 maa_fw_dir = os.path.join(dist_dir, "maafw")
-os.makedirs(maa_fw_dir, exist_ok=True)
-for i in bin_files:
-    src_binary = None
-    for search_dir in (internal_dir, dist_dir):
-        candidate = os.path.join(search_dir, i)
-        if os.path.exists(candidate):
-            src_binary = candidate
-            break
-    dst_binary = os.path.join(maa_fw_dir, i)
-    if src_binary:
-        shutil.copy(src_binary, dst_binary)
-        if os.path.dirname(src_binary) != maa_fw_dir:
-            os.remove(src_binary)
-    else:
-        print(f"[WARN] Expected binary missing: {i} (searched _internal and dist root)")
+maa_fw_bin = os.path.join(maa_fw_dir, "maa", "bin")
+os.makedirs(maa_fw_bin, exist_ok=True)
+
+src_maa_bin = os.path.join(internal_dir, "maa", "bin")
+if os.path.isdir(src_maa_bin):
+    shutil.copytree(src_maa_bin, maa_fw_bin, dirs_exist_ok=True)
+    shutil.rmtree(src_maa_bin)
+
+for item_name in bin_files:
+    src_binary = os.path.join(internal_dir, item_name)
+    if os.path.isfile(src_binary):
+        shutil.copy(src_binary, os.path.join(maa_fw_bin, item_name))
+        os.remove(src_binary)
+
+for item in Path(internal_dir).iterdir():
+    name = item.name.lower()
+    if item.is_file() and any(name.startswith(prefix) for prefix in _maa_dep_prefixes):
+        shutil.copy(item, os.path.join(maa_fw_dir, item.name))
+        item.unlink()
+
+# 配件必须在 maa/bin 的上两级（maafw/）；maa/bin 里若已有则再拷一份
+for item in Path(maa_fw_bin).iterdir():
+    name = item.name.lower()
+    if item.is_file() and any(name.startswith(prefix) for prefix in _maa_dep_prefixes):
+        shutil.copy(item, os.path.join(maa_fw_dir, item.name))
 
 plugins_src = os.path.join(maa_path, "bin", "plugins")
-plugins_dst = os.path.join(maa_fw_dir, "plugins")
+plugins_dst = os.path.join(maa_fw_bin, "plugins")
 if os.path.isdir(plugins_src):
     shutil.copytree(plugins_src, plugins_dst, dirs_exist_ok=True)
-
-maa_bin_internal = os.path.join(internal_dir, "maa", "bin")
-if os.path.isdir(maa_bin_internal):
-    shutil.rmtree(maa_bin_internal)
 
 # 复制README和许可证
 shutil.copy(
