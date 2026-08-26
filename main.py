@@ -29,6 +29,7 @@ import traceback
 from pathlib import Path
 
 from app.utils.install_paths import is_packed
+from app.utils.maafw_binary import configure_packed_maafw_binary_path
 
 
 def _install_anchor_path() -> str:
@@ -67,26 +68,15 @@ def _resolve_install_root() -> Path:
     return root
 
 
-def _resolve_maafw_dir(install_root: Path) -> Path:
-    """MaaFW 原生库目录：固定在发行根下的 ./maafw，而非 ./_internal/maafw。"""
-    return (install_root / "maafw").resolve()
-
-
 # 设置工作目录为发行根（避免 Nuitka onefile 留在 Temp 解压目录）
 _install_root = _resolve_install_root()
 os.chdir(_install_root)
 # 打包版：MaaFramework 等原生库放在发行根下的 maafw/（见 CI move_maa_bin_to_maafw、PyInstaller build.py）
+# macOS：PyInstaller 会把 dylib rpath 改成 @loader_path/../..，需保持 maa/bin + 上两级配件
 if is_packed():
-    _maafw = _resolve_maafw_dir(_install_root)
-    os.environ["MAAFW_BINARY_PATH"] = str(_maafw)
-    if sys.platform == "win32":
-        try:
-            os.add_dll_directory(str(_maafw))
-            _pl = _maafw / "plugins"
-            if _pl.is_dir():
-                os.add_dll_directory(str(_pl))
-        except (AttributeError, OSError, ValueError):
-            pass
+    configure_packed_maafw_binary_path(
+        _install_root, meipass=getattr(sys, "_MEIPASS", None)
+    )
 
 
 def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:
@@ -310,9 +300,13 @@ def _run() -> int:
         from maa.context import Context
         from maa.custom_action import CustomAction
         from maa.custom_recognition import CustomRecognition
+        from maa.library import Library
+
+        # 在此触发 dylib/dll 加载，避免进入主窗口导入后再因缺失依赖崩溃
+        Library.version()
     except (ImportError, OSError) as e:
         error_msg = str(e).lower()
-        if any(
+        if sys.platform == "win32" and any(
             keyword in error_msg
             for keyword in [
                 "dll",

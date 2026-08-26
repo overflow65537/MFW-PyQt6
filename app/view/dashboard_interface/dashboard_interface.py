@@ -45,14 +45,20 @@ from app.utils.markdown_helper import render_markdown
 from app.utils.rich_text_helper import apply_rich_text_html
 from app.utils.release_notes import load_release_notes, resolve_project_name
 
-from maa.library import Library
-
-MAAFW_VERSION = Library.version()
 UI_VERSION = getattr(
     version_meta,
     "__version__",
     "v0.0.1"
 )
+
+
+def _read_maafw_version() -> str:
+    try:
+        from maa.library import Library
+
+        return Library.version() or ""
+    except Exception:
+        return ""
 
 
 class LiquidGlassHeroCard(QFrame):
@@ -679,9 +685,10 @@ class DashboardInterface(QWidget):
         return current_version or self.tr("(unknown)")
 
     def _format_hero_version_text(self) -> str:
+        maafw_version = _read_maafw_version() or self.tr("(unknown)")
         return (
             self.tr("FrameWork Version")
-            + f" {MAAFW_VERSION}  ·  "
+            + f" {maafw_version}  ·  "
             + self.tr("Resource Version")
             + f" {self._get_hero_resource_version()}  ·  UI {UI_VERSION}"
         )
