@@ -283,6 +283,20 @@ class InterfaceManager:
             for item in data:
                 self._resolve_text_fields_from_files(item)
 
+    @staticmethod
+    def _looks_like_local_text_file_path(candidate: str) -> bool:
+        """内联说明/HTML 不能当文件名；macOS 单段超过 NAME_MAX(255) 时 stat 会 ENAMETOOLONG。"""
+        if any(ch in candidate for ch in ("\n", "\r", "\x00")):
+            return False
+        lowered = candidate.lower()
+        if lowered.startswith(("http://", "https://", "file:")):
+            return False
+        parts = Path(candidate).parts or (candidate,)
+        try:
+            return all(len(part.encode("utf-8")) <= 255 for part in parts)
+        except UnicodeEncodeError:
+            return False
+
     def _try_load_text_from_path(self, value: str) -> str:
         """
         尝试将字符串当作文件路径读取文本内容，读取失败则返回原始字符串
@@ -291,14 +305,17 @@ class InterfaceManager:
             return value
 
         candidate = value.strip()
-        if not candidate:
+        if not candidate or not self._looks_like_local_text_file_path(candidate):
             return value
 
         target_path = Path(candidate)
         if not target_path.is_absolute():
             target_path = self._interface_dir / target_path
 
-        if not target_path.exists() or not target_path.is_file():
+        try:
+            if not target_path.exists() or not target_path.is_file():
+                return value
+        except OSError:
             return value
 
         try:

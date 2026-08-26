@@ -1,4 +1,5 @@
 import json
+import tempfile
 from pathlib import Path
 
 import jsonc
@@ -78,6 +79,28 @@ def test_interface_manager_finds_cfa_setting_in_parent_dir(tmp_path: Path):
     manager.initialize(interface_path=nested / "interface.json")
 
     assert manager.get_original_interface()["agent"]["embedded"] is True
+
+
+def test_try_load_text_from_path_keeps_inline_html_description():
+    with tempfile.TemporaryDirectory() as tmp:
+        manager = InterfaceManager()
+        manager._reset_state()
+        manager._interface_dir = Path(tmp)
+        inline = (
+            "是否消耗时序通行证最好提前自己设置好<br/>"
+            '<b><font color="#ff0000">伟</font></b>' * 40
+        )
+        assert manager._try_load_text_from_path(inline) == inline
+
+
+def test_try_load_text_from_path_reads_relative_file():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "desc.md").write_text("from-file", encoding="utf-8")
+        manager = InterfaceManager()
+        manager._reset_state()
+        manager._interface_dir = root
+        assert manager._try_load_text_from_path("desc.md") == "from-file"
 
 
 def test_sync_interface_after_hotfix_uses_apply_helper(bundle_dir: Path):
