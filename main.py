@@ -68,22 +68,38 @@ def _resolve_install_root() -> Path:
 
 
 def _resolve_maafw_dir(install_root: Path) -> Path:
-    """MaaFW 原生库目录：默认发行根下的 ./maafw。
+    """打包后的 MaaFW 原生库目录，供 MAAFW_BINARY_PATH 使用。
 
-    macOS 因 dylib rpath 为 ``@loader_path/../../``，打包后使用
-    ``maafw/maa/bin``（主库）+ ``maafw/``（配件）。
+    macOS 的 rpath 是 ``@loader_path/../../``，所以 ``maafw`` 内需保持 pip 布局：
+    ``maafw/maa/bin``（主库）+ ``maafw/``（配件）。Windows 仍是扁平的 ``./maafw``。
     """
-    if sys.platform == "darwin":
-        nested = install_root / "maafw" / "maa" / "bin"
-        if (nested / "libMaaFramework.dylib").is_file():
-            return nested.resolve()
+    lib_names = (
+        "libMaaFramework.dylib",
+        "libMaaFramework.so",
+        "MaaFramework.dll",
+    )
+
+    def _is_framework_bin(path: Path) -> bool:
+        return path.is_dir() and any((path / name).is_file() for name in lib_names)
+
+    candidates = [
+        install_root / "maafw" / "maa" / "bin",
+        install_root / "maafw",
+    ]
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidates.append(Path(meipass) / "maa" / "bin")
+    candidates.append(install_root / "maa" / "bin")
+    for candidate in candidates:
+        if _is_framework_bin(candidate):
+            return candidate.resolve()
     return (install_root / "maafw").resolve()
 
 
 # 设置工作目录为发行根（避免 Nuitka onefile 留在 Temp 解压目录）
 _install_root = _resolve_install_root()
 os.chdir(_install_root)
-# 打包版：MaaFramework 等原生库放在发行根下的 maafw/（macOS 为 maafw/maa/bin）
+# 打包版：MAAFW_BINARY_PATH 指向 maafw/maa/bin（macOS）或扁平 maafw（Windows）
 if is_packed():
     _maafw = _resolve_maafw_dir(_install_root)
     os.environ["MAAFW_BINARY_PATH"] = str(_maafw)
