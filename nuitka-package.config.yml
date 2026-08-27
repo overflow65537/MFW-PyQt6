@@ -1,9 +1,5 @@
 # maa 运行时从 bin、bin/plugins 动态加载原生库；standalone 编译期需显式收录。
 # 整包由 Nuitka --include-package=maa 与本 dlls 规则纳入产物，不再由 build_nuitka 手动拷贝。
-#
-# MaaAgentBinary：ADB 推送到 Android 设备的 minicap / minitouch / maatouch 等二进制，
-# 非宿主原生库。macOS/Linux arm64 会与 Android arm64 ELF 撞架构，需配合 main.py 中
-# nuitka-project 的 --noinclude-dlls=MaaAgentBinary/*，并在此按 data-files 拷贝。
 ---
 - module-name: 'maa'
   dlls:
@@ -16,9 +12,11 @@
         prefixes:
           - '*'
 
+# 仅 macOS：ADB 代理（minicap 等）按 data-files 拷贝，配合 main.py 中 Darwin 条件 noinclude-dlls。
 - module-name: 'MaaAgentBinary'
   data-files:
-    dirs:
-      - 'minicap'
-      - 'minitouch'
-      - 'maatouch'
+    - dirs:
+        - 'minicap'
+        - 'minitouch'
+        - 'maatouch'
+      when: 'macos'
