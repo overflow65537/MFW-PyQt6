@@ -10,6 +10,7 @@ from app.utils.maafw_binary import (
     resolve_maafw_binary_dir,
     restore_internal_dylibs_from_maafw,
 )
+from tools.fix_maafw_macos_dylib_paths import rewrite_maafw_dependency
 from tools.move_maa_bin_to_maafw import move_maa_bin_to_maafw
 
 
@@ -130,6 +131,22 @@ class MoveMaafwBinaryTests(unittest.TestCase):
                 ).is_file()
             )
             self.assertFalse((source / "maa" / "bin").exists())
+
+
+class RewriteMaafwDependencyTests(unittest.TestCase):
+    def test_rewrites_executable_path_maa_bin_to_loader_path(self):
+        old = "@executable_path/maa/bin/libfastdeploy_ppocr.dylib"
+        self.assertEqual(
+            rewrite_maafw_dependency(old),
+            "@loader_path/libfastdeploy_ppocr.dylib",
+        )
+
+    def test_rewrites_absolute_maa_bin_path(self):
+        old = "/tmp/build/maa/bin/libMaaUtils.dylib"
+        self.assertEqual(
+            rewrite_maafw_dependency(old),
+            "@loader_path/libMaaUtils.dylib",
+        )
 
 
 if __name__ == "__main__":
