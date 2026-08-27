@@ -1,5 +1,10 @@
 # maa 运行时从 bin、bin/plugins 动态加载原生库；standalone 编译期需显式收录。
 # 整包由 Nuitka --include-package=maa 与本 dlls 规则纳入产物，不再由 build_nuitka 手动拷贝。
+#
+# MaaAgentBinary 内含推送到 Android 设备的 minicap/minitouch/maatouch 等 ELF .so。
+# 在 macOS / Linux arm64 上会与宿主架构撞车并被 Nuitka 误判为宿主原生库，需：
+#   1) 此处 data-files 按数据文件拷贝
+#   2) CI 使用 --noinclude-dlls=MaaAgentBinary/*
 ---
 - module-name: 'maa'
   dlls:
@@ -11,3 +16,10 @@
         relative_path: 'bin/plugins'
         prefixes:
           - '*'
+
+- module-name: 'MaaAgentBinary'
+  data-files:
+    dirs:
+      - 'minicap'
+      - 'minitouch'
+      - 'maatouch'
