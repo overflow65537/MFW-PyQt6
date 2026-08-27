@@ -3,10 +3,11 @@
 #   SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-将发行目录下的 maa/bin 原生库迁移到 maafw/（与运行时 MAAFW_BINARY_PATH 一致）。
+将编译目录下的 maa/bin 原生库迁移到发行根 maafw/。
 
 Nuitka standalone 产物中 DLL 默认在 <release>/maa/bin；本脚本在组装阶段执行。
-用法: python tools/move_maa_bin_to_maafw.py <release_dir>
+macOS app-dist 的源目录位于 MFW.app/Contents/MacOS，目标则是 .app 的父目录。
+用法: python tools/move_maa_bin_to_maafw.py <source_root> [destination_root]
 """
 
 from __future__ import annotations
@@ -16,11 +17,13 @@ import sys
 from pathlib import Path
 
 
-def move_maa_bin_to_maafw(release: Path) -> bool:
-    maa_bin = release / "maa" / "bin"
+def move_maa_bin_to_maafw(
+    source_root: Path, destination_root: Path | None = None
+) -> bool:
+    maa_bin = source_root / "maa" / "bin"
     if not maa_bin.is_dir():
         return False
-    dest = release / "maafw"
+    dest = (destination_root or source_root) / "maafw"
     dest.mkdir(parents=True, exist_ok=True)
     for item in list(maa_bin.iterdir()):
         target = dest / item.name
@@ -35,18 +38,20 @@ def move_maa_bin_to_maafw(release: Path) -> bool:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
+    if len(sys.argv) not in {2, 3}:
         print(
-            "用法: python tools/move_maa_bin_to_maafw.py <release_dir>",
+            "用法: python tools/move_maa_bin_to_maafw.py <source_root> [destination_root]",
             file=sys.stderr,
         )
         return 2
-    release = Path(sys.argv[1])
-    if not release.is_dir():
-        print(f"目录不存在: {release}", file=sys.stderr)
+    source_root = Path(sys.argv[1])
+    destination_root = Path(sys.argv[2]) if len(sys.argv) == 3 else source_root
+    if not source_root.is_dir():
+        print(f"目录不存在: {source_root}", file=sys.stderr)
         return 1
-    if not move_maa_bin_to_maafw(release):
-        print(f"错误: 未找到 {release / 'maa' / 'bin'}", file=sys.stderr)
+    destination_root.mkdir(parents=True, exist_ok=True)
+    if not move_maa_bin_to_maafw(source_root, destination_root):
+        print(f"错误: 未找到 {source_root / 'maa' / 'bin'}", file=sys.stderr)
         return 1
     return 0
 

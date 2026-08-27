@@ -14,3 +14,15 @@ MFW.exe --direct-run --force-restart --config-id c_08b08298fcf340d8a028ee6350312
 ```
 
 查看完整说明：`python main.py --help`
+
+## 打包
+
+Windows、Linux 与 macOS 均由 `.github/workflows/install.yml` 中的 Nuitka job 构建。macOS 主程序使用 `app-dist`，更新器使用 `onefile`：
+
+```bash
+python -m nuitka --mode=app-dist --enable-plugin=pyside6 \
+  --macos-app-mode=gui --macos-app-icon=app/assets/icons/logo.png main.py
+python -m nuitka --mode=onefile --output-filename=MFWUpdater updater.py
+```
+
+CI 会把产物组装为 `MFW.app`、`MFWUpdater`、`maafw/` 同级的发行根。`interface.json(c)`、`resource/`、`bundle/` 和 `config/` 必须保留在 `.app` 外部；调试更新流程时也应从该发行根启动程序。

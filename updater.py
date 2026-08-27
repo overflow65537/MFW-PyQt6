@@ -3,6 +3,7 @@ import logging
 import os
 import random
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,13 @@ from typing import List, Tuple
 from uuid import uuid4
 
 from mfw_cli import FLAG_DIRECT_RUN, collect_passthrough_flags
+from app.utils.install_paths import (
+    APP_BUNDLE_NAME,
+    APP_EXECUTABLE_RELATIVE_PATH,
+    is_app_bundle_layout,
+    resolve_install_root,
+    resolve_main_executable,
+)
 
 DIRECT_RUN_EXTRA_ARGS: list[str] = collect_passthrough_flags(sys.argv, FLAG_DIRECT_RUN)
 
@@ -115,6 +123,10 @@ RUNTIME_OPTS = UpdaterRuntimeOptions()
 FULL_UPDATE_EXCLUDES = [
     "config",
     "bundle",
+    "resource",
+    "interface.json",
+    "interface.jsonc",
+    "CFA_setting.json",
     "backup",
     "hotfix",
     "release_notes",
@@ -201,28 +213,23 @@ def _get_mfw_instance_key() -> str:
     # 优先使用传入的主程序路径
     mfw_exe = RUNTIME_OPTS.mfw_exe_path
     if mfw_exe:
-        return os.path.abspath(mfw_exe)
+        return str(resolve_main_executable(anchor=mfw_exe))
 
     startup_executable_name = RUNTIME_OPTS.startup_executable_name
     if startup_executable_name:
-        return os.path.abspath(os.path.join(os.getcwd(), startup_executable_name))
+        candidate = Path(os.getcwd()) / startup_executable_name
+        return str(resolve_main_executable(os.getcwd(), anchor=candidate))
 
-    # 由于工作目录相同，直接使用当前目录下的主程序路径
-    if sys.platform.startswith("win32"):
-        default_exe = os.path.join(os.getcwd(), "MFW.exe")
-    else:
-        default_exe = os.path.join(os.getcwd(), "MFW")
-
-    # 使用绝对路径作为实例键（与 main.py 保持一致）
-    return os.path.abspath(default_exe)
+    return _get_default_startup_executable_path()
 
 
 def _get_default_startup_executable_path() -> str:
-    if sys.platform.startswith("win32"):
-        default_name = "MFW.exe"
-    else:
-        default_name = "MFW"
-    return os.path.abspath(os.path.join(os.getcwd(), default_name))
+    root = Path.cwd().resolve()
+    app_executable = root / APP_BUNDLE_NAME / APP_EXECUTABLE_RELATIVE_PATH
+    if app_executable.is_file():
+        return str(app_executable.resolve())
+    default_name = "MFW.exe" if sys.platform.startswith("win32") else "MFW"
+    return str((root / default_name).resolve())
 
 
 def _get_expected_startup_executable_path() -> str:
@@ -238,6 +245,9 @@ def _get_expected_startup_executable_path() -> str:
 def _restore_startup_executable_name() -> str:
     default_path = _get_default_startup_executable_path()
     expected_path = _get_expected_startup_executable_path()
+
+    if is_app_bundle_layout(expected_path) or is_app_bundle_layout(default_path):
+        return expected_path if os.path.exists(expected_path) else default_path
 
     if _norm_path(default_path) == _norm_path(expected_path):
         return default_path
@@ -573,7 +583,7 @@ def start_mfw_process():
         if DIRECT_RUN_EXTRA_ARGS:
             cmd.extend(DIRECT_RUN_EXTRA_ARGS)
         update_logger.info("重启/启动 MFW 进程: %s", " ".join(cmd))
-        subprocess.Popen(cmd, cwd=os.path.dirname(executable_path) or None)
+        subprocess.Popen(cmd, cwd=os.getcwd())
     except Exception as exc:
         update_logger.error(f"启动MFW程序失败: {exc}")
 
@@ -880,6 +890,44 @@ def safe_delete_all_except(exclude_relatives):
     return SafeDeleteResult(True, backups, backup_dir)
 
 
+def _extract_zip_member_preserving_mode(archive, member, destination: Path) -> Path:
+    """安全提取 ZIP 成员，并保留 macOS app bundle 的权限和符号链接。"""
+    member_name = member.filename.replace("\\", "/")
+    relative = Path(*[part for part in member_name.split("/") if part])
+    if not relative.parts or relative.is_absolute() or ".." in relative.parts:
+        raise ValueError(f"更新包包含非法路径: {member.filename}")
+
+    root = destination.resolve()
+    target = (destination / relative).resolve(strict=False)
+    if os.path.commonpath((str(root), str(target))) != str(root):
+        raise ValueError(f"更新包路径越界: {member.filename}")
+
+    mode = member.external_attr >> 16
+    if member.is_dir() or member_name.endswith("/"):
+        target.mkdir(parents=True, exist_ok=True)
+        return target
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if stat.S_ISLNK(mode):
+        link_target = archive.read(member).decode("utf-8")
+        if os.path.isabs(link_target):
+            raise ValueError(f"更新包包含绝对符号链接: {member.filename}")
+        resolved_link = (target.parent / link_target).resolve(strict=False)
+        if os.path.commonpath((str(root), str(resolved_link))) != str(root):
+            raise ValueError(f"更新包符号链接越界: {member.filename}")
+        if target.exists() or target.is_symlink():
+            _remove_path(target)
+        os.symlink(link_target, target)
+        return target
+
+    with archive.open(member) as source, target.open("wb") as output:
+        shutil.copyfileobj(source, output)
+    permissions = stat.S_IMODE(mode)
+    if permissions:
+        target.chmod(permissions)
+    return target
+
+
 def _extract_zip_to_temp(zip_path: Path):
     import zipfile
 
@@ -895,7 +943,8 @@ def _extract_zip_to_temp(zip_path: Path):
             for idx, file_info in enumerate(file_list, 1):
                 try:
                     print(f"[解压] [{idx}/{total_files}] 正在解压: {file_info}")
-                    archive.extract(file_info, temp_dir)
+                    member = archive.getinfo(file_info)
+                    _extract_zip_member_preserving_mode(archive, member, temp_dir)
                     extracted_count += 1
                     if extracted_count % 50 == 0 or extracted_count == total_files:
                         print(f"[解压] 已解压 {extracted_count}/{total_files} 个文件...")
@@ -951,6 +1000,140 @@ def _copy_temp_to_root(temp_dir: Path, *, verbose: bool = False):
                 print(f"✓ 已复制: {dest_file}")
 
 
+@dataclass
+class _AtomicInstallEntry:
+    target: Path
+    staging: Path
+    backup: Path
+    backed_up: bool = False
+    installed: bool = False
+
+
+def _remove_path(path: Path) -> None:
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _find_app_payload_root(
+    temp_dir: Path, *, report_error: bool = False
+) -> Path | None:
+    direct = temp_dir / APP_BUNDLE_NAME
+    if direct.is_dir():
+        return temp_dir
+    candidates = [
+        item
+        for item in temp_dir.rglob(APP_BUNDLE_NAME)
+        if item.is_dir()
+        and (item / "Contents" / "Info.plist").is_file()
+        and (item / APP_EXECUTABLE_RELATIVE_PATH).is_file()
+    ]
+    if len(candidates) != 1:
+        if not report_error:
+            return None
+        update_logger.error(
+            "更新包中的 %s 数量无效: %s", APP_BUNDLE_NAME, len(candidates)
+        )
+        return None
+    return candidates[0].parent
+
+
+def _validate_app_bundle(app_path: Path) -> bool:
+    required = (
+        app_path / "Contents" / "Info.plist",
+        app_path / APP_EXECUTABLE_RELATIVE_PATH,
+    )
+    missing = [str(path) for path in required if not path.is_file()]
+    if missing:
+        update_logger.error("更新包中的 MFW.app 不完整，缺少: %s", ", ".join(missing))
+        return False
+    return True
+
+
+def _restore_macos_executable_bits(install_root: Path) -> None:
+    if sys.platform == "win32":
+        return
+    candidates = (
+        install_root / APP_BUNDLE_NAME / APP_EXECUTABLE_RELATIVE_PATH,
+        install_root / "MFWUpdater",
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            candidate.chmod(candidate.stat().st_mode | 0o111)
+
+
+def _replace_app_bundle_atomic(temp_dir: Path, install_root: Path) -> bool:
+    """事务化安装 ``MFW.app`` 及其旁路运行时，失败时恢复旧版本。"""
+    payload_root = _find_app_payload_root(temp_dir, report_error=True)
+    if payload_root is None:
+        return False
+    source_app = payload_root / APP_BUNDLE_NAME
+    if not _validate_app_bundle(source_app):
+        return False
+
+    protected_names = {name.casefold() for name in FULL_UPDATE_EXCLUDES}
+    protected_names.update({"mfwupdater1", "mfwupdater1.exe"})
+    transaction_id = uuid4().hex
+    entries: list[_AtomicInstallEntry] = []
+
+    try:
+        for source in payload_root.iterdir():
+            if source.name.casefold() in protected_names:
+                update_logger.info("保留用户数据，跳过更新包条目: %s", source.name)
+                continue
+            target = install_root / source.name
+            staging = install_root / f".{source.name}.staging-{transaction_id}"
+            backup = install_root / f".{source.name}.backup-{transaction_id}"
+            _remove_path(staging)
+            _remove_path(backup)
+            if source.is_dir() and not source.is_symlink():
+                shutil.copytree(source, staging, symlinks=True)
+            else:
+                shutil.copy2(source, staging, follow_symlinks=False)
+            entries.append(_AtomicInstallEntry(target, staging, backup))
+
+        if not any(entry.target.name == APP_BUNDLE_NAME for entry in entries):
+            raise RuntimeError("更新事务未包含 MFW.app")
+
+        for entry in entries:
+            if entry.target.exists() or entry.target.is_symlink():
+                os.replace(entry.target, entry.backup)
+                entry.backed_up = True
+            os.replace(entry.staging, entry.target)
+            entry.installed = True
+
+        _restore_macos_executable_bits(install_root)
+        if not _validate_app_bundle(install_root / APP_BUNDLE_NAME):
+            raise RuntimeError("安装后的 MFW.app 校验失败")
+    except Exception as exc:
+        update_logger.exception("事务化替换 MFW.app 失败: %s", exc)
+        for entry in reversed(entries):
+            try:
+                if entry.installed:
+                    _remove_path(entry.target)
+                if entry.backed_up and entry.backup.exists():
+                    os.replace(entry.backup, entry.target)
+            except Exception as rollback_exc:
+                update_logger.error(
+                    "回滚更新条目失败: %s (%s)", entry.target, rollback_exc
+                )
+            finally:
+                _remove_path(entry.staging)
+        return False
+
+    for entry in entries:
+        try:
+            _remove_path(entry.backup)
+            _remove_path(entry.staging)
+        except OSError as exc:
+            update_logger.warning("清理更新事务临时项失败: %s", exc)
+    return True
+
+
 def _handle_full_update_failure(
     package_path: str,
     metadata_path: str,
@@ -973,6 +1156,12 @@ def perform_full_update(package_path: str, metadata_path: str, metadata: dict) -
     if not temp_dir:
         _handle_full_update_failure(package_path, metadata_path, metadata)
         return False
+
+    if _find_app_payload_root(temp_dir) is not None:
+        try:
+            return _replace_app_bundle_atomic(temp_dir, Path.cwd().resolve())
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     delete_result = safe_delete_all_except(FULL_UPDATE_EXCLUDES)
     if not delete_result.success:

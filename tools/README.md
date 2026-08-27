@@ -96,19 +96,23 @@ python tools/llm_translate_ts.py --filter all
 
 ---
 
-## `build.py`
+## Nuitka 发行组装工具
 
-使用 **PyInstaller** 打开发行包（含复制部分资源、生成 updater 等）。脚本会切换工作目录到项目根，并清理 `dist/MFW` 后构建。
-
-**用法**（需 **3 个参数**：平台、架构、版本号）：
+三端发行包统一由 `.github/workflows/install.yml` 中的 Nuitka job 构建。`build_nuitka.py` 为组装完成的 `build/mfw-release` 生成更新清单：
 
 ```bash
-python tools/build.py win x86_64 v1.2.3
+python tools/build_nuitka.py --file-list
 ```
 
-若传入参数个数不符合预期，脚本会使用默认占位：`win`、`x86_64`、`v1.0.0`（以脚本内逻辑为准）。
+`move_maa_bin_to_maafw.py` 将 Nuitka 收集的 `maa/bin` 迁移到发行根的 `maafw/`。扁平产物只传一个目录；macOS app-dist 需要分别传 bundle 内源目录和外置发行根：
 
-**依赖**：已安装 PyInstaller 及项目完整运行依赖；具体打包条目以 `build.py` 内配置为准。
+```bash
+python tools/move_maa_bin_to_maafw.py build/main.dist
+python tools/move_maa_bin_to_maafw.py \
+  build/mfw-release/MFW.app/Contents/MacOS build/mfw-release
+```
+
+macOS 的最终布局必须保持 `MFW.app`、`MFWUpdater` 与 `maafw/` 同级。
 
 ---
 

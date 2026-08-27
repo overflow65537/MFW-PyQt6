@@ -105,7 +105,7 @@ MFW 开关写在分隔符 `--` 之前；之后仅传给 Qt。
 参考 MaaFramework 的[自定义动作/识别器说明](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md#%E4%BD%BF%E7%94%A8-json-%E4%BD%8E%E4%BB%A3%E7%A0%81%E7%BC%96%E7%A8%8B%E4%BD%86%E5%AF%B9%E5%A4%8D%E6%9D%82%E4%BB%BB%E5%8A%A1%E4%BD%BF%E7%94%A8%E8%87%AA%E5%AE%9A%E4%B9%89%E9%80%BB%E8%BE%91)：
 
 1. 自定义动作/识别器需使用 Python 3.12。
-2. 若包含第三方库，请将依赖安装到 `_internal` 目录。
+2. 若包含第三方库，请在构建时将依赖纳入 MFW，或由独立 Agent 环境提供；macOS 上不要修改 `MFW.app` 内部文件。
 3. 在 `custom.json` 中声明自定义对象，并在 `interface.json` 的 `custom` 键指出 `custom.json` 路径（`{custom_path}` 默认为仓库根目录下的 `custom/`）。
 4. Pipeline 中通过名字引用自定义动作/识别器。
 
@@ -187,8 +187,23 @@ class 动作对象1(CustomAction):
 ## 自行打包
 
 1. 根据自身需求下载对应系统和架构的项目资产
-2. 将`interface.json`,maafw资源等代码或者描述文件放入资产根目录(MFW执行方式同级)
+2. 将 `interface.json`、资源目录等代码或描述文件放入发行根
 3. 运行
+
+macOS 发行物使用 Nuitka `app-dist`，目录结构如下：
+
+```text
+MFW/
+├── MFW.app/
+├── MFWUpdater
+├── maafw/
+├── interface.json
+├── resource/
+├── bundle/
+└── config/
+```
+
+请整体移动、解压或更新 `MFW/` 目录，不要只移动 `MFW.app`。应用包保持只读，资源热更新写入外置 `resource/` / `bundle/`；UI 全量更新由外置 `MFWUpdater` 在主程序退出后整包替换 `MFW.app`。
 
 ## 许可证
 

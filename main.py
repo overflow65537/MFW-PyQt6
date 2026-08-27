@@ -28,50 +28,18 @@ import atexit
 import traceback
 from pathlib import Path
 
-from app.utils.install_paths import is_packed
+from app.utils.install_paths import (
+    is_packed,
+    resolve_install_anchor,
+    resolve_install_root,
+)
 from app.utils.maafw_binary import configure_packed_maafw_binary_path
 
 
-def _install_anchor_path() -> str:
-    """
-    用于定位发行根目录（interface、config 等）及单实例锁的路径。
-
-    - PyInstaller: sys.frozen 为真，锚点为 sys.executable（旁路布局）。
-    - Nuitka onefile: 无 sys.frozen，__file__ 在临时解压目录；优先 __compiled__.onefile_argv0，
-      否则为启动时 sys.argv[0]（指向用户启动的 .exe）。
-    - 源码运行: 锚点为 main.py 所在目录。
-    """
-    if getattr(sys, "frozen", False):
-        return sys.executable
-    compiled = globals().get("__compiled__")
-    if compiled is not None:
-        return getattr(compiled, "onefile_argv0", None) or sys.argv[0]
-    return __file__
-
-
-def _resolve_install_root() -> Path:
-    """发行根目录：与 interface、maafw 同级，而非 PyInstaller 的 _internal 子目录。"""
-    anchor = Path(_install_anchor_path()).resolve()
-    root = anchor.parent
-    if not is_packed():
-        return root
-
-    # PyInstaller onedir：sys._MEIPASS 指向 _internal，发行根为其父目录
-    meipass = getattr(sys, "_MEIPASS", None)
-    if meipass:
-        internal = Path(meipass).resolve()
-        if internal.name == "_internal":
-            return internal.parent
-
-    if root.name == "_internal":
-        return root.parent
-    return root
-
-
 # 设置工作目录为发行根（避免 Nuitka onefile 留在 Temp 解压目录）
-_install_root = _resolve_install_root()
+_install_root = resolve_install_root()
 os.chdir(_install_root)
-# 打包版：MaaFramework 等原生库放在发行根下的 maafw/（见 CI move_maa_bin_to_maafw、PyInstaller build.py）
+# 打包版：MaaFramework 等原生库放在发行根下的 maafw/
 if is_packed():
     configure_packed_maafw_binary_path(
         _install_root, meipass=getattr(sys, "_MEIPASS", None)
@@ -130,7 +98,7 @@ def _run() -> int:
         show_deprecated_cli_dialog(deprecated_cli)
         deprecated_cli_shown = True
 
-    instance_key = str(Path(_install_anchor_path()).resolve())
+    instance_key = str(resolve_install_anchor())
 
     # DPI缩放配置（--force-restart 等待弹窗也需要）
     if cfg.get(cfg.dpiScale) != "Auto":

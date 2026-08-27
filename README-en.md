@@ -103,7 +103,7 @@ Place `CFA_setting.json` at the resource bundle root. When the `update_flag` fie
 Refer to MaaFramework's [custom action/recognizer guide](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md#%E4%BD%BF%E7%94%A8-json-%E4%BD%8E%E4%BB%A3%E7%A0%81%E7%BC%96%E7%A8%8B%E4%BD%86%E5%AF%B9%E5%A4%8D%E6%9D%82%E4%BB%BB%E5%8A%A1%E4%BD%BF%E7%94%A8%E8%87%AA%E5%AE%9A%E4%B9%89%E9%80%BB%E8%BE%91):
 
 1. Use Python 3.12 for custom actions/recognizers.
-2. If third-party deps are required, install them into the `_internal` directory.
+2. If third-party dependencies are required, include them when building MFW or provide them through a separate Agent environment. Do not modify files inside `MFW.app` on macOS.
 3. Declare custom objects in `custom.json`, and point to it via the `custom` key in `interface.json` (`{custom_path}` defaults to the repo's `custom/`).
 4. Reference the custom names in your pipeline.
 
@@ -180,6 +180,21 @@ When embedded mode is enabled, the system will automatically:
 1. Replace `MaaXXX` with your project name in `deploy/install.yml`.
 2. Commit and push to `.github/workflows` in your GitHub repo.
 3. Push a new release/tag to trigger the automated build.
+
+macOS is built with Nuitka `app-dist`. Keep the complete distribution together:
+
+```text
+MFW/
+├── MFW.app/
+├── MFWUpdater
+├── maafw/
+├── interface.json
+├── resource/
+├── bundle/
+└── config/
+```
+
+Move or extract the whole `MFW/` directory instead of moving only `MFW.app`. The app bundle remains read-only; resource hot updates write to external `resource/` / `bundle/`, while the external `MFWUpdater` replaces the complete app bundle after MFW exits.
 
 ## License
 

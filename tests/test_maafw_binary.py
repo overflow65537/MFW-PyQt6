@@ -10,6 +10,7 @@ from app.utils.maafw_binary import (
     resolve_maafw_binary_dir,
     restore_internal_dylibs_from_maafw,
 )
+from tools.move_maa_bin_to_maafw import move_maa_bin_to_maafw
 
 
 def _touch(path: Path) -> None:
@@ -105,6 +106,30 @@ class ConfigurePackedMaafwBinaryPathTests(unittest.TestCase):
                     os.environ.pop("MAAFW_BINARY_PATH", None)
                 else:
                     os.environ["MAAFW_BINARY_PATH"] = old
+
+
+class MoveMaafwBinaryTests(unittest.TestCase):
+    def test_moves_app_internal_maa_bin_to_external_release_root(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = root / "MFW.app" / "Contents" / "MacOS"
+            destination = root / "release"
+            _touch(source / "maa" / "bin" / "libMaaFramework.dylib")
+            _touch(source / "maa" / "bin" / "plugins" / "libMaaPlugin.dylib")
+
+            self.assertTrue(move_maa_bin_to_maafw(source, destination))
+            self.assertTrue(
+                (destination / "maafw" / "libMaaFramework.dylib").is_file()
+            )
+            self.assertTrue(
+                (
+                    destination
+                    / "maafw"
+                    / "plugins"
+                    / "libMaaPlugin.dylib"
+                ).is_file()
+            )
+            self.assertFalse((source / "maa" / "bin").exists())
 
 
 if __name__ == "__main__":

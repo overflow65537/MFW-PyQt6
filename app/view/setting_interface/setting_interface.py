@@ -54,6 +54,11 @@ from app.common import __version__ as version_meta
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
+from app.utils.install_paths import (
+    resolve_install_anchor,
+    resolve_install_root,
+    resolve_updater_paths,
+)
 from app.utils.logger import logger
 from app.utils.update import Update, path_is_update_archive_readable
 from app.view.setting_interface.widget.proxy_setting_card import ProxySettingCard
@@ -177,6 +182,8 @@ def launch_updater_process(*extra_args: str) -> None:
     import os
 
     extra_arg_list = list(extra_args)
+    install_root = resolve_install_root()
+    install_anchor = resolve_install_anchor()
     # 透传“父进程信息”，供更新器跨平台精确等待主程序完全退出
     # - parent_pid: 当前进程 PID
     # - parent_create_time: 防止 PID 复用导致误判
@@ -194,13 +201,12 @@ def launch_updater_process(*extra_args: str) -> None:
         except Exception as exc:
             logger.debug("获取 parent_create_time 失败，降级为仅透传 PID: %s", exc)
 
-        if getattr(sys, "frozen", False):
-            parent_args.extend(["--mfw-exe-path", str(Path(sys.executable).resolve())])
+        parent_args.extend(["--mfw-exe-path", str(install_anchor)])
 
         # 透传当前启动入口名称，便于更新完成后恢复用户自定义的启动文件名。
         current_entry = (
-            Path(sys.executable).resolve()
-            if getattr(sys, "frozen", False)
+            install_anchor
+            if install_anchor.exists()
             else Path(sys.argv[0]).resolve()
         )
         if current_entry.name:
@@ -208,9 +214,8 @@ def launch_updater_process(*extra_args: str) -> None:
     except Exception as exc:
         logger.debug("构造更新器父进程参数失败（将继续尝试启动更新器）: %s", exc)
 
+    _, resolved_executable = resolve_updater_paths(install_root)
     if sys.platform.startswith("win32"):
-        updater_executable = Path("./MFWUpdater1.exe")
-        resolved_executable = updater_executable.resolve(strict=False)
         args = (
             ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
         )
@@ -229,8 +234,6 @@ def launch_updater_process(*extra_args: str) -> None:
                 )
         logger.info("启动更新程序: %s", command_line)
     elif sys.platform.startswith(("darwin", "linux")):
-        updater_executable = Path("./MFWUpdater1")
-        resolved_executable = updater_executable.resolve(strict=False)
         args = (
             ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
         )
@@ -240,7 +243,7 @@ def launch_updater_process(*extra_args: str) -> None:
     else:
         raise NotImplementedError("Unsupported platform")
 
-    subprocess.Popen(cmd)
+    subprocess.Popen(cmd, cwd=str(install_root))
 
 
 class SettingInterface(QWidget):
@@ -3025,10 +3028,9 @@ class SettingInterface(QWidget):
         import sys
 
         try:
-            if sys.platform.startswith("win32"):
-                self._rename_updater("MFWUpdater.exe", "MFWUpdater1.exe")
-            elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-                self._rename_updater("MFWUpdater", "MFWUpdater1")
+            if sys.platform.startswith(("win32", "darwin", "linux")):
+                updater, updater_copy = resolve_updater_paths(resolve_install_root())
+                self._rename_updater(updater, updater_copy)
         except Exception as e:
             self._updater_started = False
             logger.error(f"重命名更新程序失败: {e}")
