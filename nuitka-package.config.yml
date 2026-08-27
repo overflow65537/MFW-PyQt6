@@ -11,8 +11,3 @@
         relative_path: 'bin/plugins'
         prefixes:
           - '*'
-# Intel macOS runner：官方 CPython 的 cryptography 链到 Homebrew openssl@3，
-# Nuitka 4.0.8 依赖扫描会 FATAL；允许收录系统侧 dylib（见 Nuitka #3479）。
-- module-name: 'cryptography.hazmat.bindings._rust'
-  import-hacks:
-    - package-system-dlls: 'yes'

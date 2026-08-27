@@ -1,6 +1,0 @@
-# macOS 专用补充配置；在 workflow 中与 nuitka-package.config.yml 一并传入 Nuitka-Action。
-# cryptography 规则已写入 nuitka-package.config.yml；本文件保留供后续仅 macOS 的条目。
----
-- module-name: 'cryptography.hazmat.bindings._rust'
-  import-hacks:
-    - package-system-dlls: 'yes'
