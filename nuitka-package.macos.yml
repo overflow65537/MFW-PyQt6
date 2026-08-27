@@ -1,5 +1,5 @@
-# 仅 macOS Nuitka 构建加载（见 main.py nuitka-project-if）。
-# Intel runner 上 cryptography 链接 Homebrew openssl@3，需允许收录系统侧 dylib。
+# macOS 专用补充配置；在 workflow 中与 nuitka-package.config.yml 一并传入 Nuitka-Action。
+# cryptography 规则已写入 nuitka-package.config.yml；本文件保留供后续仅 macOS 的条目。
 ---
 - module-name: 'cryptography.hazmat.bindings._rust'
   import-hacks:

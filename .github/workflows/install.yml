@@ -371,7 +371,9 @@ jobs:
           product-version: ${{ steps.exe_meta.outputs.win_product_version }}
           file-description: MaaFramework GUI runner (interface v2)
           copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
-          user-package-configuration-file: nuitka-package.config.yml
+          user-package-configuration-file: |
+            nuitka-package.config.yml
+            nuitka-package.macos.yml
           include-package: |
             maa
             PIL
