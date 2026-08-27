@@ -222,8 +222,6 @@ jobs:
           if command -v brew >/dev/null 2>&1; then
             if ! brew list openssl@3 >/dev/null 2>&1; then
               brew install openssl@3
-            else
-              brew upgrade openssl@3 || true
             fi
           fi
           if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
