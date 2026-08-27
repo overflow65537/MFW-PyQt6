@@ -152,12 +152,10 @@ elif sys.platform == "linux":
     ]  # 禁用控制台窗口
 
 # === 二进制文件处理 ===
-# 收集 MAA 的本地库文件。macOS 必须保持 pip 两层布局：
-#   maafw/maa/bin/*.dylib  主库（PyInstaller 会把 rpath 写成 @loader_path/../..）
-#   maafw/*.dylib          rpath 上两级，供 libMaaUtils / FastDeploy 等解析
+# 收集 MAA 的本地库文件。必须放到发行根 `.`（即 _internal），不能改 dest，
+# 否则 PyInstaller 改 rpath 时会把 Qt/Shiboken 等无关 dylib 一并搅乱。
 bin_dir = os.path.join(maa_path, "bin")
 bin_files = []
-_macos_keep_pip_layout = sys.platform == "darwin"
 for f in os.listdir(bin_dir):
     src = os.path.join(bin_dir, f)
     if os.path.isdir(src):
@@ -165,24 +163,7 @@ for f in os.listdir(bin_dir):
     print(f"[DEBUG] Found binary file: {f}")
     print(f"[DEBUG] Adding binary file: {src}")
     bin_files.append(f)
-    dest_dir = "maa/bin" if _macos_keep_pip_layout else "."
-    base_command += [f"--add-binary={src}{os.pathsep}{dest_dir}"]
-
-if _macos_keep_pip_layout:
-    for item in Path(maa_path).parent.iterdir():
-        if not item.is_file():
-            continue
-        name = item.name.lower()
-        if not (
-            name.endswith(".dylib")
-            or name.endswith(".so")
-            or ".so." in name
-        ):
-            continue
-        if item.name in bin_files:
-            continue
-        print(f"[DEBUG] Found Maa adjacent library: {item}")
-        base_command += [f"--add-binary={item}{os.pathsep}."]
+    base_command += [f"--add-binary={src}{os.pathsep}."]
 
 
 # === 开始构建 ===
@@ -204,66 +185,39 @@ else:
 
 maa_fw_dir = os.path.join(dist_dir, "maafw")
 os.makedirs(maa_fw_dir, exist_ok=True)
+for i in bin_files:
+    src_binary = None
+    for search_dir in (internal_dir, dist_dir):
+        candidate = os.path.join(search_dir, i)
+        if os.path.exists(candidate):
+            src_binary = candidate
+            break
+    dst_binary = os.path.join(maa_fw_dir, i)
+    if src_binary:
+        shutil.copy(src_binary, dst_binary)
+        if os.path.dirname(src_binary) != maa_fw_dir:
+            os.remove(src_binary)
+    else:
+        print(f"[WARN] Expected binary missing: {i} (searched _internal and dist root)")
 
-def _is_native_lib_name(name: str) -> bool:
-    lowered = name.lower()
-    return (
-        lowered.endswith(".dylib")
-        or lowered.endswith(".dll")
-        or lowered.endswith(".so")
-        or ".so." in lowered
-    )
+plugins_src = os.path.join(maa_path, "bin", "plugins")
+plugins_dst = os.path.join(maa_fw_dir, "plugins")
+if os.path.isdir(plugins_src):
+    shutil.copytree(plugins_src, plugins_dst, dirs_exist_ok=True)
 
+maa_bin_internal = os.path.join(internal_dir, "maa", "bin")
+if os.path.isdir(maa_bin_internal):
+    shutil.rmtree(maa_bin_internal)
 
-if _macos_keep_pip_layout:
+# macOS：在 maafw/maa/bin 再放一份 MAA 库，满足 @loader_path/../..，
+# 只复制刚迁入 maafw 的 MAA 文件，绝不能扫 _internal 里的 Qt/Shiboken。
+if sys.platform == "darwin":
     maa_fw_bin = os.path.join(maa_fw_dir, "maa", "bin")
     os.makedirs(maa_fw_bin, exist_ok=True)
-    src_maa_bin = os.path.join(internal_dir, "maa", "bin")
-    if os.path.isdir(src_maa_bin):
-        shutil.copytree(src_maa_bin, maa_fw_bin, dirs_exist_ok=True)
-        shutil.rmtree(src_maa_bin)
-    for item_name in bin_files:
-        src_binary = os.path.join(internal_dir, item_name)
-        if os.path.isfile(src_binary):
-            shutil.copy(src_binary, os.path.join(maa_fw_bin, item_name))
-            os.remove(src_binary)
-    # 配件必须出现在 maa/bin 的上两级（maafw/），匹配 @loader_path/../..
-    for search_dir in (maa_fw_bin, internal_dir):
-        if not os.path.isdir(search_dir):
-            continue
-        for item in Path(search_dir).iterdir():
-            if item.is_file() and _is_native_lib_name(item.name):
-                shutil.copy(item, os.path.join(maa_fw_dir, item.name))
-                if search_dir == internal_dir:
-                    item.unlink()
-    plugins_src = os.path.join(maa_path, "bin", "plugins")
-    plugins_dst = os.path.join(maa_fw_bin, "plugins")
-    if os.path.isdir(plugins_src):
-        shutil.copytree(plugins_src, plugins_dst, dirs_exist_ok=True)
-else:
     for i in bin_files:
-        src_binary = None
-        for search_dir in (internal_dir, dist_dir):
-            candidate = os.path.join(search_dir, i)
-            if os.path.exists(candidate):
-                src_binary = candidate
-                break
-        dst_binary = os.path.join(maa_fw_dir, i)
-        if src_binary:
-            shutil.copy(src_binary, dst_binary)
-            if os.path.dirname(src_binary) != maa_fw_dir:
-                os.remove(src_binary)
-        else:
-            print(f"[WARN] Expected binary missing: {i} (searched _internal and dist root)")
-
-    plugins_src = os.path.join(maa_path, "bin", "plugins")
-    plugins_dst = os.path.join(maa_fw_dir, "plugins")
-    if os.path.isdir(plugins_src):
-        shutil.copytree(plugins_src, plugins_dst, dirs_exist_ok=True)
-
-    maa_bin_internal = os.path.join(internal_dir, "maa", "bin")
-    if os.path.isdir(maa_bin_internal):
-        shutil.rmtree(maa_bin_internal)
+        src_binary = os.path.join(maa_fw_dir, i)
+        if os.path.isfile(src_binary):
+            shutil.copy(src_binary, os.path.join(maa_fw_bin, i))
 
 # 复制README和许可证
 shutil.copy(

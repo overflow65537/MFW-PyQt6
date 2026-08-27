@@ -72,7 +72,6 @@ def _resolve_install_root() -> Path:
 _install_root = _resolve_install_root()
 os.chdir(_install_root)
 # 打包版：MaaFramework 等原生库放在发行根下的 maafw/（见 CI move_maa_bin_to_maafw、PyInstaller build.py）
-# macOS：PyInstaller 会把 dylib rpath 改成 @loader_path/../..，需保持 maa/bin + 上两级配件
 if is_packed():
     configure_packed_maafw_binary_path(
         _install_root, meipass=getattr(sys, "_MEIPASS", None)

@@ -8,6 +8,7 @@ from app.utils.maafw_binary import (
     configure_packed_maafw_binary_path,
     prepare_macos_rpath_layout,
     resolve_maafw_binary_dir,
+    restore_internal_dylibs_from_maafw,
 )
 
 
@@ -33,13 +34,14 @@ class ResolveMaafwBinaryDirTests(unittest.TestCase):
             found = resolve_maafw_binary_dir(root)
             self.assertEqual(found, (root / "maafw").resolve())
 
-    def test_uses_meipass_maa_bin_when_install_root_has_no_libs(self):
+    def test_does_not_use_pyinstaller_internal_as_maafw_dir(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
             meipass = root / "_internal"
-            _touch(meipass / "maa" / "bin" / "MaaFramework.dll")
+            _touch(meipass / "libMaaFramework.dylib")
+            _touch(meipass / "libshiboken6.abi3.6.11.dylib")
             found = resolve_maafw_binary_dir(root, meipass=str(meipass))
-            self.assertEqual(found, (meipass / "maa" / "bin").resolve())
+            self.assertEqual(found, (root / "maafw").resolve())
 
 
 class PrepareMacosRpathLayoutTests(unittest.TestCase):
@@ -67,6 +69,21 @@ class PrepareMacosRpathLayoutTests(unittest.TestCase):
             self.assertTrue((nested / "libMaaUtils.dylib").is_file())
             # @loader_path/../.. from nested bin must still see the originals
             self.assertTrue((maafw / "libMaaUtils.dylib").is_file())
+
+
+class RestoreInternalDylibsTests(unittest.TestCase):
+    def test_puts_stolen_shiboken_back_into_internal(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            internal = root / "_internal"
+            internal.mkdir()
+            stolen = root / "maafw" / "libshiboken6.abi3.6.11.dylib"
+            _touch(stolen)
+            _touch(root / "maafw" / "libMaaUtils.dylib")
+            restored = restore_internal_dylibs_from_maafw(root, meipass=str(internal))
+            self.assertIn("libshiboken6.abi3.6.11.dylib", restored)
+            self.assertTrue((internal / "libshiboken6.abi3.6.11.dylib").is_file())
+            self.assertFalse((internal / "libMaaUtils.dylib").exists())
 
 
 class ConfigurePackedMaafwBinaryPathTests(unittest.TestCase):

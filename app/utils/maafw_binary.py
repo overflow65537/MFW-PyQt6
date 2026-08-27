@@ -22,6 +22,22 @@ def _has_framework_lib(path: Path) -> bool:
     return path.is_dir() and any((path / name).is_file() for name in FRAMEWORK_LIB_NAMES)
 
 
+def _looks_like_maa_lib(name: str) -> bool:
+    lowered = name.lower()
+    return lowered.startswith(
+        (
+            "libmaa",
+            "maa",
+            "libfastdeploy",
+            "fastdeploy",
+            "libonnxruntime",
+            "onnxruntime",
+            "libopencv",
+            "opencv_",
+        )
+    )
+
+
 def _is_native_lib(path: Path) -> bool:
     name = path.name.lower()
     return (
@@ -51,17 +67,51 @@ def _mirror_native_libs(src_dir: Path, dest_dir: Path) -> None:
             _place_file(item, dest_dir / item.name)
 
 
+def restore_internal_dylibs_from_maafw(
+    install_root: Path, meipass: str | None = None
+) -> list[str]:
+    """把误塞进 maafw/ 的 Qt/Shiboken dylib 还原回 _internal。
+
+    错误打包曾把 ``_internal`` 下所有 dylib 挪到 ``maafw/`` 并删除原文件，
+    导致 ``libshiboken6*.dylib`` 丢失、程序无法启动。启动时若发现
+    ``_internal`` 缺库而 ``maafw`` 里有同名文件，则补回去。
+    """
+    restored: list[str] = []
+    if not meipass:
+        return restored
+    internal = Path(meipass)
+    maafw = install_root / "maafw"
+    if not internal.is_dir() or not maafw.is_dir():
+        return restored
+    for item in maafw.iterdir():
+        if not item.is_file() or not _is_native_lib(item):
+            continue
+        if _looks_like_maa_lib(item.name):
+            continue
+        dest = internal / item.name
+        if dest.exists():
+            continue
+        try:
+            _place_file(item, dest)
+        except OSError:
+            continue
+        if dest.exists():
+            restored.append(item.name)
+    return restored
+
+
 def resolve_maafw_binary_dir(install_root: Path, meipass: str | None = None) -> Path:
-    """定位实际含有 MaaFramework 动态库的目录。"""
+    """定位实际含有 MaaFramework 动态库的目录。
+
+    只在发行根的 ``maafw`` 下查找，避免把 PyInstaller 的 ``_internal``
+    （Qt/Shiboken 所在处）当成 Maa 库目录。
+    """
+    _ = meipass
     candidates = [
         install_root / "maafw" / "maa" / "bin",
         install_root / "maafw",
+        install_root / "maa" / "bin",
     ]
-    internal = Path(meipass).resolve() if meipass else None
-    if internal is not None:
-        candidates.append(internal / "maa" / "bin")
-        candidates.append(internal)
-    candidates.append(install_root / "maa" / "bin")
     for candidate in candidates:
         if _has_framework_lib(candidate):
             return candidate.resolve()
@@ -103,6 +153,7 @@ def configure_packed_maafw_binary_path(
     install_root: Path, meipass: str | None = None
 ) -> Path:
     """设置 ``MAAFW_BINARY_PATH``，并在 Windows 上注册 DLL 搜索目录。"""
+    restore_internal_dylibs_from_maafw(install_root, meipass=meipass)
     binary_dir = resolve_maafw_binary_dir(install_root, meipass=meipass)
     binary_dir = prepare_macos_rpath_layout(binary_dir)
     os.environ["MAAFW_BINARY_PATH"] = str(binary_dir)
