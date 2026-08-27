@@ -98,7 +98,7 @@ python tools/llm_translate_ts.py --filter all
 
 ## Nuitka 发行组装工具
 
-三端发行包统一由 `.github/workflows/install.yml` 中的 Nuitka job 构建。`build_nuitka.py` 为组装完成的 `build/mfw-release` 生成更新清单：
+三端发行包统一由 `.github/workflows/install.yml` 中的 Nuitka job 构建。macOS `app-dist` 需额外安装 `requirements-nuitka.txt`（`imageio`，用于 PNG 图标转 `.icns`）。`build_nuitka.py` 为组装完成的 `build/mfw-release` 生成更新清单：
 
 ```bash
 python tools/build_nuitka.py --file-list
