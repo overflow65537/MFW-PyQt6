@@ -616,6 +616,9 @@ jobs:
             cp -R "$rel/maafw/plugins" "$rel/maafw/maa/bin/plugins"
           fi
 
+          # 外置 maafw 后 @executable_path 仍指向 .app/MacOS，需改为 @loader_path。
+          python3 tools/fix_maafw_macos_dylib_paths.py "$rel/maafw"
+
           cp README.md "$rel/MFW_README.md"
           cp README-en.md "$rel/MFW_README-en.md"
           cp LICENSE "$rel/MFW_LICENSE"
