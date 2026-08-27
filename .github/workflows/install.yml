@@ -466,7 +466,7 @@ jobs:
           Copy-Item -Path (Join-Path $srcDist '*') -Destination $rel -Recurse -Force
           Rename-Item -LiteralPath (Join-Path $rel "main.exe") -NewName "MFW.exe" -Force
           Move-Item -LiteralPath $updExe -Destination (Join-Path $rel "MFWUpdater.exe") -Force
-          python tools/move_maa_bin_to_maafw.py $rel
+          python tools/packaging/move_maa_bin_to_maafw.py $rel
 
       - name: Assemble mfw-release (Linux)
         if: matrix.platform == 'linux'
@@ -494,7 +494,7 @@ jobs:
           fi
           mv "$upd_bin" "$rel/MFWUpdater"
           chmod +x "$rel/MFW" "$rel/MFWUpdater"
-          python3 tools/move_maa_bin_to_maafw.py "$rel"
+          python3 tools/packaging/move_maa_bin_to_maafw.py "$rel"
 
           python3 << 'PY'
           import datetime as _dt
@@ -600,12 +600,12 @@ jobs:
 
           # Nuitka 不能用 include-package 打 MaaAgentBinary（arm64 ELF .so 会误判为宿主库）；
           # 组装阶段从 site-packages 拷贝 ADB 代理（minicap/minitouch/maatouch）。
-          python3 tools/copy_maagentbinary_to_dist.py "$macos_dir/MaaAgentBinary"
+          python3 tools/packaging/copy_maagentbinary_to_dist.py "$macos_dir/MaaAgentBinary"
 
           # cryptography 在 CI 上链到 Homebrew OpenSSL 绝对路径，需打入 dylib 并改 @executable_path。
-          python3 tools/bundle_macos_openssl.py "$macos_dir"
+          python3 tools/packaging/bundle_macos_openssl.py "$macos_dir"
 
-          python3 tools/move_maa_bin_to_maafw.py "$macos_dir" "$rel"
+          python3 tools/packaging/move_maa_bin_to_maafw.py "$macos_dir" "$rel"
 
           mkdir -p "$rel/maafw/maa/bin"
           for library in "$rel"/maafw/*.dylib; do
@@ -617,7 +617,7 @@ jobs:
           fi
 
           # 外置 maafw 后 @executable_path 仍指向 .app/MacOS，需改为 @loader_path。
-          python3 tools/fix_maafw_macos_dylib_paths.py "$rel/maafw"
+          python3 tools/packaging/fix_maafw_macos_dylib_paths.py "$rel/maafw"
 
           cp README.md "$rel/MFW_README.md"
           cp README-en.md "$rel/MFW_README-en.md"
@@ -632,7 +632,7 @@ jobs:
           test -f "$rel/maafw/maa/bin/libMaaFramework.dylib"
 
       - name: Generate distribution file list
-        run: python tools/build_nuitka.py --file-list
+        run: python tools/packaging/build_nuitka.py --file-list
 
       # upload-artifact 不保留 Unix 权限与符号链接；macOS 必须先在原生 runner 上封装。
       - name: Package macOS distribution

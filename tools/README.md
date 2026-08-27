@@ -96,23 +96,9 @@ python tools/llm_translate_ts.py --filter all
 
 ---
 
-## Nuitka 发行组装工具
+## CI / 打包
 
-三端发行包统一由 `.github/workflows/install.yml` 中的 Nuitka job 构建。macOS `app-dist` 需额外安装 `requirements-nuitka.txt`（`imageio`，用于 PNG 图标转 `.icns`）。`build_nuitka.py` 为组装完成的 `build/mfw-release` 生成更新清单：
-
-```bash
-python tools/build_nuitka.py --file-list
-```
-
-`move_maa_bin_to_maafw.py` 将 Nuitka 收集的 `maa/bin` 迁移到发行根的 `maafw/`。扁平产物只传一个目录；macOS app-dist 需要分别传 bundle 内源目录和外置发行根：
-
-```bash
-python tools/move_maa_bin_to_maafw.py build/main.dist
-python tools/move_maa_bin_to_maafw.py \
-  build/mfw-release/MFW.app/Contents/MacOS build/mfw-release
-```
-
-macOS 的最终布局必须保持 `MFW.app`、`MFWUpdater` 与 `maafw/` 同级。
+Nuitka 组装脚本见 [`packaging/`](packaging/README.md)。
 
 ---
 

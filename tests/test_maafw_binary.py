@@ -10,8 +10,8 @@ from app.utils.maafw_binary import (
     resolve_maafw_binary_dir,
     restore_internal_dylibs_from_maafw,
 )
-from tools.fix_maafw_macos_dylib_paths import rewrite_maafw_dependency
-from tools.move_maa_bin_to_maafw import move_maa_bin_to_maafw
+from tools.packaging.fix_maafw_macos_dylib_paths import rewrite_maafw_dependency
+from tools.packaging.move_maa_bin_to_maafw import move_maa_bin_to_maafw
 
 
 def _touch(path: Path) -> None:

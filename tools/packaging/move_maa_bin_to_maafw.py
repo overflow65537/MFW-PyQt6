@@ -7,7 +7,7 @@
 
 Nuitka standalone 产物中 DLL 默认在 <release>/maa/bin；本脚本在组装阶段执行。
 macOS app-dist 的源目录位于 MFW.app/Contents/MacOS，目标则是 .app 的父目录。
-用法: python tools/move_maa_bin_to_maafw.py <source_root> [destination_root]
+用法: python tools/packaging/move_maa_bin_to_maafw.py <source_root> [destination_root]
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ def move_maa_bin_to_maafw(
 def main() -> int:
     if len(sys.argv) not in {2, 3}:
         print(
-            "用法: python tools/move_maa_bin_to_maafw.py <source_root> [destination_root]",
+            "用法: python tools/packaging/move_maa_bin_to_maafw.py <source_root> [destination_root]",
             file=sys.stderr,
         )
         return 2
