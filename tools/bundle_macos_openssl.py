@@ -43,19 +43,32 @@ def iter_macho_files(root: Path) -> list[Path]:
     return files
 
 
-def otool_linked_libraries(path: Path) -> list[str]:
+def parse_otool_libraries(path: Path) -> tuple[str | None, list[str]]:
     result = subprocess.run(
         ["otool", "-L", str(path)],
         check=True,
         capture_output=True,
         text=True,
     )
-    libraries: list[str] = []
-    for line in result.stdout.splitlines()[1:]:
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    if len(lines) <= 1:
+        return None, []
+
+    linked: list[str] = []
+    for line in lines[1:]:
         dependency = line.strip().split(" (compatibility", 1)[0].strip()
         if dependency:
-            libraries.append(dependency)
-    return libraries
+            linked.append(dependency)
+
+    install_name: str | None = None
+    dependencies = linked
+    if path.suffix == ".dylib" and linked:
+        install_name = linked[0]
+        dependencies = linked[1:]
+    elif linked and Path(linked[0]).name == path.name:
+        dependencies = linked[1:]
+
+    return install_name, dependencies
 
 
 def brew_openssl_prefix() -> Path | None:
@@ -90,6 +103,7 @@ def locate_openssl_dylib(dependency: str) -> Path | None:
     for base in (
         "/opt/homebrew/opt/openssl@3/lib",
         "/usr/local/opt/openssl@3/lib",
+        "/usr/local/lib",
     ):
         candidate = Path(base) / name
         if candidate.is_file():
@@ -102,7 +116,7 @@ def is_openssl_dependency(dependency: str) -> bool:
     return name in OPENSSL_DYLIB_NAMES or "openssl@3" in dependency
 
 
-def change_dylib_reference(binary: Path, old_path: str, new_path: str) -> None:
+def change_dylib_reference(binary: Path, old_path: str, new_path: str) -> bool:
     result = subprocess.run(
         [
             "install_name_tool",
@@ -114,10 +128,42 @@ def change_dylib_reference(binary: Path, old_path: str, new_path: str) -> None:
         capture_output=True,
         text=True,
     )
-    if result.returncode != 0 and "does not exist" not in result.stderr:
+    if result.returncode == 0:
+        return True
+    stderr = result.stderr.strip()
+    if "does not exist" in stderr or "would duplicate path" in stderr:
+        return False
+    raise RuntimeError(f"install_name_tool failed for {binary}: {stderr}")
+
+
+def set_dylib_id(dylib: Path, install_name: str) -> None:
+    result = subprocess.run(
+        ["install_name_tool", "-id", install_name, str(dylib)],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
         raise RuntimeError(
-            f"install_name_tool failed for {binary}: {result.stderr.strip()}"
+            f"install_name_tool -id failed for {dylib}: {result.stderr.strip()}"
         )
+
+
+def collect_absolute_openssl_refs(macho_files: list[Path]) -> dict[str, set[Path]]:
+    refs: dict[str, set[Path]] = {}
+    for macho in macho_files:
+        install_name, dependencies = parse_otool_libraries(macho)
+        if (
+            macho.suffix == ".dylib"
+            and install_name
+            and install_name.startswith("/")
+            and is_openssl_dependency(install_name)
+        ):
+            refs.setdefault(install_name, set()).add(macho)
+
+        for dependency in dependencies:
+            if dependency.startswith("/") and is_openssl_dependency(dependency):
+                refs.setdefault(dependency, set()).add(macho)
+    return refs
 
 
 def bundle_openssl(macos_dir: Path) -> None:
@@ -131,16 +177,11 @@ def bundle_openssl(macos_dir: Path) -> None:
 
     for _ in range(8):
         macho_files = iter_macho_files(macos_dir)
-        pending: set[str] = set()
-        for macho in macho_files:
-            for dependency in otool_linked_libraries(macho):
-                if dependency.startswith("/") and is_openssl_dependency(dependency):
-                    pending.add(dependency)
-
-        if not pending:
+        refs = collect_absolute_openssl_refs(macho_files)
+        if not refs:
             break
 
-        for dependency in sorted(pending):
+        for dependency in sorted(refs):
             source = locate_openssl_dylib(dependency)
             if source is None:
                 raise FileNotFoundError(
@@ -150,20 +191,31 @@ def bundle_openssl(macos_dir: Path) -> None:
             if not destination.exists():
                 shutil.copy2(source, destination)
 
-        for macho in macho_files:
-            for dependency in sorted(pending):
-                destination_name = Path(dependency).name
-                change_dylib_reference(
-                    macho,
-                    dependency,
-                    f"@executable_path/{destination_name}",
-                )
-    else:
-        raise RuntimeError("failed to rewrite all OpenSSL dylib references")
+        for dependency, binaries in sorted(refs.items()):
+            destination_name = Path(dependency).name
+            target = f"@executable_path/{destination_name}"
+            for binary in binaries:
+                if binary.suffix == ".dylib" and binary.name == destination_name:
+                    install_name, _ = parse_otool_libraries(binary)
+                    if install_name and install_name.startswith("/"):
+                        set_dylib_id(binary, target)
+                change_dylib_reference(binary, dependency, target)
+
+    macho_files = iter_macho_files(macos_dir)
+    remaining = collect_absolute_openssl_refs(macho_files)
+    if remaining:
+        details = "\n".join(
+            f"  {dependency}: {', '.join(str(path) for path in sorted(binaries))}"
+            for dependency, binaries in sorted(remaining.items())
+        )
+        raise RuntimeError(
+            "failed to rewrite all OpenSSL dylib references:\n" + details
+        )
 
     rust_binding = macos_dir / "cryptography" / "hazmat" / "bindings" / "_rust.so"
     if rust_binding.is_file():
-        for dependency in otool_linked_libraries(rust_binding):
+        _, dependencies = parse_otool_libraries(rust_binding)
+        for dependency in dependencies:
             if dependency.startswith("/") and is_openssl_dependency(dependency):
                 raise RuntimeError(
                     f"OpenSSL dependency still absolute in {rust_binding}: {dependency}"
