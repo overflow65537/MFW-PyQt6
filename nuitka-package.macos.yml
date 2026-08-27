@@ -1,0 +1,6 @@
+# 仅 macOS Nuitka 构建加载（见 main.py nuitka-project-if）。
+# Intel runner 上 cryptography 链接 Homebrew openssl@3，需允许收录系统侧 dylib。
+---
+- module-name: 'cryptography.hazmat.bindings._rust'
+  import-hacks:
+    - package-system-dlls: 'yes'
