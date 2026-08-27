@@ -17,6 +17,10 @@ OPENSSL_DYLIB_NAMES = frozenset(
     }
 )
 
+OPENSSL_BUNDLE_ORDER = ("libcrypto.3.dylib", "libssl.3.dylib", "libcrypto.dylib", "libssl.dylib")
+
+REQUIRED_CRYPTO_SYMBOL = "_EVP_DigestSqueeze"
+
 MACHO_MAGICS = frozenset(
     {
         b"\xcf\xfa\xed\xfe",  # MH_MAGIC_64
@@ -85,30 +89,21 @@ def brew_openssl_prefix() -> Path | None:
     return Path(prefix)
 
 
-def locate_openssl_dylib(dependency: str) -> Path | None:
-    dep_path = Path(dependency)
-    if dep_path.is_file():
-        return dep_path
-
-    name = dep_path.name
-    if name not in OPENSSL_DYLIB_NAMES:
-        return None
-
+def resolve_openssl_lib_dir() -> Path:
     prefix = brew_openssl_prefix()
+    candidates: list[Path] = []
     if prefix is not None:
-        candidate = prefix / "lib" / name
-        if candidate.is_file():
-            return candidate
-
-    for base in (
-        "/opt/homebrew/opt/openssl@3/lib",
-        "/usr/local/opt/openssl@3/lib",
-        "/usr/local/lib",
-    ):
-        candidate = Path(base) / name
-        if candidate.is_file():
-            return candidate
-    return None
+        candidates.append(prefix / "lib")
+    candidates.extend(
+        [
+            Path("/opt/homebrew/opt/openssl@3/lib"),
+            Path("/usr/local/opt/openssl@3/lib"),
+        ]
+    )
+    for lib_dir in candidates:
+        if (lib_dir / "libcrypto.3.dylib").is_file() and (lib_dir / "libssl.3.dylib").is_file():
+            return lib_dir
+    raise FileNotFoundError("cannot locate a complete openssl@3 lib directory on the build host")
 
 
 def is_openssl_dependency(dependency: str) -> bool:
@@ -148,6 +143,47 @@ def set_dylib_id(dylib: Path, install_name: str) -> None:
         )
 
 
+def dylib_exports_symbol(dylib: Path, symbol: str) -> bool:
+    result = subprocess.run(
+        ["nm", "-gU", str(dylib)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return symbol in result.stdout
+
+
+def install_openssl_dylibs(macos_dir: Path, openssl_lib_dir: Path) -> None:
+    """始终用构建机 openssl@3 覆盖产物内旧版 dylib（Nuitka 可能先收录更老的 libcrypto）。"""
+    for name in OPENSSL_BUNDLE_ORDER:
+        source = openssl_lib_dir / name
+        if not source.is_file():
+            continue
+        destination = macos_dir / name
+        shutil.copy2(source, destination)
+        set_dylib_id(destination, f"@executable_path/{name}")
+
+    libssl = macos_dir / "libssl.3.dylib"
+    if libssl.is_file():
+        install_name, dependencies = parse_otool_libraries(libssl)
+        for dependency in dependencies:
+            if Path(dependency).name == "libcrypto.3.dylib":
+                change_dylib_reference(
+                    libssl,
+                    dependency,
+                    "@executable_path/libcrypto.3.dylib",
+                )
+        if install_name and install_name.startswith("/"):
+            set_dylib_id(libssl, "@executable_path/libssl.3.dylib")
+
+    libcrypto = macos_dir / "libcrypto.3.dylib"
+    if libcrypto.is_file() and not dylib_exports_symbol(libcrypto, REQUIRED_CRYPTO_SYMBOL):
+        raise RuntimeError(
+            f"{libcrypto} is too old for cryptography (missing {REQUIRED_CRYPTO_SYMBOL}); "
+            f"upgrade brew openssl@3 on the CI runner"
+        )
+
+
 def collect_absolute_openssl_refs(macho_files: list[Path]) -> dict[str, set[Path]]:
     refs: dict[str, set[Path]] = {}
     for macho in macho_files:
@@ -171,6 +207,9 @@ def bundle_openssl(macos_dir: Path) -> None:
     if not macos_dir.is_dir():
         raise FileNotFoundError(f"missing macOS bundle directory: {macos_dir}")
 
+    openssl_lib_dir = resolve_openssl_lib_dir()
+    install_openssl_dylibs(macos_dir, openssl_lib_dir)
+
     macho_files = iter_macho_files(macos_dir)
     if not macho_files:
         raise RuntimeError(f"no Mach-O binaries found under {macos_dir}")
@@ -180,16 +219,6 @@ def bundle_openssl(macos_dir: Path) -> None:
         refs = collect_absolute_openssl_refs(macho_files)
         if not refs:
             break
-
-        for dependency in sorted(refs):
-            source = locate_openssl_dylib(dependency)
-            if source is None:
-                raise FileNotFoundError(
-                    f"cannot locate OpenSSL library for dependency: {dependency}"
-                )
-            destination = macos_dir / source.name
-            if not destination.exists():
-                shutil.copy2(source, destination)
 
         for dependency, binaries in sorted(refs.items()):
             destination_name = Path(dependency).name

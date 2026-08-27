@@ -222,6 +222,8 @@ jobs:
           if command -v brew >/dev/null 2>&1; then
             if ! brew list openssl@3 >/dev/null 2>&1; then
               brew install openssl@3
+            else
+              brew upgrade openssl@3 || true
             fi
           fi
           if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
@@ -240,6 +242,8 @@ jobs:
             test -f /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib
             test -f /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib
           fi
+          openssl_lib="$(brew --prefix openssl@3)/lib/libcrypto.3.dylib"
+          nm -gU "$openssl_lib" | grep -q '_EVP_DigestSqueeze'
 
       - name: Download i18n
         uses: actions/download-artifact@v8
