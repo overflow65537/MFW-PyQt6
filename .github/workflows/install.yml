@@ -564,12 +564,7 @@ jobs:
 
           # Nuitka 不能用 include-package 打 MaaAgentBinary（arm64 ELF .so 会误判为宿主库）；
           # 组装阶段从 site-packages 拷贝 ADB 代理（minicap/minitouch/maatouch）。
-          agent_src=$(python3 -c "import MaaAgentBinary, os; print(os.path.dirname(MaaAgentBinary.__file__))")
-          agent_dest="$macos_dir/MaaAgentBinary"
-          rm -rf "$agent_dest"
-          mkdir -p "$agent_dest"
-          cp -R "$agent_src"/. "$agent_dest"/
-          test -f "$agent_dest/minicap/arm64-v8a/lib/android-21/minicap.so"
+          python3 tools/copy_maagentbinary_to_dist.py "$macos_dir/MaaAgentBinary"
 
           python3 tools/move_maa_bin_to_maafw.py "$macos_dir" "$rel"
 
