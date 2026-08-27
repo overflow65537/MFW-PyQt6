@@ -11,3 +11,9 @@
         relative_path: 'bin/plugins'
         prefixes:
           - '*'
+
+# Intel macOS：cryptography 的 _rust 扩展链接 Homebrew openssl@3，需允许收录系统侧 dylib。
+- module-name: 'cryptography.hazmat.bindings._rust'
+  when: 'macos'
+  import-hacks:
+    - package-system-dlls: 'yes'

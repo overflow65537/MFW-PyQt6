@@ -212,22 +212,29 @@ jobs:
         if: matrix.platform == 'macos'
         run: python -m pip install -r requirements-nuitka.txt
 
-      # Intel macOS runner 上 Homebrew openssl@3 会在 /usr/local/lib 与 opt 各留一份，
-      # Nuitka 4.0.8 依赖扫描会 FATAL（Nuitka #2853）。
-      - name: Prepare macOS runner for Nuitka OpenSSL scan
-        if: matrix.platform == 'macos'
+      # Intel macOS runner：/usr/local/lib 与 opt/openssl@3 重复 symlink 会令 Nuitka 扫描 FATAL；
+      # cryptography 又依赖 opt/openssl@3，不能 brew remove。
+      - name: Prepare macOS Intel runner for Nuitka OpenSSL scan
+        if: matrix.platform == 'macos' && matrix.arch == 'x86_64'
         shell: bash
         run: |
           set -euo pipefail
           if command -v brew >/dev/null 2>&1; then
-            brew remove --force --ignore-dependencies openssl@3 || true
-            brew cleanup openssl@3 || true
+            if ! brew list openssl@3 >/dev/null 2>&1; then
+              brew install openssl@3
+            fi
           fi
-          for lib in /usr/local/lib/libcrypto.dylib /usr/local/lib/libssl.dylib; do
-            if [[ -e "$lib" ]]; then
+          for lib in \
+            /usr/local/lib/libcrypto.dylib \
+            /usr/local/lib/libssl.dylib \
+            /usr/local/lib/libcrypto.3.dylib \
+            /usr/local/lib/libssl.3.dylib; do
+            if [[ -L "$lib" ]]; then
               rm -f "$lib"
             fi
           done
+          test -f /usr/local/opt/openssl@3/lib/libssl.3.dylib
+          test -f /usr/local/opt/openssl@3/lib/libcrypto.3.dylib
 
       - name: Download i18n
         uses: actions/download-artifact@v8
