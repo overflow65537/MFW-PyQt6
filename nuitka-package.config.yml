@@ -11,12 +11,3 @@
         relative_path: 'bin/plugins'
         prefixes:
           - '*'
-
-# 仅 macOS：ADB 代理（minicap 等）按 data-files 拷贝，配合 main.py 中 Darwin 条件 noinclude-dlls。
-- module-name: 'MaaAgentBinary'
-  data-files:
-    - dirs:
-        - 'minicap'
-        - 'minitouch'
-        - 'maatouch'
-      when: 'macos'
