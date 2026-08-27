@@ -212,6 +212,23 @@ jobs:
         if: matrix.platform == 'macos'
         run: python -m pip install -r requirements-nuitka.txt
 
+      # Intel macOS runner 上 Homebrew openssl@3 会在 /usr/local/lib 与 opt 各留一份，
+      # Nuitka 4.0.8 依赖扫描会 FATAL（Nuitka #2853）。
+      - name: Prepare macOS runner for Nuitka OpenSSL scan
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v brew >/dev/null 2>&1; then
+            brew remove --force --ignore-dependencies openssl@3 || true
+            brew cleanup openssl@3 || true
+          fi
+          for lib in /usr/local/lib/libcrypto.dylib /usr/local/lib/libssl.dylib; do
+            if [[ -e "$lib" ]]; then
+              rm -f "$lib"
+            fi
+          done
+
       - name: Download i18n
         uses: actions/download-artifact@v8
         with:
