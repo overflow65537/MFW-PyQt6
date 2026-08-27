@@ -283,7 +283,6 @@ jobs:
             maa
             PIL
             MaaAgentBinary
-          noinclude-dlls: MaaAgentBinary/*
           include-data-files: |
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
@@ -314,7 +313,6 @@ jobs:
             maa
             PIL
             MaaAgentBinary
-          noinclude-dlls: MaaAgentBinary/*
           include-data-files: |
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
@@ -352,7 +350,6 @@ jobs:
             maa
             PIL
             MaaAgentBinary
-          noinclude-dlls: MaaAgentBinary/*
           include-data-files: |
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
