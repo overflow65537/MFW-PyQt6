@@ -41,9 +41,7 @@ _install_root = resolve_install_root()
 os.chdir(_install_root)
 # 打包版：MaaFramework 等原生库放在发行根下的 maafw/
 if is_packed():
-    configure_packed_maafw_binary_path(
-        _install_root, meipass=getattr(sys, "_MEIPASS", None)
-    )
+    configure_packed_maafw_binary_path(_install_root)
 
 
 def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:

@@ -19,15 +19,6 @@ class InstallPathTests(unittest.TestCase):
         anchor = Path("release") / "MFW.exe"
         self.assertEqual(resolve_install_root(anchor), anchor.resolve().parent)
 
-    def test_resolves_pyinstaller_internal_root(self):
-        with tempfile.TemporaryDirectory() as raw:
-            root = Path(raw)
-            anchor = root / "_internal" / "MFW"
-            self.assertEqual(
-                resolve_install_root(anchor, meipass=root / "_internal"),
-                root.resolve(),
-            )
-
     def test_resolves_app_bundle_parent_as_install_root(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

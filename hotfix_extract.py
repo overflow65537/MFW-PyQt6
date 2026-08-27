@@ -1,7 +1,7 @@
 """
 热更新解压辅助（主程序与 MFWUpdater 共用）。
 
-仅依赖标准库，便于 Nuitka/PyInstaller 分别打成独立 onefile，无需引用 app 包。
+仅依赖标准库，便于 Nuitka 打成独立 onefile，无需引用 app 包。
 """
 
 from __future__ import annotations

@@ -12,7 +12,7 @@ UPDATER_NAME = "MFWUpdater.exe" if sys.platform.startswith("win32") else "MFWUpd
 
 
 def is_packed() -> bool:
-    """是否为打包运行时（PyInstaller ``sys.frozen`` 或 Nuitka ``__compiled__``）。"""
+    """是否为 Nuitka 等打包运行时（``__compiled__`` 或 ``sys.frozen``）。"""
     return (
         getattr(sys, "frozen", False)
         or globals().get("__compiled__") is not None
@@ -59,26 +59,13 @@ def is_app_bundle_layout(anchor: Path | str | None = None) -> bool:
     )
 
 
-def resolve_install_root(
-    anchor: Path | str | None = None, *, meipass: Path | str | None = None
-) -> Path:
+def resolve_install_root(anchor: Path | str | None = None) -> Path:
     """定位外置发行根，即 ``MFW.app``、资源和用户数据的共同父目录。"""
     resolved_anchor = normalize_install_anchor(anchor or resolve_install_anchor())
     if is_app_bundle_layout(resolved_anchor):
         return resolved_anchor.parents[3]
 
-    internal_value = meipass
-    if internal_value is None:
-        internal_value = getattr(sys, "_MEIPASS", None)
-    if internal_value:
-        internal = Path(internal_value).resolve()
-        if internal.name == "_internal":
-            return internal.parent
-
-    root = resolved_anchor.parent
-    if root.name == "_internal":
-        return root.parent
-    return root
+    return resolved_anchor.parent
 
 
 def resolve_main_executable(
