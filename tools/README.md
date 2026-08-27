@@ -24,7 +24,7 @@ python tools/generate_i18n.py
 
 ## `lrelease.py`
 
-将 `app/i18n/*.ts` 编译为运行时使用的 **`.qm`** 文件（与 `.ts` 同名）。
+将 `app/i18n/*.ts` 编译为同目录下运行时使用的 **`.qm`** 文件（与 `.ts` 同名）。打包前还需运行 `tools/rcc_i18n.py` 将 `.qm` 编入 MFW 主程序。
 
 **依赖**：PySide6 自带的 **`lrelease`**（或 `pyside6-lrelease`）。
 
@@ -40,6 +40,21 @@ python tools/lrelease.py
 
 ```json
 { "lrelease": "C:\\path\\to\\lrelease.exe" }
+```
+
+---
+
+## `rcc_resources.py`
+
+将 `app/i18n/*.qm` 与运行时图标 `app/assets/icons/logo.png` 编译为内嵌 Qt 资源模块 `app/resources/app_rc.py`（`:/i18n/*.qm`、`:/icons/logo.png`，由 Nuitka 打进主程序）。
+
+**依赖**：PySide6 自带的 **`rcc`**（或 `pyside6-rcc`）；须先运行 `lrelease.py` 生成 `.qm`。
+
+**用法**：
+
+```bash
+python tools/lrelease.py
+python tools/rcc_resources.py
 ```
 
 ---
@@ -108,4 +123,4 @@ Nuitka 组装脚本见 [`packaging/`](packaging/README.md)。
 2. `python tools/generate_i18n.py` 更新 `.ts`。  
 3. 若采用「新文件为 `.t.ts`」的合并流程：准备好 `i18n.<lang>.t.ts` 后运行 `python tools/merge_translations.py`。  
 4. 需要机器辅助翻译时：`python tools/llm_translate_ts.py`（注意勿将 `.llm.txt` 提交进 Git）。  
-5. `python tools/lrelease.py` 生成 `.qm`，再运行应用或执行打包验证。
+5. `python tools/lrelease.py` 与 `python tools/rcc_resources.py` 生成内嵌资源，再运行应用或执行打包验证。

@@ -10,6 +10,10 @@
 | `bundle_macos_openssl.py` | macOS：打入 OpenSSL dylib 并修正 `cryptography` 路径 |
 | `fix_maafw_macos_dylib_paths.py` | macOS：外置 `maafw/` 的 dylib `@executable_path` → `@loader_path` |
 
+Nuitka 须收录 `app.builtin_tasks`（`BuiltinTaskLoader` 运行时 `importlib` 加载；见 `main.py` 的 `nuitka-project` 与 CI `include-package`）。
+
+内嵌 Qt 资源经 `tools/lrelease.py` + `tools/rcc_resources.py` 生成 `app/resources/app_rc.py`，包含 UI 翻译（`:/i18n/*.qm`）与默认 logo（`:/icons/logo.png`），由 Nuitka 打进 MFW 主程序。`logo.ico` / `logo.icns` 仅用于 Nuitka 可执行文件图标，不打入运行时资源。
+
 macOS `app-dist` 需额外安装 `requirements-nuitka.txt`（`imageio`，PNG → `.icns`）。
 
 ```bash

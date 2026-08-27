@@ -1,0 +1,11 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/i18n">
+        <file alias="i18n.zh_CN.qm">../i18n/i18n.zh_CN.qm</file>
+        <file alias="i18n.zh_TW.qm">../i18n/i18n.zh_TW.qm</file>
+        <file alias="i18n.ja_JP.qm">../i18n/i18n.ja_JP.qm</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file alias="logo.png">../assets/icons/logo.png</file>
+    </qresource>
+</RCC>

@@ -16,6 +16,9 @@
 #   Contact: err.overflow@gmail.com
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
+# nuitka-project: --include-package=app.builtin_tasks
+# nuitka-project: --include-module=app.resources.app_rc
+
 """
 MFW-ChainFlow Assistant
 MFW-ChainFlow Assistant 启动文件
@@ -30,6 +33,7 @@ from pathlib import Path
 
 from app.utils.install_paths import (
     is_packed,
+    resolve_app_i18n_dir,
     resolve_install_anchor,
     resolve_install_root,
 )
@@ -230,20 +234,37 @@ def _run() -> int:
     translator = FluentTranslator(locale.value)
     galleryTranslator = QTranslator()
 
-    i18n_dir = os.path.join(".", "app", "i18n")
+    try:
+        from app.resources import app_rc as _app_rc  # noqa: F401
+    except ImportError:
+        logger.debug("未编译 Qt 资源（app_rc），将尝试从 app/i18n 加载翻译")
+
+    i18n_dir = str(resolve_app_i18n_dir())
 
     def _try_load_qm(translator: QTranslator, filenames: tuple[str, ...]) -> bool:
         for name in filenames:
+            resource_path = f":/i18n/{name}"
+            if translator.load(resource_path):
+                logger.debug("已加载 UI 翻译: %s", resource_path)
+                return True
             path = os.path.join(i18n_dir, name)
             if os.path.isfile(path) and translator.load(path):
+                logger.debug("已加载 UI 翻译（文件）: %s", path)
                 return True
+        logger.warning(
+            "未找到 UI 翻译（Qt 资源 :/i18n 或 %s，候选 %s）",
+            i18n_dir,
+            ", ".join(filenames),
+        )
         return False
 
     language_code = "zh_cn"
     if locale == Language.CHINESE_SIMPLIFIED:
-        _try_load_qm(galleryTranslator, ("i18n.zh_CN.qm",))
-        language_code = "zh_cn"
-        logger.info("加载简体中文翻译")
+        if _try_load_qm(galleryTranslator, ("i18n.zh_CN.qm",)):
+            language_code = "zh_cn"
+            logger.info("加载简体中文翻译")
+        else:
+            language_code = "zh_cn"
     elif locale == Language.CHINESE_TRADITIONAL:
         if _try_load_qm(galleryTranslator, ("i18n.zh_TW.qm",)):
             logger.info("加载繁体中文翻译")

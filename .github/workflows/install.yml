@@ -89,12 +89,15 @@ jobs:
       - name: lrelease i18n
         run: |
           python ./tools/lrelease.py
+          python ./tools/rcc_resources.py
 
       - name: Upload i18n
         uses: actions/upload-artifact@v7
         with:
           name: i18n
-          path: app/i18n
+          path: |
+            app/i18n/*.qm
+            app/resources/app_rc.py
     outputs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
@@ -252,7 +255,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: i18n
-          path: app/i18n
+          path: .
 
       # 在两次 Nuitka 之前写入版本，主程序与 updater 编译时均能读到 __version__
       - name: Set __version__ for Nuitka compile
@@ -319,15 +322,12 @@ jobs:
             maa
             PIL
             MaaAgentBinary
+            app.builtin_tasks
           include-package-data: MaaAgentBinary
           include-data-files: |
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
-          include-data-dir: |
-            app/i18n=app/i18n
-            app/assets/icons=app/assets/icons
-
       - name: Qt GUI with PySide6 (Linux)
         if: matrix.platform == 'linux'
         uses: Nuitka/Nuitka-Action@main
@@ -350,16 +350,13 @@ jobs:
             maa
             PIL
             MaaAgentBinary
+            app.builtin_tasks
           include-package-data: MaaAgentBinary
           include-data-files: |
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
             AUTHORS.md=MFW_AUTHORS.md
-          include-data-dir: |
-            app/i18n=app/i18n
-            app/assets/icons=app/assets/icons
-
       - name: Qt GUI with PySide6 (macOS)
         if: matrix.platform == 'macos'
         uses: Nuitka/Nuitka-Action@main
@@ -387,16 +384,13 @@ jobs:
           include-package: |
             maa
             PIL
+            app.builtin_tasks
           include-module: MaaAgentBinary
           include-data-files: |
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
             AUTHORS.md=MFW_AUTHORS.md
-          include-data-dir: |
-            app/i18n=app/i18n
-            app/assets/icons=app/assets/icons
-
       - name: updater build (Windows)
         if: matrix.platform == 'win'
         uses: Nuitka/Nuitka-Action@main

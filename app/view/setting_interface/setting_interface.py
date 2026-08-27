@@ -54,6 +54,11 @@ from app.common import __version__ as version_meta
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
+from app.utils.asset_paths import (
+    DEFAULT_APP_LOGO_FILE,
+    load_app_logo_pixmap,
+    resolve_window_icon,
+)
 from app.utils.install_paths import (
     resolve_install_anchor,
     resolve_install_root,
@@ -457,7 +462,7 @@ class SettingInterface(QWidget):
 
         self.icon_label = BodyLabel(self)
         self.icon_label.setFixedSize(72, 72)
-        self._apply_header_icon("app/assets/icons/logo.png")
+        self._apply_header_icon(DEFAULT_APP_LOGO_FILE)
         # 图标整体在该行内顶部对齐
         top_row.addWidget(self.icon_label, 0, Qt.AlignmentFlag.AlignTop)
 
@@ -664,11 +669,16 @@ class SettingInterface(QWidget):
 
     def _apply_header_icon(self, icon_path: Optional[str] = None) -> None:
         """加载 interface 中提供的图标路径，失败时回退到默认 logo。"""
-        path = icon_path or "app/assets/icons/logo.png"
-        pixmap = QPixmap(path)
-        if pixmap.isNull():
-            pixmap = QPixmap("app/assets/icons/logo.png")
-        if pixmap.isNull():
+        pixmap: QPixmap | None = None
+        if icon_path and not icon_path.startswith(":"):
+            candidate = Path(icon_path)
+            if not candidate.is_absolute():
+                candidate = Path.cwd() / candidate
+            if candidate.is_file():
+                pixmap = QPixmap(str(candidate))
+        if pixmap is None or pixmap.isNull():
+            pixmap = load_app_logo_pixmap()
+        if pixmap is None:
             return
         self.icon_label.setPixmap(
             pixmap.scaled(
@@ -1840,7 +1850,7 @@ class SettingInterface(QWidget):
         """
         使用「MFW-ChainFlow Assistant」本体的信息刷新头部展示（宿主应用视角）。
         """
-        icon_path = "app/assets/icons/logo.png"
+        icon_path = DEFAULT_APP_LOGO_FILE
         name = self.tr("MFW-ChainFlow Assistant")
         self.name = "MFW_CFA"
         # 当前版本使用 UI 本体版本号

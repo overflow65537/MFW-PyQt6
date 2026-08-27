@@ -7,6 +7,7 @@ from app.utils.install_paths import (
     APP_EXECUTABLE_RELATIVE_PATH,
     is_app_bundle_layout,
     normalize_install_anchor,
+    resolve_app_i18n_dir,
     resolve_install_root,
     resolve_main_executable,
     resolve_schedule_launch_command,
@@ -63,6 +64,13 @@ class InstallPathTests(unittest.TestCase):
             self.assertEqual(command, str(executable.resolve()))
             self.assertIn("--config-id=config-a", arguments)
             self.assertIn("--force-restart", arguments)
+
+    def test_resolves_app_i18n_dir_for_dev_fallback(self):
+        resolved = resolve_app_i18n_dir()
+        expected = (
+            Path(__file__).resolve().parents[1] / "app" / "i18n"
+        ).resolve()
+        self.assertEqual(resolved, expected)
 
 
 if __name__ == "__main__":
