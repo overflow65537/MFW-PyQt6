@@ -383,18 +383,14 @@ def _language_from_ui_tag(tag: str) -> Language | None:
 def detect_system_language() -> Language:
     """检测系统语言并返回对应的 Language 枚举。
 
-    macOS 上 ``QLocale.system().language()`` 常跟随 POSIX ``LANG``（多为
-    ``en_US.UTF-8``），与系统「首选语言」不一致；应优先使用 ``uiLanguages()``。
+    须在 ``QApplication`` 创建之后调用，以便 ``uiLanguages()`` 反映系统 UI 首选语言。
     """
     system_locale = QLocale.system()
-
-    # 1) 用户界面首选语言列表（macOS / Windows 更准确）
     for tag in system_locale.uiLanguages():
         detected = _language_from_ui_tag(tag)
         if detected is not None:
             return detected
 
-    # 2) 回退：POSIX / QLocale language+country
     language = system_locale.language()
     country = system_locale.country()
 

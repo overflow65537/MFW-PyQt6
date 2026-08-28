@@ -107,8 +107,6 @@ def _run() -> int:
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
         os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
 
-    init_language_on_first_run()
-
     def _ensure_early_startup_app(qt_argv: list[str]) -> QApplication:
         app = QApplication.instance()
         if app is None or not isinstance(app, QApplication):
@@ -226,6 +224,8 @@ def _run() -> int:
         app = QApplication(qt_argv)
         app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
         apply_theme_from_config()
+
+    init_language_on_first_run()
 
     _show_deprecated_cli_if_needed()
 
