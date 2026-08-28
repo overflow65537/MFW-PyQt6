@@ -122,14 +122,14 @@ jobs:
             python_arch: x64
             target_arch: x86_64
             nuitka_main_mode: app-dist
-            nuitka_artifact: build/mfw-release.zip
+            nuitka_artifact: build/mfw-release
           - platform: macos
             runs-on: macos-latest
             arch: aarch64
             python_arch: arm64
             target_arch: arm64
             nuitka_main_mode: app-dist
-            nuitka_artifact: build/mfw-release.zip
+            nuitka_artifact: build/mfw-release
 
       fail-fast: false
 
@@ -614,18 +614,6 @@ jobs:
       - name: Generate distribution file list
         run: python tools/packaging/build_nuitka.py --file-list
 
-      # upload-artifact 不保留 Unix 权限与符号链接；macOS 必须先在原生 runner 上封装。
-      - name: Package macOS distribution
-        if: matrix.platform == 'macos'
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -f build/mfw-release.zip
-          (
-            cd build/mfw-release
-            /usr/bin/zip -qry ../mfw-release.zip .
-          )
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
@@ -646,11 +634,10 @@ jobs:
       - run: |
           cd assets
           for f in *; do
-            if [ -f "$f/mfw-release.zip" ]; then
-              cp "$f/mfw-release.zip" "$f-${{ needs.meta.outputs.tag }}.zip"
-            else
-              (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
-            fi
+            # upload-artifact 可能丢掉 Unix 可执行位；发布前按已知路径补回
+            chmod +x "$f/MFW" "$f/MFWUpdater" "$f/run-mfw.sh" 2>/dev/null || true
+            chmod +x "$f/MFW.app/Contents/MacOS/MFW" "$f/MFWUpdater" 2>/dev/null || true
+            (cd "$f" && zip -r "../$f-${{ needs.meta.outputs.tag }}.zip" .)
           done
 
       - uses: softprops/action-gh-release@v3
