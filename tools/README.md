@@ -48,7 +48,7 @@ python tools/lrelease.py
 
 将 `app/i18n/*.qm` 与运行时图标 `app/assets/icons/logo.png` 编译为内嵌 Qt 资源模块 `app/resources/app_rc.py`（`:/i18n/*.qm`、`:/icons/logo.png`，由 Nuitka 打进主程序）。
 
-**依赖**：PySide6 自带的 **`rcc`**（或 `pyside6-rcc`）；须先运行 `lrelease.py` 生成 `.qm`。
+**依赖**：PySide6 的 **`pyside6-rcc`**（勿用裸 `rcc`，默认生成 C++）；须先运行 `lrelease.py` 生成 `.qm`。跨平台打包使用 zlib 压缩。
 
 **用法**：
 
