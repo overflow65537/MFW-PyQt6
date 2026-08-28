@@ -75,25 +75,7 @@ jobs:
           echo is_release=$is_release | tee -a $GITHUB_OUTPUT
           echo is_prerelease=$is_prerelease | tee -a $GITHUB_OUTPUT
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-
       # i18n 生成与 LLM 翻译见 .github/workflows/i18n-sync.yml（提交回仓库，避免此处重复翻译）
-      - name: Install PySide6
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install PySide6
-
-      - name: lrelease i18n
-        run: python ./tools/lrelease.py
-
-      - name: Upload i18n
-        uses: actions/upload-artifact@v7
-        with:
-          name: i18n
-          path: app/i18n/*.qm
     outputs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
@@ -247,14 +229,11 @@ jobs:
             exit 1
           fi
 
-      - name: Download i18n
-        uses: actions/download-artifact@v8
-        with:
-          name: i18n
-          path: .
-
       - name: Build Qt resource module
-        run: python ./tools/rcc_resources.py
+        run: |
+          python -m pip install PySide6
+          python ./tools/lrelease.py
+          python ./tools/rcc_resources.py
 
       - name: Verify app_rc for Nuitka
         shell: python
@@ -667,12 +646,10 @@ jobs:
       - run: |
           cd assets
           for f in *; do
-            if [ "$f" != "i18n" ]; then
-              if [ -f "$f/mfw-release.zip" ]; then
-                cp "$f/mfw-release.zip" "$f-${{ needs.meta.outputs.tag }}.zip"
-              else
-                (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
-              fi
+            if [ -f "$f/mfw-release.zip" ]; then
+              cp "$f/mfw-release.zip" "$f-${{ needs.meta.outputs.tag }}.zip"
+            else
+              (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
             fi
           done
 
