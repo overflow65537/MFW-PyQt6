@@ -23,6 +23,8 @@ MFW-ChainFlow Assistant 配置
 """
 
 
+import re
+import subprocess
 import sys
 from pathlib import Path
 from enum import Enum
@@ -355,6 +357,30 @@ cfg.themeMode.value = Theme.AUTO
 qconfig.load("config/config.json", cfg)
 
 
+def _parse_defaults_apple_languages(output: str) -> list[str]:
+    """解析 ``defaults read -g AppleLanguages`` 的数组输出。"""
+    return [match.group(1) for match in re.finditer(r'"([^"]+)"', output)]
+
+
+def _macos_apple_languages() -> list[str]:
+    """macOS：读取全局 AppleLanguages（等同 ``defaults read -g AppleLanguages``）。"""
+    if sys.platform != "darwin":
+        return []
+    try:
+        result = subprocess.run(
+            ["defaults", "read", "-g", "AppleLanguages"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if result.returncode != 0 or not result.stdout.strip():
+        return []
+    return _parse_defaults_apple_languages(result.stdout)
+
+
 def _language_from_ui_tag(tag: str) -> Language | None:
     """从 BCP47/UI 语言标签解析 Language（如 ``zh-Hans-CN``、``zh_TW``、``ja``）。"""
     normalized = tag.strip().replace("_", "-").lower()
@@ -362,7 +388,7 @@ def _language_from_ui_tag(tag: str) -> Language | None:
         return None
     primary = normalized.split("-", 1)[0]
 
-    if primary == "zh":
+    if primary in {"zh", "cmn"}:
         # 繁体常见标记：Hant / TW / HK / MO
         if any(
             token in normalized
@@ -383,20 +409,28 @@ def _language_from_ui_tag(tag: str) -> Language | None:
 def detect_system_language() -> Language:
     """检测系统语言并返回对应的 Language 枚举。
 
-    须在 ``QApplication`` 创建之后调用，以便 ``uiLanguages()`` 反映系统 UI 首选语言。
-    macOS 打包版还须声明 ``CFBundleLocalizations``（见 ``patch_macos_info_plist.py``）。
+    macOS 使用 ``defaults read -g AppleLanguages``；其它平台在 ``QApplication``
+    创建之后使用 ``QLocale.system().uiLanguages()``。
     """
     from app.utils.logger import logger
 
+    if sys.platform == "darwin":
+        tags = _macos_apple_languages()
+        logger.debug("系统语言检测输入 (macOS AppleLanguages): %s", tags)
+        for tag in tags:
+            detected = _language_from_ui_tag(tag)
+            if detected is not None:
+                return detected
+        return Language.ENGLISH
+
     system_locale = QLocale.system()
-    ui_languages = list(system_locale.uiLanguages())
     logger.debug(
         "系统语言检测输入: uiLanguages=%s locale=%s",
-        ui_languages,
+        list(system_locale.uiLanguages()),
         system_locale.name(),
     )
-    for tag in ui_languages:
-        detected = _language_from_ui_tag(tag)
+    for tag in system_locale.uiLanguages():
+        detected = _language_from_ui_tag(str(tag))
         if detected is not None:
             return detected
 

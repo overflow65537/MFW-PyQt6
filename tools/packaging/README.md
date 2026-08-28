@@ -7,7 +7,7 @@
 | `build_nuitka.py` | 为 `build/mfw-release` 生成 `file_list.txt` |
 | `move_maa_bin_to_maafw.py` | 将 Nuitka 产物内 `maa/bin` 迁到发行根 `maafw/` |
 | `copy_maagentbinary_to_dist.py` | macOS：拷贝 `MaaAgentBinary`（ADB 代理）进 `.app` |
-| `patch_macos_info_plist.py` | macOS：声明 `CFBundleLocalizations`，修复首次启动语言误判为英文 |
+| `patch_macos_info_plist.py` | macOS：声明 `CFBundleLocalizations`（Qt 其它本地化行为；语言检测走 `AppleLanguages`） |
 | `bundle_macos_openssl.py` | macOS：打入 OpenSSL dylib 并修正 `cryptography` 路径 |
 | `fix_maafw_macos_dylib_paths.py` | macOS：外置 `maafw/` 的 dylib `@executable_path` → `@loader_path` |
 
