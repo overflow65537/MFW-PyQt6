@@ -384,9 +384,18 @@ def detect_system_language() -> Language:
     """检测系统语言并返回对应的 Language 枚举。
 
     须在 ``QApplication`` 创建之后调用，以便 ``uiLanguages()`` 反映系统 UI 首选语言。
+    macOS 打包版还须声明 ``CFBundleLocalizations``（见 ``patch_macos_info_plist.py``）。
     """
+    from app.utils.logger import logger
+
     system_locale = QLocale.system()
-    for tag in system_locale.uiLanguages():
+    ui_languages = list(system_locale.uiLanguages())
+    logger.debug(
+        "系统语言检测输入: uiLanguages=%s locale=%s",
+        ui_languages,
+        system_locale.name(),
+    )
+    for tag in ui_languages:
         detected = _language_from_ui_tag(tag)
         if detected is not None:
             return detected

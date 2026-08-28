@@ -69,7 +69,7 @@ def resolve_install_root(anchor: Path | str | None = None) -> Path:
 
 
 def resolve_app_i18n_dir(anchor: Path | str | None = None) -> Path:
-    """开发态未生成 ``i18n_rc`` 时，从 ``app/i18n`` 加载 .qm 的回退路径。"""
+    """开发态未生成 ``app_rc`` 时，从 ``app/i18n`` 加载 .qm 的回退路径。"""
     del anchor
     repo_root = Path(__file__).resolve().parents[2]
     return (repo_root / "app" / "i18n").resolve()

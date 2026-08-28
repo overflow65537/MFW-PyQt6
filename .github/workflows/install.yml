@@ -567,6 +567,7 @@ jobs:
 
           mkdir -p "$rel"
           cp -R "$src_app" "$app"
+          python3 tools/packaging/patch_macos_info_plist.py "$app"
           macos_dir="$app/Contents/MacOS"
           if [[ -f "$macos_dir/main" ]]; then
             mv "$macos_dir/main" "$macos_dir/MFW"
