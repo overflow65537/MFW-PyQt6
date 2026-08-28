@@ -163,7 +163,12 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         self._refresh_runtime_lock()
 
     def _refresh_runtime_lock(self):
-        """Lock configuration switching only when multi-instance is disabled."""
+        """Gate config-item clicks by the multi-instance switch.
+
+        Enabled: items respond to clicks, including while a runtime is active.
+        Disabled: items ignore clicks while a runtime is active so the user
+        cannot switch views; programmatic Switch Config is unaffected.
+        """
         running_config_ids = self.service_coordinator.get_running_config_ids()
         is_running = self._runtime_running or bool(running_config_ids)
         self.set_locked(is_running and not cfg.get(cfg.multi_instance_enabled))

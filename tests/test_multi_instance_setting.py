@@ -79,6 +79,23 @@ class MultiInstanceSettingTests(unittest.TestCase):
 
         select_current.assert_called_once_with("config-a")
 
+    def test_locked_list_ignores_user_selection_and_restores_current(self):
+        select_config = Mock()
+        select_current = Mock()
+        harness = SimpleNamespace(
+            _locked=True,
+            service_coordinator=SimpleNamespace(
+                select_config=select_config,
+                configs=SimpleNamespace(current_config_id="config-a"),
+            ),
+            _select_config_by_id=select_current,
+        )
+
+        ConfigListWidget._on_item_selected_to_service(harness, "config-b")
+
+        select_config.assert_not_called()
+        select_current.assert_called_once_with("config-a")
+
 
 if __name__ == "__main__":
     unittest.main()

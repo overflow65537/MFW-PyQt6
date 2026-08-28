@@ -1095,7 +1095,10 @@ class ConfigListWidget(BaseListWidget):
 
     def _on_item_selected_to_service(self, item_id: str):
         if self._locked:
-            # 运行中允许右键等操作，但不允许切换当前激活配置
+            # Multi-instance off: ignore user clicks; keep the current highlight.
+            current_config_id = self.service_coordinator.configs.current_config_id
+            if current_config_id and current_config_id != item_id:
+                self._select_config_by_id(current_config_id)
             return
         if not self.service_coordinator.select_config(item_id):
             current_config_id = self.service_coordinator.configs.current_config_id

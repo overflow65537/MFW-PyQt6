@@ -32,7 +32,6 @@ from app.core.facade import (
     TaskFacade,
 )
 from app.utils.logger import logger
-from app.common.config import cfg
 from app.common.signal_bus import signalBus
 
 
@@ -917,8 +916,12 @@ class ServiceCoordinator:
         return context
 
     async def _run_configuration_from_post_action(self, config_id: str) -> None:
-        """Continue a post-action chain without switching the active UI config."""
-        if not await self.run_configuration(config_id, clear_logs=True):
+        """Continue a post-action chain and switch the active UI to the target."""
+        if not await self.run_configuration(
+            config_id,
+            clear_logs=True,
+            activate_ui=True,
+        ):
             logger.warning("Post-action target configuration could not start: %s", config_id)
 
     def get_running_config_ids(self) -> list[str]:
@@ -1357,24 +1360,17 @@ class ServiceCoordinator:
         return ok
 
     def select_config(self, config_id: str) -> bool:
-        """Select the active UI configuration when switching is allowed."""
+        """Select the active UI configuration.
+
+        User clicks are gated by the View lock when multi-instance is off.
+        Programmatic callers such as post-action Switch Config stay allowed.
+        """
         if not self._config_service.get_config(config_id):
             return False
 
         current_config_id = self._config_service.current_config_id
         if config_id == current_config_id:
             return True
-
-        if (
-            not cfg.get(cfg.multi_instance_enabled)
-            and self.get_running_config_ids()
-        ):
-            logger.warning(
-                "Configuration switch to %s refused while a runtime is active "
-                "and multi-instance mode is disabled",
-                config_id,
-            )
-            return False
 
         self._config_service.current_config_id = config_id
         return self._config_service.current_config_id == config_id

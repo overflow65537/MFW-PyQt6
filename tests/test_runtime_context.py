@@ -327,16 +327,24 @@ class PostActionRuntimeRoutingTests(unittest.IsolatedAsyncioTestCase):
             current_config_id="config-a",
             get_config=lambda config_id: object() if config_id == "config-b" else None,
         )
-        coordinator._runtime_contexts = {"config-b": target_context}
-        coordinator.select_config = Mock()
+        coordinator._runtime_contexts = {
+            "config-a": SimpleNamespace(is_running=True),
+            "config-b": target_context,
+        }
+
+        def select_config(config_id):
+            coordinator._config_service.current_config_id = config_id
+            return True
+
+        coordinator.select_config = Mock(side_effect=select_config)
         coordinator._activate_runtime_context = Mock(return_value=target_context)
 
         await ServiceCoordinator._run_configuration_from_post_action(
             coordinator, "config-b"
         )
 
-        self.assertEqual("config-a", coordinator._config_service.current_config_id)
-        coordinator.select_config.assert_not_called()
+        self.assertEqual("config-b", coordinator._config_service.current_config_id)
+        coordinator.select_config.assert_called_once_with("config-b")
         coordinator._activate_runtime_context.assert_not_called()
         target_context.logs.clear.assert_called_once_with()
         target_context.start.assert_awaited_once_with()
@@ -529,7 +537,7 @@ class RuntimeCoordinatorStateTests(unittest.TestCase):
         self.assertFalse(coordinator.is_configuration_running("config-b"))
         self.assertEqual("config-b", coordinator._config_service.current_config_id)
 
-    def test_switch_is_refused_while_running_when_multi_instance_is_disabled(self):
+    def test_switch_is_allowed_while_another_runtime_is_active(self):
         coordinator = ServiceCoordinator.__new__(ServiceCoordinator)
         coordinator._config_service = SimpleNamespace(
             current_config_id="config-a",
@@ -541,26 +549,7 @@ class RuntimeCoordinatorStateTests(unittest.TestCase):
             "config-a": SimpleNamespace(is_running=True),
         }
 
-        with patch("app.core.core.cfg.get", return_value=False):
-            switched = ServiceCoordinator.select_config(coordinator, "config-b")
-
-        self.assertFalse(switched)
-        self.assertEqual("config-a", coordinator._config_service.current_config_id)
-
-    def test_switch_is_allowed_while_running_when_multi_instance_is_enabled(self):
-        coordinator = ServiceCoordinator.__new__(ServiceCoordinator)
-        coordinator._config_service = SimpleNamespace(
-            current_config_id="config-a",
-            get_config=lambda config_id: (
-                object() if config_id in {"config-a", "config-b"} else None
-            ),
-        )
-        coordinator._runtime_contexts = {
-            "config-a": SimpleNamespace(is_running=True),
-        }
-
-        with patch("app.core.core.cfg.get", return_value=True):
-            switched = ServiceCoordinator.select_config(coordinator, "config-b")
+        switched = ServiceCoordinator.select_config(coordinator, "config-b")
 
         self.assertTrue(switched)
         self.assertEqual("config-b", coordinator._config_service.current_config_id)
@@ -575,11 +564,10 @@ class RuntimeCoordinatorStateTests(unittest.TestCase):
             "config-a": SimpleNamespace(is_running=True),
         }
 
-        with patch("app.core.core.cfg.get") as get_setting:
-            switched = ServiceCoordinator.select_config(coordinator, "config-a")
+        switched = ServiceCoordinator.select_config(coordinator, "config-a")
 
         self.assertTrue(switched)
-        get_setting.assert_not_called()
+        self.assertEqual("config-a", coordinator._config_service.current_config_id)
 
     def test_switching_active_context_replays_target_button_state_only(self):
         context_a = SimpleNamespace(
