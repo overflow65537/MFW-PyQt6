@@ -87,17 +87,13 @@ jobs:
           python -m pip install PySide6
 
       - name: lrelease i18n
-        run: |
-          python ./tools/lrelease.py
-          python ./tools/rcc_resources.py
+        run: python ./tools/lrelease.py
 
       - name: Upload i18n
         uses: actions/upload-artifact@v7
         with:
           name: i18n
-          path: |
-            app/i18n/*.qm
-            app/resources/app_rc.py
+          path: app/i18n/*.qm
     outputs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
@@ -256,6 +252,17 @@ jobs:
         with:
           name: i18n
           path: .
+
+      - name: Build Qt resource module
+        run: python ./tools/rcc_resources.py
+
+      - name: Verify app_rc for Nuitka
+        shell: python
+        run: |
+          import pathlib
+          rc = pathlib.Path("app/resources/app_rc.py")
+          if not rc.is_file():
+              raise SystemExit(f"missing generated Qt resource module: {rc}")
 
       # 在两次 Nuitka 之前写入版本，主程序与 updater 编译时均能读到 __version__
       - name: Set __version__ for Nuitka compile
