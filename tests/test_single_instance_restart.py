@@ -1,4 +1,5 @@
 import unittest
+import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -27,6 +28,20 @@ class ProcessMatchesInstallAnchorTests(unittest.TestCase):
                 anchor_path=self.anchor,
             )
         )
+
+    def test_matches_macos_app_bundle_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            anchor = Path(raw) / "MFW.app" / "Contents" / "MacOS" / "MFW"
+            anchor.parent.mkdir(parents=True)
+            anchor.touch()
+            self.assertTrue(
+                process_matches_install_anchor(
+                    pid=101,
+                    exe=str(anchor),
+                    cmdline=[str(anchor)],
+                    anchor_path=anchor,
+                )
+            )
 
     def test_shutdown_command_constants(self) -> None:
         self.assertEqual(CMD_ACTIVATE, b"activate")

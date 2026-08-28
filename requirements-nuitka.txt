@@ -1,0 +1,2 @@
+# Nuitka macOS app-dist：将 --macos-app-icon 的 PNG 转为 .icns
+imageio>=2.34

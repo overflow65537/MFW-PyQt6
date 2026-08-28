@@ -7,6 +7,7 @@ from pathlib import Path
 from app.ipc.local_client import LocalIpcClient
 from app.ipc.local_server import LocalIpcServer
 from app.ipc.protocol import IpcResponse, IpcStatus
+from app.utils.install_paths import normalize_install_anchor
 from app.utils.logger import logger
 
 CMD_ACTIVATE = b"activate"
@@ -101,12 +102,12 @@ class _ActivationServer(LocalIpcServer):
         return super().start()
 
 def _normalize_install_anchor(instance_key: str) -> Path:
-    return Path(instance_key).resolve()
+    return normalize_install_anchor(instance_key)
 
 
 def _same_path(a: str | Path, b: Path) -> bool:
     try:
-        return Path(a).resolve() == b
+        return normalize_install_anchor(a) == normalize_install_anchor(b)
     except (OSError, ValueError):
         if os.name == "nt":
             return os.path.normcase(str(a)) == os.path.normcase(str(b))

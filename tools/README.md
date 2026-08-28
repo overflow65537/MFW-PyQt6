@@ -24,7 +24,7 @@ python tools/generate_i18n.py
 
 ## `lrelease.py`
 
-将 `app/i18n/*.ts` 编译为运行时使用的 **`.qm`** 文件（与 `.ts` 同名）。
+将 `app/i18n/*.ts` 编译为同目录下运行时使用的 **`.qm`** 文件（与 `.ts` 同名）。打包前还需运行 `tools/rcc_i18n.py` 将 `.qm` 编入 MFW 主程序。
 
 **依赖**：PySide6 自带的 **`lrelease`**（或 `pyside6-lrelease`）。
 
@@ -40,6 +40,21 @@ python tools/lrelease.py
 
 ```json
 { "lrelease": "C:\\path\\to\\lrelease.exe" }
+```
+
+---
+
+## `rcc_resources.py`
+
+将 `app/i18n/*.qm` 与运行时图标 `app/assets/icons/logo.png` 编译为内嵌 Qt 资源模块 `app/resources/app_rc.py`（`:/i18n/*.qm`、`:/icons/logo.png`，由 Nuitka 打进主程序）。
+
+**依赖**：PySide6 的 **`pyside6-rcc`**（勿用裸 `rcc`，默认生成 C++）；须先运行 `lrelease.py` 生成 `.qm`。跨平台打包使用 zlib 压缩。
+
+**用法**：
+
+```bash
+python tools/lrelease.py
+python tools/rcc_resources.py
 ```
 
 ---
@@ -96,19 +111,9 @@ python tools/llm_translate_ts.py --filter all
 
 ---
 
-## `build.py`
+## CI / 打包
 
-使用 **PyInstaller** 打开发行包（含复制部分资源、生成 updater 等）。脚本会切换工作目录到项目根，并清理 `dist/MFW` 后构建。
-
-**用法**（需 **3 个参数**：平台、架构、版本号）：
-
-```bash
-python tools/build.py win x86_64 v1.2.3
-```
-
-若传入参数个数不符合预期，脚本会使用默认占位：`win`、`x86_64`、`v1.0.0`（以脚本内逻辑为准）。
-
-**依赖**：已安装 PyInstaller 及项目完整运行依赖；具体打包条目以 `build.py` 内配置为准。
+Nuitka 组装脚本见 [`packaging/`](packaging/README.md)。
 
 ---
 
@@ -118,4 +123,4 @@ python tools/build.py win x86_64 v1.2.3
 2. `python tools/generate_i18n.py` 更新 `.ts`。  
 3. 若采用「新文件为 `.t.ts`」的合并流程：准备好 `i18n.<lang>.t.ts` 后运行 `python tools/merge_translations.py`。  
 4. 需要机器辅助翻译时：`python tools/llm_translate_ts.py`（注意勿将 `.llm.txt` 提交进 Git）。  
-5. `python tools/lrelease.py` 生成 `.qm`，再运行应用或执行打包验证。
+5. `python tools/lrelease.py` 与 `python tools/rcc_resources.py` 生成内嵌资源，再运行应用或执行打包验证。

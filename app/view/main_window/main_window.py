@@ -105,9 +105,11 @@ from app.view.bundle_interface.bundle_interface import BundleInterface
 from app.common.config import cfg
 from app.common.constants import _CONTROLLER_
 from app.common.signal_bus import signalBus
+from app.utils.asset_paths import app_logo_icon, resolve_window_icon
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
 from app.utils.release_notes import _safe_path_segment, _safe_version_file_stem
+from app.utils.asset_paths import DEFAULT_APP_LOGO_FILE, app_logo_icon
 from app.utils.version_policy import resolve_resource_version
 from app.core.core import ServiceCoordinator
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
@@ -548,7 +550,7 @@ class MainWindow(MSFluentWindow):
 
         icon = self.windowIcon()
         if icon.isNull():
-            icon = QIcon("./app/assets/icons/logo.png")
+            icon = app_logo_icon()
 
         tray = QSystemTrayIcon(icon, self)
         tray.setToolTip(self.windowTitle() or "MFW")
@@ -759,15 +761,9 @@ class MainWindow(MSFluentWindow):
 
         # 设置图标
         icon_path = self.service_coordinator.tasks.interface.get(
-            "icon", "./app/assets/icons/logo.png"
+            "icon", DEFAULT_APP_LOGO_FILE
         )
-        icon_path = Path(icon_path)
-        if not icon_path.is_absolute():
-            icon_path = Path.cwd() / icon_path
-        if not icon_path.exists():
-            logger.warning(" 配置的图标不存在，使用默认图标：%s", icon_path)
-            icon_path = Path.cwd() / "./app/assets/icons/logo.png"
-        self.setWindowIcon(QIcon(str(icon_path)))
+        self.setWindowIcon(resolve_window_icon(str(icon_path)))
 
         # 创建启动画面
         self.splashScreen = SplashScreen(self.windowIcon(), self)
@@ -3055,7 +3051,7 @@ class MainWindow(MSFluentWindow):
             # 多资源模式下：显示应用名 + 应用版本 + 资源标题
             prefix = f"{self.tr('MFW-ChainFlow Assistant')} {__version__}"
             title = f"{prefix} {base_title}".strip()
-            self.setWindowIcon(QIcon("./app/assets/icons/logo.png"))
+            self.setWindowIcon(app_logo_icon())
         else:
             title = base_title
 

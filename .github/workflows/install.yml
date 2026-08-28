@@ -75,26 +75,7 @@ jobs:
           echo is_release=$is_release | tee -a $GITHUB_OUTPUT
           echo is_prerelease=$is_prerelease | tee -a $GITHUB_OUTPUT
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-
       # i18n 生成与 LLM 翻译见 .github/workflows/i18n-sync.yml（提交回仓库，避免此处重复翻译）
-      - name: Install PySide6
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install PySide6
-
-      - name: lrelease i18n
-        run: |
-          python ./tools/lrelease.py
-
-      - name: Upload i18n
-        uses: actions/upload-artifact@v7
-        with:
-          name: i18n
-          path: app/i18n
     outputs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
@@ -107,7 +88,7 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     # Nuitka git 标签（与 Nuitka-Action 的 pip git+https 安装一致）；升级时改此处即可
     env:
-      NUITKA_GIT_REF: "4.0.8"
+      NUITKA_GIT_REF: "4.2"
     strategy:
       matrix:
         include:
@@ -134,6 +115,20 @@ jobs:
             arch: aarch64
             python_arch: arm64
             nuitka_main_mode: standalone
+            nuitka_artifact: build/mfw-release
+          - platform: macos
+            runs-on: macos-15-intel
+            arch: x86_64
+            python_arch: x64
+            target_arch: x86_64
+            nuitka_main_mode: app-dist
+            nuitka_artifact: build/mfw-release
+          - platform: macos
+            runs-on: macos-latest
+            arch: aarch64
+            python_arch: arm64
+            target_arch: arm64
+            nuitka_main_mode: app-dist
             nuitka_artifact: build/mfw-release
 
       fail-fast: false
@@ -194,11 +189,59 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Download i18n
-        uses: actions/download-artifact@v8
-        with:
-          name: i18n
-          path: app/i18n
+      - name: Install Nuitka macOS build dependencies
+        if: matrix.platform == 'macos'
+        run: python -m pip install -r requirements-nuitka.txt
+
+      # Intel macOS runner：/usr/local/lib 与 opt/openssl@3 重复 symlink 会令 Nuitka 扫描 FATAL；
+      # cryptography 又依赖 opt/openssl@3，不能 brew remove。
+      - name: Prepare macOS runner for Nuitka OpenSSL scan
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v brew >/dev/null 2>&1; then
+            if ! brew list openssl@3 >/dev/null 2>&1; then
+              brew install openssl@3
+            fi
+          fi
+          if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
+            for lib in \
+              /usr/local/lib/libcrypto.dylib \
+              /usr/local/lib/libssl.dylib \
+              /usr/local/lib/libcrypto.3.dylib \
+              /usr/local/lib/libssl.3.dylib; do
+              if [[ -L "$lib" ]]; then
+                rm -f "$lib"
+              fi
+            done
+            test -f /usr/local/opt/openssl@3/lib/libssl.3.dylib
+            test -f /usr/local/opt/openssl@3/lib/libcrypto.3.dylib
+          else
+            test -f /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib
+            test -f /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib
+          fi
+          openssl_lib="$(brew --prefix openssl@3)/lib/libcrypto.3.dylib"
+          # pipefail + nm | grep -q 会在 grep 退出后令 LLVM nm 收到 SIGPIPE 而失败
+          openssl_symbols="$(nm -gU "$openssl_lib")"
+          if [[ "$openssl_symbols" != *"_EVP_DigestSqueeze"* ]]; then
+            echo "openssl@3 too old for cryptography: missing _EVP_DigestSqueeze in $openssl_lib"
+            exit 1
+          fi
+
+      - name: Build Qt resource module
+        run: |
+          python -m pip install PySide6
+          python ./tools/lrelease.py
+          python ./tools/rcc_resources.py
+
+      - name: Verify app_rc for Nuitka
+        shell: python
+        run: |
+          import pathlib
+          rc = pathlib.Path("app/resources/app_rc.py")
+          if not rc.is_file():
+              raise SystemExit(f"missing generated Qt resource module: {rc}")
 
       # 在两次 Nuitka 之前写入版本，主程序与 updater 编译时均能读到 __version__
       - name: Set __version__ for Nuitka compile
@@ -265,15 +308,12 @@ jobs:
             maa
             PIL
             MaaAgentBinary
+            app.builtin_tasks
           include-package-data: MaaAgentBinary
           include-data-files: |
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
-          include-data-dir: |
-            app/i18n=app/i18n
-            app/assets/icons=app/assets/icons
-
       - name: Qt GUI with PySide6 (Linux)
         if: matrix.platform == 'linux'
         uses: Nuitka/Nuitka-Action@main
@@ -296,16 +336,47 @@ jobs:
             maa
             PIL
             MaaAgentBinary
+            app.builtin_tasks
           include-package-data: MaaAgentBinary
           include-data-files: |
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
             AUTHORS.md=MFW_AUTHORS.md
-          include-data-dir: |
-            app/i18n=app/i18n
-            app/assets/icons=app/assets/icons
-
+      - name: Qt GUI with PySide6 (macOS)
+        if: matrix.platform == 'macos'
+        uses: Nuitka/Nuitka-Action@main
+        with:
+          nuitka-version: ${{ env.NUITKA_GIT_REF }}
+          script-name: main.py
+          mode: ${{ matrix.nuitka_main_mode }}
+          lto: no
+          caching-key: mfw-app-dist-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
+          enable-plugins: pyside6
+          macos-target-arch: ${{ matrix.target_arch }}
+          macos-app-icon: ./app/assets/icons/logo.png
+          macos-signed-app-name: com.overflow65537.MFW
+          macos-app-name: MFW-ChainFlow Assistant
+          macos-app-mode: gui
+          macos-app-console-mode: disable
+          macos-app-version: ${{ steps.exe_meta.outputs.win_product_version }}
+          company-name: ${{ github.repository_owner }}
+          product-name: MFW-ChainFlow Assistant
+          file-version: ${{ steps.exe_meta.outputs.win_file_version }}
+          product-version: ${{ steps.exe_meta.outputs.win_product_version }}
+          file-description: MaaFramework GUI runner (interface v2)
+          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
+          user-package-configuration-file: nuitka-package.config.yml
+          include-package: |
+            maa
+            PIL
+            app.builtin_tasks
+          include-module: MaaAgentBinary
+          include-data-files: |
+            README.md=MFW_README.md
+            README-en.md=MFW_README-en.md
+            LICENSE=MFW_LICENSE
+            AUTHORS.md=MFW_AUTHORS.md
       - name: updater build (Windows)
         if: matrix.platform == 'win'
         uses: Nuitka/Nuitka-Action@main
@@ -341,6 +412,24 @@ jobs:
           file-description: MFW update helper (sidecar)
           copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
 
+      - name: updater build (macOS)
+        if: matrix.platform == 'macos'
+        uses: Nuitka/Nuitka-Action@main
+        with:
+          nuitka-version: ${{ env.NUITKA_GIT_REF }}
+          script-name: updater.py
+          mode: onefile
+          lto: no
+          caching-key: mfw-onefile-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
+          output-file: MFWUpdater
+          macos-target-arch: ${{ matrix.target_arch }}
+          company-name: ${{ github.repository_owner }}
+          product-name: MFW Updater
+          file-version: ${{ steps.exe_meta.outputs.win_file_version }}
+          product-version: ${{ steps.exe_meta.outputs.win_product_version }}
+          file-description: MFW update helper (sidecar)
+          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
+
       # standalone：main.dist 内为 maa/bin；迁入 mfw-release 后执行 move_maa_bin_to_maafw，与 MAAFW_BINARY_PATH=maafw 一致
       - name: Assemble mfw-release (Windows)
         if: matrix.platform == 'win'
@@ -357,7 +446,7 @@ jobs:
           Copy-Item -Path (Join-Path $srcDist '*') -Destination $rel -Recurse -Force
           Rename-Item -LiteralPath (Join-Path $rel "main.exe") -NewName "MFW.exe" -Force
           Move-Item -LiteralPath $updExe -Destination (Join-Path $rel "MFWUpdater.exe") -Force
-          python tools/move_maa_bin_to_maafw.py $rel
+          python tools/packaging/move_maa_bin_to_maafw.py $rel
 
       - name: Assemble mfw-release (Linux)
         if: matrix.platform == 'linux'
@@ -385,7 +474,7 @@ jobs:
           fi
           mv "$upd_bin" "$rel/MFWUpdater"
           chmod +x "$rel/MFW" "$rel/MFWUpdater"
-          python3 tools/move_maa_bin_to_maafw.py "$rel"
+          python3 tools/packaging/move_maa_bin_to_maafw.py "$rel"
 
           python3 << 'PY'
           import datetime as _dt
@@ -464,8 +553,67 @@ jobs:
           )
           PY
 
+      - name: Assemble mfw-release (macOS)
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rel="build/mfw-release"
+          src_app="build/main.app"
+          app="$rel/MFW.app"
+          upd_bin="build/MFWUpdater"
+          if [[ ! -d "$src_app" ]]; then echo "missing $src_app"; ls -la build; exit 1; fi
+          if [[ ! -f "$upd_bin" ]]; then echo "missing $upd_bin"; ls -la build; exit 1; fi
+
+          mkdir -p "$rel"
+          cp -R "$src_app" "$app"
+          python3 tools/packaging/patch_macos_info_plist.py "$app"
+          macos_dir="$app/Contents/MacOS"
+          if [[ -f "$macos_dir/main" ]]; then
+            mv "$macos_dir/main" "$macos_dir/MFW"
+            /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable MFW" "$app/Contents/Info.plist"
+          elif [[ ! -f "$macos_dir/MFW" ]]; then
+            echo "missing app executable in $macos_dir"; ls -la "$macos_dir"; exit 1
+          fi
+
+          mv "$upd_bin" "$rel/MFWUpdater"
+          chmod +x "$macos_dir/MFW" "$rel/MFWUpdater"
+
+          # Nuitka 不能用 include-package 打 MaaAgentBinary（arm64 ELF .so 会误判为宿主库）；
+          # 组装阶段从 site-packages 拷贝 ADB 代理（minicap/minitouch/maatouch）。
+          python3 tools/packaging/copy_maagentbinary_to_dist.py "$macos_dir/MaaAgentBinary"
+
+          # cryptography 在 CI 上链到 Homebrew OpenSSL 绝对路径，需打入 dylib 并改 @executable_path。
+          python3 tools/packaging/bundle_macos_openssl.py "$macos_dir"
+
+          python3 tools/packaging/move_maa_bin_to_maafw.py "$macos_dir" "$rel"
+
+          mkdir -p "$rel/maafw/maa/bin"
+          for library in "$rel"/maafw/*.dylib; do
+            [[ -f "$library" ]] || continue
+            cp -p "$library" "$rel/maafw/maa/bin/"
+          done
+          if [[ -d "$rel/maafw/plugins" ]]; then
+            cp -R "$rel/maafw/plugins" "$rel/maafw/maa/bin/plugins"
+          fi
+
+          # 外置 maafw 后 @executable_path 仍指向 .app/MacOS，需改为 @loader_path。
+          python3 tools/packaging/fix_maafw_macos_dylib_paths.py "$rel/maafw"
+
+          cp README.md "$rel/MFW_README.md"
+          cp README-en.md "$rel/MFW_README-en.md"
+          cp LICENSE "$rel/MFW_LICENSE"
+          cp AUTHORS.md "$rel/MFW_AUTHORS.md"
+
+          # Nuitka 会先签名原始 bundle；移动 dylib 和重命名入口后必须重新封装签名。
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --strict "$app"
+          test -x "$macos_dir/MFW"
+          test -x "$rel/MFWUpdater"
+          test -f "$rel/maafw/maa/bin/libMaaFramework.dylib"
+
       - name: Generate distribution file list
-        run: python tools/build_nuitka.py --file-list
+        run: python tools/packaging/build_nuitka.py --file-list
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
@@ -474,107 +622,10 @@ jobs:
           path: ${{ matrix.nuitka_artifact }}
           include-hidden-files: true
 
-  # === PyInstaller：仅 macOS（Windows / Linux 由 nuitka job 打包）===
-  pyinstaller:
-    needs: meta
-    name: Build (${{ matrix.platform }}-${{ matrix.arch }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: macos-15-intel
-            platform: macos
-            arch: x86_64 
-            target_arch: x86_64
-            python_arch: x64
-
-          - os: macos-latest
-            platform: macos
-            arch: aarch64  
-            target_arch: arm64
-            python_arch: arm64
-
-      fail-fast: false
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          submodules: true
- 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-          architecture: ${{ matrix.python_arch }}
-
-      - name: Install dependencies (Windows ARM64)
-        if: matrix.platform == 'win' && matrix.arch == 'aarch64'
-        run: |
-          # 安装 vcpkg 并获取 OpenSSL（cryptography 依赖）
-          git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}\vcpkg
-          ${{ github.workspace }}\vcpkg\bootstrap-vcpkg.bat
-          ${{ github.workspace }}\vcpkg\vcpkg install openssl:arm64-windows-static-md
-
-          $env:VCPKG_ROOT = "${{ github.workspace }}\vcpkg"
-          $env:OPENSSL_DIR = "${{ github.workspace }}\vcpkg\installed\arm64-windows-static-md"  # 告知 cryptography 依赖位置
-          $env:OPENSSL_LIB_DIR = "$env:OPENSSL_DIR\lib"
-          $env:OPENSSL_INCLUDE_DIR = "$env:OPENSSL_DIR\include"
-
-          # 升级 pip 并安装基础工具
-          python -m pip install --upgrade pip
-          python -m pip install setuptools wheel maturin  # maturin 用于 Rust-Python 混合编译
-
-          # 安装其他依赖
-          python -m pip install pyinstaller
-          python -m pip install -r ./requirements.txt
-        shell: pwsh
-
-      - name: Install dependencies (macos)
-        if: matrix.platform == 'macos'
-        run: |
-          uname -m
-          if [[ ${{ matrix.arch }} == "x86_64" ]]; then
-            arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-          elif [[ ${{ matrix.arch }} == "aarch64" ]]; then
-            arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-          fi
-
-      - name: Install dependencies (other)
-        if: matrix.platform != 'macos' && !(matrix.platform == 'win' && matrix.arch == 'aarch64')
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pyinstaller
-          python -m pip install -r ./requirements.txt
-
-      - name: Download i18n
-        uses: actions/download-artifact@v8
-        with:
-          name: i18n
-          path: app/i18n
-
-      - name: Install(macos)
-        if: matrix.platform == 'macos'
-        run: |
-          sudo python ./tools/build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
-
-
-      - name: Install(other)
-        if: matrix.platform != 'macos'
-        run: |
-          python ./tools/build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
-        shell: pwsh  
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
-          path: "dist/MFW/"
-
-
-  # === 以下 release 与 main/.github/workflows/install.yml 一致；needs 含 nuitka（Win/Linux）与 pyinstaller（macOS）===
+  # === 发布 Nuitka 产物 ===
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, nuitka, pyinstaller, changelog]
+    needs: [meta, nuitka, changelog]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -584,9 +635,10 @@ jobs:
       - run: |
           cd assets
           for f in *; do
-            if [ "$f" != "i18n" ]; then
-              (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
-            fi
+            # upload-artifact 可能丢掉 Unix 可执行位；发布前按已知路径补回
+            chmod +x "$f/MFW" "$f/MFWUpdater" "$f/run-mfw.sh" 2>/dev/null || true
+            chmod +x "$f/MFW.app/Contents/MacOS/MFW" "$f/MFWUpdater" 2>/dev/null || true
+            (cd "$f" && zip -r "../$f-${{ needs.meta.outputs.tag }}.zip" .)
           done
 
       - uses: softprops/action-gh-release@v3

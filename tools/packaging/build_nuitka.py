@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 
 script_dir = Path(__file__).parent.absolute()
-project_root = script_dir.parent
+project_root = script_dir.parent.parent
 if not (project_root / "main.py").exists():
     if (Path.cwd() / "main.py").exists():
         project_root = Path.cwd()
@@ -74,7 +74,7 @@ def main() -> int:
         out = os.path.join(dist_root, "file_list.txt")
         return 0 if generate_file_list(dist_root, out) else 1
     print(
-        "用法: python tools/build_nuitka.py --file-list",
+        "用法: python tools/packaging/build_nuitka.py --file-list",
         file=sys.stderr,
     )
     return 2

@@ -41,6 +41,7 @@ from app.common import __version__ as version_meta
 
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.list_item import OptionLabel
+from app.utils.asset_paths import load_app_logo_pixmap
 from app.utils.markdown_helper import render_markdown
 from app.utils.rich_text_helper import apply_rich_text_html
 from app.utils.release_notes import load_release_notes, resolve_project_name
@@ -726,17 +727,14 @@ class DashboardInterface(QWidget):
             return
 
         resolved_path = self._resolve_hero_cover_path(image_path)
-        if not resolved_path:
-            self._clear_hero_cover()
-            return
-
-        image_file = Path(resolved_path)
-        if not image_file.is_file():
-            self._clear_hero_cover()
-            return
-
-        pixmap = QPixmap(str(image_file))
-        if pixmap.isNull():
+        pixmap: QPixmap | None = None
+        if resolved_path:
+            image_file = Path(resolved_path)
+            if image_file.is_file():
+                pixmap = QPixmap(str(image_file))
+        if pixmap is None or pixmap.isNull():
+            pixmap = load_app_logo_pixmap()
+        if pixmap is None or pixmap.isNull():
             self._clear_hero_cover()
             return
 
@@ -789,7 +787,6 @@ class DashboardInterface(QWidget):
             "dashboard.png",
             "dashboard.webp",
             "logo.png",
-            "app/assets/icons/logo.png",
         ):
             candidates.append(Path.cwd() / candidate_name)
 

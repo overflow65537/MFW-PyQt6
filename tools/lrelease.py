@@ -19,7 +19,7 @@
 """
 MFW-ChainFlow Assistant
 MFW-ChainFlow Assistant i18n 翻译脚本
-自动将 app/i18n 文件夹内的所有 .ts 文件转换为 .qm 文件
+将 app/i18n 文件夹内的 .ts 编译为同目录下的 .qm 文件
 作者:overflow65537
 """
 

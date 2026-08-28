@@ -38,6 +38,7 @@ from app.view.task_interface.components.panel_splitter import (
     PANEL_SECTION_SPACING,
     panel_outer_margins,
 )
+from app.utils.asset_paths import load_app_logo_pixmap
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 
@@ -581,9 +582,9 @@ class MonitorInterface(QWidget):
         self.preview_cleared.emit()
 
     def _load_placeholder_image(self) -> None:
-        pixmap = QPixmap("app/assets/icons/logo.png")
-        if pixmap.isNull():
-            logger.warning("无法加载监控子页面的占位图标，路径可能不存在。")
+        pixmap = load_app_logo_pixmap()
+        if pixmap is None:
+            logger.warning("无法加载监控子页面的占位图标。")
             return
         self._preview_pixmap = pixmap
         self._refresh_preview_image()

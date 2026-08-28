@@ -483,6 +483,7 @@ MPAcustom/*
 app/i18n/i18n.zh_CN.qm
 app/i18n/i18n.zh_TW.qm
 app/i18n/i18n.ja_JP.qm
+app/resources/app_rc.py
 release_notes/*
 MPA_custom/*
 MPAcustom_custom/*

@@ -8,8 +8,9 @@ from app.utils.maafw_binary import (
     configure_packed_maafw_binary_path,
     prepare_macos_rpath_layout,
     resolve_maafw_binary_dir,
-    restore_internal_dylibs_from_maafw,
 )
+from tools.packaging.fix_maafw_macos_dylib_paths import rewrite_maafw_dependency
+from tools.packaging.move_maa_bin_to_maafw import move_maa_bin_to_maafw
 
 
 def _touch(path: Path) -> None:
@@ -34,13 +35,11 @@ class ResolveMaafwBinaryDirTests(unittest.TestCase):
             found = resolve_maafw_binary_dir(root)
             self.assertEqual(found, (root / "maafw").resolve())
 
-    def test_does_not_use_pyinstaller_internal_as_maafw_dir(self):
+    def test_ignores_framework_outside_maafw(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
-            meipass = root / "_internal"
-            _touch(meipass / "libMaaFramework.dylib")
-            _touch(meipass / "libshiboken6.abi3.6.11.dylib")
-            found = resolve_maafw_binary_dir(root, meipass=str(meipass))
+            _touch(root / "runtime" / "libMaaFramework.dylib")
+            found = resolve_maafw_binary_dir(root)
             self.assertEqual(found, (root / "maafw").resolve())
 
 
@@ -67,23 +66,7 @@ class PrepareMacosRpathLayoutTests(unittest.TestCase):
             self.assertEqual(result, nested)
             self.assertTrue((nested / "libMaaFramework.dylib").is_file())
             self.assertTrue((nested / "libMaaUtils.dylib").is_file())
-            # @loader_path/../.. from nested bin must still see the originals
             self.assertTrue((maafw / "libMaaUtils.dylib").is_file())
-
-
-class RestoreInternalDylibsTests(unittest.TestCase):
-    def test_puts_stolen_shiboken_back_into_internal(self):
-        with tempfile.TemporaryDirectory() as raw:
-            root = Path(raw)
-            internal = root / "_internal"
-            internal.mkdir()
-            stolen = root / "maafw" / "libshiboken6.abi3.6.11.dylib"
-            _touch(stolen)
-            _touch(root / "maafw" / "libMaaUtils.dylib")
-            restored = restore_internal_dylibs_from_maafw(root, meipass=str(internal))
-            self.assertIn("libshiboken6.abi3.6.11.dylib", restored)
-            self.assertTrue((internal / "libshiboken6.abi3.6.11.dylib").is_file())
-            self.assertFalse((internal / "libMaaUtils.dylib").exists())
 
 
 class ConfigurePackedMaafwBinaryPathTests(unittest.TestCase):
@@ -105,6 +88,46 @@ class ConfigurePackedMaafwBinaryPathTests(unittest.TestCase):
                     os.environ.pop("MAAFW_BINARY_PATH", None)
                 else:
                     os.environ["MAAFW_BINARY_PATH"] = old
+
+
+class MoveMaafwBinaryTests(unittest.TestCase):
+    def test_moves_bundle_maa_bin_to_external_release_root(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = root / "MFW.app" / "Contents" / "MacOS"
+            destination = root / "release"
+            _touch(source / "maa" / "bin" / "libMaaFramework.dylib")
+            _touch(source / "maa" / "bin" / "plugins" / "libMaaPlugin.dylib")
+
+            self.assertTrue(move_maa_bin_to_maafw(source, destination))
+            self.assertTrue(
+                (destination / "maafw" / "libMaaFramework.dylib").is_file()
+            )
+            self.assertTrue(
+                (
+                    destination
+                    / "maafw"
+                    / "plugins"
+                    / "libMaaPlugin.dylib"
+                ).is_file()
+            )
+            self.assertFalse((source / "maa" / "bin").exists())
+
+
+class RewriteMaafwDependencyTests(unittest.TestCase):
+    def test_rewrites_executable_path_maa_bin_to_loader_path(self):
+        old = "@executable_path/maa/bin/libfastdeploy_ppocr.dylib"
+        self.assertEqual(
+            rewrite_maafw_dependency(old),
+            "@loader_path/libfastdeploy_ppocr.dylib",
+        )
+
+    def test_rewrites_absolute_maa_bin_path(self):
+        old = "/tmp/build/maa/bin/libMaaUtils.dylib"
+        self.assertEqual(
+            rewrite_maafw_dependency(old),
+            "@loader_path/libMaaUtils.dylib",
+        )
 
 
 if __name__ == "__main__":
