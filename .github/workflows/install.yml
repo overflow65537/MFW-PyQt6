@@ -673,10 +673,11 @@ jobs:
                   path.chmod(path.stat().st_mode | 0o111)
           PY
             # zip 不保证还原 Unix 权限；Linux/macOS 用 tar.gz 保留 chmod
+            # cwd 已是 assets：zip 先 cd 进目录所以用 ../；tar 用 -C 所以写当前目录
             if [[ "$f" == *-win-* ]]; then
               (cd "$f" && zip -r "../$f-${tag}.zip" .)
             else
-              tar -czf "../$f-${tag}.tar.gz" -C "$f" .
+              tar -czf "$f-${tag}.tar.gz" -C "$f" .
             fi
           done
 
