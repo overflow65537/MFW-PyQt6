@@ -1,0 +1,13 @@
+# Phase-0 Android PoC dependencies.
+#
+# PySide6 and shiboken6 are intentionally not listed here. For Android they
+# must be supplied as matching, architecture-specific wheels to
+# pyside6-android-deploy; do not resolve the desktop PyPI wheels.
+#
+# MaaFw is also intentionally absent. Its Android Python binding and native
+# libraries will be added later through a python-for-android recipe and/or
+# buildozer.local_libs after the Qt shell passes on an arm64 device.
+#
+# Keep this file free of desktop-only dependencies such as keyboard, wmi and
+# psutil. Add packages one at a time after validating their Android recipe or
+# Android-compatible wheel.
