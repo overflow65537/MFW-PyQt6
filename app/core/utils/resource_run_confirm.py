@@ -5,11 +5,40 @@ from __future__ import annotations
 import hashlib
 import json
 from typing import Any, Mapping
+from urllib.parse import urlparse
 
-from app.core.utils.resource_hash_check import parse_github_owner_repo
 from app.utils.logger import logger
 
 MAX_ACKNOWLEDGED_RESOURCE_RUNS = 200
+
+
+def parse_github_owner_repo(url: str) -> tuple[str, str] | None:
+    """从 GitHub 仓库地址解析 owner/repo。"""
+    text = str(url or "").strip()
+    if not text:
+        return None
+    if text.startswith("git@"):
+        _, _, rest = text.partition(":")
+        parts = [part for part in rest.strip().strip("/").split("/") if part]
+        if len(parts) < 2:
+            return None
+        return parts[0], _strip_git_suffix(parts[1])
+
+    parsed = urlparse(text if "://" in text else f"https://{text}")
+    host = (parsed.hostname or "").lower()
+    if host not in {"github.com", "www.github.com"}:
+        return None
+    parts = [part for part in parsed.path.split("/") if part]
+    if len(parts) < 2:
+        return None
+    return parts[0], _strip_git_suffix(parts[1])
+
+
+def _strip_git_suffix(name: str) -> str:
+    text = str(name or "").strip()
+    if text.lower().endswith(".git"):
+        return text[:-4]
+    return text
 
 
 def build_resource_run_identity(interface: Mapping[str, Any] | None) -> dict[str, str]:

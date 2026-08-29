@@ -10,6 +10,7 @@ from app.core.utils.resource_run_confirm import (
     acknowledge_resource_run,
     build_resource_run_identity,
     is_resource_run_acknowledged,
+    parse_github_owner_repo,
     resource_run_fingerprint,
 )
 
@@ -55,6 +56,22 @@ class ResourceRunIdentityTest(unittest.TestCase):
         left = resource_run_fingerprint({"name": "Demo", "github": "https://a", "contact": ""})
         right = resource_run_fingerprint({"name": "Demo", "github": "https://b", "contact": ""})
         self.assertNotEqual(left, right)
+
+    def test_parse_https_and_ssh_repo(self) -> None:
+        self.assertEqual(
+            parse_github_owner_repo("https://github.com/overflow65537/MAA_Punish"),
+            ("overflow65537", "MAA_Punish"),
+        )
+        self.assertEqual(
+            parse_github_owner_repo("https://github.com/owner/repo.git"),
+            ("owner", "repo"),
+        )
+        self.assertEqual(
+            parse_github_owner_repo("git@github.com:owner/repo.git"),
+            ("owner", "repo"),
+        )
+        self.assertIsNone(parse_github_owner_repo("https://example.com/owner/repo"))
+        self.assertIsNone(parse_github_owner_repo(""))
 
 
 class ResourceRunAcknowledgeTest(unittest.TestCase):
