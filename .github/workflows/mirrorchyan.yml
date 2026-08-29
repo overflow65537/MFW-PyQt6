@@ -5,9 +5,7 @@ on:
 
 jobs:
   mirrorchyan:
-    # UI 暂不向 MirrorChyan 上传
-    if: false
-    # if: github.repository_owner == 'overflow65537'
+    if: github.repository_owner == 'overflow65537'
     runs-on: macos-latest
     strategy:
       fail-fast: false
