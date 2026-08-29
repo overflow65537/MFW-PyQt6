@@ -1264,6 +1264,9 @@ class MainWindow(MSFluentWindow):
         signalBus.controller_setup_hint_requested.connect(
             self._on_controller_setup_hint_requested
         )
+        signalBus.resource_run_confirmation_requested.connect(
+            self._on_resource_run_confirmation_requested
+        )
         signalBus.tutorial_replay_requested.connect(self._replay_tutorial_sequence)
         # 多资源适配启用后，将 BundleInterface 添加到导航栏
         signalBus.multi_resource_adaptation_enabled.connect(
@@ -3025,6 +3028,20 @@ class MainWindow(MSFluentWindow):
         dialog = MessageBox(self.tr("Confirm"), message, self)
         dialog.cancelButton.hide()
         dialog.exec()
+
+    def _on_resource_run_confirmation_requested(self, payload: dict):
+        """首次运行资源包前弹窗确认名称 / 联系方式 / GitHub。"""
+        from app.widget.resource_run_confirm_dialog import ResourceRunConfirmDialog
+
+        info = payload if isinstance(payload, dict) else {}
+        dialog = ResourceRunConfirmDialog(
+            self,
+            resource_name=str(info.get("name") or ""),
+            contact=str(info.get("contact") or ""),
+            github=str(info.get("github") or ""),
+        )
+        accepted = dialog.exec() == QDialog.DialogCode.Accepted
+        self.service_coordinator.runtime.submit_resource_run_confirmation(accepted)
 
     def is_admin(self):
         """判断是否为管理员权限"""

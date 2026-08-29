@@ -133,6 +133,12 @@ class RuntimeFacade:
             return await self.context.stop(manual=manual)
         return await self._runner.stop_task(manual=manual)
 
+    def submit_resource_run_confirmation(self, accepted: bool) -> None:
+        """完成首次资源运行确认（由 View 对话框回调）。"""
+        submit = getattr(self._runner, "submit_resource_run_confirmation", None)
+        if callable(submit):
+            submit(accepted)
+
     def shutdown_runtime_sync(self) -> None:
         if self._context_provider is not None:
             self.context.shutdown_runtime_sync()

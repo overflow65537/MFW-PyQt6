@@ -50,6 +50,11 @@ from app.core.utils.resource_hash_check import (
     fetch_github_resource_hashes,
     pick_github_hash,
 )
+from app.core.utils.resource_run_confirm import (
+    acknowledge_resource_run,
+    build_resource_run_identity,
+    is_resource_run_acknowledged,
+)
 from app.core.utils.resource_pipeline_check import (
     check_resource_pipeline,
     format_pipeline_issue,
@@ -181,6 +186,7 @@ class TaskFlowRunner(QObject):
         self._cached_image_error_seen: bool = False
         self._controller_reconnect_used: bool = False
         self._is_connecting_device: bool = False
+        self._resource_run_confirm_future: asyncio.Future[bool] | None = None
         self._runtime_snapshot_ready = False
         self._runtime_config = None
         self._runtime_tasks: list[TaskItem] = []
@@ -351,6 +357,44 @@ class TaskFlowRunner(QObject):
         )
         self._runtime_interface_manager = interface_manager
         self._runtime_interface = deepcopy(interface_manager.get_interface() or {})
+
+    async def _confirm_resource_run_if_needed(self) -> bool:
+        """首次运行当前资源包时请求用户确认；已确认过则直接通过。"""
+        identity = build_resource_run_identity(self._runtime_interface)
+        if is_resource_run_acknowledged(identity):
+            return True
+        if self.need_stop:
+            return False
+
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[bool] = loop.create_future()
+        self._resource_run_confirm_future = future
+        payload = {
+            "name": identity.get("name", ""),
+            "contact": identity.get("contact", ""),
+            "github": identity.get("github", ""),
+        }
+        self.runner_events.resource_run_confirmation_requested.emit(payload)
+        try:
+            if not future.done():
+                await asyncio.sleep(0)
+            if self.need_stop and not future.done():
+                future.set_result(False)
+            accepted = bool(await future)
+        finally:
+            if self._resource_run_confirm_future is future:
+                self._resource_run_confirm_future = None
+
+        if accepted:
+            acknowledge_resource_run(identity)
+            return True
+        return False
+
+    def submit_resource_run_confirmation(self, accepted: bool) -> None:
+        """由 View 回写首次运行确认结果。"""
+        future = self._resource_run_confirm_future
+        if future is not None and not future.done():
+            future.set_result(bool(accepted))
 
 
     @property
@@ -757,8 +801,6 @@ class TaskFlowRunner(QObject):
             logger.warning("任务流已经在运行，忽略新的启动请求")
             return
         self._is_running = True
-        # 写入稳定的任务流开始标记，供日志打包按"运行记录"切分（不依赖语言/文案）
-        logger.info("[RUN_RECORD] TASK_FLOW_START")
         # The caller resets stop intent before scheduling this coroutine. Do not
         # clear it here: a user may press Stop after create_task() but before
         # this coroutine gets its first timeslice.
@@ -774,13 +816,6 @@ class TaskFlowRunner(QObject):
         self._tasks_started = False
         # 重置本次任务流的结果摘要
         self._task_results.clear()
-
-        # 发送任务流启动通知
-        send_notice(
-            NoticeTiming.WHEN_FLOW_STARTED,
-            self.tr("Task Flow Started"),
-            self.tr("Task flow has been started."),
-        )
         # 重置超时状态
         self._reset_task_timeout_state()
         is_single_task_mode = task_id is not None
@@ -864,6 +899,17 @@ class TaskFlowRunner(QObject):
             self._reload_interface_for_current_bundle()
             if self.need_stop:
                 return
+            if not await self._confirm_resource_run_if_needed():
+                self._manual_stop = True
+                logger.info("用户取消首次资源运行确认，已停止任务流")
+                self.log_output.emit("INFO", self.tr("Resource run cancelled"))
+                return
+            logger.info("[RUN_RECORD] TASK_FLOW_START")
+            send_notice(
+                NoticeTiming.WHEN_FLOW_STARTED,
+                self.tr("Task Flow Started"),
+                self.tr("Task flow has been started."),
+            )
             controller_cfg = self._get_task(_CONTROLLER_)
             if not controller_cfg:
                 raise ValueError("未找到基础预配置任务")

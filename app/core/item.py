@@ -55,6 +55,8 @@ class RunnerEvents(QObject):
     monitor_recognition_roi = Signal(dict)
     # 控制器配置不完整时请求主界面遮罩引导；载荷包含当前控制器和资源支持控制器列表
     controller_setup_hint_requested = Signal(dict)
+    # 首次运行资源包前请求用户确认；载荷含 name/contact/github
+    resource_run_confirmation_requested = Signal(dict)
 
 
 # ==================== 数据模型 ====================

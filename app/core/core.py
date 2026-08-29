@@ -91,6 +91,10 @@ class _RunnerUiSignalBridge(QObject):
         signalBus.controller_setup_hint_requested.emit(payload)
 
     @Slot(dict)
+    def forward_resource_run_confirmation_requested(self, payload: dict):
+        signalBus.resource_run_confirmation_requested.emit(payload)
+
+    @Slot(dict)
     def forward_monitor_recognition_roi(self, payload: dict):
         signalBus.monitor_recognition_roi.emit(payload)
 
@@ -1078,6 +1082,10 @@ class ServiceCoordinator:
             (
                 events.controller_setup_hint_requested,
                 bridge.forward_controller_setup_hint_requested,
+            ),
+            (
+                events.resource_run_confirmation_requested,
+                bridge.forward_resource_run_confirmation_requested,
             ),
             (events.monitor_recognition_roi, bridge.forward_monitor_recognition_roi),
         )

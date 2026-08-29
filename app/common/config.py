@@ -168,6 +168,11 @@ class Config(QConfig):
 
     announcement = ConfigItem("General", "announcement", "")
 
+    # 已确认过的资源包指纹（JSON 数组）。名称/GitHub/联系方式变化后需重新确认。
+    acknowledged_resource_runs = ConfigItem(
+        "Security", "acknowledged_resource_runs", "[]"
+    )
+
     # ===== 隐私设置 =====
     telemetry_enabled = ConfigItem(
         "Privacy", "telemetry_enabled", True, BoolValidator()
