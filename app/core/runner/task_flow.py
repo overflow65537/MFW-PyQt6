@@ -47,7 +47,7 @@ from app.core.utils.win32_methods import (
 )
 from app.core.utils.resource_hash_check import (
     compare_resource_hash_sources,
-    fetch_github_resource_hashes,
+    get_github_resource_hashes_for_run,
     pick_github_hash,
 )
 from app.core.utils.resource_run_confirm import (
@@ -2265,7 +2265,7 @@ class TaskFlowRunner(QObject):
         version = str(interface_data.get("version") or "").strip()
         if github_url:
             github_hashes = await asyncio.to_thread(
-                fetch_github_resource_hashes,
+                get_github_resource_hashes_for_run,
                 github_url,
                 version,
             )

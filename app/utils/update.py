@@ -861,9 +861,12 @@ class BaseUpdate(QThread):
 
             if update_dict.get("tag_name", None) == version:
                 logger.info("当前已是最新版本")
+                body = update_dict.get("body", "")
                 return {
                     "status": "no_need",
                     "msg": self.tr("current version is latest"),
+                    "tag_name": update_dict.get("tag_name") or version,
+                    "body": str(body) if body is not None else "",
                 }
 
             return update_dict
@@ -1747,6 +1750,41 @@ class Update(BaseUpdate):
                     logger.debug("[步骤5] 清理资源备份目录失败: %s", cleanup_err)
 
     def check_update(self, fetch_download_url: bool = True) -> dict | bool:
+        """检查资源更新；结束后预取当前版本 GitHub release body 供哈希校验复用。"""
+        self._github_hash_check_source = ""
+        self._github_hash_latest_version = ""
+        self._github_hash_latest_body: str | None = None
+        try:
+            from app.core.utils.resource_hash_check import begin_github_hash_prefetch
+
+            begin_github_hash_prefetch()
+            return self._check_update_impl(fetch_download_url)
+        finally:
+            self._refresh_current_version_github_hash_cache()
+
+    def _refresh_current_version_github_hash_cache(self) -> None:
+        """用本次最新版检查结果刷新当前安装版本的 GitHub 哈希缓存。"""
+        from app.core.utils.resource_hash_check import (
+            finish_github_hash_prefetch,
+            refresh_github_hash_cache_for_current_version,
+        )
+
+        try:
+            refresh_github_hash_cache_for_current_version(
+                github_url=str(self.url or ""),
+                current_version=str(self.current_version or ""),
+                source=str(getattr(self, "_github_hash_check_source", "") or ""),
+                latest_version=str(
+                    getattr(self, "_github_hash_latest_version", "") or ""
+                ),
+                latest_body=getattr(self, "_github_hash_latest_body", None),
+            )
+        except Exception as exc:
+            logger.warning("刷新当前版本 GitHub 哈希缓存失败: %s", exc)
+        finally:
+            finish_github_hash_prefetch()
+
+    def _check_update_impl(self, fetch_download_url: bool = True) -> dict | bool:
         # 防止外部直接调用 check_update 时上下文未初始化
         self._init_run_context()
         self._begin_check_state()
@@ -1925,6 +1963,11 @@ class Update(BaseUpdate):
                 self.latest_update_version = self.current_version
                 cfg.set(cfg.latest_update_version, self.latest_update_version)
                 self._mark_check_no_update()
+                self._github_hash_check_source = "github"
+                self._github_hash_latest_version = str(
+                    github_result.get("tag_name") or self.current_version or ""
+                )
+                self._github_hash_latest_body = str(github_result.get("body") or "")
                 return False
 
         tag_name = github_result.get("tag_name") or github_result.get("name")
@@ -1933,6 +1976,9 @@ class Update(BaseUpdate):
         )
         body = github_result.get("body", "")
         self.release_note = str(body) if body is not None else ""
+        self._github_hash_check_source = "github"
+        self._github_hash_latest_version = str(target_version)
+        self._github_hash_latest_body = self.release_note
 
         if not fetch_download_url:
             self.latest_update_version = str(target_version)

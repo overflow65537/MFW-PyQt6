@@ -2602,8 +2602,10 @@ class MainWindow(MSFluentWindow):
         self._pending_auto_run = bool(
             self._cli_auto_run or cfg.get(cfg.run_after_startup)
         )
+        from app.core.utils.resource_hash_check import begin_github_hash_prefetch
         from app.utils.version_policy import is_auto_update_permitted
 
+        begin_github_hash_prefetch()
         auto_update_allowed = is_auto_update_permitted(
             config_enabled=bool(cfg.get(cfg.auto_update)),
             interface=self.service_coordinator.tasks.interface,
@@ -2616,9 +2618,62 @@ class MainWindow(MSFluentWindow):
             logger.info(
                 "配置已开启自动更新，但当前资源版本为 CI/Alpha，跳过自动更新"
             )
+        self._start_github_hash_prefetch_worker()
         # 未开启 UI 自动更新时，直接进入下一步：检查是否需要执行 bundle 自动更新
         logger.info("自动更新未开启，改为检查并执行 bundle 自动更新")
         self._check_and_start_bundle_update()
+
+    def _start_github_hash_prefetch_worker(self) -> None:
+        """在未走资源最新版检查时，单独预取当前版本 GitHub release body。"""
+        from app.core.utils.resource_hash_check import (
+            begin_github_hash_prefetch,
+            finish_github_hash_prefetch,
+            refresh_github_hash_cache_for_current_version,
+        )
+
+        begin_github_hash_prefetch()
+        interface: dict[str, Any] = {}
+        try:
+            if self.service_coordinator:
+                interface = self.service_coordinator.tasks.interface or {}
+        except Exception:
+            interface = {}
+        github_url = str(
+            interface.get("github") or interface.get("url") or ""
+        ).strip()
+        version = str(interface.get("version") or "").strip()
+
+        def _run() -> None:
+            try:
+                refresh_github_hash_cache_for_current_version(github_url, version)
+            except Exception as exc:
+                logger.warning("预取当前版本 GitHub release 失败: %s", exc)
+            finally:
+                finish_github_hash_prefetch()
+
+        threading.Thread(
+            target=_run,
+            name="GitHubHashPrefetch",
+            daemon=True,
+        ).start()
+
+    def _resource_update_check_will_run(self) -> bool:
+        """自动更新线程是否会执行资源 check_update（而非仅 UI 更新）。"""
+        try:
+            if cfg.get(cfg.multi_resource_adaptation):
+                return False
+        except Exception:
+            return False
+        updater = self._auto_update_thread
+        if updater is None:
+            setting_interface = getattr(self, "SettingInterface", None)
+            updater = (
+                getattr(setting_interface, "_updater", None)
+                if setting_interface is not None
+                else None
+            )
+        is_running = getattr(updater, "isRunning", None)
+        return bool(callable(is_running) and is_running())
 
     def _start_auto_update_thread(self) -> None:
         """启动自动更新，复用设置页的更新器并避免重复。"""
@@ -2635,6 +2690,7 @@ class MainWindow(MSFluentWindow):
             logger.warning(
                 "自动更新未启动：更新器未就绪，改为检查并执行 bundle 自动更新"
             )
+            self._start_github_hash_prefetch_worker()
             # UI 自动更新无法启动时，直接进入 bundle 自动更新阶段
             self._check_and_start_bundle_update()
             return
@@ -2650,10 +2706,13 @@ class MainWindow(MSFluentWindow):
         if started:
             self._auto_update_thread = getattr(setting_interface, "_updater", None)
             logger.info("自动更新线程已启动，线程对象=%s", self._auto_update_thread)
+            if not self._resource_update_check_will_run():
+                self._start_github_hash_prefetch_worker()
             return
 
         self._auto_update_in_progress = False
         self._auto_update_thread = None
+        self._start_github_hash_prefetch_worker()
         # UI 自动更新未成功启动，继续检查 bundle 自动更新
         logger.info("自动更新未成功启动，改为检查并执行 bundle 自动更新")
         self._check_and_start_bundle_update()
