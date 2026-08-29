@@ -4,27 +4,27 @@ from unittest.mock import patch
 
 try:
     from app.utils.update import (
-        Update,
+        BaseUpdate,
         derive_download_filename,
         path_is_update_archive_readable,
     )
 except ModuleNotFoundError as exc:  # 精简环境下可能未安装 PySide6
     if "PySide6" not in str(exc):
         raise
-    Update = None
+    BaseUpdate = None
     derive_download_filename = None
     path_is_update_archive_readable = None
 
 
 def _asset_selector(os_type: str, arch: str = "aarch64"):
-    selector = Update.__new__(Update)
+    selector = BaseUpdate.__new__(BaseUpdate)
     selector.current_os_type = os_type
     selector.current_arch = arch
     selector.project_name = "MFW-PyQt6"
     return selector
 
 
-@unittest.skipIf(Update is None, "PySide6 not installed")
+@unittest.skipIf(BaseUpdate is None, "PySide6 not installed")
 class DeriveDownloadFilenameTests(unittest.TestCase):
     def test_prefers_content_disposition(self):
         resp = SimpleNamespace(
@@ -48,7 +48,7 @@ class DeriveDownloadFilenameTests(unittest.TestCase):
         self.assertEqual(derive_download_filename(resp, ""), "update.zip")
 
 
-@unittest.skipIf(Update is None, "PySide6 not installed")
+@unittest.skipIf(BaseUpdate is None, "PySide6 not installed")
 class GithubUiAssetSelectionTests(unittest.TestCase):
     def test_macos_accepts_dmg_and_scores_it_highest(self):
         selector = _asset_selector("macos")
