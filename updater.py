@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import plistlib
 import random
 import shutil
 import stat
@@ -447,10 +446,6 @@ def _path_is_tar_gz(path: str | Path) -> bool:
     return name.endswith(".tar.gz") or name.endswith(".tgz")
 
 
-def _path_is_dmg(path: str | Path) -> bool:
-    return str(path).lower().endswith(".dmg")
-
-
 def _split_archive_filename(base_name: str) -> tuple[str, str]:
     lower = base_name.lower()
     for suffix in (".tar.gz", ".tgz"):
@@ -461,16 +456,13 @@ def _split_archive_filename(base_name: str) -> tuple[str, str]:
 
 def _path_is_supported_update_package(path: str) -> bool:
     """
-    更新器可处理的包：.zip、.tar.gz/.tgz、.7z、ZIP 型自解压 .exe、7z SFX .exe；
-    macOS 另含 .dmg（由 hdiutil 挂载后复制）。
+    更新器可处理的包：.zip、.tar.gz/.tgz、.7z、ZIP 型自解压 .exe、7z SFX .exe。
     """
     import zipfile
 
     pl = path.lower()
     if pl.endswith(".zip") or _path_is_tar_gz(pl):
         return True
-    if _path_is_dmg(pl):
-        return sys.platform == "darwin"
     if pl.endswith(".7z"):
         try:
             from app.utils.archive_seven import path_readable_by_py7zr
@@ -513,18 +505,15 @@ def extract_zip_file_with_validation(update_file_path):
 
     if not _path_is_supported_update_package(update_file_path):
         update_logger.error(
-            f"不支持的文件格式（需为 zip、tar.gz/tgz、7z、ZIP 自解压 exe、7z SFX exe 或 dmg）: {update_file_path}"
+            f"不支持的文件格式（需为 zip、tar.gz/tgz、7z、ZIP 自解压 exe 或 7z SFX exe）: {update_file_path}"
         )
         return False
 
     extract_dir = None
     try:
         pl = update_file_path.lower()
-        use_zip_or_tar = (
-            _path_is_tar_gz(pl)
-            or pl.endswith(".zip")
-            or _path_is_dmg(pl)
-            or (pl.endswith(".exe") and zipfile.is_zipfile(update_file_path))
+        use_zip_or_tar = _path_is_tar_gz(pl) or pl.endswith(".zip") or (
+            pl.endswith(".exe") and zipfile.is_zipfile(update_file_path)
         )
         if use_zip_or_tar:
             extract_dir = _extract_archive_to_temp(Path(update_file_path))
@@ -1054,132 +1043,7 @@ def _extract_tar_to_temp(tar_path: Path):
         return None
 
 
-_DMG_VOLUME_SKIP_NAMES = frozenset(
-    {
-        ".DS_Store",
-        ".Trashes",
-        ".fseventsd",
-        ".Spotlight-V100",
-        ".TemporaryItems",
-        ".background",
-        ".VolumeIcon.icns",
-        ".com.apple.timemachine.donotpresent",
-    }
-)
-
-
-def _hdiutil_attach(dmg_path: Path) -> Path:
-    """挂载 DMG，返回可见卷的挂载点。"""
-    result = subprocess.run(
-        [
-            "hdiutil",
-            "attach",
-            str(dmg_path.resolve()),
-            "-nobrowse",
-            "-readonly",
-            "-plist",
-        ],
-        input=b"Y\n",
-        capture_output=True,
-        text=False,
-        timeout=180,
-        check=False,
-    )
-    if result.returncode != 0:
-        stderr = (result.stderr or b"").decode("utf-8", errors="replace").strip()
-        raise RuntimeError(stderr or f"hdiutil attach 退出码 {result.returncode}")
-    try:
-        plist = plistlib.loads(result.stdout)
-    except Exception as exc:
-        raise RuntimeError(f"解析 hdiutil plist 失败: {exc}") from exc
-    entities = plist.get("system-entities") or []
-    mount_points = [
-        Path(entity["mount-point"])
-        for entity in entities
-        if isinstance(entity, dict) and entity.get("mount-point")
-    ]
-    if not mount_points:
-        raise RuntimeError("hdiutil attach 未返回挂载点")
-    for mount_point in mount_points:
-        if (mount_point / APP_BUNDLE_NAME).is_dir():
-            return mount_point
-    return mount_points[-1]
-
-
-def _hdiutil_detach(mount_point: Path) -> None:
-    subprocess.run(
-        ["hdiutil", "detach", str(mount_point), "-quiet", "-force"],
-        capture_output=True,
-        check=False,
-        timeout=60,
-    )
-
-
-def _copy_dmg_volume_to_temp(mount_point: Path, dest: Path) -> int:
-    """复制 DMG 卷内容，跳过卷元数据以及指向卷外的绝对符号链接。"""
-    copied = 0
-    ignore = shutil.ignore_patterns("._*", ".DS_Store")
-    for item in mount_point.iterdir():
-        if item.name in _DMG_VOLUME_SKIP_NAMES or item.name.startswith("._"):
-            continue
-        if item.is_symlink():
-            try:
-                link_target = os.readlink(item)
-            except OSError:
-                continue
-            if os.path.isabs(link_target):
-                update_logger.info(
-                    "跳过 DMG 绝对符号链接: %s -> %s", item.name, link_target
-                )
-                continue
-        dest_item = dest / item.name
-        if item.is_dir() and not item.is_symlink():
-            shutil.copytree(item, dest_item, symlinks=True, ignore=ignore)
-        elif item.is_symlink():
-            os.symlink(os.readlink(item), dest_item)
-        else:
-            shutil.copy2(item, dest_item, follow_symlinks=False)
-        copied += 1
-    return copied
-
-
-def _extract_dmg_to_temp(dmg_path: Path):
-    if sys.platform != "darwin":
-        update_logger.error("仅 macOS 可用 hdiutil 解压 dmg: %s", dmg_path)
-        return None
-
-    temp_dir = Path(tempfile.mkdtemp(prefix="mfw_full_extract_"))
-    mount_point: Path | None = None
-    try:
-        print(f"[解压] 正在挂载 DMG: {dmg_path}")
-        update_logger.info("[解压] 正在挂载 DMG: %s", dmg_path)
-        mount_point = _hdiutil_attach(dmg_path)
-        print(f"[解压] DMG 已挂载: {mount_point}")
-        update_logger.info("[解压] DMG 已挂载: %s", mount_point)
-        copied = _copy_dmg_volume_to_temp(mount_point, temp_dir)
-        if copied <= 0:
-            raise RuntimeError("DMG 卷内没有可复制的更新内容")
-        print(f"[解压] DMG 解压完成，共复制 {copied} 个顶层条目")
-        update_logger.info("[解压] DMG 解压完成，共复制 %s 个顶层条目", copied)
-        return temp_dir
-    except Exception as exc:
-        error_msg = f"解压 DMG 到临时目录失败: {exc}"
-        print(f"[解压] ✗ 严重错误: {error_msg}")
-        update_logger.error(error_msg)
-        print("[解压] 等待5秒后继续...")
-        for sec in range(5, 0, -1):
-            print(f"  {sec}秒后继续...")
-            time.sleep(1)
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        return None
-    finally:
-        if mount_point is not None:
-            _hdiutil_detach(mount_point)
-
-
 def _extract_archive_to_temp(archive_path: Path):
-    if _path_is_dmg(archive_path):
-        return _extract_dmg_to_temp(archive_path)
     if _path_is_tar_gz(archive_path):
         return _extract_tar_to_temp(archive_path)
     return _extract_zip_to_temp(archive_path)
@@ -2219,7 +2083,7 @@ def apply_mirror_hotfix(package_path):
 
 def find_latest_zip_file(directory):
     """
-    查找目录中最新的更新包（zip、tar.gz/tgz、7z、ZIP 自解压 exe、7z SFX exe、macOS dmg）。
+    查找目录中最新的更新包（zip、tar.gz/tgz、7z、ZIP 自解压 exe、7z SFX exe）。
     """
     try:
         candidates = []
