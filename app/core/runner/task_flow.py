@@ -45,6 +45,11 @@ from app.core.utils.win32_methods import (
     resolve_win32_input_method,
     resolve_win32_screencap_method,
 )
+from app.core.utils.resource_hash_check import (
+    compare_resource_hash_sources,
+    fetch_github_resource_hashes,
+    pick_github_hash,
+)
 from app.core.utils.resource_pipeline_check import (
     check_resource_pipeline,
     format_pipeline_issue,
@@ -2033,6 +2038,7 @@ class TaskFlowRunner(QObject):
         resource_target = resource_raw.get("resource")
         resource_path = []
         resource_expected_hash = ""
+        resource_label = ""
 
         controller_cfg = self._get_task(_CONTROLLER_)
         gpu_idx = -1
@@ -2086,6 +2092,7 @@ class TaskFlowRunner(QObject):
                 logger.debug(f"加载资源: {resource['path']}")
                 resource_path = resource["path"]
                 resource_expected_hash = str(resource.get("hash", "") or "").strip()
+                resource_label = str(resource.get("label", "") or "").strip()
                 break
 
         if self.need_stop:
@@ -2150,26 +2157,15 @@ class TaskFlowRunner(QObject):
                 return False
             logger.debug(f"资源加载完成: {resource}")
 
-        # v2.6.0：resource.hash 校验。hash 应为仅加载 resource.path 后的 MaaResourceGetHash 结果。
-        # 不匹配时仅警告用户，不阻止继续使用，也不影响后续 attach_resource_path 加载。
-        if resource_expected_hash and self.maafw.resource:
-            actual_hash = getattr(self.maafw.resource, "hash", "")
-            if callable(actual_hash):
-                actual_hash = actual_hash()
-            actual_hash = str(actual_hash or "").strip()
-            if actual_hash != resource_expected_hash:
-                logger.warning(
-                    "资源 hash 校验不匹配: resource=%s, expected=%s, actual=%s",
-                    resource_target,
-                    resource_expected_hash,
-                    actual_hash,
-                )
-                self.log_output.emit(
-                    "WARNING",
-                    self.tr(
-                        "Resource hash mismatch, please consider redownloading the resource package."
-                    ),
-                )
+        # 三源哈希校验：接口(MaaResourceGetHash) / interface.hash / GitHub release body。
+        # interface 仅在填写 hash 时检测；GitHub 仅在填写仓库地址且解析到关键字后对比。
+        # 只有对比不一致才失败并禁止继续运行。
+        if not await self._verify_resource_hashes(
+            resource_name=str(resource_target or ""),
+            resource_label=resource_label,
+            interface_hash=resource_expected_hash,
+        ):
+            return False
 
         # v2.2.0：控制器 attach_resource_path，在 resource.path 加载完成后额外加载
         bundle_path_str = self.bundle_path or "./"
@@ -2197,6 +2193,73 @@ class TaskFlowRunner(QObject):
                 )
                 return False
         return True
+
+    async def _verify_resource_hashes(
+        self,
+        *,
+        resource_name: str,
+        resource_label: str,
+        interface_hash: str,
+    ) -> bool:
+        """对比接口 / interface / GitHub 三源哈希，失配则禁止继续运行。"""
+        actual_hash = ""
+        if self.maafw.resource:
+            actual_hash = getattr(self.maafw.resource, "hash", "")
+            if callable(actual_hash):
+                actual_hash = actual_hash()
+            actual_hash = str(actual_hash or "").strip()
+
+        github_hash = ""
+        interface_data = self._runtime_interface or {}
+        github_url = str(
+            interface_data.get("github") or interface_data.get("url") or ""
+        ).strip()
+        version = str(interface_data.get("version") or "").strip()
+        if github_url:
+            github_hashes = await asyncio.to_thread(
+                fetch_github_resource_hashes,
+                github_url,
+                version,
+            )
+            github_hash = pick_github_hash(
+                github_hashes,
+                resource_name=resource_name,
+                resource_label=resource_label,
+            )
+
+        comparison = compare_resource_hash_sources(
+            actual_hash=actual_hash,
+            interface_hash=interface_hash,
+            github_hash=github_hash,
+        )
+        if comparison.passed:
+            if interface_hash or github_hash:
+                logger.debug(
+                    "资源 hash 校验通过: resource=%s, actual=%s, interface=%s, github=%s",
+                    resource_name,
+                    comparison.actual,
+                    comparison.interface_hash or "(skip)",
+                    comparison.github_hash or "(skip)",
+                )
+            return True
+
+        logger.error(
+            "资源 hash 校验不匹配: resource=%s, actual=%s, interface=%s, github=%s, mismatched=%s",
+            resource_name,
+            comparison.actual,
+            comparison.interface_hash or "(skip)",
+            comparison.github_hash or "(skip)",
+            ",".join(comparison.mismatched_sources),
+        )
+        self.log_output.emit("ERROR", self.tr("Resource error"))
+        self.log_output.emit(
+            "ERROR",
+            self.tr(
+                "Resource hash mismatch, running is blocked. Please redownload the resource package."
+            ),
+        )
+        self.info_bar_requested.emit("error", self.tr("Resource error"))
+        return False
 
     async def _clear_embedded_agent_custom(self) -> None:
         """在线程池中清理 MaaResource 自定义注册，避免短暂阻塞 UI。"""
