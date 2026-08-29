@@ -41,6 +41,44 @@ class AppBundleUpdateTests(unittest.TestCase):
             if os.name != "nt":
                 self.assertTrue(executable.stat().st_mode & stat.S_IXUSR)
 
+    def test_tar_gz_extraction_preserves_executable_mode(self):
+        import io
+        import tarfile
+
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            archive_path = root / "app.tar.gz"
+            with tarfile.open(archive_path, "w:gz") as archive:
+                for name, payload in (
+                    ("MFW.app/Contents/MacOS/MFW", b"binary"),
+                    ("run-mfw.sh", b"#!/bin/sh\n"),
+                ):
+                    info = tarfile.TarInfo(name)
+                    info.size = len(payload)
+                    info.mode = 0o755
+                    archive.addfile(info, io.BytesIO(payload))
+
+            destination = root / "extract"
+            with tarfile.open(archive_path, "r:gz") as archive:
+                for member in archive.getmembers():
+                    updater._extract_tar_member_preserving_mode(
+                        archive, member, destination
+                    )
+
+            extracted_bin = destination / "MFW.app" / "Contents" / "MacOS" / "MFW"
+            extracted_script = destination / "run-mfw.sh"
+            self.assertEqual(extracted_bin.read_bytes(), b"binary")
+            self.assertEqual(extracted_script.read_bytes(), b"#!/bin/sh\n")
+            if os.name != "nt":
+                self.assertTrue(extracted_bin.stat().st_mode & stat.S_IXUSR)
+                self.assertTrue(extracted_script.stat().st_mode & stat.S_IXUSR)
+
+    def test_path_accepts_tar_gz_update_package(self):
+        self.assertTrue(updater._path_is_tar_gz("MFW-linux-x86_64-v1.0.0.tar.gz"))
+        self.assertTrue(updater._path_is_supported_update_package("update.tgz"))
+        self.assertTrue(updater._path_is_supported_update_package("update.zip"))
+        self.assertFalse(updater._path_is_supported_update_package("notes.txt"))
+
     def test_replaces_app_and_runtime_but_preserves_user_data(self):
         with tempfile.TemporaryDirectory() as raw:
             base = Path(raw)

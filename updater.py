@@ -6,6 +6,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import hashlib
@@ -440,14 +441,27 @@ def restore_files_from_backup(backup_dir):
         print(f"恢复文件时出错: {e}")
 
 
+def _path_is_tar_gz(path: str | Path) -> bool:
+    name = str(path).lower()
+    return name.endswith(".tar.gz") or name.endswith(".tgz")
+
+
+def _split_archive_filename(base_name: str) -> tuple[str, str]:
+    lower = base_name.lower()
+    for suffix in (".tar.gz", ".tgz"):
+        if lower.endswith(suffix):
+            return base_name[: -len(suffix)], base_name[-len(suffix) :]
+    return os.path.splitext(base_name)
+
+
 def _path_is_supported_update_package(path: str) -> bool:
     """
-    更新器可处理的包：.zip、.7z、ZIP 型自解压 .exe、7z SFX .exe。
+    更新器可处理的包：.zip、.tar.gz/.tgz、.7z、ZIP 型自解压 .exe、7z SFX .exe。
     """
     import zipfile
 
     pl = path.lower()
-    if pl.endswith(".zip"):
+    if pl.endswith(".zip") or _path_is_tar_gz(pl):
         return True
     if pl.endswith(".7z"):
         try:
@@ -491,58 +505,22 @@ def extract_zip_file_with_validation(update_file_path):
 
     if not _path_is_supported_update_package(update_file_path):
         update_logger.error(
-            f"不支持的文件格式（需为 zip、7z、ZIP 自解压 exe 或 7z SFX exe）: {update_file_path}"
+            f"不支持的文件格式（需为 zip、tar.gz/tgz、7z、ZIP 自解压 exe 或 7z SFX exe）: {update_file_path}"
         )
         return False
 
-    extract_dir = Path(tempfile.mkdtemp(prefix="mfw_unpack_"))
+    extract_dir = None
     try:
         pl = update_file_path.lower()
-        use_zipfile = pl.endswith(".zip") or (
+        use_zip_or_tar = _path_is_tar_gz(pl) or pl.endswith(".zip") or (
             pl.endswith(".exe") and zipfile.is_zipfile(update_file_path)
         )
-        if use_zipfile:
-            with zipfile.ZipFile(
-                update_file_path, "r", metadata_encoding="utf-8"
-            ) as archive:
-                file_list = archive.namelist()
-                total_files = len(file_list)
-                print(f"[解压] 找到 {total_files} 个文件需要解压")
-                update_logger.info(f"[解压] 找到 {total_files} 个文件需要解压")
-
-                extracted_count = 0
-                for idx, file_info in enumerate(file_list, 1):
-                    try:
-                        print(f"[解压] [{idx}/{total_files}] 正在解压: {file_info}")
-                        archive.extract(file_info, extract_dir)
-                        extracted_path = extract_dir / file_info
-                        if not extracted_path.exists():
-                            raise Exception(f"文件解压后不存在: {file_info}")
-                        if sys.platform != "win32" and file_info in {
-                            "MFW",
-                            "MFWUpdater",
-                        }:
-                            os.chmod(extracted_path, 0o755)
-                        extracted_count += 1
-                        print(
-                            f"[解压] ✓ 已解压 ({extracted_count}/{total_files}): {file_info}"
-                        )
-                    except Exception as exc:
-                        error_msg = f"提取 {file_info} 失败: {exc}"
-                        print(f"[解压] ✗ 错误: {error_msg}")
-                        print(f"[解压] 等待5秒后继续...")
-                        for sec in range(5, 0, -1):
-                            print(f"  {sec}秒后继续...")
-                            time.sleep(1)
-                        continue
-
-                print(
-                    f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件"
-                )
-                update_logger.info(
-                    f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件"
-                )
+        if use_zip_or_tar:
+            extract_dir = _extract_archive_to_temp(Path(update_file_path))
+            if not extract_dir:
+                return False
         else:
+            extract_dir = Path(tempfile.mkdtemp(prefix="mfw_unpack_"))
             from app.utils.archive_seven import extract_all_7z_to_directory
 
             if not extract_all_7z_to_directory(update_file_path, extract_dir):
@@ -553,6 +531,7 @@ def extract_zip_file_with_validation(update_file_path):
 
         print("[解压] 开始复制文件到目标目录...")
         _copy_temp_to_root(extract_dir, verbose=True)
+        _restore_unix_executable_bits(Path.cwd())
         print("[解压] 文件复制完成")
         return True
     except Exception as exc:
@@ -566,7 +545,8 @@ def extract_zip_file_with_validation(update_file_path):
         cleanup_update_artifacts(update_file_path)
         return False
     finally:
-        shutil.rmtree(extract_dir, ignore_errors=True)
+        if extract_dir:
+            shutil.rmtree(extract_dir, ignore_errors=True)
 
 
 def start_mfw_process():
@@ -974,6 +954,101 @@ def _extract_zip_to_temp(zip_path: Path):
         return None
 
 
+def _extract_tar_member_preserving_mode(archive, member, destination: Path) -> Path:
+    """安全提取 tar 成员，并保留 Unix 权限与符号链接。"""
+    member_name = member.name.replace("\\", "/")
+    relative = Path(*[part for part in member_name.split("/") if part and part != "."])
+    if not relative.parts or relative.is_absolute() or ".." in relative.parts:
+        raise ValueError(f"更新包包含非法路径: {member.name}")
+
+    root = destination.resolve()
+    target = (destination / relative).resolve(strict=False)
+    if os.path.commonpath((str(root), str(target))) != str(root):
+        raise ValueError(f"更新包路径越界: {member.name}")
+
+    if member.isdir():
+        target.mkdir(parents=True, exist_ok=True)
+        permissions = stat.S_IMODE(member.mode)
+        if permissions:
+            target.chmod(permissions)
+        return target
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if member.issym():
+        link_target = member.linkname
+        if os.path.isabs(link_target):
+            raise ValueError(f"更新包包含绝对符号链接: {member.name}")
+        resolved_link = (target.parent / link_target).resolve(strict=False)
+        if os.path.commonpath((str(root), str(resolved_link))) != str(root):
+            raise ValueError(f"更新包符号链接越界: {member.name}")
+        if target.exists() or target.is_symlink():
+            _remove_path(target)
+        os.symlink(link_target, target)
+        return target
+
+    extracted = archive.extractfile(member)
+    if extracted is None:
+        return target
+    with extracted as source, target.open("wb") as output:
+        shutil.copyfileobj(source, output)
+    permissions = stat.S_IMODE(member.mode)
+    if permissions:
+        target.chmod(permissions)
+    return target
+
+
+def _extract_tar_to_temp(tar_path: Path):
+    temp_dir = Path(tempfile.mkdtemp(prefix="mfw_full_extract_"))
+    try:
+        with tarfile.open(tar_path, "r:*") as archive:
+            members = [
+                member
+                for member in archive.getmembers()
+                if member.name not in ("", ".", "./")
+            ]
+            total_files = len(members)
+            print(f"[解压] 找到 {total_files} 个文件需要解压到临时目录")
+            update_logger.info(f"[解压] 找到 {total_files} 个文件需要解压到临时目录")
+
+            extracted_count = 0
+            for idx, member in enumerate(members, 1):
+                try:
+                    print(f"[解压] [{idx}/{total_files}] 正在解压: {member.name}")
+                    _extract_tar_member_preserving_mode(archive, member, temp_dir)
+                    extracted_count += 1
+                    if extracted_count % 50 == 0 or extracted_count == total_files:
+                        print(f"[解压] 已解压 {extracted_count}/{total_files} 个文件...")
+                except Exception as exc:
+                    error_msg = f"解压文件 {member.name} 失败: {exc}"
+                    print(f"[解压] ✗ 错误: {error_msg}")
+                    update_logger.error(f"[解压] {error_msg}")
+                    print(f"[解压] 等待5秒后继续...")
+                    for sec in range(5, 0, -1):
+                        print(f"  {sec}秒后继续...")
+                        time.sleep(1)
+                    continue
+
+            print(f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件")
+            update_logger.info(f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件")
+        return temp_dir
+    except Exception as exc:
+        error_msg = f"解压更新包到临时目录失败: {exc}"
+        print(f"[解压] ✗ 严重错误: {error_msg}")
+        update_logger.error(error_msg)
+        print(f"[解压] 等待5秒后继续...")
+        for sec in range(5, 0, -1):
+            print(f"  {sec}秒后继续...")
+            time.sleep(1)
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        return None
+
+
+def _extract_archive_to_temp(archive_path: Path):
+    if _path_is_tar_gz(archive_path):
+        return _extract_tar_to_temp(archive_path)
+    return _extract_zip_to_temp(archive_path)
+
+
 def _copy_temp_to_root(temp_dir: Path, *, verbose: bool = False):
     current_dir = os.getcwd()
     for root_dir, dirs, files in os.walk(temp_dir):
@@ -990,12 +1065,18 @@ def _copy_temp_to_root(temp_dir: Path, *, verbose: bool = False):
             src_file = os.path.join(root_dir, file)
             dest_file = os.path.join(dest_root, file)
             os.makedirs(os.path.dirname(dest_file), exist_ok=True)
-            shutil.copy2(src_file, dest_file)
-            if sys.platform != "win32" and os.path.basename(dest_file) in {
-                "MFW",
-                "MFWUpdater",
-            }:
-                os.chmod(dest_file, 0o755)
+            if os.path.islink(src_file):
+                if os.path.lexists(dest_file):
+                    os.unlink(dest_file)
+                os.symlink(os.readlink(src_file), dest_file)
+            else:
+                shutil.copy2(src_file, dest_file)
+                if sys.platform != "win32" and os.path.basename(dest_file) in {
+                    "MFW",
+                    "MFWUpdater",
+                    "run-mfw.sh",
+                }:
+                    os.chmod(dest_file, 0o755)
             if verbose:
                 print(f"✓ 已复制: {dest_file}")
 
@@ -1054,15 +1135,17 @@ def _validate_app_bundle(app_path: Path) -> bool:
     return True
 
 
-def _restore_macos_executable_bits(install_root: Path) -> None:
+def _restore_unix_executable_bits(install_root: Path) -> None:
     if sys.platform == "win32":
         return
     candidates = (
         install_root / APP_BUNDLE_NAME / APP_EXECUTABLE_RELATIVE_PATH,
+        install_root / "MFW",
         install_root / "MFWUpdater",
+        install_root / "run-mfw.sh",
     )
     for candidate in candidates:
-        if candidate.is_file():
+        if candidate.is_file() and not candidate.is_symlink():
             candidate.chmod(candidate.stat().st_mode | 0o111)
 
 
@@ -1106,7 +1189,7 @@ def _replace_app_bundle_atomic(temp_dir: Path, install_root: Path) -> bool:
             os.replace(entry.staging, entry.target)
             entry.installed = True
 
-        _restore_macos_executable_bits(install_root)
+        _restore_unix_executable_bits(install_root)
         if not _validate_app_bundle(install_root / APP_BUNDLE_NAME):
             raise RuntimeError("安装后的 MFW.app 校验失败")
     except Exception as exc:
@@ -1152,7 +1235,7 @@ def perform_full_update(package_path: str, metadata_path: str, metadata: dict) -
         return False
 
     metadata = metadata or {}
-    temp_dir = _extract_zip_to_temp(Path(package_path))
+    temp_dir = _extract_archive_to_temp(Path(package_path))
     if not temp_dir:
         _handle_full_update_failure(package_path, metadata_path, metadata)
         return False
@@ -1171,6 +1254,7 @@ def perform_full_update(package_path: str, metadata_path: str, metadata: dict) -
 
     try:
         _copy_temp_to_root(temp_dir)
+        _restore_unix_executable_bits(Path.cwd().resolve())
     except Exception as exc:
         update_logger.error(f"覆盖目录失败: {exc}")
         _handle_full_update_failure(
@@ -1347,32 +1431,53 @@ def extract_interface_folder(zip_path):
         return False
 
 
-def load_change_entries(zip_path):
-    import zipfile
-
+def load_change_entries(package_path):
+    change_names = {"change.json", "changes.json"}
     try:
-        with zipfile.ZipFile(zip_path, "r") as zf:
-            candidate = next(
-                (
-                    name
-                    for name in zf.namelist()
-                    if os.path.basename(name).lower() in {"change.json", "changes.json"}
-                ),
-                None,
-            )
-            if not candidate:
-                update_logger.error("更新包中未包含 change.json/changes.json")
-                return None
-            with zf.open(candidate) as change_file:
-                data = json.load(change_file)
-                deleted = data.get("deleted", [])
-                modified = data.get("modified", [])
-                entries: list[str] = []
-                if isinstance(deleted, list):
-                    entries.extend(deleted)
-                if isinstance(modified, list):
-                    entries.extend(modified)
-                return entries
+        if _path_is_tar_gz(package_path):
+            with tarfile.open(package_path, "r:*") as archive:
+                candidate = next(
+                    (
+                        member
+                        for member in archive.getmembers()
+                        if os.path.basename(member.name).lower() in change_names
+                    ),
+                    None,
+                )
+                if not candidate:
+                    update_logger.error("更新包中未包含 change.json/changes.json")
+                    return None
+                extracted = archive.extractfile(candidate)
+                if extracted is None:
+                    update_logger.error("无法读取 change.json/changes.json")
+                    return None
+                with extracted as change_file:
+                    data = json.load(change_file)
+        else:
+            import zipfile
+
+            with zipfile.ZipFile(package_path, "r") as zf:
+                candidate = next(
+                    (
+                        name
+                        for name in zf.namelist()
+                        if os.path.basename(name).lower() in change_names
+                    ),
+                    None,
+                )
+                if not candidate:
+                    update_logger.error("更新包中未包含 change.json/changes.json")
+                    return None
+                with zf.open(candidate) as change_file:
+                    data = json.load(change_file)
+        deleted = data.get("deleted", [])
+        modified = data.get("modified", [])
+        entries: list[str] = []
+        if isinstance(deleted, list):
+            entries.extend(deleted)
+        if isinstance(modified, list):
+            entries.extend(modified)
+        return entries
     except Exception as exc:
         update_logger.error(f"读取 change.json 失败: {exc}")
         return None
@@ -1449,19 +1554,144 @@ def _read_config_file(config_path: str) -> dict:
         return {}
 
 
+def _extract_tar_to_hotfix_dir(tar_path: str, extract_to: str) -> str | None:
+    """解压 tar.gz 热更新包到指定目录，自动查找 interface.json 并返回解压后的根目录。"""
+    update_logger.info(f"[步骤3] 开始解压更新包: {tar_path} -> {extract_to}")
+    extract_to_path = Path(extract_to)
+    extract_to_path.mkdir(parents=True, exist_ok=True)
+    update_logger.debug(f"[步骤3] 创建/确认解压目标目录: {extract_to_path}")
+
+    interface_names = {"interface.json", "interface.jsonc"}
+
+    try:
+        with tarfile.open(tar_path, "r:*") as archive:
+            members = [
+                member
+                for member in archive.getmembers()
+                if member.name not in ("", ".", "./")
+            ]
+            total_files = len(members)
+            update_logger.info(
+                f"[步骤3] 打开更新包成功，包含 {total_files} 个文件/目录"
+            )
+
+            update_logger.debug("[步骤3] 查找 interface.json/interface.jsonc 文件...")
+            interface_dir_parts: tuple[str, ...] | None = None
+            for member in members:
+                member_path = Path(member.name.replace("\\", "/"))
+                if member_path.name.lower() in interface_names:
+                    interface_dir_parts = tuple(
+                        part for part in member_path.parent.parts if part and part != "."
+                    )
+                    update_logger.info(
+                        f"[步骤3] 找到 interface 文件: {member.name}，所在目录: {'/'.join(interface_dir_parts)}"
+                    )
+                    break
+
+            if not interface_dir_parts:
+                update_logger.warning(
+                    "[步骤3] 未在更新包中找到 interface.json/interface.jsonc 文件，将解压所有文件"
+                )
+
+            update_logger.info("[步骤3] 开始解压文件...")
+            print("[解压] 开始解压文件...")
+            extracted_count = 0
+            total_to_extract = 0
+            for member in members:
+                member_path = Path(member.name.replace("\\", "/"))
+                member_parts = tuple(p for p in member_path.parts if p and p != ".")
+                if (
+                    interface_dir_parts
+                    and member_parts[: len(interface_dir_parts)] != interface_dir_parts
+                ):
+                    continue
+                if member_parts:
+                    total_to_extract += 1
+
+            for member in members:
+                member_path = Path(member.name.replace("\\", "/"))
+                member_parts = tuple(p for p in member_path.parts if p and p != ".")
+
+                if interface_dir_parts:
+                    if member_parts[: len(interface_dir_parts)] != interface_dir_parts:
+                        continue
+                    relative_parts = member_parts[len(interface_dir_parts) :]
+                else:
+                    relative_parts = member_parts
+
+                if not relative_parts:
+                    continue
+
+                try:
+                    target_path = extract_to_path.joinpath(*relative_parts)
+                    if member.isdir():
+                        target_path.mkdir(parents=True, exist_ok=True)
+                        continue
+                    print(
+                        f"[解压] [{extracted_count + 1}/{total_to_extract}] 正在解压: {member.name}"
+                    )
+                    if member.issym():
+                        target_path.parent.mkdir(parents=True, exist_ok=True)
+                        if target_path.exists() or target_path.is_symlink():
+                            _remove_path(target_path)
+                        os.symlink(member.linkname, target_path)
+                    else:
+                        target_path.parent.mkdir(parents=True, exist_ok=True)
+                        extracted = archive.extractfile(member)
+                        if extracted is None:
+                            continue
+                        with extracted as source, open(target_path, "wb") as target:
+                            shutil.copyfileobj(source, target)
+                        permissions = stat.S_IMODE(member.mode)
+                        if permissions:
+                            target_path.chmod(permissions)
+                    extracted_count += 1
+                    if (
+                        extracted_count % 10 == 0
+                        or extracted_count == total_to_extract
+                    ):
+                        print(
+                            f"[解压] 已解压 {extracted_count}/{total_to_extract} 个文件..."
+                        )
+                except Exception as exc:
+                    error_msg = f"解压文件 {member.name} 失败: {exc}"
+                    print(f"[解压] ✗ 错误: {error_msg}")
+                    update_logger.error(f"[步骤3] {error_msg}")
+                    print("[解压] 等待5秒后继续...")
+                    for sec in range(5, 0, -1):
+                        print(f"  {sec}秒后继续...")
+                        time.sleep(1)
+                    continue
+
+            update_logger.info(f"[步骤3] 文件解压完成，共解压 {extracted_count} 个文件")
+            print(f"[解压] 文件解压完成，共解压 {extracted_count} 个文件")
+
+            from hotfix_extract import extract_agent_folder_from_archive
+
+            if not extract_agent_folder_from_archive(tar_path, extract_to_path):
+                update_logger.error("[步骤3] 提取 agent 目录失败")
+                return None
+
+            return str(extract_to_path)
+    except Exception as exc:
+        error_msg = f"解压文件失败 {tar_path} -> {extract_to}: {exc}"
+        print(f"[解压] ✗ 严重错误: {error_msg}")
+        update_logger.exception(f"[步骤3] {error_msg}")
+        print("[解压] 等待5秒后继续...")
+        for sec in range(5, 0, -1):
+            print(f"  {sec}秒后继续...")
+            time.sleep(1)
+        return None
+
+
 def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
     """
-    解压 zip 热更新包到指定目录，自动查找 interface.json 并返回解压后的根目录。
-    热更新仅处理 zip（全量更新仍可由 extract_zip_file_with_validation 处理 7z 等）。
+    解压 zip/tar.gz 热更新包到指定目录，自动查找 interface.json 并返回解压后的根目录。
     基于 app/utils/update.py 中的 extract_zip 实现。
-
-    Args:
-        zip_path: 更新包路径
-        extract_to: 解压目标目录
-
-    Returns:
-        str | None: 解压后的根目录路径，如果失败返回 None
     """
+    if _path_is_tar_gz(zip_path):
+        return _extract_tar_to_hotfix_dir(zip_path, extract_to)
+
     import zipfile
 
     update_logger.info(f"[步骤3] 开始解压更新包: {zip_path} -> {extract_to}")
@@ -1853,7 +2083,7 @@ def apply_mirror_hotfix(package_path):
 
 def find_latest_zip_file(directory):
     """
-    查找目录中最新的更新包（zip、7z、ZIP 自解压 exe、7z SFX exe）。
+    查找目录中最新的更新包（zip、tar.gz/tgz、7z、ZIP 自解压 exe、7z SFX exe）。
     """
     try:
         candidates = []
@@ -1878,7 +2108,7 @@ def move_update_archive_to_backup(src_path, backup_dir, metadata_path=None):
     base_name = os.path.basename(src_path)
     dest_path = os.path.join(backup_dir, base_name)
     if os.path.exists(dest_path):
-        name, ext = os.path.splitext(base_name)
+        name, ext = _split_archive_filename(base_name)
         dest_path = os.path.join(
             backup_dir,
             f"{name}_{time.strftime('%Y%m%d%H%M%S')}{ext}",

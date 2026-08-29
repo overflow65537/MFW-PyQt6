@@ -20,8 +20,9 @@ macOS `app-dist` 需额外安装 `requirements-nuitka.txt`（`imageio`，PNG →
 ```bash
 python tools/packaging/build_nuitka.py --file-list
 python tools/packaging/move_maa_bin_to_maafw.py build/main.dist
+python tools/packaging/move_maa_bin_to_maafw.py build/main.dist build/mfw-release
 python tools/packaging/move_maa_bin_to_maafw.py \
   build/mfw-release/MFW.app/Contents/MacOS build/mfw-release
 ```
 
-macOS 发行根布局：`MFW.app`、`MFWUpdater` 与 `maafw/` 同级。
+Linux `onefile` 发行根：`MFW`、`MFWUpdater` 与 `maafw/` 同级（`maa/bin` 从 Nuitka 留下的 `main.dist` 迁出）。macOS 发行根：`MFW.app`、`MFWUpdater` 与 `maafw/` 同级。

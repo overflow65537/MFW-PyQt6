@@ -108,13 +108,13 @@ jobs:
             runs-on: ubuntu-latest
             arch: x86_64
             python_arch: x64
-            nuitka_main_mode: standalone
+            nuitka_main_mode: onefile
             nuitka_artifact: build/mfw-release
           - platform: linux
             runs-on: ubuntu-24.04-arm
             arch: aarch64
             python_arch: arm64
-            nuitka_main_mode: standalone
+            nuitka_main_mode: onefile
             nuitka_artifact: build/mfw-release
           - platform: macos
             runs-on: macos-15-intel
@@ -322,9 +322,10 @@ jobs:
           script-name: main.py
           mode: ${{ matrix.nuitka_main_mode }}
           lto: no
-          caching-key: mfw-standalone-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
+          caching-key: mfw-onefile-main-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
           enable-plugins: pyside6
           linux-icon: ./app/assets/icons/logo.png
+          output-file: MFW
           company-name: ${{ github.repository_owner }}
           product-name: MFW-ChainFlow Assistant
           file-version: ${{ steps.exe_meta.outputs.win_file_version }}
@@ -338,11 +339,6 @@ jobs:
             MaaAgentBinary
             app.builtin_tasks
           include-package-data: MaaAgentBinary
-          include-data-files: |
-            README.md=MFW_README.md
-            README-en.md=MFW_README-en.md
-            LICENSE=MFW_LICENSE
-            AUTHORS.md=MFW_AUTHORS.md
       - name: Qt GUI with PySide6 (macOS)
         if: matrix.platform == 'macos'
         uses: Nuitka/Nuitka-Action@main
@@ -461,20 +457,31 @@ jobs:
           rel="build/mfw-release"
           src_dist="build/main.dist"
           upd_bin="build/MFWUpdater"
-          if [[ ! -d "$src_dist" ]]; then echo "missing $src_dist"; ls -la build; exit 1; fi
+          onefile=""
+          for cand in build/MFW build/main.bin build/main; do
+            if [[ -f "$cand" ]]; then
+              onefile="$cand"
+              break
+            fi
+          done
+          if [[ -z "$onefile" ]]; then echo "missing Linux onefile"; ls -la build; exit 1; fi
+          if [[ ! -d "$src_dist" ]]; then echo "missing $src_dist (Nuitka onefile intermediate)"; ls -la build; exit 1; fi
           if [[ ! -f "$upd_bin" ]]; then echo "missing $upd_bin"; ls -la build; exit 1; fi
           mkdir -p "$rel"
-          cp -a "$src_dist"/. "$rel"/
-          if [[ -f "$rel/main" ]]; then
-            mv -f "$rel/main" "$rel/MFW"
-          elif [[ -f "$rel/main.bin" ]]; then
-            mv -f "$rel/main.bin" "$rel/MFW"
-          else
-            echo "missing main or main.bin in $rel"; ls -la "$rel"; exit 1
-          fi
+          cp -a "$onefile" "$rel/MFW"
           mv "$upd_bin" "$rel/MFWUpdater"
           chmod +x "$rel/MFW" "$rel/MFWUpdater"
-          python3 tools/packaging/move_maa_bin_to_maafw.py "$rel"
+          # onefile 运行时 cwd 为发行根；maa 原生库仍须外置 maafw/（MAAFW_BINARY_PATH）
+          python3 tools/packaging/move_maa_bin_to_maafw.py "$src_dist" "$rel"
+          cp README.md "$rel/MFW_README.md"
+          cp README-en.md "$rel/MFW_README-en.md"
+          cp LICENSE "$rel/MFW_LICENSE"
+          cp AUTHORS.md "$rel/MFW_AUTHORS.md"
+          mkdir -p "$rel/app/assets/icons"
+          cp app/assets/icons/logo.png "$rel/app/assets/icons/logo.png"
+          test -x "$rel/MFW"
+          test -x "$rel/MFWUpdater"
+          test -f "$rel/maafw/libMaaFramework.so"
 
           python3 << 'PY'
           import datetime as _dt
@@ -634,16 +641,50 @@ jobs:
 
       - run: |
           cd assets
+          tag="${{ needs.meta.outputs.tag }}"
           for f in *; do
-            # upload-artifact 可能丢掉 Unix 可执行位；发布前按已知路径补回
-            chmod +x "$f/MFW" "$f/MFWUpdater" "$f/run-mfw.sh" 2>/dev/null || true
-            chmod +x "$f/MFW.app/Contents/MacOS/MFW" "$f/MFWUpdater" 2>/dev/null || true
-            (cd "$f" && zip -r "../$f-${{ needs.meta.outputs.tag }}.zip" .)
+            [[ -d "$f" ]] || continue
+            # upload-artifact 可能丢掉 Unix 可执行位；打包前按文件头/已知名字补回
+            python3 - "$f" <<'PY'
+          import sys
+          from pathlib import Path
+
+          root = Path(sys.argv[1])
+          elf = b"\x7fELF"
+          macho = {
+              b"\xcf\xfa\xed\xfe",
+              b"\xce\xfa\xed\xfe",
+              b"\xca\xfe\xba\xbe",
+              b"\xfe\xed\xfa\xcf",
+              b"\xfe\xed\xfa\xce",
+          }
+          named = {"MFW", "MFWUpdater", "run-mfw.sh", "maapicli", "minicap", "minitouch", "maatouch"}
+          for path in root.rglob("*"):
+              if not path.is_file() or path.is_symlink():
+                  continue
+              with path.open("rb") as handle:
+                  header = handle.read(4)
+              if (
+                  path.name in named
+                  or path.suffix == ".sh"
+                  or header == elf
+                  or header in macho
+              ):
+                  path.chmod(path.stat().st_mode | 0o111)
+          PY
+            # zip 不保证还原 Unix 权限；Linux/macOS 用 tar.gz 保留 chmod
+            if [[ "$f" == *-win-* ]]; then
+              (cd "$f" && zip -r "../$f-${tag}.zip" .)
+            else
+              tar -czf "../$f-${tag}.tar.gz" -C "$f" .
+            fi
           done
 
       - uses: softprops/action-gh-release@v3
         with:
-          files: assets/*.zip
+          files: |
+            assets/*.zip
+            assets/*.tar.gz
           tag_name: ${{ needs.meta.outputs.tag }}
           body: ${{ needs.changelog.outputs.release_body }}
           draft: false

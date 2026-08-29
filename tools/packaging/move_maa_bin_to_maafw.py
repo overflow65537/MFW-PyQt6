@@ -5,8 +5,9 @@
 """
 将编译目录下的 maa/bin 原生库迁移到发行根 maafw/。
 
-Nuitka standalone 产物中 DLL 默认在 <release>/maa/bin；本脚本在组装阶段执行。
-macOS app-dist 的源目录位于 MFW.app/Contents/MacOS，目标则是 .app 的父目录。
+Nuitka standalone / onefile 中间产物中原生库默认在 <source>/maa/bin；本脚本在组装阶段执行。
+Linux onefile 从留下的 main.dist 迁到发行根；macOS app-dist 的源目录位于
+MFW.app/Contents/MacOS，目标则是 .app 的父目录。
 用法: python tools/packaging/move_maa_bin_to_maafw.py <source_root> [destination_root]
 """
 
