@@ -6,10 +6,6 @@
 - GitHub：仅当填写了 github/url，并且成功从当前版本 release body
   解析到关键字后才对比；拉取或解析失败视为通过
 - 只有已参与对比的哈希不一致时才判定失败
-
-GitHub release body 在启动检查最新版之后准备：若本次走 GitHub 且
-latest 与当前版本相同则复用该次响应；否则再请求当前版本 tag。
-结果写入内存与磁盘缓存，任务运行只等待启动预取完成，不再现场查询。
 """
 
 from __future__ import annotations
@@ -20,7 +16,6 @@ import re
 import threading
 import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Callable, Mapping
 from urllib.parse import quote, urlparse
 
@@ -30,8 +25,6 @@ from app.utils.logger import logger
 
 DEFAULT_HASH_KEY = "*"
 GITHUB_HASH_FETCH_TIMEOUT = 2.0
-GITHUB_HASH_PREFETCH_WAIT_TIMEOUT = 5.0
-_DISK_CACHE_FILENAME = "github_release_body_cache.json"
 
 _HASH_KEYWORD = r"(?:mfw[-_])?(?:resource[-_.])?(?:hash|哈希)"
 _HEX_HASH = re.compile(r"^[0-9a-fA-F]{8,}$")
@@ -57,11 +50,6 @@ _NAMED_MAPPING_LINE = re.compile(
 
 _RELEASE_BODY_CACHE: dict[tuple[str, str], str] = {}
 _CACHE_LOCK = threading.Lock()
-_DISK_LOCK = threading.Lock()
-_REFRESH_LOCK = threading.Lock()
-_PREFETCH_STARTED = False
-_PREFETCH_DONE = threading.Event()
-_PREFETCH_DONE.set()
 
 GetFunc = Callable[..., Any]
 
@@ -185,24 +173,18 @@ def fetch_github_resource_hashes(
         version,
         request_get=request_get,
     )
-    return _hashes_from_release_body(body)
-
-
-def get_github_resource_hashes_for_run(
-    github_url: str,
-    version: str,
-    *,
-    wait_timeout: float = GITHUB_HASH_PREFETCH_WAIT_TIMEOUT,
-) -> dict[str, str]:
-    """任务运行时读取已预取的 GitHub 哈希，不发起网络请求。
-
-    若启动预取尚未完成则等待；超时或缓存缺失时跳过 GitHub 对比。
-    """
-    wait_github_hash_prefetch(wait_timeout)
-    body = get_cached_github_release_body(github_url, version)
-    if body is None:
+    if not body:
         return {}
-    return _hashes_from_release_body(body)
+    parsed = parse_release_body_hashes(body)
+    if parsed:
+        logger.debug(
+            "从 GitHub release 解析到 %s 个资源哈希: %s",
+            len(parsed),
+            sorted(parsed.keys()),
+        )
+    else:
+        logger.debug("GitHub release body 未解析到资源哈希关键字，跳过 GitHub 对比")
+    return parsed
 
 
 def fetch_github_release_body(
@@ -210,16 +192,20 @@ def fetch_github_release_body(
     version: str,
     *,
     request_get: GetFunc | None = None,
-    persist: bool = False,
 ) -> str:
     """获取指定版本 GitHub Release 的 body 原文。失败或超过 2 秒时返回空字符串。"""
-    keys = _release_cache_keys(github_url, version)
-    if not keys:
-        if str(github_url or "").strip() and not str(version or "").strip():
-            logger.debug("未提供资源版本，跳过 GitHub 哈希校验")
+    repo = parse_github_owner_repo(github_url)
+    if repo is None:
+        return ""
+    owner, name = repo
+    tags = github_tag_candidates(version)
+    if not tags:
+        logger.debug("未提供资源版本，跳过 GitHub 哈希校验")
         return ""
 
-    cached = _lookup_memory_release_body(keys)
+    cache_key = (f"{owner}/{name}", tags[0])
+    with _CACHE_LOCK:
+        cached = _RELEASE_BODY_CACHE.get(cache_key)
     if cached is not None:
         return cached
 
@@ -228,9 +214,6 @@ def fetch_github_release_body(
     proxies = _proxy_data()
     verify = not os.path.exists("NO_SSL")
     body = ""
-    succeeded = False
-    owner, name = keys[0][0].split("/", 1)
-    tags = [tag for _, tag in keys]
     deadline = time.monotonic() + GITHUB_HASH_FETCH_TIMEOUT
     for tag in tags:
         remaining = deadline - time.monotonic()
@@ -269,103 +252,11 @@ def fetch_github_release_body(
             continue
         raw_body = payload.get("body", "")
         body = str(raw_body) if raw_body is not None else ""
-        succeeded = True
         break
 
-    store_github_release_body(github_url, version, body, persist=persist and succeeded)
+    with _CACHE_LOCK:
+        _RELEASE_BODY_CACHE[cache_key] = body
     return body
-
-
-def github_versions_match(left: str, right: str) -> bool:
-    """判断两个版本号是否指向同一 GitHub tag（兼容有无 v 前缀）。"""
-    left_tags = set(github_tag_candidates(left))
-    right_tags = set(github_tag_candidates(right))
-    return bool(left_tags and right_tags and left_tags & right_tags)
-
-
-def store_github_release_body(
-    github_url: str,
-    version: str,
-    body: str | None,
-    *,
-    persist: bool = True,
-) -> None:
-    """将指定版本的 GitHub release body 写入内存，可选持久化到磁盘。"""
-    keys = _release_cache_keys(github_url, version)
-    if not keys:
-        return
-    text = str(body) if body is not None else ""
-    with _CACHE_LOCK:
-        for key in keys:
-            _RELEASE_BODY_CACHE[key] = text
-    if persist:
-        _persist_release_body(keys, text)
-
-
-def get_cached_github_release_body(github_url: str, version: str) -> str | None:
-    """读取当前版本 release body 缓存（内存优先，其次磁盘）。未命中返回 None。"""
-    keys = _release_cache_keys(github_url, version)
-    if not keys:
-        return None
-    cached = _lookup_memory_release_body(keys)
-    if cached is not None:
-        return cached
-    loaded = _load_persisted_release_body(keys)
-    if loaded is None:
-        return None
-    with _CACHE_LOCK:
-        for key in keys:
-            _RELEASE_BODY_CACHE[key] = loaded
-    return loaded
-
-
-def refresh_github_hash_cache_for_current_version(
-    github_url: str,
-    current_version: str,
-    *,
-    source: str = "",
-    latest_version: str = "",
-    latest_body: str | None = None,
-    request_get: GetFunc | None = None,
-) -> str:
-    """在最新版检查之后，准备当前安装版本的 GitHub release body。
-
-    若本次最新版检查走 GitHub 且 latest 与当前版本相同，则直接复用该次 body；
-    否则先读缓存，没有再请求 ``releases/tags/{current_version}``。
-    """
-    with _REFRESH_LOCK:
-        return _refresh_github_hash_cache_locked(
-            github_url,
-            current_version,
-            source=source,
-            latest_version=latest_version,
-            latest_body=latest_body,
-            request_get=request_get,
-        )
-
-
-def begin_github_hash_prefetch() -> None:
-    """标记启动预取开始；重复调用不会重置已完成状态。"""
-    global _PREFETCH_STARTED
-    with _CACHE_LOCK:
-        if _PREFETCH_STARTED:
-            return
-        _PREFETCH_STARTED = True
-        _PREFETCH_DONE.clear()
-
-
-def finish_github_hash_prefetch() -> None:
-    """标记启动预取结束，唤醒等待中的任务校验。"""
-    _PREFETCH_DONE.set()
-
-
-def wait_github_hash_prefetch(
-    timeout: float | None = GITHUB_HASH_PREFETCH_WAIT_TIMEOUT,
-) -> bool:
-    """等待启动预取完成。尚未开始则立即返回。"""
-    if not _PREFETCH_STARTED or _PREFETCH_DONE.is_set():
-        return True
-    return _PREFETCH_DONE.wait(timeout=timeout)
 
 
 def parse_github_owner_repo(url: str) -> tuple[str, str] | None:
@@ -413,132 +304,9 @@ def github_tag_candidates(version: str) -> list[str]:
 
 
 def clear_github_release_body_cache() -> None:
-    """测试辅助：清空内存缓存并重置预取状态。"""
-    global _PREFETCH_STARTED
+    """测试辅助：清空 release body 缓存。"""
     with _CACHE_LOCK:
         _RELEASE_BODY_CACHE.clear()
-        _PREFETCH_STARTED = False
-        _PREFETCH_DONE.set()
-
-
-def _hashes_from_release_body(body: str | None) -> dict[str, str]:
-    if not body:
-        return {}
-    parsed = parse_release_body_hashes(body)
-    if parsed:
-        logger.debug(
-            "从 GitHub release 解析到 %s 个资源哈希: %s",
-            len(parsed),
-            sorted(parsed.keys()),
-        )
-    else:
-        logger.debug("GitHub release body 未解析到资源哈希关键字，跳过 GitHub 对比")
-    return parsed
-
-
-def _refresh_github_hash_cache_locked(
-    github_url: str,
-    current_version: str,
-    *,
-    source: str = "",
-    latest_version: str = "",
-    latest_body: str | None = None,
-    request_get: GetFunc | None = None,
-) -> str:
-    if not str(github_url or "").strip() or not str(current_version or "").strip():
-        return ""
-
-    can_reuse = (
-        str(source or "").strip().lower() == "github"
-        and github_versions_match(latest_version, current_version)
-        and latest_body is not None
-    )
-    if can_reuse:
-        logger.info(
-            "GitHub 最新版与当前版本相同，复用已获取的 release body"
-        )
-        store_github_release_body(github_url, current_version, latest_body, persist=True)
-        return str(latest_body)
-
-    cached = get_cached_github_release_body(github_url, current_version)
-    if cached is not None:
-        logger.debug("当前版本 GitHub release body 已有缓存，跳过请求")
-        return cached
-
-    logger.info("拉取当前版本 GitHub release body 用于资源哈希校验")
-    return fetch_github_release_body(
-        github_url,
-        current_version,
-        request_get=request_get,
-        persist=True,
-    )
-
-
-def _release_cache_keys(github_url: str, version: str) -> list[tuple[str, str]]:
-    repo = parse_github_owner_repo(github_url)
-    if repo is None:
-        return []
-    tags = github_tag_candidates(version)
-    if not tags:
-        return []
-    owner, name = repo
-    repo_id = f"{owner}/{name}"
-    return [(repo_id, tag) for tag in tags]
-
-
-def _lookup_memory_release_body(keys: list[tuple[str, str]]) -> str | None:
-    with _CACHE_LOCK:
-        for key in keys:
-            if key in _RELEASE_BODY_CACHE:
-                return _RELEASE_BODY_CACHE[key]
-    return None
-
-
-def _disk_cache_path() -> Path:
-    return Path("config") / _DISK_CACHE_FILENAME
-
-
-def _persist_release_body(keys: list[tuple[str, str]], body: str) -> None:
-    path = _disk_cache_path()
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with _DISK_LOCK:
-            data: dict[str, Any] = {}
-            if path.is_file():
-                try:
-                    loaded = json.loads(path.read_text(encoding="utf-8"))
-                except Exception:
-                    loaded = {}
-                if isinstance(loaded, dict):
-                    data = loaded
-            for owner_repo, tag in keys:
-                data[f"{owner_repo}@{tag}"] = body
-            tmp = path.with_suffix(".json.tmp")
-            tmp.write_text(
-                json.dumps(data, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
-            tmp.replace(path)
-    except Exception as exc:
-        logger.debug("写入 GitHub release body 磁盘缓存失败: %s", exc)
-
-
-def _load_persisted_release_body(keys: list[tuple[str, str]]) -> str | None:
-    path = _disk_cache_path()
-    if not path.is_file():
-        return None
-    try:
-        with _DISK_LOCK:
-            data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-    if not isinstance(data, dict):
-        return None
-    for owner_repo, tag in keys:
-        value = data.get(f"{owner_repo}@{tag}")
-        if isinstance(value, str):
-            return value
-    return None
 
 
 def _parse_hash_block(text: str | None) -> dict[str, str]:

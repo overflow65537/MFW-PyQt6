@@ -2,30 +2,20 @@
 
 from __future__ import annotations
 
-import tempfile
-import threading
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from app.core.utils.resource_hash_check import (
     DEFAULT_HASH_KEY,
-    begin_github_hash_prefetch,
     clear_github_release_body_cache,
     compare_resource_hash_sources,
     fetch_github_release_body,
     fetch_github_resource_hashes,
-    finish_github_hash_prefetch,
-    get_cached_github_release_body,
-    get_github_resource_hashes_for_run,
     github_tag_candidates,
-    github_versions_match,
     parse_github_owner_repo,
     parse_release_body_hashes,
     pick_github_hash,
-    refresh_github_hash_cache_for_current_version,
-    store_github_release_body,
 )
 
 try:
@@ -184,9 +174,6 @@ class GithubRepoAndTagTest(unittest.TestCase):
         self.assertEqual(github_tag_candidates("3.10.26"), ["3.10.26", "v3.10.26"])
         self.assertEqual(github_tag_candidates("v3.10.26"), ["v3.10.26", "3.10.26"])
         self.assertEqual(github_tag_candidates(""), [])
-        self.assertTrue(github_versions_match("v3.10.26", "3.10.26"))
-        self.assertFalse(github_versions_match("v3.10.26", "3.10.27"))
-        self.assertFalse(github_versions_match("", "1.0.0"))
 
 
 class FetchGithubReleaseBodyTest(unittest.TestCase):
@@ -267,122 +254,6 @@ class FetchGithubReleaseBodyTest(unittest.TestCase):
         self.assertEqual(len(calls), 2)
 
 
-class GithubHashPrefetchCacheTest(unittest.TestCase):
-    def setUp(self) -> None:
-        clear_github_release_body_cache()
-        self._tmp = tempfile.TemporaryDirectory()
-        self._disk = Path(self._tmp.name) / "cache.json"
-        self._patcher = patch(
-            "app.core.utils.resource_hash_check._disk_cache_path",
-            return_value=self._disk,
-        )
-        self._patcher.start()
-
-    def tearDown(self) -> None:
-        self._patcher.stop()
-        self._tmp.cleanup()
-        clear_github_release_body_cache()
-
-    def test_reuse_github_latest_when_version_matches(self) -> None:
-        getter = Mock(side_effect=AssertionError("should reuse latest body"))
-        body = refresh_github_hash_cache_for_current_version(
-            "https://github.com/owner/repo",
-            "v1.0.0",
-            source="github",
-            latest_version="1.0.0",
-            latest_body="hash[Android]: abc12345\n",
-            request_get=getter,
-        )
-        self.assertIn("abc12345", body)
-        getter.assert_not_called()
-        cached = get_cached_github_release_body(
-            "https://github.com/owner/repo",
-            "1.0.0",
-        )
-        self.assertEqual(cached, "hash[Android]: abc12345\n")
-
-    def test_mirror_check_fetches_current_version(self) -> None:
-        response = SimpleNamespace(
-            status_code=200,
-            json=lambda: {"body": "hash: abcdef12\n"},
-        )
-        getter = Mock(return_value=response)
-        body = refresh_github_hash_cache_for_current_version(
-            "https://github.com/owner/repo",
-            "v1.0.0",
-            source="mirror",
-            latest_version="v1.0.0",
-            latest_body="mirror notes",
-            request_get=getter,
-        )
-        self.assertEqual(body, "hash: abcdef12\n")
-        getter.assert_called_once()
-
-    def test_newer_github_latest_does_not_reuse_body(self) -> None:
-        response = SimpleNamespace(
-            status_code=200,
-            json=lambda: {"body": "hash: 11112222\n"},
-        )
-        getter = Mock(return_value=response)
-        body = refresh_github_hash_cache_for_current_version(
-            "https://github.com/owner/repo",
-            "v1.0.0",
-            source="github",
-            latest_version="v2.0.0",
-            latest_body="hash: deadbeef\n",
-            request_get=getter,
-        )
-        self.assertEqual(body, "hash: 11112222\n")
-        getter.assert_called_once()
-
-    def test_disk_cache_skips_network_on_later_refresh(self) -> None:
-        store_github_release_body(
-            "https://github.com/owner/repo",
-            "v1.0.0",
-            "hash: abcdef12\n",
-            persist=True,
-        )
-        clear_github_release_body_cache()
-        getter = Mock(side_effect=AssertionError("disk cache should be used"))
-        body = refresh_github_hash_cache_for_current_version(
-            "https://github.com/owner/repo",
-            "1.0.0",
-            source="mirror",
-            request_get=getter,
-        )
-        self.assertEqual(body, "hash: abcdef12\n")
-        getter.assert_not_called()
-
-    def test_run_lookup_waits_for_prefetch(self) -> None:
-        begin_github_hash_prefetch()
-        github_url = "https://github.com/owner/repo"
-        result: dict[str, str] = {}
-
-        def _complete() -> None:
-            store_github_release_body(
-                github_url,
-                "v1.0.0",
-                "hash[Android]: abc12345\n",
-                persist=False,
-            )
-            finish_github_hash_prefetch()
-
-        worker = threading.Timer(0.05, _complete)
-        worker.start()
-        try:
-            result = get_github_resource_hashes_for_run(github_url, "v1.0.0")
-        finally:
-            worker.join()
-        self.assertEqual(result["Android"], "abc12345")
-
-    def test_run_lookup_does_not_fetch(self) -> None:
-        parsed = get_github_resource_hashes_for_run(
-            "https://github.com/owner/repo",
-            "v1.0.0",
-        )
-        self.assertEqual(parsed, {})
-
-
 @unittest.skipIf(TaskFlowRunner is None, "PySide6 is not installed")
 class VerifyResourceHashesRunnerTest(unittest.IsolatedAsyncioTestCase):
     def _runner(self, *, actual: str = "abc12345", github: str = "", version: str = "v1.0.0"):
@@ -424,7 +295,7 @@ class VerifyResourceHashesRunnerTest(unittest.IsolatedAsyncioTestCase):
     async def test_github_mismatch_blocks_run(self) -> None:
         runner = self._runner(github="https://github.com/owner/repo")
         with patch(
-            "app.core.runner.task_flow.get_github_resource_hashes_for_run",
+            "app.core.runner.task_flow.fetch_github_resource_hashes",
             new=Mock(return_value={"Android": "deadbeef"}),
         ):
             ok = await TaskFlowRunner._verify_resource_hashes(
@@ -438,7 +309,7 @@ class VerifyResourceHashesRunnerTest(unittest.IsolatedAsyncioTestCase):
     async def test_github_without_keywords_passes(self) -> None:
         runner = self._runner(github="https://github.com/owner/repo")
         with patch(
-            "app.core.runner.task_flow.get_github_resource_hashes_for_run",
+            "app.core.runner.task_flow.fetch_github_resource_hashes",
             new=Mock(return_value={}),
         ):
             ok = await TaskFlowRunner._verify_resource_hashes(
