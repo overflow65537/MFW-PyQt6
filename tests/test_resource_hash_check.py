@@ -213,6 +213,26 @@ class FetchGithubReleaseBodyTest(unittest.TestCase):
             "",
         )
 
+    def test_fetch_uses_two_second_timeout(self) -> None:
+        captured: dict[str, float] = {}
+
+        def getter(url, **kwargs):
+            captured["timeout"] = kwargs.get("timeout")
+            return SimpleNamespace(
+                status_code=200,
+                json=lambda: {"body": "hash: abcdef12\n"},
+            )
+
+        fetch_github_release_body(
+            "https://github.com/owner/repo",
+            "v1.0.0",
+            request_get=getter,
+        )
+        timeout = captured.get("timeout")
+        self.assertIsNotNone(timeout)
+        self.assertLessEqual(float(timeout), 2.0)
+        self.assertGreater(float(timeout), 0)
+
     def test_not_found_tries_next_tag(self) -> None:
         calls: list[str] = []
 

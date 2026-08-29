@@ -373,6 +373,8 @@ class TaskFlowRunner(QObject):
             "name": identity.get("name", ""),
             "contact": identity.get("contact", ""),
             "github": identity.get("github", ""),
+            "github_owner": identity.get("github_owner", ""),
+            "github_repo": identity.get("github_repo", ""),
         }
         self.runner_events.resource_run_confirmation_requested.emit(payload)
         try:

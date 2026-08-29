@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QHBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from qfluentwidgets import (
     BodyLabel,
     CaptionLabel,
@@ -26,6 +26,8 @@ class ResourceRunConfirmDialog(MessageBoxBase):
         resource_name: str,
         contact: str,
         github: str,
+        github_owner: str = "",
+        github_repo: str = "",
     ) -> None:
         super().__init__(parent)
         self.widget.setMinimumWidth(460)
@@ -49,7 +51,9 @@ class ResourceRunConfirmDialog(MessageBoxBase):
             self._info_row(self.tr("Resource"), resource_name or self.tr("(unknown)"))
         )
         self.viewLayout.addLayout(self._contact_row(contact))
-        self.viewLayout.addLayout(self._github_row(github))
+        self.viewLayout.addLayout(
+            self._github_row(github, github_owner, github_repo)
+        )
 
         self.yesButton.setText(self.tr("Confirm"))
         self.cancelButton.setText(self.tr("Cancel"))
@@ -85,34 +89,57 @@ class ResourceRunConfirmDialog(MessageBoxBase):
         row.addWidget(content, 1)
         return row
 
-    def _github_row(self, github: str) -> QHBoxLayout:
+    def _github_row(
+        self,
+        github: str,
+        github_owner: str,
+        github_repo: str,
+    ) -> QHBoxLayout:
         row = QHBoxLayout()
         row.setSpacing(12)
         caption = CaptionLabel(self.tr("GitHub"), self)
         caption.setFixedWidth(88)
         url = (github or "").strip()
-        if url:
-            content = BodyLabel(self)
-            content.setWordWrap(True)
-            content.setTextInteractionFlags(
+        owner = (github_owner or "").strip()
+        repo = (github_repo or "").strip()
+        if owner and repo:
+            value = QWidget(self)
+            value_layout = QVBoxLayout(value)
+            value_layout.setContentsMargins(0, 0, 0, 0)
+            value_layout.setSpacing(2)
+            title = StrongBodyLabel(f"{owner} / {repo}", value)
+            title.setWordWrap(True)
+            title.setTextInteractionFlags(
                 Qt.TextInteractionFlag.TextSelectableByMouse
-                | Qt.TextInteractionFlag.LinksAccessibleByMouse
             )
-            if url.lower().startswith(("http://", "https://")):
-                content.setOpenExternalLinks(True)
-                content.setTextFormat(Qt.TextFormat.RichText)
-                escaped = (
-                    url.replace("&", "&amp;")
-                    .replace("<", "&lt;")
-                    .replace(">", "&gt;")
-                )
-                content.setText(f'<a href="{escaped}">{escaped}</a>')
-            else:
-                content.setText(url)
+            value_layout.addWidget(title)
+            if url:
+                value_layout.addWidget(self._github_url_label(url, value))
             row.addWidget(caption, 0, Qt.AlignmentFlag.AlignTop)
-            row.addWidget(content, 1)
+            row.addWidget(value, 1)
+        elif url:
+            row.addWidget(caption, 0, Qt.AlignmentFlag.AlignTop)
+            row.addWidget(self._github_url_label(url, self), 1)
         else:
             content = BodyLabel(self.tr("Not provided"), self)
             row.addWidget(caption, 0, Qt.AlignmentFlag.AlignTop)
             row.addWidget(content, 1)
         return row
+
+    def _github_url_label(self, url: str, parent: QWidget) -> BodyLabel:
+        content = BodyLabel(parent)
+        content.setWordWrap(True)
+        content.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
+        if url.lower().startswith(("http://", "https://")):
+            content.setOpenExternalLinks(True)
+            content.setTextFormat(Qt.TextFormat.RichText)
+            escaped = (
+                url.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            )
+            content.setText(f'<a href="{escaped}">{escaped}</a>')
+        else:
+            content.setText(url)
+        return content

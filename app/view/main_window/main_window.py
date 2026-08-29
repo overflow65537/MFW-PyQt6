@@ -3039,6 +3039,8 @@ class MainWindow(MSFluentWindow):
             resource_name=str(info.get("name") or ""),
             contact=str(info.get("contact") or ""),
             github=str(info.get("github") or ""),
+            github_owner=str(info.get("github_owner") or ""),
+            github_repo=str(info.get("github_repo") or ""),
         )
         accepted = dialog.exec() == QDialog.DialogCode.Accepted
         self.service_coordinator.runtime.submit_resource_run_confirmation(accepted)

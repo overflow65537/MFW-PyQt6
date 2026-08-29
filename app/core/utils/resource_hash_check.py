@@ -14,6 +14,7 @@ import json
 import os
 import re
 import threading
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 from urllib.parse import quote, urlparse
@@ -23,6 +24,7 @@ import requests
 from app.utils.logger import logger
 
 DEFAULT_HASH_KEY = "*"
+GITHUB_HASH_FETCH_TIMEOUT = 2.0
 
 _HASH_KEYWORD = r"(?:mfw[-_])?(?:resource[-_.])?(?:hash|哈希)"
 _HEX_HASH = re.compile(r"^[0-9a-fA-F]{8,}$")
@@ -191,7 +193,7 @@ def fetch_github_release_body(
     *,
     request_get: GetFunc | None = None,
 ) -> str:
-    """获取指定版本 GitHub Release 的 body 原文。失败时返回空字符串。"""
+    """获取指定版本 GitHub Release 的 body 原文。失败或超过 2 秒时返回空字符串。"""
     repo = parse_github_owner_repo(github_url)
     if repo is None:
         return ""
@@ -212,7 +214,12 @@ def fetch_github_release_body(
     proxies = _proxy_data()
     verify = not os.path.exists("NO_SSL")
     body = ""
+    deadline = time.monotonic() + GITHUB_HASH_FETCH_TIMEOUT
     for tag in tags:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            logger.debug("GitHub 哈希校验超过 %.1f 秒，跳过", GITHUB_HASH_FETCH_TIMEOUT)
+            break
         api_url = (
             f"https://api.github.com/repos/{owner}/{name}/releases/tags/"
             f"{quote(tag, safe='')}"
@@ -221,7 +228,7 @@ def fetch_github_release_body(
             response = getter(
                 api_url,
                 headers=headers,
-                timeout=10,
+                timeout=remaining,
                 verify=verify,
                 proxies=proxies,
             )

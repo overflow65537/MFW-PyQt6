@@ -33,11 +33,23 @@ class ResourceRunIdentityTest(unittest.TestCase):
         )
         self.assertEqual(identity["name"], "展示名")
         self.assertEqual(identity["github"], "https://github.com/owner/repo")
+        self.assertEqual(identity["github_owner"], "owner")
+        self.assertEqual(identity["github_repo"], "repo")
         self.assertEqual(identity["contact"], "me@example.com")
 
     def test_github_falls_back_to_url(self) -> None:
         identity = build_resource_run_identity({"name": "Demo", "url": "https://github.com/a/b"})
         self.assertEqual(identity["github"], "https://github.com/a/b")
+        self.assertEqual(identity["github_owner"], "a")
+        self.assertEqual(identity["github_repo"], "b")
+
+    def test_non_github_host_is_not_parsed_as_owner_repo(self) -> None:
+        identity = build_resource_run_identity(
+            {"name": "Demo", "github": "https://evil.example/overflow65537/MAA_Punish"}
+        )
+        self.assertEqual(identity["github"], "https://evil.example/overflow65537/MAA_Punish")
+        self.assertEqual(identity["github_owner"], "")
+        self.assertEqual(identity["github_repo"], "")
 
     def test_fingerprint_changes_with_github(self) -> None:
         left = resource_run_fingerprint({"name": "Demo", "github": "https://a", "contact": ""})

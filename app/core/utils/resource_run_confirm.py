@@ -6,6 +6,7 @@ import hashlib
 import json
 from typing import Any, Mapping
 
+from app.core.utils.resource_hash_check import parse_github_owner_repo
 from app.utils.logger import logger
 
 MAX_ACKNOWLEDGED_RESOURCE_RUNS = 200
@@ -25,9 +26,16 @@ def build_resource_run_identity(interface: Mapping[str, Any] | None) -> dict[str
         name = str(data.get("name") or "").strip()
     github = str(data.get("github") or data.get("url") or "").strip()
     contact = str(data.get("contact") or "").strip()
+    owner = ""
+    repo = ""
+    parsed = parse_github_owner_repo(github)
+    if parsed is not None:
+        owner, repo = parsed
     return {
         "name": name,
         "github": github,
+        "github_owner": owner,
+        "github_repo": repo,
         "contact": contact,
     }
 
