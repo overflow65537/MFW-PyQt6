@@ -94,13 +94,15 @@ def path_is_zip_backed_archive(path: Path | str) -> bool:
 
 
 def path_is_update_archive_readable(path: Path | str) -> bool:
-    """本地/更新器可识别的更新包：zip、tar.gz/tgz、.7z、ZIP 型 exe、7z SFX exe。"""
+    """本地/更新器可识别的更新包：zip、tar.gz/tgz、.7z、ZIP 型 exe、7z SFX exe；macOS 另含 .dmg。"""
     p = Path(path)
     nl = p.name.lower()
     if nl.endswith(".zip"):
         return True
     if nl.endswith((".tar.gz", ".tgz")):
         return True
+    if nl.endswith(".dmg"):
+        return sys.platform == "darwin"
     if nl.endswith(".7z"):
         return path_readable_by_py7zr(p)
     if nl.endswith(".exe"):
@@ -108,6 +110,46 @@ def path_is_update_archive_readable(path: Path | str) -> bool:
             return True
         return path_readable_by_py7zr(p)
     return False
+
+
+def derive_download_filename(resp: Response, fallback_url: str = "") -> str:
+    """从 Content-Disposition 或 URL 路径得到下载文件名，缺省为 update.zip。"""
+
+    def _safe_name(raw: str | None) -> str | None:
+        if not raw:
+            return None
+        name = Path(unquote(raw.strip().strip("\"'"))).name
+        if not name or name in {".", ".."}:
+            return None
+        return name
+
+    disposition = (
+        resp.headers.get("content-disposition")
+        or resp.headers.get("Content-Disposition")
+        or ""
+    )
+    star = re.search(r"filename\*\s*=\s*UTF-8''([^;]+)", disposition, re.I)
+    if star:
+        name = _safe_name(star.group(1))
+        if name:
+            return name
+    quoted = re.search(r'filename\s*=\s*"([^"]+)"', disposition, re.I)
+    if quoted:
+        name = _safe_name(quoted.group(1))
+        if name:
+            return name
+    plain = re.search(r"filename\s*=\s*([^;]+)", disposition, re.I)
+    if plain:
+        name = _safe_name(plain.group(1))
+        if name:
+            return name
+    for candidate in (getattr(resp, "url", None), fallback_url):
+        if not candidate:
+            continue
+        name = _safe_name(urlparse(str(candidate)).path)
+        if name:
+            return name
+    return "update.zip"
 
 
 def collect_hotfix_resource_dirs(
@@ -201,7 +243,7 @@ class BaseUpdate(QThread):
             verify = True
 
         def _derive_filename(resp: Response) -> str:
-            return "update.zip"
+            return derive_download_filename(resp, url)
 
         def _resolve_target_location(base_path: Path, filename: str) -> Path:
             is_dir = (base_path.exists() and base_path.is_dir()) or str(
@@ -2057,13 +2099,14 @@ class Update(BaseUpdate):
     ) -> bool:
         """
         是否参与候选。
-        zip_tar_github_assets_only=True（仅 UI 自更新 GitHub 选包）：只接受 .zip / .tar.gz / .tgz。
+        zip_tar_github_assets_only=True（仅 UI 自更新 GitHub 选包）：
+        接受 .zip / .tar.gz / .tgz；macOS 另接受 updater 可解压的 .dmg。
         否则保持全量等资源场景：含 .7z、Windows 下 exe 及安装包后缀等。
         """
         if zip_tar_github_assets_only:
-            return any(
-                name_lower.endswith(s) for s in (".tar.gz", ".tgz", ".zip")
-            )
+            if any(name_lower.endswith(s) for s in (".tar.gz", ".tgz", ".zip")):
+                return True
+            return self.current_os_type == "macos" and name_lower.endswith(".dmg")
 
         os_type = self.current_os_type
 
@@ -2097,13 +2140,15 @@ class Update(BaseUpdate):
     ) -> int:
         """
         按平台为后缀加分。
-        zip_tar_github_assets_only 时仅 zip/tar 参与评分（用于 UI 自更新 GitHub 选包）。
+        zip_tar_github_assets_only 时 zip/tar 参与评分；macOS 上 .dmg 为最高后缀分。
         """
         kind = self._github_release_asset_suffix_kind(name_lower)
         if kind is None:
             return 0
 
         if zip_tar_github_assets_only:
+            if kind == "dmg" and self.current_os_type == "macos":
+                return 12
             if kind in ("tar_gz", "tgz"):
                 return 8
             if kind == "zip":
@@ -2257,7 +2302,7 @@ class Update(BaseUpdate):
 
         - 关键词：项目名、版本（含去 v 号）、当前 OS、架构；版本/OS/架构权重高于项目名。
         - 文件名含 MFW_CFA 时额外加分。
-        - zip_tar_github_assets_only=True：仅 .zip / .tar.gz / .tgz（用于 UI 自更新）。
+        - zip_tar_github_assets_only=True：.zip / .tar.gz / .tgz；macOS 另含 .dmg（用于 UI 自更新）。
         - 否则：全量等资源场景可含 .7z、Windows 自解压 exe 及安装包后缀等（见 _github_release_asset_accepted）。
         """
         normalized_assets = assets if isinstance(assets, list) else []

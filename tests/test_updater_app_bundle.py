@@ -1,4 +1,5 @@
 import os
+import shutil
 import stat
 import tempfile
 import unittest
@@ -78,6 +79,93 @@ class AppBundleUpdateTests(unittest.TestCase):
         self.assertTrue(updater._path_is_supported_update_package("update.tgz"))
         self.assertTrue(updater._path_is_supported_update_package("update.zip"))
         self.assertFalse(updater._path_is_supported_update_package("notes.txt"))
+
+    def test_path_accepts_dmg_on_macos_only(self):
+        with patch("updater.sys.platform", "darwin"):
+            self.assertTrue(updater._path_is_supported_update_package("update.dmg"))
+        with patch("updater.sys.platform", "win32"):
+            self.assertFalse(updater._path_is_supported_update_package("update.dmg"))
+        with patch("updater.sys.platform", "linux"):
+            self.assertFalse(updater._path_is_supported_update_package("update.dmg"))
+
+    def test_copy_dmg_volume_skips_absolute_symlink_and_metadata(self):
+        with tempfile.TemporaryDirectory() as raw:
+            mount = Path(raw) / "mount"
+            dest = Path(raw) / "dest"
+            mount.mkdir()
+            dest.mkdir()
+            _write_app(mount, "from-dmg")
+            (mount / "MFWUpdater").write_text("updater", encoding="utf-8")
+            created_abs_link = False
+            try:
+                (mount / "Applications").symlink_to("/Applications")
+                created_abs_link = True
+            except OSError:
+                pass
+            (mount / ".DS_Store").write_bytes(b"junk")
+            (mount / "._hidden").write_bytes(b"appledouble")
+
+            copied = updater._copy_dmg_volume_to_temp(mount, dest)
+
+            self.assertGreaterEqual(copied, 2)
+            self.assertEqual(
+                (dest / "MFW.app" / "Contents" / "MacOS" / "MFW").read_text(
+                    encoding="utf-8"
+                ),
+                "from-dmg",
+            )
+            self.assertEqual(
+                (dest / "MFWUpdater").read_text(encoding="utf-8"), "updater"
+            )
+            if created_abs_link:
+                self.assertFalse((dest / "Applications").exists())
+            self.assertFalse((dest / ".DS_Store").exists())
+            self.assertFalse((dest / "._hidden").exists())
+
+    def test_extract_dmg_to_temp_copies_app_payload(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            dmg = root / "MFW.dmg"
+            dmg.write_bytes(b"fake-dmg")
+            mount = root / "volume"
+            mount.mkdir()
+            _write_app(mount, "dmg-app")
+            (mount / "maafw").mkdir()
+            (mount / "maafw" / "lib.dylib").write_text("lib", encoding="utf-8")
+
+            with (
+                patch("updater.sys.platform", "darwin"),
+                patch("updater._hdiutil_attach", return_value=mount) as attach,
+                patch("updater._hdiutil_detach") as detach,
+            ):
+                extracted = updater._extract_dmg_to_temp(dmg)
+
+            try:
+                self.assertIsNotNone(extracted)
+                extracted_path = Path(extracted)
+                self.assertEqual(
+                    (
+                        extracted_path
+                        / "MFW.app"
+                        / "Contents"
+                        / "MacOS"
+                        / "MFW"
+                    ).read_text(encoding="utf-8"),
+                    "dmg-app",
+                )
+                self.assertTrue((extracted_path / "maafw" / "lib.dylib").is_file())
+                attach.assert_called_once()
+                detach.assert_called_once_with(mount)
+            finally:
+                if extracted:
+                    shutil.rmtree(extracted, ignore_errors=True)
+
+    def test_extract_archive_to_temp_dispatches_dmg(self):
+        dmg = Path("MFW-macos.dmg")
+        with patch("updater._extract_dmg_to_temp", return_value=Path("tmp")) as extract:
+            result = updater._extract_archive_to_temp(dmg)
+        extract.assert_called_once_with(dmg)
+        self.assertEqual(result, Path("tmp"))
 
     def test_replaces_app_and_runtime_but_preserves_user_data(self):
         with tempfile.TemporaryDirectory() as raw:

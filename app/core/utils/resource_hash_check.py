@@ -201,6 +201,7 @@ def get_github_resource_hashes_for_run(
     wait_github_hash_prefetch(wait_timeout)
     body = get_cached_github_release_body(github_url, version)
     if body is None:
+        logger.debug("当前版本 GitHub release body 缓存未就绪，跳过 GitHub 对比")
         return {}
     return _hashes_from_release_body(body)
 
@@ -365,7 +366,11 @@ def wait_github_hash_prefetch(
     """等待启动预取完成。尚未开始则立即返回。"""
     if not _PREFETCH_STARTED or _PREFETCH_DONE.is_set():
         return True
-    return _PREFETCH_DONE.wait(timeout=timeout)
+    logger.debug("等待启动阶段 GitHub 哈希缓存就绪...")
+    ok = _PREFETCH_DONE.wait(timeout=timeout)
+    if not ok:
+        logger.warning("等待 GitHub 哈希缓存超时，跳过 GitHub 对比")
+    return ok
 
 
 def parse_github_owner_repo(url: str) -> tuple[str, str] | None:
