@@ -7,12 +7,11 @@ import shutil
 
 import jsonc
 
-from PySide6.QtCore import QTimer, QObject, Qt, Slot
+from PySide6.QtCore import QObject, Qt, Slot
 
 from app.core.item import (
     CoreSignalBus,
     ViewSignalBus,
-    RunnerEvents,
     ConfigItem,
     TaskItem,
 )
@@ -948,7 +947,7 @@ class ServiceCoordinator:
         context = self._runtime_contexts.get(str(config_id or ""))
         if context is None:
             return RuntimeState.IDLE
-        return getattr(context, "state", RuntimeState.RUNNING if context.is_running else RuntimeState.IDLE)
+        return context.state
 
     async def stop_configuration(
         self,
@@ -961,26 +960,8 @@ class ServiceCoordinator:
         context = self._runtime_contexts.get(target_id)
         if context is None or not context.is_running:
             return False
-        stop = getattr(context, "stop", None)
-        if callable(stop):
-            await stop(manual=manual)
-        else:
-            await context.task_runner.stop_task(manual=manual)
+        await context.stop(manual=manual)
         return True
-
-    async def stop_running_configuration(
-        self,
-        *,
-        config_id: str | None = None,
-        manual: bool = True,
-    ) -> bool:
-        """Compatibility alias; an omitted id targets the active UI config."""
-        target_id = str(
-            config_id or self._config_service.current_config_id or ""
-        ).strip()
-        if not target_id:
-            return False
-        return await self.stop_configuration(target_id, manual=manual)
 
     async def stop_all_configurations(self, *, manual: bool = False) -> None:
         """Request every live runtime to stop; one failure cannot block others."""
@@ -1013,7 +994,7 @@ class ServiceCoordinator:
         await self.stop_all_configurations(manual=manual)
         pending_by_task: dict[asyncio.Task, str] = {}
         for config_id, context in tuple(self._runtime_contexts.items()):
-            task = getattr(context, "run_task", None)
+            task = context.run_task
             if isinstance(task, asyncio.Task) and not task.done():
                 pending_by_task[task] = config_id
         if not pending_by_task:
@@ -1049,10 +1030,7 @@ class ServiceCoordinator:
             return False
         if clear_logs:
             context.logs.clear()
-        start_runtime = getattr(context, "start", None)
-        if callable(start_runtime):
-            return bool(await start_runtime())
-        return bool(await RuntimeFacade(lambda: context).run())
+        return bool(await context.start())
 
     def shutdown_all_runtimes_sync(self) -> None:
         """Best-effort synchronous shutdown for the window cleanup thread."""
@@ -1164,21 +1142,7 @@ class ServiceCoordinator:
         self._task_service.on_config_changed(config_id)
         self._option_service.clear_selection()
 
-    # region configuration compatibility methods
-    def update_bundle_path(
-        self, bundle_name: str, new_path: str, bundle_display_name: str | None = None
-    ) -> bool:
-        """兼容入口；新调用应使用 configs.update_bundle_path。"""
-        return self._configs.update_bundle_path(
-            bundle_name,
-            new_path,
-            bundle_display_name,
-        )
-
-    def delete_bundle(self, bundle_name: str) -> bool:
-        """兼容入口；新调用应使用 configs.delete_bundle。"""
-        return self._configs.delete_bundle(bundle_name)
-
+    # region configuration methods
     def get_presets(self) -> List[Dict[str, Any]]:
         """获取 interface 中定义的所有预设配置列表。
 
@@ -1414,12 +1378,8 @@ class ServiceCoordinator:
 
         ok = self._task_service.update_tasks(tasks)
         if ok:
-            # 兼容：对于希望逐项更新的监听者，仍发出逐项 task_updated 信号
-            try:
-                for t in tasks:
-                    self._view_signals.task_modified.emit(t)
-            except Exception:
-                pass
+            for task in tasks:
+                self._view_signals.task_modified.emit(task)
         return ok
 
     def delete_task(self, task_id: str) -> bool:
@@ -1470,22 +1430,8 @@ class ServiceCoordinator:
                 self._core_signals.config_changed.emit(current_config_id)
 
             logger.info("服务协调器重新初始化完成")
-        except Exception as e:
-            logger.error(f"重新初始化服务协调器失败: {e}")
-
-    async def run_tasks_flow(
-        self, task_id: str | None = None
-    ):
-        """兼容入口；新调用应使用 runtime.run。"""
-        return await self._runtime.run(task_id)
-
-    async def stop_task_flow(self):
-        """兼容入口；新调用应使用 runtime.stop。"""
-        return await self._runtime.stop(manual=True)
-
-    async def stop_task(self, *, manual: bool = False):
-        """兼容入口；新调用应使用 runtime.stop。"""
-        return await self._runtime.stop(manual=manual)
+        except Exception:
+            logger.exception("重新初始化服务协调器失败")
 
     def set_telemetry_enabled(self, enabled: bool) -> None:
         """更新用户遥测授权并立即应用。"""
@@ -1498,11 +1444,6 @@ class ServiceCoordinator:
     def shutdown_telemetry(self) -> None:
         """退出应用前刷新并关闭遥测。"""
         self.telemetry_service.shutdown()
-
-    @property
-    def interface(self) -> Dict[str, Any]:
-        """兼容旧调用；新 View 代码应使用 interface_api.data。"""
-        return self.interface_api.data
 
     @property
     def interface_path(self) -> Path | str | None:
@@ -1528,12 +1469,6 @@ class ServiceCoordinator:
     @property
     def runtime(self) -> RuntimeFacade:
         return self._runtime
-
-    @property
-    def runner_events(self) -> RunnerEvents:
-        """Compatibility alias for the active configuration events."""
-        return self._active_runtime_context.events
-
 
     @property
     def interface_api(self) -> InterfaceFacade:

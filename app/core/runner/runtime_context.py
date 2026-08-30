@@ -17,6 +17,7 @@ from app.core.runner.monitor_task import MonitorTask
 from app.core.runner.task_flow import TaskFlowRunner
 from app.core.service.config_service import ConfigService
 from app.core.service.task_service import TaskService
+from app.utils.logger import logger
 
 
 @dataclass(slots=True)
@@ -175,9 +176,7 @@ class RuntimeContext(QObject):
         )
         self.monitor_task.setParent(self)
         self.logs = RuntimeLogStore(
-            task_id_provider=lambda: getattr(
-                self.task_runner, "_current_running_task_id", None
-            ),
+            task_id_provider=lambda: self.task_runner.current_running_task_id,
             parent=self,
         )
         self.monitor = RuntimeMonitorState(parent=self)
@@ -261,6 +260,7 @@ class RuntimeContext(QObject):
             raise
         except Exception as exc:
             failed = True
+            logger.exception("Runtime %s failed", self.config_id)
             self.logs.append("ERROR", f"Runtime {self.config_id} failed: {exc}")
             self._set_state(RuntimeState.FAILED)
         finally:
@@ -311,9 +311,7 @@ class RuntimeContext(QObject):
 
     def shutdown_runtime_sync(self) -> None:
         """Synchronously clean the runtime owned by this configuration."""
-        shared_maafw = getattr(self.monitor_task, "maafw", None) is getattr(
-            self.task_runner, "maafw", None
-        )
+        shared_maafw = self.monitor_task.maafw is self.task_runner.maafw
         try:
             self.task_runner.shutdown_runtime_sync()
         finally:
@@ -330,13 +328,10 @@ class RuntimeContext(QObject):
             return True
         if self._run_task is not None and not self._run_task.done():
             return True
-        try:
-            return bool(
-                self.task_runner.is_running
-                or self.task_runner.maafw.has_active_runtime()
-            )
-        except Exception:
-            return bool(getattr(self.task_runner, "is_running", False))
+        return bool(
+            self.task_runner.is_running
+            or self.task_runner.maafw.has_active_runtime()
+        )
 
     @Slot(dict)
     def _on_task_flow_finished(self, _payload: dict) -> None:

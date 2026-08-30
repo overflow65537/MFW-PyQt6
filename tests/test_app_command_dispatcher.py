@@ -51,11 +51,6 @@ class AppCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
                 current_config_id="config-a",
                 get_config=lambda config_id: configs.get(config_id),
             ),
-            runtime=SimpleNamespace(
-                is_running=False,
-                run=AsyncMock(side_effect=lambda: self.events.append("runtime.run")),
-                stop=AsyncMock(side_effect=lambda **_kwargs: self.events.append("runtime.stop")),
-            ),
         )
         self.coordinator.get_running_config_ids = lambda: list(self.running_ids)
         self.coordinator.select_config = Mock(side_effect=self._select_config)
@@ -63,11 +58,8 @@ class AppCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         self.coordinator.stop_configuration = AsyncMock(
             side_effect=self._stop_configuration
         )
-        self.coordinator.stop_running_configuration = AsyncMock(
-            side_effect=self._stop_running
-        )
-        self.coordinator.stop_all_configurations = AsyncMock(
-            side_effect=self._stop_all
+        self.coordinator.shutdown_all_configurations = AsyncMock(
+            side_effect=self._shutdown_all
         )
         self.window = _FakeWindow(self.coordinator)
         self.close_callback = AsyncMock(side_effect=lambda: self.events.append("close"))
@@ -98,13 +90,10 @@ class AppCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         self.running_ids.remove(config_id)
         return True
 
-    async def _stop_running(self, **_kwargs):
-        target = _kwargs.get("config_id") or self.coordinator.configs.current_config_id
-        return await self._stop_configuration(target, **_kwargs)
-
-    async def _stop_all(self, **_kwargs):
+    async def _shutdown_all(self, **_kwargs):
         self.events.append("stop_all")
         self.running_ids.clear()
+        return []
 
     async def _submit_and_wait(self, command, params=None):
         request = IpcRequest(command, params or {})
@@ -191,41 +180,8 @@ class AppCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(IpcStatus.ACCEPTED, response.status)
         self.assertEqual(["stop_all", "run:config-b"], self.events)
 
-    async def test_force_restart_waits_for_graceful_shutdown_when_available(self):
-        self.running_ids[:] = ["config-a"]
-
-        async def graceful_shutdown(**_kwargs):
-            self.events.append("graceful_stop_all")
-            self.running_ids.clear()
-            return []
-
-        self.coordinator.shutdown_all_configurations = AsyncMock(
-            side_effect=graceful_shutdown
-        )
-
-        response = await self._submit_and_wait(
-            IpcCommand.RUN,
-            {"config_id": "config-b", "force_restart": True},
-        )
-
-        self.assertEqual(IpcStatus.ACCEPTED, response.status)
-        self.assertEqual(["graceful_stop_all", "run:config-b"], self.events)
-        self.coordinator.shutdown_all_configurations.assert_awaited_once_with(
-            manual=True
-        )
-        self.coordinator.stop_all_configurations.assert_not_awaited()
-
     async def test_shutdown_waits_for_graceful_stop_before_close(self):
         self.running_ids[:] = ["config-a"]
-
-        async def graceful_shutdown(**_kwargs):
-            self.events.append("graceful_stop_all")
-            self.running_ids.clear()
-            return []
-
-        self.coordinator.shutdown_all_configurations = AsyncMock(
-            side_effect=graceful_shutdown
-        )
 
         response = await self._submit_and_wait(
             IpcCommand.SHUTDOWN,
@@ -233,12 +189,10 @@ class AppCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(IpcStatus.ACCEPTED, response.status)
-        self.assertEqual(["graceful_stop_all", "close"], self.events)
+        self.assertEqual(["stop_all", "close"], self.events)
         self.coordinator.shutdown_all_configurations.assert_awaited_once_with(
             manual=False
         )
-        self.coordinator.stop_all_configurations.assert_not_awaited()
-
 
     async def test_different_configs_can_be_reserved_together(self):
         gate = asyncio.Event()
@@ -365,11 +319,11 @@ class AppCommandDispatcherStartupTests(unittest.IsolatedAsyncioTestCase):
                 if config_id in {"config-a", "config-b"}
                 else None,
             ),
-            runtime=SimpleNamespace(is_running=False),
             get_running_config_ids=lambda: [],
             select_config=Mock(side_effect=lambda config_id: events.append(f"switch:{config_id}") or True),
             run_configuration=AsyncMock(side_effect=lambda config_id: events.append(f"run:{config_id}") or True),
-            stop_running_configuration=AsyncMock(return_value=False),
+            stop_configuration=AsyncMock(return_value=False),
+            shutdown_all_configurations=AsyncMock(return_value=[]),
         )
         window = _FakeWindow(coordinator)
         dispatcher = AppCommandDispatcher(asyncio.get_running_loop())
@@ -429,12 +383,11 @@ class AppCommandDispatcherStartupTests(unittest.IsolatedAsyncioTestCase):
                 current_config_id="config-a",
                 get_config=lambda _config_id: object(),
             ),
-            runtime=SimpleNamespace(is_running=False),
             get_running_config_ids=lambda: [],
             select_config=Mock(side_effect=lambda config_id: events.append(f"switch:{config_id}") or True),
             run_configuration=AsyncMock(side_effect=lambda config_id: events.append(f"run:{config_id}") or True),
-            stop_running_configuration=AsyncMock(side_effect=lambda **_kwargs: events.append("stop") or False),
-            stop_all_configurations=AsyncMock(side_effect=lambda **_kwargs: events.append("stop_all")),
+            stop_configuration=AsyncMock(side_effect=lambda *_args, **_kwargs: events.append("stop") or False),
+            shutdown_all_configurations=AsyncMock(side_effect=lambda **_kwargs: events.append("stop_all") or []),
         )
         close_callback = AsyncMock(side_effect=lambda: events.append("close"))
         dispatcher = AppCommandDispatcher(

@@ -6,7 +6,7 @@ import asyncio
 import inspect
 import os
 from collections import deque
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Protocol
 
 from PySide6.QtCore import Qt, QTimer
 
@@ -14,6 +14,44 @@ from app.ipc.protocol import IpcCommand, IpcRequest, IpcResponse, IpcStatus
 from app.utils.logger import logger
 
 CloseCallback = Callable[[], Awaitable[Any] | Any]
+
+
+class _ConfigFacadeProtocol(Protocol):
+    current_config_id: str
+
+    def get_config(self, config_id: str) -> object | None: ...
+
+
+class _CoordinatorProtocol(Protocol):
+    configs: _ConfigFacadeProtocol
+
+    def get_running_config_ids(self) -> list[str]: ...
+
+    def select_config(self, config_id: str) -> bool: ...
+
+    async def run_configuration(self, config_id: str) -> bool: ...
+
+    async def stop_configuration(
+        self, config_id: str, *, manual: bool = True
+    ) -> bool: ...
+
+    async def shutdown_all_configurations(
+        self, *, manual: bool = False
+    ) -> list[str]: ...
+
+
+class _WindowProtocol(Protocol):
+    service_coordinator: _CoordinatorProtocol
+    _allow_window_close: bool
+
+    def isVisible(self) -> bool: ...
+    def show(self) -> None: ...
+    def windowState(self): ...
+    def showNormal(self) -> None: ...
+    def raise_(self) -> None: ...
+    def activateWindow(self) -> None: ...
+    def winId(self): ...
+    def close(self) -> None: ...
 
 
 class AppCommandDispatcher:
@@ -36,8 +74,8 @@ class AppCommandDispatcher:
     ) -> None:
         self._loop = loop
         self._close_callback = close_callback
-        self._window: Any | None = None
-        self._coordinator: Any | None = None
+        self._window: _WindowProtocol | None = None
+        self._coordinator: _CoordinatorProtocol | None = None
         self._pending_commands: deque[IpcRequest] = deque()
         self._command_queue: asyncio.Queue[IpcRequest] = asyncio.Queue()
         self._worker_task: asyncio.Task[Any] | None = None
@@ -57,7 +95,7 @@ class AppCommandDispatcher:
     def shutting_down(self) -> bool:
         return self._shutting_down
 
-    def attach_window(self, window: Any) -> None:
+    def attach_window(self, window: _WindowProtocol) -> None:
         """Attach the application facade and drain startup commands exactly once."""
         if self._closed:
             return
@@ -287,15 +325,11 @@ class AppCommandDispatcher:
     def _running_config_ids(self) -> list[str]:
         if not self.ready:
             return []
-        value = getattr(self._coordinator, "get_running_config_ids", None)
-        if callable(value):
-            value = value()
-        if value is not None:
-            return [str(config_id) for config_id in value if config_id]
-        if bool(self._coordinator.runtime.is_running):
-            active = self._coordinator.configs.current_config_id
-            return [active] if active else []
-        return []
+        return [
+            str(config_id)
+            for config_id in self._coordinator.get_running_config_ids()
+            if config_id
+        ]
 
     def _is_running(self) -> bool:
         return bool(self._running_config_ids())
@@ -373,80 +407,42 @@ class AppCommandDispatcher:
     async def _run(self, request: IpcRequest) -> None:
         force_restart = bool(request.params.get("force_restart", False))
         if force_restart and self._is_running():
-            shutdown_all = getattr(
-                self._coordinator, "shutdown_all_configurations", None
-            )
-            if callable(shutdown_all):
-                result = shutdown_all(manual=True)
-                pending = await result if inspect.isawaitable(result) else result
-                if pending:
-                    logger.warning(
-                        "Force-restart runtimes missed the graceful deadline: %s",
-                        ", ".join(map(str, pending)),
-                    )
-            else:
-                stop_all = getattr(self._coordinator, "stop_all_configurations", None)
-                if callable(stop_all):
-                    result = stop_all(manual=True)
-                    if inspect.isawaitable(result):
-                        await result
-                else:
-                    await self._stop()
+            pending = await self._coordinator.shutdown_all_configurations(manual=True)
+            if pending:
+                logger.warning(
+                    "Force-restart runtimes missed the graceful deadline: %s",
+                    ", ".join(map(str, pending)),
+                )
 
         config_id = self._optional_config_id(request.params)
-        if isinstance(config_id, str):
-            started = await self._coordinator.run_configuration(config_id)
-            if not started:
-                logger.warning("Run target no longer exists or is busy: %s", config_id)
+        target_id = (
+            config_id
+            if isinstance(config_id, str)
+            else self._coordinator.configs.current_config_id
+        )
+        if not target_id:
+            logger.warning("Run requested without an active configuration")
             return
 
-        active_config_id = self._coordinator.configs.current_config_id
-        run_configuration = getattr(self._coordinator, "run_configuration", None)
-        if active_config_id and callable(run_configuration):
-            started = await run_configuration(active_config_id)
-            if not started:
-                logger.warning(
-                    "Active configuration could not be started: %s",
-                    active_config_id,
-                )
-            return
-        await self._coordinator.runtime.run()
+        started = await self._coordinator.run_configuration(target_id)
+        if not started:
+            logger.warning(
+                "Run target no longer exists or is busy: %s", target_id
+            )
 
     async def _stop(self, config_id: str | None = None) -> None:
         target_id = config_id or self._coordinator.configs.current_config_id
-        stop_configuration = getattr(self._coordinator, "stop_configuration", None)
-        if target_id and callable(stop_configuration):
-            result = stop_configuration(target_id, manual=True)
-            if inspect.isawaitable(result):
-                await result
+        if not target_id:
             return
-        stop_running = getattr(self._coordinator, "stop_running_configuration", None)
-        if callable(stop_running):
-            result = stop_running(config_id=target_id, manual=True)
-            if inspect.isawaitable(result):
-                await result
-            return
-        if bool(self._coordinator.runtime.is_running):
-            await self._coordinator.runtime.stop(manual=True)
+        await self._coordinator.stop_configuration(target_id, manual=True)
 
     async def _shutdown(self) -> None:
-        shutdown_all = getattr(self._coordinator, "shutdown_all_configurations", None)
-        if callable(shutdown_all):
-            result = shutdown_all(manual=False)
-            pending = await result if inspect.isawaitable(result) else result
-            if pending:
-                logger.warning(
-                    "Shutdown runtimes missed the graceful deadline: %s",
-                    ", ".join(map(str, pending)),
-                )
-        else:
-            stop_all = getattr(self._coordinator, "stop_all_configurations", None)
-            if callable(stop_all):
-                result = stop_all(manual=False)
-                if inspect.isawaitable(result):
-                    await result
-            else:
-                await self._stop()
+        pending = await self._coordinator.shutdown_all_configurations(manual=False)
+        if pending:
+            logger.warning(
+                "Shutdown runtimes missed the graceful deadline: %s",
+                ", ".join(map(str, pending)),
+            )
         callback = self._close_callback
         if callback is not None:
             result = callback()

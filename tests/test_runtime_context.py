@@ -27,7 +27,7 @@ class RuntimeContextIsolationTests(unittest.TestCase):
 
             def make_runner(**_kwargs):
                 runner = SimpleNamespace(
-                    _current_running_task_id=None,
+                    current_running_task_id=None,
                     is_running=False,
                     need_stop=False,
                     _manual_stop=False,
@@ -90,8 +90,8 @@ class RuntimeContextIsolationTests(unittest.TestCase):
 
     def test_logs_and_clear_requests_do_not_cross_contexts(self):
         context_a, context_b, _, _ = self._create_contexts()
-        context_a.task_runner._current_running_task_id = "task-a"
-        context_b.task_runner._current_running_task_id = "task-b"
+        context_a.task_runner.current_running_task_id = "task-a"
+        context_b.task_runner.current_running_task_id = "task-b"
 
         context_a.events.log_output.emit("INFO", "from a")
         context_b.events.log_output.emit("WARNING", "from b")
@@ -131,7 +131,7 @@ class RuntimeContextLifecycleTests(unittest.IsolatedAsyncioTestCase):
     def _create_context(self, config_id: str, run_side_effect=None):
         maafw = SimpleNamespace(has_active_runtime=lambda: False)
         runner = SimpleNamespace(
-            _current_running_task_id=None,
+            current_running_task_id=None,
             is_running=False,
             need_stop=False,
             _manual_stop=False,
@@ -210,6 +210,21 @@ class RuntimeContextLifecycleTests(unittest.IsolatedAsyncioTestCase):
         gate.set()
         await self._finish_context(context)
         runner.run_tasks_flow.assert_awaited_once()
+
+    async def test_runner_failure_leaves_context_failed(self):
+        context, runner, _ = self._create_context(
+            "config-a", RuntimeError("runner failed")
+        )
+
+        self.assertTrue(await context.start())
+        await self._finish_context(context)
+
+        runner.run_tasks_flow.assert_awaited_once_with(
+            None, start_task_id=None
+        )
+        self.assertEqual(RuntimeState.FAILED, context.state)
+        self.assertIsNone(context.run_task)
+        self.assertFalse(context.is_running)
 
     async def test_immediate_starting_stop_keeps_event_loop_responsive(self):
         context, runner, _ = self._create_context("config-a")
@@ -389,8 +404,8 @@ class PostActionRuntimeRoutingTests(unittest.IsolatedAsyncioTestCase):
         }
 
         self.assertFalse(
-            await ServiceCoordinator.stop_running_configuration(
-                coordinator, config_id="config-b", manual=True
+            await ServiceCoordinator.stop_configuration(
+                coordinator, "config-b", manual=True
             )
         )
         stop_a.assert_not_awaited()
@@ -478,7 +493,6 @@ class PostActionRuntimeRoutingTests(unittest.IsolatedAsyncioTestCase):
         )
         coordinator.select_config = Mock()
         coordinator._activate_runtime_context = Mock()
-        coordinator._runtime = SimpleNamespace(run=AsyncMock())
 
         started = await ServiceCoordinator.run_configuration(
             coordinator, "missing-config"
@@ -487,7 +501,6 @@ class PostActionRuntimeRoutingTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(started)
         coordinator.select_config.assert_not_called()
         coordinator._activate_runtime_context.assert_not_called()
-        coordinator._runtime.run.assert_not_awaited()
 
 
 class RuntimeCoordinatorStateTests(unittest.TestCase):

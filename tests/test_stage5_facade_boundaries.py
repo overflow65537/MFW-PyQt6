@@ -1,12 +1,11 @@
 import ast
-import asyncio
 import inspect
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from PySide6.QtCore import QCoreApplication
 
@@ -193,103 +192,66 @@ class ConfigFacadeBundleTests(unittest.TestCase):
         self.assertEqual("./bundle/valid", store.bundles["valid"]["path"])
 
 
-class _FakeTaskApi:
-    def __init__(self):
-        self.task = SimpleNamespace(is_checked=False)
-        self.checked_calls: list[tuple[str, bool]] = []
-        self.refresh_calls = 0
-
-    def get_task(self, task_id):
-        return self.task if task_id == "task-1" else None
-
-    def update_task_checked(self, task_id, checked):
-        self.checked_calls.append((task_id, checked))
-        self.task.is_checked = checked
-        return True
-
-    def refresh_hidden_flags(self):
-        self.refresh_calls += 1
-
-
 class _FakeRuntimeRunner:
     def __init__(self):
-        self.is_running = False
-        self.maafw = SimpleNamespace(has_active_runtime=lambda: True)
-        self.task_service = _FakeTaskApi()
-        self.config_service = object()
-        self.run_calls: list[tuple[str | None, str | None]] = []
-        self.stop_calls: list[bool] = []
-        self.shutdown_calls = 0
-        self.send_thread = SimpleNamespace(stop_calls=0)
-        self.send_thread.stop = lambda: setattr(
-            self.send_thread,
-            "stop_calls",
-            self.send_thread.stop_calls + 1,
-        )
+        self.current_running_task_id = "task-1"
+        self.maafw = SimpleNamespace(controller=None)
+        self.send_thread = SimpleNamespace(stop=Mock())
+        self.submit_resource_run_confirmation = Mock()
 
-    async def run_tasks_flow(self, task_id=None, *, start_task_id=None):
-        self.run_calls.append((task_id, start_task_id))
-        await asyncio.sleep(0)
-        return "done"
 
-    async def stop_task(self, *, manual=False):
-        self.stop_calls.append(manual)
-        return "stopped"
-
-    def shutdown_runtime_sync(self):
-        self.shutdown_calls += 1
+def _make_runtime_context(runner):
+    return SimpleNamespace(
+        config_id="config-a",
+        task_runner=runner,
+        events=RunnerEvents(),
+        logs=SimpleNamespace(clear=Mock()),
+        monitor=object(),
+        monitor_task=object(),
+        is_running=True,
+        start=AsyncMock(return_value=True),
+        stop=AsyncMock(return_value=True),
+        shutdown_runtime_sync=Mock(),
+    )
 
 
 class RuntimeFacadeTests(unittest.IsolatedAsyncioTestCase):
-    async def test_runtime_operations_hide_runner_internals(self):
+    async def test_runtime_operations_delegate_to_context(self):
         runner = _FakeRuntimeRunner()
-        runtime = RuntimeFacade(runner)  # type: ignore[arg-type]
-
-        self.assertTrue(runtime.is_running)
-        self.assertEqual(
-            "done",
-            await runtime.run("task-1", start_task_id="task-0"),
-        )
-        self.assertEqual(
-            [("task-1", True), ("task-1", False)],
-            runner.task_service.checked_calls,
-        )
-        self.assertEqual("stopped", await runtime.stop())
-        self.assertEqual([True], runner.stop_calls)
-
-        runtime.shutdown_runtime_sync()
-        runtime.stop_notification_thread()
-        self.assertEqual(1, runner.shutdown_calls)
-        self.assertEqual(1, runner.send_thread.stop_calls)
-
-    def test_context_backed_shutdown_uses_unified_context_lifecycle(self):
-        runner = _FakeRuntimeRunner()
-        context = SimpleNamespace(
-            task_runner=runner,
-            shutdown_runtime_sync=Mock(),
-        )
+        context = _make_runtime_context(runner)
         runtime = RuntimeFacade(lambda: context)
 
+        self.assertEqual("config-a", runtime.config_id)
+        self.assertTrue(runtime.is_running)
+        self.assertEqual("task-1", runtime.current_running_task_id)
+        self.assertTrue(await runtime.run("task-1", start_task_id="task-0"))
+        context.start.assert_awaited_once_with(
+            "task-1", start_task_id="task-0"
+        )
+
+        self.assertTrue(await runtime.stop())
+        context.stop.assert_awaited_once_with(manual=True)
+
+        runtime.clear_logs()
+        context.logs.clear.assert_called_once_with()
+        runtime.submit_resource_run_confirmation(True)
+        runner.submit_resource_run_confirmation.assert_called_once_with(True)
+
         runtime.shutdown_runtime_sync()
-
         context.shutdown_runtime_sync.assert_called_once_with()
-        self.assertEqual(0, runner.shutdown_calls)
+        runtime.stop_notification_thread()
+        runner.send_thread.stop.assert_called_once_with(5000)
 
-    def test_monitor_factory_uses_independent_runner_events(self):
+    def test_context_lookup_and_monitor_are_explicit(self):
         runner = _FakeRuntimeRunner()
-        runtime = RuntimeFacade(runner)  # type: ignore[arg-type]
-        captured: dict[str, object] = {}
+        context = _make_runtime_context(runner)
+        runtime = RuntimeFacade(lambda: context)
 
-        class _Monitor:
-            def __init__(self, **kwargs):
-                captured.update(kwargs)
-
-        with patch("app.core.facade.runtime_facade.MonitorTask", _Monitor):
-            monitor = runtime.create_monitor_task()
-
-        self.assertIsInstance(captured["runner_events"], RunnerEvents)
-        self.assertIsNot(captured["runner_events"], getattr(runner, "runner_events", None))
-        self.assertIsNotNone(monitor)
+        self.assertIs(context, runtime.get_context())
+        self.assertIs(context, runtime.get_context("config-a"))
+        with self.assertRaises(ValueError):
+            runtime.get_context("config-b")
+        self.assertIs(context.monitor_task, runtime.create_monitor_task())
 
 
 if __name__ == "__main__":

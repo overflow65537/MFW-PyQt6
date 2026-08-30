@@ -12,42 +12,24 @@ from app.utils.logger import logger
 class RuntimeFacade:
     """当前配置运行时的显式 View API。"""
 
-    def __init__(
-        self,
-        runtime_source: Callable[[], RuntimeContext] | TaskFlowRunner,
-    ) -> None:
-        if callable(runtime_source) and not hasattr(runtime_source, "run_tasks_flow"):
-            self._context_provider: Callable[[], RuntimeContext] | None = runtime_source
-            self._legacy_runner: TaskFlowRunner | None = None
-        else:
-            self._context_provider = None
-            self._legacy_runner = runtime_source  # type: ignore[assignment]
+    def __init__(self, context_provider: Callable[[], RuntimeContext]) -> None:
+        self._context_provider = context_provider
 
     @property
     def context(self) -> RuntimeContext:
-        if self._context_provider is None:
-            raise RuntimeError("RuntimeContext 尚未接入")
         return self._context_provider()
 
     @property
     def _runner(self) -> TaskFlowRunner:
-        if self._context_provider is not None:
-            return self.context.task_runner
-        if self._legacy_runner is None:
-            raise RuntimeError("运行时尚未初始化")
-        return self._legacy_runner
+        return self.context.task_runner
 
     @property
-    def config_id(self) -> str | None:
-        if self._context_provider is None:
-            return None
+    def config_id(self) -> str:
         return self.context.config_id
 
     @property
     def events(self) -> RunnerEvents:
-        if self._context_provider is not None:
-            return self.context.events
-        return self._runner.runner_events
+        return self.context.events
 
     @property
     def logs(self):
@@ -69,112 +51,47 @@ class RuntimeFacade:
 
     @property
     def is_running(self) -> bool:
-        if self._context_provider is not None:
-            return self.context.is_running
-        runner = self._runner
-        try:
-            return bool(runner.is_running or runner.maafw.has_active_runtime())
-        except Exception:
-            return bool(getattr(runner, "is_running", False))
+        return self.context.is_running
 
     @property
     def current_running_task_id(self) -> str | None:
-        return getattr(self._runner, "_current_running_task_id", None)
-
-    async def run_tasks_flow(
-        self,
-        task_id: str | None = None,
-        *,
-        start_task_id: str | None = None,
-    ) -> Any:
-        return await self.run(task_id, start_task_id=start_task_id)
-
-    async def stop_task(self, *, manual: bool = False) -> Any:
-        return await self.stop(manual=manual)
+        return self._runner.current_running_task_id
 
     async def run(
         self,
         task_id: str | None = None,
         *,
         start_task_id: str | None = None,
-    ) -> Any:
-        """Start the bound runtime without redirecting through UI state."""
-        if self._context_provider is not None:
-            return await self.context.start(
-                task_id,
-                start_task_id=start_task_id,
-            )
+    ) -> bool:
+        """Start the active configuration runtime."""
+        return await self.context.start(
+            task_id,
+            start_task_id=start_task_id,
+        )
 
-        # Compatibility path for tests and legacy callers that still bind a
-        # bare TaskFlowRunner.
-        runner = self._runner
-        runner.need_stop = False
-        task_api = runner.task_service
-        restore_checked = False
-        if task_id:
-            task = task_api.get_task(task_id)
-            if task and not task.is_checked:
-                restore_checked = task_api.update_task_checked(task_id, True)
-        try:
-            task_api.refresh_hidden_flags()
-        except Exception:
-            pass
-        try:
-            return await runner.run_tasks_flow(
-                task_id,
-                start_task_id=start_task_id,
-            )
-        finally:
-            if restore_checked and task_id is not None:
-                task_api.update_task_checked(task_id, False)
-
-    async def stop(self, *, manual: bool = True) -> Any:
-        if self._context_provider is not None:
-            return await self.context.stop(manual=manual)
-        return await self._runner.stop_task(manual=manual)
+    async def stop(self, *, manual: bool = True) -> bool:
+        return await self.context.stop(manual=manual)
 
     def submit_resource_run_confirmation(self, accepted: bool) -> None:
         """完成首次资源运行确认（由 View 对话框回调）。"""
-        submit = getattr(self._runner, "submit_resource_run_confirmation", None)
-        if callable(submit):
-            submit(accepted)
+        self._runner.submit_resource_run_confirmation(accepted)
 
     def shutdown_runtime_sync(self) -> None:
-        if self._context_provider is not None:
-            self.context.shutdown_runtime_sync()
-            return
-        self._runner.shutdown_runtime_sync()
+        self.context.shutdown_runtime_sync()
 
     def stop_notification_thread(self, timeout_ms: int = 5000) -> None:
         """停止当前运行时的外部通知发送线程。"""
-        thread = getattr(self._runner, "send_thread", None)
-        if thread is None:
-            return
         try:
-            stop = getattr(thread, "stop", None)
-            if callable(stop):
-                stop()
-            else:
-                thread.quit()
-                if not thread.wait(timeout_ms):
-                    thread.terminate()
+            self._runner.send_thread.stop(timeout_ms)
             logger.debug("关闭发送线程")
-        except Exception as exc:
-            logger.exception("关闭发送线程失败", exc_info=exc)
+        except Exception:
+            logger.exception("关闭发送线程失败")
 
     def create_monitor_task(self) -> MonitorTask:
-        """返回 Context 监控 Runner，或为兼容模式创建独立实例。"""
-        if self._context_provider is not None:
-            return self.context.monitor_task
-        return MonitorTask(
-            task_service=self._runner.task_service,
-            config_service=self._runner.config_service,
-            runner_events=RunnerEvents(),
-        )
+        return self.context.monitor_task
 
     def get_cached_image_snapshot(self) -> Any | None:
-        maafw = getattr(self._runner, "maafw", None)
-        controller = getattr(maafw, "controller", None)
+        controller = self._runner.maafw.controller
         if controller is None:
             return None
         return snapshot_cached_image(controller)

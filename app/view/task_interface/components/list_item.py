@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QSizePolicy,
     QVBoxLayout,
-    QFrame,
 )
 
 from PySide6.QtCore import Signal, Qt, QTimer
@@ -708,7 +707,7 @@ class TaskListItem(BaseListItem):
         if not self.service_coordinator or self.task.is_base_task():
             return
         asyncio.create_task(
-            self.service_coordinator.runtime.run_tasks_flow(
+            self.service_coordinator.runtime.run(
                 start_task_id=self.task.item_id
             )
         )
