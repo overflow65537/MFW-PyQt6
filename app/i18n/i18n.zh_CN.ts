@@ -2062,14 +2062,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
         </message>
     </context>
     <context>
-        <name>DescriptionWidget</name>
-        <message>
-            <location filename="../view/task_interface/components/description_widget.py" line="32" />
-            <source>Function Description</source>
-            <translation>功能说明</translation>
-        </message>
-    </context>
-    <context>
         <name>DingTalkNoticeType</name>
         <message>
             <location filename="../view/setting_interface/widget/notice_type.py" line="134" />
@@ -2085,19 +2077,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
             <location filename="../view/setting_interface/widget/notice_type.py" line="136" />
             <source>DingTalk Status:</source>
             <translation>钉钉状态:</translation>
-        </message>
-    </context>
-    <context>
-        <name>DoubleButtonSettingCard</name>
-        <message>
-            <location filename="../view/setting_interface/widget/double_button_setting_card.py" line="55" />
-            <source>stable</source>
-            <translation>稳定版</translation>
-        </message>
-        <message>
-            <location filename="../view/setting_interface/widget/double_button_setting_card.py" line="56" />
-            <source>beta</source>
-            <translation>测试版</translation>
         </message>
     </context>
     <context>
@@ -4379,24 +4358,6 @@ interface.name 字段可能与 multi_config.json 中的包键不匹配。请检�
         <message>
             <source>Schedule: {name} failed: {error}</source>
             <translation type="vanished">计划：{name} 失败：{error}</translation>
-        </message>
-    </context>
-    <context>
-        <name>SendSettingCard</name>
-        <message>
-            <location filename="../view/setting_interface/widget/send_setting_card.py" line="17" />
-            <source>When Connect Failed</source>
-            <translation>当连接失败时</translation>
-        </message>
-        <message>
-            <location filename="../view/setting_interface/widget/send_setting_card.py" line="18" />
-            <source>When Post Task</source>
-            <translation>当进行任务时</translation>
-        </message>
-        <message>
-            <location filename="../view/setting_interface/widget/send_setting_card.py" line="19" />
-            <source>When Task Failed</source>
-            <translation>当任务失败时</translation>
         </message>
     </context>
     <context>
