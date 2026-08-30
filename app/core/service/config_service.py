@@ -17,6 +17,15 @@ from app.core.item import ConfigItem, TaskItem, CoreSignalBus
 from app.core.utils.option_branches_compat import normalize_config_item_branches
 
 
+class ConfigLoadError(RuntimeError):
+    """Raised when a persisted configuration file cannot be decoded or read."""
+
+    def __init__(self, path: Path, cause: Exception) -> None:
+        self.path = path
+        self.cause = cause
+        super().__init__(f"无法读取配置文件 {path}: {cause}")
+
+
 class JsonConfigRepository:
     """JSON配置存储库实现"""
 
@@ -71,61 +80,46 @@ class JsonConfigRepository:
             }
             self.save_main_config(default_main_config)
 
-    def load_main_config(self) -> Dict[str, Any]:
-        """加载主配置"""
+    @staticmethod
+    def _load_json(path: Path) -> Dict[str, Any]:
         try:
-            with open(self.main_config_path, "r", encoding="utf-8") as f:
-                return jsonc.load(f)
-        except Exception as e:
-            raise
+            with path.open("r", encoding="utf-8") as handle:
+                return jsonc.load(handle)
+        except (OSError, UnicodeDecodeError, jsonc.JSONDecodeError) as exc:
+            raise ConfigLoadError(path, exc) from exc
+
+    def load_main_config(self) -> Dict[str, Any]:
+        """加载主配置。"""
+        return self._load_json(self.main_config_path)
 
     def save_main_config(self, config_data: Dict[str, Any]) -> bool:
-        """保存主配置"""
-        try:
-            with open(self.main_config_path, "w", encoding="utf-8") as f:
-                jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
-            return True
-        except Exception as e:
-            raise
+        """保存主配置。"""
+        with self.main_config_path.open("w", encoding="utf-8") as handle:
+            jsonc.dump(config_data, handle, indent=4, ensure_ascii=False)
+        return True
 
     def load_config(self, config_id: str) -> Dict[str, Any]:
-        """加载子配置"""
-        config_file = self.configs_dir / f"{config_id}.json"
-        if not config_file.exists():
-            raise FileNotFoundError(f"配置文件 {config_file} 不存在")
-        try:
-            with open(config_file, "r", encoding="utf-8") as f:
-                return jsonc.load(f)
-        except Exception as e:
-            raise
+        """加载子配置。"""
+        return self._load_json(self.configs_dir / f"{config_id}.json")
 
     def save_config(self, config_id: str, config_data: Dict[str, Any]) -> bool:
-        """保存子配置"""
-        try:
-            config_file = self.configs_dir / f"{config_id}.json"
-            with open(config_file, "w", encoding="utf-8") as f:
-                jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
-            return True
-        except Exception as e:
-            raise
+        """保存子配置。"""
+        config_file = self.configs_dir / f"{config_id}.json"
+        with config_file.open("w", encoding="utf-8") as handle:
+            jsonc.dump(config_data, handle, indent=4, ensure_ascii=False)
+        return True
 
     def delete_config(self, config_id: str) -> bool:
-        """删除子配置"""
+        """删除子配置。"""
         config_file = self.configs_dir / f"{config_id}.json"
         if not config_file.exists():
             raise FileNotFoundError(f"配置文件 {config_file} 不存在")
-        try:
-            config_file.unlink()
-            return True
-        except Exception as e:
-            raise
+        config_file.unlink()
+        return True
 
     def list_configs(self) -> List[str]:
-        """列出所有子配置ID"""
-        try:
-            return [f.stem for f in self.configs_dir.glob("*.json") if f.is_file()]
-        except Exception as e:
-            raise
+        """列出所有子配置ID。"""
+        return [f.stem for f in self.configs_dir.glob("*.json") if f.is_file()]
 
 
 class ConfigService:
@@ -240,13 +234,9 @@ class ConfigService:
         self._config_changed_callback = callback
 
     def load_main_config(self) -> bool:
-        """加载主配置"""
-        try:
-            self._main_config = self.repo.load_main_config()
-            return True
-        except Exception as e:
-            print(f"加载主配置失败: {e}")
-            return False
+        """加载主配置。"""
+        self._main_config = self.repo.load_main_config()
+        return True
 
     def save_main_config(self) -> bool:
         """保存主配置"""

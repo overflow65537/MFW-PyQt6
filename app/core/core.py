@@ -16,7 +16,11 @@ from app.core.item import (
     ConfigItem,
     TaskItem,
 )
-from app.core.service.config_service import ConfigService, JsonConfigRepository
+from app.core.service.config_service import (
+    ConfigLoadError,
+    ConfigService,
+    JsonConfigRepository,
+)
 from app.core.service.schedule_service import ScheduleService
 from app.core.service.task_service import TaskService
 from app.core.service.option_service import OptionService
@@ -174,9 +178,9 @@ class ServiceCoordinator:
                 self._core_signals,
                 self._interface,
             )
-        except (IndexError, ValueError, jsonc.JSONDecodeError, FileNotFoundError, Exception) as e:
-            # 配置加载错误，尝试重置配置
-            logger.error(f"配置加载失败: {e}")
+        except ConfigLoadError as e:
+            # 仅持久化配置文件确实无法读取时才重置；业务或编程错误必须直接暴露。
+            logger.error("配置加载失败: %s", e)
             if self._handle_config_load_error(main_config_path, configs_dir, e):
                 # 重置成功后重新初始化
                 try:
@@ -188,8 +192,8 @@ class ServiceCoordinator:
                         self._core_signals,
                         self._interface,
                     )
-                except Exception as retry_error:
-                    logger.error(f"重置配置后重新初始化失败: {retry_error}")
+                except Exception:
+                    logger.exception("重置配置后重新初始化失败")
                     raise
             else:
                 # 重置失败，抛出原始错误
@@ -1244,8 +1248,8 @@ class ServiceCoordinator:
                 n = entry.get("name")
                 if isinstance(n, str) and n.strip():
                     names.add(n.strip())
-        except Exception:
-            pass
+        except ConfigLoadError:
+            logger.exception("读取配置名称失败，将使用已收集的名称")
         return names
 
     @staticmethod
