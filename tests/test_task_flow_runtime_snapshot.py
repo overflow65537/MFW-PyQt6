@@ -12,7 +12,7 @@ from PySide6.QtCore import QCoreApplication
 
 from app.common.constants import _CONTROLLER_, _RESOURCE_
 from app.core.item import ConfigItem, RunnerEvents, TaskItem
-from app.core.runner.task_flow import TaskFlowRunner
+from app.core.runner.task_flow import TaskFlowExecutionError, TaskFlowRunner
 from app.core.service.i18n_service import I18nService
 from app.core.service.interface_manager import InterfaceManager
 
@@ -231,9 +231,11 @@ class TaskFlowRuntimeSnapshotTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("Task B", persisted_b.tasks[-1].name)
         self.assertEqual("config-a", self.config_service.update_calls[-1][0])
 
-    async def test_snapshot_failure_runs_normal_cleanup(self):
+    async def test_snapshot_failure_is_reported_after_cleanup(self):
         self.runner._prepare_runtime_snapshot = Mock(return_value=False)
         self.runner.stop_task = AsyncMock()
+        telemetry = []
+        self.runner.runner_events.telemetry.connect(telemetry.append)
 
         with (
             patch("app.core.runner.task_flow.send_notice"),
@@ -242,16 +244,20 @@ class TaskFlowRuntimeSnapshotTests(unittest.IsolatedAsyncioTestCase):
                 new=AsyncMock(),
             ),
         ):
-            await self.runner.run_tasks_flow()
+            with self.assertRaises(TaskFlowExecutionError):
+                await self.runner.run_tasks_flow()
 
         self.runner.stop_task.assert_awaited_once_with()
         self.assertFalse(self.runner._is_running)
+        self.assertEqual("run_failed", telemetry[-1]["event"])
 
-    async def test_snapshot_exception_runs_normal_cleanup(self):
+    async def test_snapshot_exception_is_reported_after_cleanup(self):
         self.runner._prepare_runtime_snapshot = Mock(
             side_effect=RuntimeError("snapshot failed")
         )
         self.runner.stop_task = AsyncMock()
+        telemetry = []
+        self.runner.runner_events.telemetry.connect(telemetry.append)
 
         with (
             patch("app.core.runner.task_flow.send_notice"),
@@ -260,10 +266,53 @@ class TaskFlowRuntimeSnapshotTests(unittest.IsolatedAsyncioTestCase):
                 new=AsyncMock(),
             ),
         ):
-            await self.runner.run_tasks_flow()
+            with self.assertRaisesRegex(RuntimeError, "snapshot failed"):
+                await self.runner.run_tasks_flow()
 
         self.runner.stop_task.assert_awaited_once_with()
         self.assertFalse(self.runner._is_running)
+        self.assertEqual("run_failed", telemetry[-1]["event"])
+
+    async def test_cleanup_failure_sets_final_telemetry_to_failed(self):
+        self.runner.need_stop = True
+        self.runner.stop_task = AsyncMock(side_effect=RuntimeError("cleanup failed"))
+        telemetry = []
+        self.runner.runner_events.telemetry.connect(telemetry.append)
+
+        with (
+            patch("app.core.runner.task_flow.send_notice"),
+            patch(
+                "app.core.runner.task_flow.emit_holiday_startup_logs",
+                new=AsyncMock(),
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "cleanup failed"):
+                await self.runner.run_tasks_flow()
+
+        self.assertFalse(self.runner._is_running)
+        self.assertEqual("run_failed", telemetry[-1]["event"])
+
+    async def test_stop_before_first_timeslice_stays_cancelled(self):
+        self.runner.need_stop = True
+        self.runner._manual_stop = True
+        self.runner.stop_task = AsyncMock()
+        telemetry = []
+        self.runner.runner_events.telemetry.connect(telemetry.append)
+
+        with (
+            patch("app.core.runner.task_flow.send_notice") as send_notice_mock,
+            patch(
+                "app.core.runner.task_flow.emit_holiday_startup_logs",
+                new=AsyncMock(),
+            ),
+        ):
+            await self.runner.run_tasks_flow()
+
+        self.assertTrue(self.runner._manual_stop)
+        self.assertFalse(self.runner._is_running)
+        self.assertEqual("run_cancelled", telemetry[-1]["event"])
+        send_notice_mock.assert_not_called()
+
     def test_builtin_loader_translation_is_frozen_per_runner(self):
         source_i18n = self.task_service.builtin_task_loader.i18n_service
         self.assertEqual(

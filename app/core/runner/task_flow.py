@@ -25,7 +25,6 @@ from app.common.config import cfg
 from maa.toolkit import Toolkit
 from maa.define import (
     MaaWin32ScreencapMethodEnum,
-    MaaWin32InputMethodEnum,
     MaaAdbInputMethodEnum,
     MaaAdbScreencapMethodEnum,
     MaaMacOSScreencapMethodEnum,
@@ -76,6 +75,10 @@ _sleep_lock = _threading.Lock()
 
 
 CACHED_IMAGE_ERROR = "Failed to get cached image."
+
+
+class TaskFlowExecutionError(RuntimeError):
+    """Raised after cleanup when one or more tasks failed."""
 
 
 def _ndarray_to_png_bytes(ndarray) -> bytes | None:
@@ -655,11 +658,9 @@ class TaskFlowRunner(QObject):
             logger.warning("保存停止截图失败", exc_info=True)
 
     def _recent_logs_contain_cached_image_error(self) -> bool:
-        for log_item in self._log_messages:
-            text = log_item[1] if len(log_item) >= 2 else ""
-            if CACHED_IMAGE_ERROR in text:
-                return True
-        return False
+        return any(
+            CACHED_IMAGE_ERROR in text for _, text, _ in self._log_messages
+        )
 
     def _recent_maafw_log_contains_cached_image_error(self) -> bool:
         log_path = Path("debug") / "maafw.log"
@@ -798,10 +799,10 @@ class TaskFlowRunner(QObject):
             logger.warning("任务流已经在运行，忽略新的启动请求")
             return
         self._is_running = True
-        # The caller resets stop intent before scheduling this coroutine. Do not
-        # clear it here: a user may press Stop after create_task() but before
-        # this coroutine gets its first timeslice.
-        self._manual_stop = False
+        # RuntimeContext resets stop intent before scheduling this coroutine. Preserve
+        # a stop requested after create_task() but before the first timeslice.
+        if not self.need_stop:
+            self._manual_stop = False
         self._task_flow_finished_emitted = False
         self._active_controller_raw = None
         self._active_resource_target = None
@@ -873,19 +874,19 @@ class TaskFlowRunner(QObject):
         self.log_output.connect(collect_log)
 
         # 节日彩蛋：检测当天节日并随机输出一组彩蛋文案
-        await emit_holiday_startup_logs(
-            lambda level, text: self.log_output.emit(level, text),
-            lambda title: self.set_window_title.emit(title),
-        )
+        flow_error: Exception | None = None
+        was_cancelled = False
         try:
+            await emit_holiday_startup_logs(
+                lambda level, text: self.log_output.emit(level, text),
+                lambda title: self.set_window_title.emit(title),
+            )
             if not self._prepare_runtime_snapshot():
-                self.log_output.emit(
-                    "ERROR",
-                    self.tr(
-                        "Configuration no longer exists; task flow was not started"
-                    ),
+                message = self.tr(
+                    "Configuration no longer exists; task flow was not started"
                 )
-                return
+                self.log_output.emit("ERROR", message)
+                raise TaskFlowExecutionError(message)
             self.runner_events.start_button_status.emit(
                 {"text": "STOP", "status": "disabled"}
             )
@@ -925,12 +926,13 @@ class TaskFlowRunner(QObject):
                 )
                 self.log_output.emit("ERROR", invalid_reason)
                 await self.stop_task()
-                return
+                raise TaskFlowExecutionError(invalid_reason)
 
             # 先执行预任务（在资源加载和控制器连接之前）
             if not await self._execute_pretasks():
-                logger.error("前置任务执行失败，中止任务流")
-                return
+                if self.need_stop:
+                    return
+                raise TaskFlowExecutionError("前置任务执行失败")
             if self.need_stop:
                 return
 
@@ -938,8 +940,7 @@ class TaskFlowRunner(QObject):
             logger.info("开始加载资源...")
             self.log_output.emit("INFO", self.tr("Starting to load resources..."))
             if not await self.load_resources(resource_cfg.task_option):
-                logger.error("资源加载失败")
-                return
+                raise TaskFlowExecutionError("资源加载失败")
             if self.need_stop:
                 return
             logger.info("资源加载完成")
@@ -993,16 +994,15 @@ class TaskFlowRunner(QObject):
             if controller_override:
                 _deep_merge_dict(self._default_pipeline_override, controller_override)
 
-            embedded_error = str(runner_interface.get("__embedded_agent_error", "") or "").strip()
+            embedded_error = str(
+                runner_interface.get("__embedded_agent_error", "") or ""
+            ).strip()
             if not embedded_ready:
-                logger.error("嵌入式 Agent 准备失败: %s", embedded_error or "未知原因")
-                self.log_output.emit(
-                    "ERROR",
-                    self.tr("Embedded Agent prepare failed: ")
-                    + (embedded_error or self.tr("Unknown reason")),
-                )
-                await self.stop_task()
-                return
+                reason = embedded_error or self.tr("Unknown reason")
+                message = self.tr("Embedded Agent prepare failed: ") + reason
+                logger.error("嵌入式 Agent 准备失败: %s", reason)
+                self.log_output.emit("ERROR", message)
+                raise TaskFlowExecutionError(message)
 
             agent_config = runner_interface.get("agent", None)
             if should_start_external_agent(agent_config):
@@ -1072,30 +1072,24 @@ class TaskFlowRunner(QObject):
                     agent_root_path,
                     agent_entry_path,
                 ):
-                    logger.error("内置 agent 自定义组件加载失败")
-                    self.log_output.emit(
-                        "ERROR",
-                        self.tr(
-                            "Custom components loading failed, the flow is terminated."
-                        ),
+                    message = self.tr(
+                        "Custom components loading failed, the flow is terminated."
                     )
+                    logger.error("内置 agent 自定义组件加载失败")
+                    self.log_output.emit("ERROR", message)
                     self.log_output.emit(
                         "ERROR", self.tr("please try to reset resource in setting")
                     )
-                    await self.stop_task()
-                    return
+                    raise TaskFlowExecutionError(message)
 
                 if not self.maafw.load_embedded_aspect_ratio_sink():
-                    logger.error("内置模式分辨率检查 sink 加载失败")
-                    self.log_output.emit(
-                        "ERROR",
-                        self.tr(
-                            "Embedded aspect ratio checker failed to load, "
-                            "the flow is terminated."
-                        ),
+                    message = self.tr(
+                        "Embedded aspect ratio checker failed to load, "
+                        "the flow is terminated."
                     )
-                    await self.stop_task()
-                    return
+                    logger.error("内置模式分辨率检查 sink 加载失败")
+                    self.log_output.emit("ERROR", message)
+                    raise TaskFlowExecutionError(message)
 
                 # custom 根目录来自 interface（InterfaceManager 根据 agent.child_args 写入 custom）
                 log_extra_roots: list[Path] = []
@@ -1141,7 +1135,9 @@ class TaskFlowRunner(QObject):
                     self._connect_error_reason
                     or self.tr("Failed to connect to the device."),
                 )
-                return
+                raise TaskFlowExecutionError(
+                    self._connect_error_reason or "设备连接失败"
+                )
             self._active_controller_raw = controller_cfg.task_option
             self._active_resource_target = resource_target
             self.log_output.emit("INFO", self.tr("Device connected successfully"))
@@ -1266,10 +1262,9 @@ class TaskFlowRunner(QObject):
                         )
 
                 except Exception as exc:
-                    logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
-                    # 发送任务失败状态
+                    logger.exception("任务执行失败: %s", task.name)
+                    self._task_results[task.item_id] = "failed"
                     self.task_status_changed.emit(task.item_id, "failed")
-                    # 发送任务失败通知
                     if not self._manual_stop:
                         image_bytes = await self._get_notice_screenshot_bytes()
                         send_notice(
@@ -1280,36 +1275,40 @@ class TaskFlowRunner(QObject):
                             ),
                             image_bytes=image_bytes,
                         )
-
-                # 清除当前执行任务记录
-                self._current_running_task_id = None
+                finally:
+                    # continue/exception 都必须清掉当前任务，避免状态泄漏到下一轮。
+                    self._current_running_task_id = None
 
                 if self.need_stop:
                     logger.debug("收到停止请求，流程终止")
                     break
 
-            # 只有在任务流正常完成（非手动停止）时才输出"所有任务都已完成"
+            # 只有在任务流正常完成（非手动停止且没有失败任务）时才输出完成提示。
             if self._is_tasks_flow_completed_normally():
                 self.log_output.emit(
                     "INFO", self.tr("All tasks have been completed")
                 )
 
-        except Exception as exc:
-            logger.error(f"任务流程执行异常: {str(exc)}")
-            self.log_output.emit("ERROR", self.tr("Task flow error: ") + str(exc))
-            import traceback
+            failed_task_ids = [
+                task_id
+                for task_id, status in self._task_results.items()
+                if status == "failed"
+            ]
+            if failed_task_ids and not self._manual_stop:
+                raise TaskFlowExecutionError(
+                    f"{len(failed_task_ids)} task(s) failed: "
+                    + ", ".join(failed_task_ids)
+                )
 
-            logger.critical(traceback.format_exc())
+        except asyncio.CancelledError:
+            was_cancelled = True
+            raise
+        except Exception as exc:
+            flow_error = exc
+            logger.exception("任务流程执行异常")
+            self.log_output.emit("ERROR", self.tr("Task flow error: ") + str(exc))
         finally:
-            self.runner_events.telemetry.emit(
-                {
-                    "event": (
-                        "run_cancelled" if self._manual_stop else "run_finished"
-                    )
-                }
-            )
-            # 任务流退出信号：放在 finally 的最前面，确保监控等 UI 可以立即响应停止，
-            # 不会被"完成后操作/清理"等耗时逻辑拖慢。
+            # 任务流退出信号优先发出，让监控和按钮立即结束运行态展示。
             if not self._task_flow_finished_emitted:
                 self._task_flow_finished_emitted = True
                 try:
@@ -1321,94 +1320,119 @@ class TaskFlowRunner(QObject):
                             "tasks_started": bool(self._tasks_started),
                         }
                     )
-                except Exception as exc:
-                    # UI 信号不应影响任务流清理流程
-                    logger.debug(f"发射 task_flow_finished 信号失败（忽略）: {exc}")
+                except Exception:
+                    logger.exception("发射 task_flow_finished 信号失败")
 
-            # 先发送任务完成通知（在完成后操作之前，以便退出软件时可以等待通知发送完成）
-            self._embedded_agent_log_bridge.detach()
-            # 断开日志收集信号
-            self.log_output.disconnect(collect_log)
+            try:
+                self._embedded_agent_log_bridge.detach()
+            except Exception as detach_error:
+                logger.exception("断开 embedded agent 日志桥接失败")
+                if flow_error is None:
+                    flow_error = detach_error
 
-            # 发送收集的日志信息（仅在非手动停止时发送）
-            # 注意：这里检查 _manual_stop 标志，如果为 True 则不发送通知
-            if not self._manual_stop and self._log_messages:
-                # 将日志信息格式化为文本（包含收到的时间戳）
-                # 格式：[时间][日志等级]日志内容
-                log_text_lines: list[str] = []
-                for log_item in self._log_messages:
-                    if len(log_item) == 3:
-                        level, text, timestamp = log_item
-                    else:
-                        # 兼容旧格式（没有时间戳的情况）
-                        level, text = log_item[:2]  # type: ignore[misc]
-                        timestamp = datetime.now().strftime("%H:%M:%S")
-                    # 翻译日志级别
-                    translated_level = self._translate_log_level(level)
-                    log_text_lines.append(f"[{timestamp}][{translated_level}]{text}")
+            try:
+                self.log_output.disconnect(collect_log)
+            except (RuntimeError, TypeError) as disconnect_error:
+                logger.exception("断开任务流日志收集器失败")
+                if flow_error is None:
+                    flow_error = disconnect_error
 
-                log_text = "\n".join(log_text_lines)
+            stop_requested_before_cleanup = self.need_stop
+            was_manual_stop = self._manual_stop
+            terminal_post_action: str | None = None
+            summary_image_bytes: bytes | None = None
+            if (
+                self._log_messages
+                and not is_single_task_mode
+                and not was_manual_stop
+                and not was_cancelled
+                and (flow_error is not None or not stop_requested_before_cleanup)
+            ):
+                # 清理控制器前保留通知截图；通知附件失败不能阻断运行时清理。
+                try:
+                    summary_image_bytes = await self._get_notice_screenshot_bytes()
+                except Exception:
+                    logger.exception("获取任务流汇总通知截图失败")
 
-                if log_text and not is_single_task_mode:
-                    # 注意：外部通知不应阻断后续完成后操作（关闭控制器/关机/退出等）
-                    try:
-                        image_bytes = await self._get_notice_screenshot_bytes()
-                        send_notice(
-                            NoticeTiming.WHEN_POST_TASK,
-                            self.tr("Task Flow Completed"),
-                            log_text,
-                            image_bytes=image_bytes,
-                        )
-                    except Exception as exc:
-                        logger.warning(
-                            "发送任务流完成通知失败（忽略并继续完成后操作）: %s", exc
-                        )
-
-            # 判断是否需要执行完成后操作
-            # - 默认：只有任务流未被 stop_task() 标记（need_stop=False）时才执行
-            # - 若完成后操作配置启用 always_run：即使流程因"非手动停止"的失败而触发 stop_task()，也会执行完成后操作
-            always_run_post_action = False
             try:
                 post_task = self._get_task(POST_ACTION)
                 post_cfg = (
                     post_task.task_option.get("post_action") if post_task else None
                 )
-                if isinstance(post_cfg, dict):
-                    always_run_post_action = bool(post_cfg.get("always_run"))
-            except Exception:
-                always_run_post_action = False
-
-            should_run_post_action = (
-                not is_single_task_mode
-                and self._tasks_started
-                and not self._manual_stop
-                and (not self.need_stop or always_run_post_action)
-            )
-            try:
+                always_run_post_action = bool(
+                    isinstance(post_cfg, dict) and post_cfg.get("always_run")
+                )
+                should_run_post_action = (
+                    not is_single_task_mode
+                    and self._tasks_started
+                    and not was_manual_stop
+                    and (
+                        not stop_requested_before_cleanup
+                        or always_run_post_action
+                    )
+                )
                 if should_run_post_action:
-                    await self._handle_post_action()
-            except Exception as exc:
-                logger.error(f"完成后操作执行失败: {exc}")
+                    terminal_post_action = await self._handle_post_action()
+            except Exception as post_action_error:
+                logger.exception("完成后操作执行失败")
+                if flow_error is None:
+                    flow_error = post_action_error
 
-            # 在调用 stop_task 之前保存 _manual_stop 标志，避免被覆盖
-            # 因为 stop_task 可能会在 finally 块中被调用，但我们需要保留手动停止的状态
-            was_manual_stop = self._manual_stop
+            # stop_task() 会把 need_stop 置为 True；最终状态必须使用清理前的停止意图。
+            try:
+                await self.stop_task()
+            except Exception as cleanup_error:
+                logger.exception("任务流清理失败")
+                if flow_error is None:
+                    flow_error = cleanup_error
+            finally:
+                self._manual_stop = was_manual_stop
+                self._is_running = False
 
-            # 在 finally 块中调用 stop_task
-            # 如果 _manual_stop 已经是 True，说明是手动停止，stop_task 会直接返回（因为 need_stop 已经是 True）
-            # 如果 _manual_stop 是 False，说明是正常完成或异常退出，调用 stop_task 时也不设置 manual
-            await self.stop_task()
+            # 清除所有任务状态；UI 信号失败不影响业务执行结果。
+            try:
+                for task in self._get_tasks():
+                    if not task.is_base_task():
+                        self.task_status_changed.emit(task.item_id, "")
+            except Exception:
+                logger.exception("清除任务状态失败")
 
-            # 恢复 _manual_stop 标志（防止 stop_task 中的逻辑意外修改）
-            self._manual_stop = was_manual_stop
+            has_failed_task = any(
+                status == "failed" for status in self._task_results.values()
+            )
+            if flow_error is not None or has_failed_task:
+                telemetry_event = "run_failed"
+            elif was_manual_stop or was_cancelled or stop_requested_before_cleanup:
+                telemetry_event = "run_cancelled"
+            else:
+                telemetry_event = "run_finished"
+            self.runner_events.telemetry.emit({"event": telemetry_event})
 
-            self._is_running = False
+            # 取消不冒充完成；仅对最终成功或失败发送流程汇总通知。
+            if (
+                telemetry_event in {"run_finished", "run_failed"}
+                and self._log_messages
+                and not is_single_task_mode
+            ):
+                try:
+                    send_notice(
+                        NoticeTiming.WHEN_POST_TASK,
+                        self.tr(
+                            "Task Flow Failed"
+                            if telemetry_event == "run_failed"
+                            else "Task Flow Completed"
+                        ),
+                        self._get_collected_logs(),
+                        image_bytes=summary_image_bytes,
+                    )
+                except Exception:
+                    logger.exception("发送任务流汇总通知失败")
 
-            # 清除所有任务状态
-            all_tasks = self._get_tasks()
-            for task in all_tasks:
-                if not task.is_base_task():
-                    self.task_status_changed.emit(task.item_id, "")
+            # 退出软件和关机放在汇总通知入队之后，保证等待逻辑确实有消息可等。
+            if terminal_post_action == "close_software":
+                await self._close_software()
+            elif terminal_post_action == "shutdown":
+                await self._shutdown_system_after_notice()
 
             next_config = self._next_config_to_run
             self._next_config_to_run = None
@@ -1421,11 +1445,14 @@ class TaskFlowRunner(QObject):
                 await asyncio.sleep(self._config_switch_delay)
                 self._schedule_configuration_run(next_config)
 
+            # 必须在 finally 内传播：否则 try 中的提前 return 会吞掉清理异常。
+            if flow_error is not None:
+                raise flow_error
+
     def _schedule_configuration_run(self, config_id: str) -> None:
         """把后续配置的启动交给其所属 RuntimeContext。"""
         if self._run_config_callback is None:
-            # 兼容直接构造 TaskFlowRunner 的旧调用方。
-            asyncio.create_task(self.run_tasks_flow())
+            logger.error("无法启动后续配置 %s：未配置运行时路由", config_id)
             return
 
         try:
@@ -1881,6 +1908,10 @@ class TaskFlowRunner(QObject):
     @property
     def is_running(self) -> bool:
         return self._is_running
+
+    @property
+    def current_running_task_id(self) -> str | None:
+        return self._current_running_task_id
 
     async def connect_device(
         self,
@@ -2620,8 +2651,12 @@ class TaskFlowRunner(QObject):
         self._task_start_times.clear()
 
     def _is_tasks_flow_completed_normally(self) -> bool:
-        """判断任务流是否正常完成（非手动停止）"""
-        return not self.need_stop and not self._manual_stop
+        """判断任务流是否正常完成。"""
+        return (
+            not self.need_stop
+            and not self._manual_stop
+            and all(status != "failed" for status in self._task_results.values())
+        )
 
     def _get_collected_logs(self) -> str:
         """获取收集到的任务日志内容"""
@@ -2631,14 +2666,7 @@ class TaskFlowRunner(QObject):
         # 将日志信息格式化为文本（包含收到的时间戳）
         # 格式：[时间][日志等级]日志内容
         log_text_lines: list[str] = []
-        for log_item in self._log_messages:
-            if len(log_item) == 3:
-                level, text, timestamp = log_item
-            else:
-                # 兼容旧格式（没有时间戳的情况）
-                level, text = log_item[:2]  # type: ignore[misc]
-                timestamp = datetime.now().strftime("%H:%M:%S")
-            # 翻译日志级别
+        for level, text, timestamp in self._log_messages:
             translated_level = self._translate_log_level(level)
             log_text_lines.append(f"[{timestamp}][{translated_level}]{text}")
 
@@ -4118,14 +4146,14 @@ class TaskFlowRunner(QObject):
         except Exception as e:
             logger.error(f"保存设备配置时出错: {e}")
 
-    async def _handle_post_action(self) -> None:
+    async def _handle_post_action(self) -> str | None:
         """
         统一处理完成后操作顺序（串行执行，避免动作未生效）：
 
         规则：
         - 关闭控制器、运行其他程序：优先执行，且会等待动作完成（尽力等待控制器真正关闭）
         - 切换配置：只要求前两者完成，不等待外部通知（因为不关软件）
-        - 关机/退出软件：在执行前等待外部通知发送完成（避免通知丢失）
+        - 关机/退出软件：返回待执行动作，由任务流在最终通知入队后执行
         """
         post_task = self._get_task(POST_ACTION)
         if not post_task:
@@ -4164,15 +4192,14 @@ class TaskFlowRunner(QObject):
             else:
                 logger.warning("完成后运行其他配置开关被激活，但未配置目标配置")
 
-        # 4) 第三阶段：退出/关机（需要等待外部通知发送完成）
+        # 4) 退出/关机必须等最终状态和汇总通知确定后再执行。
         if post_config.get("close_software"):
-            logger.debug("完成后操作: 退出软件")
-            await self._close_software()
-            return  # 退出软件后不再执行后续操作
-
+            logger.debug("完成后操作: 已安排退出软件")
+            return "close_software"
         if post_config.get("shutdown"):
-            logger.debug("完成后操作: 关机")
-            await self._shutdown_system_after_notice()
+            logger.debug("完成后操作: 已安排关机")
+            return "shutdown"
+        return None
 
     async def _run_program_from_post_action(
         self, program_path: str, program_args: str
@@ -4242,9 +4269,6 @@ class TaskFlowRunner(QObject):
 
     async def _wait_for_notice_delivery(self, timeout: float = 10.0) -> None:
         """等待通知线程将当前队列中的消息发送完毕"""
-        if not hasattr(send_thread, "wait_until_idle"):
-            return
-
         try:
             if not send_thread.is_idle():
                 self.info_bar_requested.emit(
