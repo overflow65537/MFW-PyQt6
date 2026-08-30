@@ -5,6 +5,7 @@ from typing import Any
 
 from app.core.speedrun.conditions.cron import DEFAULT_CRON_EXPRESSION
 from app.core.speedrun.time_utils import normalize_hour_value
+from app.core.speedrun.utils import to_positive_int
 
 
 DEFAULT_CONDITION: dict[str, Any] = {
@@ -81,7 +82,7 @@ def build_condition_from_legacy(config: dict[str, Any]) -> dict[str, Any]:
     return {
         "type": "run_count",
         "period": mode,
-        "count": _to_positive_int(run_cfg.get("count"), 1),
+        "count": to_positive_int(run_cfg.get("count"), 1),
         "refresh_hour": normalize_hour_value(mode_trigger.get("hour_start", 0)),
         "weekdays": weekdays if isinstance(weekdays, list) and weekdays else [1],
         "days": days if isinstance(days, list) and days else [1],
@@ -124,7 +125,7 @@ def _sync_legacy_fields(config: dict[str, Any]) -> None:
         condition = DEFAULT_CONDITION
 
     period = str(condition.get("period", "daily") or "daily")
-    count = _to_positive_int(condition.get("count"), 1)
+    count = to_positive_int(condition.get("count"), 1)
     refresh_hour = normalize_hour_value(condition.get("refresh_hour", 0))
     weekdays = condition.get("weekdays", [1])
     days = condition.get("days", [1])
@@ -147,12 +148,3 @@ def _sync_legacy_fields(config: dict[str, Any]) -> None:
         days if isinstance(days, list) and days else [1]
     )
     trigger.setdefault("monthly", {})["hour_start"] = refresh_hour
-
-
-def _to_positive_int(value: Any, default: int) -> int:
-    try:
-        number = int(value)
-    except (TypeError, ValueError):
-        return default
-    return max(1, number)
-

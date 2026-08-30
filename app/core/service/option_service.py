@@ -674,6 +674,29 @@ class OptionService:
         if description:
             target["description"] = description
 
+    def _build_child_fields(
+        self,
+        option_value: Any,
+        all_options: Dict[str, Dict[str, Any]],
+    ) -> list[Dict[str, Any]]:
+        option_names = (
+            [option_value]
+            if isinstance(option_value, str)
+            else option_value
+            if isinstance(option_value, list)
+            else []
+        )
+        child_fields: list[Dict[str, Any]] = []
+        for option_name in option_names:
+            if not isinstance(option_name, str) or option_name not in all_options:
+                continue
+            child_field = self.process_option_def(
+                all_options[option_name], all_options, option_name
+            )
+            child_field.setdefault("name", option_name)
+            child_fields.append(child_field)
+        return child_fields
+
     def process_option_def(
         self,
         option_def: Dict[str, Any],
@@ -746,25 +769,9 @@ class OptionService:
                     continue
 
                 # 递归处理 cases 中的子选项(option参数)
-                child_fields = []
-                if "option" in case:
-                    option_value = case["option"]
-
-                    def _append_child(opt_value: str):
-                        if isinstance(opt_value, str) and opt_value in all_options:
-                            sub_option_def = all_options[opt_value]
-                            child_field = self.process_option_def(
-                                sub_option_def, all_options, opt_value
-                            )
-                            if "name" not in child_field:
-                                child_field["name"] = opt_value
-                            child_fields.append(child_field)
-
-                    if isinstance(option_value, str):
-                        _append_child(option_value)
-                    elif isinstance(option_value, list):
-                        for opt in option_value:
-                            _append_child(opt)
+                child_fields = self._build_child_fields(
+                    case.get("option"), all_options
+                )
 
                 if child_fields:
                     if len(child_fields) == 1:
@@ -842,25 +849,9 @@ class OptionService:
                 options.append(option_entry)
 
                 # 递归处理cases中的子选项(option参数)
-                child_fields = []
-                if "option" in case:
-                    option_value = case["option"]
-
-                    def _append_child(opt_value: str):
-                        if isinstance(opt_value, str) and opt_value in all_options:
-                            sub_option_def = all_options[opt_value]
-                            child_field = self.process_option_def(
-                                sub_option_def, all_options, opt_value
-                            )
-                            if "name" not in child_field:
-                                child_field["name"] = opt_value
-                            child_fields.append(child_field)
-
-                    if isinstance(option_value, str):
-                        _append_child(option_value)
-                    elif isinstance(option_value, list):
-                        for opt in option_value:
-                            _append_child(opt)
+                child_fields = self._build_child_fields(
+                    case.get("option"), all_options
+                )
 
                 if child_fields:
                     if len(child_fields) == 1:

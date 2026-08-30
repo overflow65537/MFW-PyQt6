@@ -13,6 +13,7 @@ from app.core.speedrun.time_utils import (
     normalize_hour_value,
     parse_history,
 )
+from app.core.speedrun.utils import to_non_negative_int, to_positive_int
 
 
 class RunCountCondition(SpeedrunCondition):
@@ -26,7 +27,7 @@ class RunCountCondition(SpeedrunCondition):
             period = "daily"
 
         refresh_hour = normalize_hour_value(config.get("refresh_hour", 0))
-        target_count = self._to_positive_int(config.get("count"), 1)
+        target_count = to_positive_int(config.get("count"), 1)
         weekdays = config.get("weekdays", [1])
         days = config.get("days", [1])
         period_start = current_period_start(
@@ -62,7 +63,7 @@ class RunCountCondition(SpeedrunCondition):
                 )
             return SpeedrunConditionResult(matched=matched, reason=reason, dirty=dirty)
 
-        run_count = self._to_non_negative_int(state.get("run_count"), 0)
+        run_count = to_non_negative_int(state.get("run_count"), 0)
         state["run_count"] = run_count
         matched = run_count < target_count
         if matched:
@@ -70,20 +71,6 @@ class RunCountCondition(SpeedrunCondition):
         else:
             reason = self._build_limit_reason(period, target_count, refresh_hour)
         return SpeedrunConditionResult(matched=matched, reason=reason, dirty=dirty)
-
-    def _to_positive_int(self, value: Any, default: int) -> int:
-        try:
-            number = int(value)
-        except (TypeError, ValueError):
-            return default
-        return max(1, number)
-
-    def _to_non_negative_int(self, value: Any, default: int) -> int:
-        try:
-            number = int(value)
-        except (TypeError, ValueError):
-            return default
-        return max(0, number)
 
     def _build_reason(self, period: str, run_count: int, count: int, refresh_hour: int) -> str:
         labels = {

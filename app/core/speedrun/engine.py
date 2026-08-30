@@ -12,6 +12,7 @@ from app.core.speedrun.config import (
 from app.core.speedrun.context import SpeedrunContext
 from app.core.speedrun.registry import ACTIONS, CONDITIONS
 from app.core.speedrun.time_utils import parse_history
+from app.core.speedrun.utils import to_positive_int
 from app.utils.logger import logger
 
 
@@ -165,15 +166,6 @@ def _sync_legacy_remaining_count(state: dict[str, Any], speedrun: dict[str, Any]
     if condition.get("type") != "run_count":
         return
 
-    limit = _to_positive_int(condition.get("count"), 1)
+    limit = to_positive_int(condition.get("count"), 1)
     run_count = max(0, int(state.get("run_count", 0) or 0))
     state["remaining_count"] = max(0, limit - run_count)
-
-
-def _to_positive_int(value: Any, default: int) -> int:
-    try:
-        number = int(value)
-    except (TypeError, ValueError):
-        return default
-    return max(1, number)
-
