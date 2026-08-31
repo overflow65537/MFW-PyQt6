@@ -208,7 +208,7 @@ MFW/
 
 ## 许可证
 
-**MFW-PyQt6** 使用 **[GPL-3.0 许可证](./LICENSE)** 开源。
+**MFW-PyQt6** 使用 **[AGPL-3.0 许可证](./LICENSE)** 开源。
 
 ## 致谢
 

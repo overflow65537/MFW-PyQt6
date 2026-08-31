@@ -1,6 +1,6 @@
-#   This file is part of MFW-ChainFlow Assistant.
+﻿#   This file is part of MFW-ChainFlow Assistant.
 #
-#   SPDX-License-Identifier: GPL-3.0-or-later
+#   SPDX-License-Identifier: AGPL-3.0-or-later
 
 """7z / 7-Zip SFX 归档检测与解压（依赖 py7zr）。"""
 

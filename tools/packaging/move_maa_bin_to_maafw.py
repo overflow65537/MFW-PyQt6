@@ -1,6 +1,6 @@
-#   This file is part of MFW-ChainFlow Assistant.
+﻿#   This file is part of MFW-ChainFlow Assistant.
 #
-#   SPDX-License-Identifier: GPL-3.0-or-later
+#   SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
 将编译目录下的 maa/bin 原生库迁移到发行根 maafw/。

@@ -199,7 +199,7 @@ Move or extract the whole `MFW/` directory instead of moving only `MFW.app`. The
 
 ## License
 
-**MFW-PyQt6** is open source under **[GPL-3.0 License](./LICENSE)**.
+**MFW-PyQt6** is open source under **[AGPL-3.0 License](./LICENSE)**.
 
 ## Acknowledgments
 

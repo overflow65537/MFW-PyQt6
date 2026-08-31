@@ -302,7 +302,7 @@ jobs:
           file-version: ${{ steps.exe_meta.outputs.win_file_version }}
           product-version: ${{ steps.exe_meta.outputs.win_product_version }}
           file-description: MaaFramework GUI runner (interface v2)
-          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
+          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under AGPL-3.0."
           user-package-configuration-file: nuitka-package.config.yml
           include-package: |
             maa
@@ -331,7 +331,7 @@ jobs:
           file-version: ${{ steps.exe_meta.outputs.win_file_version }}
           product-version: ${{ steps.exe_meta.outputs.win_product_version }}
           file-description: MaaFramework GUI runner (interface v2)
-          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
+          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under AGPL-3.0."
           user-package-configuration-file: nuitka-package.config.yml
           include-package: |
             maa
@@ -361,7 +361,7 @@ jobs:
           file-version: ${{ steps.exe_meta.outputs.win_file_version }}
           product-version: ${{ steps.exe_meta.outputs.win_product_version }}
           file-description: MaaFramework GUI runner (interface v2)
-          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
+          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under AGPL-3.0."
           user-package-configuration-file: nuitka-package.config.yml
           include-package: |
             maa
@@ -508,7 +508,7 @@ jobs:
           <component type="desktop-application">
             <id>io.github.overflow65537.mfw-pyqt6</id>
             <metadata_license>MIT</metadata_license>
-            <project_license>GPL-3.0-or-later</project_license>
+            <project_license>AGPL-3.0-or-later</project_license>
             <name>MFW-ChainFlow Assistant</name>
             <name xml:lang="zh_CN">链程助手</name>
             <summary>Visual runner for MaaFramework automation (interface v2)</summary>

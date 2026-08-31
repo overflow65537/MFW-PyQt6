@@ -1,6 +1,6 @@
-#   This file is part of MFW-ChainFlow Assistant.
+﻿#   This file is part of MFW-ChainFlow Assistant.
 #
-#   SPDX-License-Identifier: GPL-3.0-or-later
+#   SPDX-License-Identifier: AGPL-3.0-or-later
 
 """打包运行时定位 MaaFW 原生库，并补齐 macOS dylib 的 @rpath 布局。"""
 

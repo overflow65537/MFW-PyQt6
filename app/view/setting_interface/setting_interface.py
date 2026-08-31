@@ -1863,7 +1863,7 @@ class SettingInterface(QWidget):
         self.name = "MFW_CFA"
         # 当前版本使用 UI 本体版本号
         current_version = UI_VERSION
-        license_value = "GNU General Public License v3.0"
+        license_value = "GNU Affero General Public License v3.0"
         for license in ["MFW_LICENSE", "LICENSE"]:
             if Path(license).is_file():
                 with open(license, "r", encoding="utf-8") as f:
