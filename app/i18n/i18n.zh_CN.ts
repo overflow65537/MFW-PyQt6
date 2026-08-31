@@ -250,7 +250,7 @@
             <translation type="vanished">{channel} 发送失败，未知错误。（未知）</translation>
         </message>
         <message>
-            <location filename="../core/service/config_service.py" line="49" />
+            <location filename="../core/service/config_service.py" line="58" />
             <source>No valid resource configuration file found: {path_jsonc} or {path_json}
 You downloaded the single UI, please download the resource file from the corresponding tool.</source>
             <translation>未找到有效的资源配置文件：{path_jsonc} 或 {path_json}
@@ -1234,38 +1234,38 @@ The following configurations using this bundle will also be deleted:
             <translation type="vanished">运行中</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="1132" />
+            <location filename="../view/task_interface/components/list_item.py" line="1131" />
             <source>Rename config</source>
             <translation>重命名配置</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="1137" />
+            <location filename="../view/task_interface/components/list_item.py" line="1136" />
             <source>Copy config ID</source>
             <translation>复制配置ID</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="1142" />
+            <location filename="../view/task_interface/components/list_item.py" line="1141" />
             <source>Share config</source>
             <translation>分享配置</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="1214" />
+            <location filename="../view/task_interface/components/list_item.py" line="1213" />
             <source>Failed to load config for sharing.</source>
             <translation>加载配置以共享失败。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="1221" />
+            <location filename="../view/task_interface/components/list_item.py" line="1220" />
             <source>Config has no resource bundle, cannot share.</source>
             <translation>配置没有资源包，无法共享。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="1237" />
-            <location filename="../view/task_interface/components/list_item.py" line="1242" />
+            <location filename="../view/task_interface/components/list_item.py" line="1236" />
+            <location filename="../view/task_interface/components/list_item.py" line="1241" />
             <source>Failed to encode config for sharing.</source>
             <translation>编码配置以共享失败。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="1248" />
+            <location filename="../view/task_interface/components/list_item.py" line="1247" />
             <source>Config copied to clipboard.</source>
             <translation>配置已复制到剪贴板。</translation>
         </message>
@@ -1330,7 +1330,7 @@ The following configurations using this bundle will also be deleted:
     <context>
         <name>ControllerSettingWidget</name>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="796" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="797" />
             <source>Controller Type</source>
             <translation>控制器类型</translation>
         </message>
@@ -1339,42 +1339,42 @@ The following configurations using this bundle will also be deleted:
             <translation type="vanished">此控制器需要管理员权限运行</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="797" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="798" />
             <source>this controller requires admin permission to run</source>
             <translation>此控制器需要管理员权限运行</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="853" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="854" />
             <source>Search Device</source>
             <translation>搜索设备</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="867" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="868" />
             <source>Agent Timeout</source>
             <translation>Agent 超时时间</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="871" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="872" />
             <source>-1 means infinite</source>
             <translation>-1 代表永不超时</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="913" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="914" />
             <source>Custom Module Path</source>
             <translation>custom模块路径</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="922" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="923" />
             <source>GPU Acceleration</source>
             <translation>GPU选择</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="942" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="943" />
             <source>Auto</source>
             <translation>自动</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="943" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="944" />
             <source>CPU</source>
             <translation>CPU</translation>
         </message>
@@ -1391,12 +1391,12 @@ Admin rights: Usually not required; elevate if the target process runs elevated.
 管理员权限：通常不需要；如果目标进程以管理员权限运行，则需要提升。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1073" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1074" />
             <source>(No description for this category.)</source>
             <translation>（此类别无描述。）</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1078" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1079" />
             <source>Description: Injects input on the target window thread; closest to real mouse/keyboard.
 Speed: Fast.
 Mouse capture: Yes (continuous capture of the window input queue).
@@ -1409,7 +1409,7 @@ Admin rights: Usually not required; match elevation if the target runs elevated.
 管理员权限：通常不需要；如果目标以管理员权限运行，则需匹配权限。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1086" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1087" />
             <source>Description: Synchronously posts window messages via SendMessage.
 Speed: Medium.
 Mouse capture: No.
@@ -1422,7 +1422,7 @@ Admin rights: Often depends on the target process (elevated targets need an elev
 管理员权限：通常取决于目标进程（提升权限的目标需要提升的客户端）。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1094" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1095" />
             <source>Description: Asynchronously posts window messages via PostMessage.
 Speed: Medium.
 Mouse capture: No.
@@ -1435,7 +1435,7 @@ Admin rights: Often depends on the target process (elevated targets need an elev
 管理员权限：通常取决于目标进程（提升权限的目标需要提升的客户端）。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1102" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1103" />
             <source>Description: Legacy event-injection path.
 Speed: Medium.
 Mouse capture: Yes.
@@ -1448,7 +1448,7 @@ Admin rights: Usually not required; depends on the target process.</source>
 管理员权限：通常不需要；取决于目标进程。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1110" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1111" />
             <source>Description: Posts messages to the window's owning thread.
 Speed: Medium.
 Mouse capture: No.
@@ -1461,8 +1461,8 @@ Admin rights: Often depends on the target process.</source>
 管理员权限：通常取决于目标进程。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1118" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1126" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1119" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1127" />
             <source>Description: Briefly moves the cursor to the target point, sends the message, then restores the cursor.
 Speed: Medium.
 Mouse capture: Brief cursor movement.
@@ -1475,8 +1475,8 @@ Admin rights: Often depends on the target process.</source>
 管理员权限：通常取决于目标进程。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1134" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1142" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1135" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1143" />
             <source>Description: Briefly moves the window so the target aligns with the current cursor, sends the message, then restores the window.
 Speed: Medium.
 Mouse capture: No (the window moves, not the cursor).
@@ -1489,31 +1489,31 @@ Admin rights: Often depends on the target process.</source>
 管理员权限：通常取决于目标进程。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1063" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1148" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1228" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1309" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1360" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1064" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1149" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1229" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1310" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1361" />
             <source>(No description for this method.)</source>
             <translation>（此方法无描述。）</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="893" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="894" />
             <source>Embedded Agent Mode</source>
             <translation>嵌入式代理模式</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="895" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="896" />
             <source>On</source>
             <translation>开启</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="896" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="897" />
             <source>Off</source>
             <translation>关闭</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1153" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1154" />
             <source>Description: GDI capture of the window client area.
 Speed: Fast.
 Mouse capture: No.
@@ -1528,7 +1528,7 @@ Background: Often fails while minimized.</source>
 后台：最小化时通常失败。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1162" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1163" />
             <source>Description: Windows.Graphics.Capture (Windows 10 1903+).
 Speed: Very fast.
 Mouse capture: No.
@@ -1543,7 +1543,7 @@ Background: Better for pseudo-minimized / quasi-background capture.</source>
 后台：更适合伪最小化/准后台捕获。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1171" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1172" />
             <source>Description: DXGI desktop duplication (full screen) then crop.
 Speed: Very fast.
 Mouse capture: No.
@@ -1558,7 +1558,7 @@ Background: Full-screen duplication; not window-exclusive.</source>
 后台：全屏复制，非窗口独占。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1180" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1181" />
             <source>Description: Desktop duplication cropped to the window region.
 Speed: Very fast.
 Mouse capture: No.
@@ -1571,7 +1571,7 @@ Admin rights: Usually not required.</source>
 管理员权限：通常不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1188" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1189" />
             <source>Description: Capture via PrintWindow and related paths.
 Speed: Medium.
 Mouse capture: No.
@@ -1586,7 +1586,7 @@ Background: Friendlier to pseudo-minimized scenarios.</source>
 后台：对伪最小化场景更友好。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1197" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1198" />
             <source>Description: Screen DC and other compatible paths.
 Speed: Fast.
 Mouse capture: No.
@@ -1601,7 +1601,7 @@ Background: Mostly foreground-oriented.</source>
 后台：主要面向前台。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1206" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1207" />
             <source>Description: Foreground preset (DXGI_DesktopDup_Window | ScreenDC).
 Speed: Fast.
 Mouse capture: No.
@@ -1614,7 +1614,7 @@ Admin rights: Usually not required.</source>
 管理员权限：通常不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1214" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1215" />
             <source>Description: Background preset (FramePool | PrintWindow).
 Speed: Fast.
 Mouse capture: No.
@@ -1627,7 +1627,7 @@ Admin rights: Usually not required.</source>
 管理员权限：通常不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1222" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1223" />
             <source>Description: Bitwise OR of all Win32 capture flags.
 Speed: Framework picks the fastest available method.
 Mouse capture: No.
@@ -1640,7 +1640,7 @@ Admin rights: Usually not required.</source>
 管理员权限：通常不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1233" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1234" />
             <source>Description: Encodes to a file on the device, then adb pull.
 Speed: Slow.
 Mouse capture: N/A (device-side).
@@ -1655,7 +1655,7 @@ Encoding: Lossless.</source>
 编码：无损。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1242" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1243" />
             <source>Description: Encoded stream pulled over the adb pipe.
 Speed: Slow.
 Mouse capture: N/A (device-side).
@@ -1670,7 +1670,7 @@ Encoding: Lossless.</source>
 编码：无损。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1251" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1252" />
             <source>Description: Raw frames with gzip compression.
 Speed: Medium.
 Mouse capture: N/A (device-side).
@@ -1685,7 +1685,7 @@ Encoding: Lossless.</source>
 编码：无损。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1260" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1261" />
             <source>Description: Raw frames over netcat.
 Speed: Fast.
 Mouse capture: N/A (device-side).
@@ -1698,7 +1698,7 @@ Admin rights: Not required.</source>
 管理员权限：不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1268" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1269" />
             <source>Description: Minicap direct connection.
 Speed: Fast.
 Mouse capture: N/A (device-side).
@@ -1713,7 +1713,7 @@ Encoding: Lossy JPEG; may hurt template matching — not recommended.</source>
 编码：有损 JPEG；可能影响模板匹配——不推荐。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1277" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1278" />
             <source>Description: Minicap streaming.
 Speed: Very fast.
 Mouse capture: N/A (device-side).
@@ -1728,7 +1728,7 @@ Encoding: Lossy JPEG — not recommended.</source>
 编码：有损 JPEG——不推荐。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1286" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1287" />
             <source>Description: Emulator-specific fast path (e.g. MuMu 12, LDPlayer 9).
 Speed: Very fast.
 Mouse capture: N/A (device-side).
@@ -1743,7 +1743,7 @@ Encoding: Lossless.</source>
 编码：无损。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1295" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1296" />
             <source>Description: All ADB capture flags enabled; framework benchmarks and picks one.
 Speed: Fastest available on the device.
 Mouse capture: N/A (device-side).
@@ -1756,7 +1756,7 @@ Admin rights: Not required.</source>
 管理员权限：不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1303" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1304" />
             <source>Description: Framework default flag set (typically excludes netcat and lossy Minicap).
 Speed: Best within the default set.
 Mouse capture: N/A (device-side).
@@ -1769,7 +1769,7 @@ Admin rights: Not required.</source>
 管理员权限：不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1314" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1315" />
             <source>Description: Standard adb shell input commands.
 Speed: Slow.
 Mouse capture: N/A (injected on the device).
@@ -1782,7 +1782,7 @@ Admin rights: Not required.</source>
 管理员权限：不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1322" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1323" />
             <source>Description: Minitouch with adb key fallback.
 Speed: Fast.
 Mouse capture: N/A (device-side).
@@ -1795,7 +1795,7 @@ Admin rights: Not required.</source>
 管理员权限：不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1330" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1331" />
             <source>Description: Maatouch protocol for touch injection.
 Speed: Fast.
 Mouse capture: N/A (device-side).
@@ -1808,7 +1808,7 @@ Admin rights: Not required.</source>
 管理员权限：不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1338" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1339" />
             <source>Description: Emulator extras (e.g. MuMu 12).
 Speed: Fast.
 Mouse capture: N/A (device-side).
@@ -1821,7 +1821,7 @@ Admin rights: Not required.</source>
 管理员权限：不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1346" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1347" />
             <source>Description: All ADB input flags; order EmulatorExtras &gt; Maatouch &gt; MinitouchAndAdbKey &gt; AdbShell.
 Speed: First available wins.
 Mouse capture: N/A (device-side).
@@ -1834,7 +1834,7 @@ Admin rights: Not required.</source>
 管理员权限：不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1354" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1355" />
             <source>Description: Default set with EmulatorExtras disabled; remaining methods by priority.
 Speed: Device-dependent.
 Mouse capture: N/A (device-side).
@@ -1847,116 +1847,121 @@ Admin rights: Not required.</source>
 管理员权限：不需要。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1392" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1393" />
             <source>ADB Path</source>
             <translation>ADB 路径</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1399" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1400" />
             <source>ADB Address</source>
             <translation>ADB连接地址</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1405" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1406" />
+            <source>Auto Fill Emulator Launch Data</source>
+            <translation>自动填充模拟器启动数据</translation>
+        </message>
+        <message>
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1415" />
             <source>Emulator Path</source>
             <translation>模拟器路径</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1412" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1422" />
             <source>Emulator Params</source>
             <translation>模拟器参数</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1418" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1428" />
             <source>Wait for Emulator StartUp Time</source>
             <translation>等待模拟器启动时间</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1430" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1505" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1599" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1440" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1515" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1609" />
             <source>Screencap Method</source>
             <translation>截图模式</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1439" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1605" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1449" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1615" />
             <source>Input Method</source>
             <translation>输入模式</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1448" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1458" />
             <source>Special Config</source>
             <translation>特化配置</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1463" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1522" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1579" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1473" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1532" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1589" />
             <source>Program Path</source>
             <translation>程序路径</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1470" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1529" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1585" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1480" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1539" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1595" />
             <source>Program Params</source>
             <translation>程序参数</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1476" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1535" />
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1590" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1486" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1545" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1600" />
             <source>Wait for Launch Time</source>
             <translation>等待程序启动时间</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1488" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1498" />
             <source>Mouse Input Method</source>
             <translation>鼠标输入方式</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1496" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1506" />
             <source>Keyboard Input Method</source>
             <translation>键盘输入方式</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1546" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1556" />
             <source>Gamepad Type</source>
             <translation>手柄类型</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1556" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1566" />
             <source>Address</source>
             <translation>地址</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1565" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1575" />
             <source>Wayland Socket Path</source>
             <translation>Wayland 套接字路径</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1574" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1584" />
             <source>Window ID</source>
             <translation>窗口 ID</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1897" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1922" />
             <source>Unknown Device</source>
             <translation>未知设备</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1966" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1991" />
             <source>No ADB devices were found. Please check emulator or device connection.</source>
             <translation>未找到ADB设备。请检查模拟器或设备连接。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1970" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1995" />
             <source>No desktop windows were found that match the filter.</source>
             <translation>未找到符合筛选条件的桌面窗口。</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1973" />
+            <location filename="../view/task_interface/components/option_widget_mixin/controller_setting_mixin.py" line="1998" />
             <source>No devices were found for current controller type.</source>
             <translation>未找到与当前控制器类型匹配的设备。</translation>
         </message>
@@ -3499,27 +3504,27 @@ interface.name 字段可能与 multi_config.json 中的包键不匹配。请检�
     <context>
         <name>RenameConfigDialog</name>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="920" />
+            <location filename="../view/task_interface/components/list_item.py" line="919" />
             <source>Rename config</source>
             <translation>重命名配置</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="926" />
+            <location filename="../view/task_interface/components/list_item.py" line="925" />
             <source>Enter new config name:</source>
             <translation>请输入新的配置名称：</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="929" />
+            <location filename="../view/task_interface/components/list_item.py" line="928" />
             <source>Enter the name of the config</source>
             <translation>输入配置名</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="944" />
+            <location filename="../view/task_interface/components/list_item.py" line="943" />
             <source>Confirm</source>
             <translation>确认</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="945" />
+            <location filename="../view/task_interface/components/list_item.py" line="944" />
             <source>Cancel</source>
             <translation>取消</translation>
         </message>
@@ -5884,53 +5889,53 @@ You can copy the detailed stack trace below and report it to the developer.</sou
     <context>
         <name>TaskFlowRunner</name>
         <message>
-            <location filename="../core/runner/task_flow.py" line="573" />
+            <location filename="../core/runner/task_flow.py" line="571" />
             <source>Resource or controller not initialized</source>
             <translation>资源或者控制器初始化失败</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="575" />
+            <location filename="../core/runner/task_flow.py" line="573" />
             <source>Agent connection failed</source>
             <translation>MAA Agent服务连接失败</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="582" />
+            <location filename="../core/runner/task_flow.py" line="580" />
             <source>Agent connection timed out ({}s)</source>
             <translation>MAA Agent 服务连接超时（{} 秒）</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="584" />
+            <location filename="../core/runner/task_flow.py" line="582" />
             <source>Agent configuration is missing</source>
             <translation>缺少 Agent 配置</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="586" />
+            <location filename="../core/runner/task_flow.py" line="584" />
             <source>Agent configuration list is empty</source>
             <translation>Agent 配置列表为空</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="588" />
+            <location filename="../core/runner/task_flow.py" line="586" />
             <source>Agent configuration is invalid</source>
             <translation>Agent 配置无效</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="590" />
+            <location filename="../core/runner/task_flow.py" line="588" />
             <source>Agent child_exec is missing</source>
             <translation>Agent 缺少 child_exec 配置</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="592" />
+            <location filename="../core/runner/task_flow.py" line="590" />
             <source>Failed to start agent process</source>
             <translation>Agent 进程启动失败</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="594" />
+            <location filename="../core/runner/task_flow.py" line="592" />
             <source>Tasker not initialized</source>
             <translation>任务初始化失败</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="596" />
-            <location filename="../core/runner/task_flow.py" line="601" />
+            <location filename="../core/runner/task_flow.py" line="594" />
+            <location filename="../core/runner/task_flow.py" line="599" />
             <source>Unknown MaaFW error code: {}</source>
             <translation>未知的 MaaFW 错误代码：{}</translation>
         </message>
@@ -5939,54 +5944,54 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation type="vanished">未知配置</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="912" />
+            <location filename="../core/runner/task_flow.py" line="908" />
             <source>Task Flow Started</source>
             <translation>任务流程已启动</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="913" />
+            <location filename="../core/runner/task_flow.py" line="909" />
             <source>Task flow has been started.</source>
             <translation>任务流程已启动。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1130" />
+            <location filename="../core/runner/task_flow.py" line="1119" />
             <source>Starting to connect device...</source>
             <translation>开始连接设备</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1145" />
+            <location filename="../core/runner/task_flow.py" line="1134" />
             <source>Device Connection Failed</source>
             <translation>设备连接失败</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1147" />
+            <location filename="../core/runner/task_flow.py" line="1136" />
             <source>Failed to connect to the device.</source>
             <translation>连接设备失败。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1152" />
-            <location filename="../core/runner/task_flow.py" line="3871" />
-            <location filename="../core/runner/task_flow.py" line="3883" />
+            <location filename="../core/runner/task_flow.py" line="1143" />
+            <location filename="../core/runner/task_flow.py" line="3836" />
+            <location filename="../core/runner/task_flow.py" line="3848" />
             <source>Device connected successfully</source>
             <translation>设备连接成功</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1157" />
+            <location filename="../core/runner/task_flow.py" line="1148" />
             <source>Device Connected Successfully</source>
             <translation>设备连接成功</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1158" />
+            <location filename="../core/runner/task_flow.py" line="1149" />
             <source>Device has been connected successfully.</source>
             <translation>设备已成功连接。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1026" />
+            <location filename="../core/runner/task_flow.py" line="1021" />
             <source>Agent Service Start</source>
             <translation>Agent 服务启动</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1035" />
+            <location filename="../core/runner/task_flow.py" line="1030" />
             <source>Starting to load custom components...</source>
             <translation>开始加载自定义模块</translation>
         </message>
@@ -5995,17 +6000,17 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation type="vanished">自定义组件加载失败，流程终止：</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1088" />
-            <location filename="../core/runner/task_flow.py" line="2156" />
-            <location filename="../core/runner/task_flow.py" line="2187" />
+            <location filename="../core/runner/task_flow.py" line="1081" />
+            <location filename="../core/runner/task_flow.py" line="2180" />
+            <location filename="../core/runner/task_flow.py" line="2211" />
             <source>please try to reset resource in setting</source>
             <translation>请尝试在设置中重置资源</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1230" />
-            <location filename="../core/runner/task_flow.py" line="1253" />
-            <location filename="../core/runner/task_flow.py" line="1282" />
-            <location filename="../core/runner/task_flow.py" line="2464" />
+            <location filename="../core/runner/task_flow.py" line="1221" />
+            <location filename="../core/runner/task_flow.py" line="1244" />
+            <location filename="../core/runner/task_flow.py" line="1272" />
+            <location filename="../core/runner/task_flow.py" line="2432" />
             <source>Task Failed</source>
             <translation>任务失败</translation>
         </message>
@@ -6014,37 +6019,37 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation type="vanished">任务“{}”已中止或失败。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1266" />
+            <location filename="../core/runner/task_flow.py" line="1257" />
             <source>Task Completed</source>
             <translation>任务完成</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1268" />
+            <location filename="../core/runner/task_flow.py" line="1259" />
             <source>Task '{}' has been completed successfully.</source>
             <translation>任务“{}”已成功完成。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1232" />
+            <location filename="../core/runner/task_flow.py" line="1223" />
             <source>Task '{}' failed and the flow was terminated.</source>
             <translation>任务“{}”失败，流程已终止。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1254" />
+            <location filename="../core/runner/task_flow.py" line="1245" />
             <source>Task '{}' was aborted.</source>
             <translation>任务“{}”已中止。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1283" />
+            <location filename="../core/runner/task_flow.py" line="1273" />
             <source>Task '{}' failed with error: {}</source>
             <translation>任务“{}”失败，错误信息：{}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1299" />
+            <location filename="../core/runner/task_flow.py" line="1289" />
             <source>All tasks have been completed</source>
             <translation>所有任务都已完成</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1304" />
+            <location filename="../core/runner/task_flow.py" line="1309" />
             <source>Task flow error: </source>
             <translation>任务流程错误：</translation>
         </message>
@@ -6081,72 +6086,71 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation type="vanished">任务结果总结：</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1363" />
             <source>Task Flow Completed</source>
-            <translation>任务完成</translation>
+            <translation type="vanished">任务完成</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1658" />
+            <location filename="../core/runner/task_flow.py" line="1680" />
             <source>INFO</source>
             <translation>信息</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1659" />
+            <location filename="../core/runner/task_flow.py" line="1681" />
             <source>WARNING</source>
             <translation>警报</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1660" />
+            <location filename="../core/runner/task_flow.py" line="1682" />
             <source>ERROR</source>
             <translation>错误</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1661" />
+            <location filename="../core/runner/task_flow.py" line="1683" />
             <source>CRITICAL</source>
             <translation>严重</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2742" />
+            <location filename="../core/runner/task_flow.py" line="2707" />
             <source>{} hours {} minutes</source>
             <translation>{} 小时 {} 分钟</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2744" />
+            <location filename="../core/runner/task_flow.py" line="2709" />
             <source>{} minutes</source>
             <translation>{} 分钟</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2747" />
+            <location filename="../core/runner/task_flow.py" line="2712" />
             <source>Task entry '{}' has been running for {}. This may indicate a problem. Please check the task status.</source>
             <translation>任务条目“{}”已运行{}分钟。这可能表明存在问题。请检查任务状态。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2761" />
+            <location filename="../core/runner/task_flow.py" line="2726" />
             <source>Task running time too long</source>
             <translation>任务运行时间过长</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3203" />
+            <location filename="../core/runner/task_flow.py" line="3168" />
             <source>PlayCover controller is only supported on macOS</source>
             <translation>PlayCover 控制器仅支持 macOS。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2181" />
+            <location filename="../core/runner/task_flow.py" line="2205" />
             <source>Resource </source>
             <translation>资源 </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2183" />
+            <location filename="../core/runner/task_flow.py" line="2207" />
             <source> not found in bundle: </source>
             <translation> 不存在于: </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2401" />
+            <location filename="../core/runner/task_flow.py" line="2369" />
             <source>Task </source>
             <translation>任务 </translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2403" />
+            <location filename="../core/runner/task_flow.py" line="2371" />
             <source> follows speedrun limit, skipping this run: </source>
             <translation>遵循speedrun限制,跳过本运行: </translation>
         </message>
@@ -6155,18 +6159,18 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation type="vanished">speedrun规则错误</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2465" />
+            <location filename="../core/runner/task_flow.py" line="2433" />
             <source>Task '{}' execution failed.</source>
             <translation>任务“{}”执行失败。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2577" />
+            <location filename="../core/runner/task_flow.py" line="2545" />
             <source>Stopping task...</source>
             <translation>停止任务中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2653" />
-            <location filename="../core/runner/task_flow.py" line="2736" />
+            <location filename="../core/runner/task_flow.py" line="2621" />
+            <location filename="../core/runner/task_flow.py" line="2701" />
             <source>Unknown Task Entry</source>
             <translation>未知任务入口</translation>
         </message>
@@ -6199,366 +6203,369 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation type="vanished">任务 {} 超时,{}次重启后仍无法运行,终止任务流.</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2815" />
+            <location filename="../core/runner/task_flow.py" line="2780" />
             <source>Auto searching ADB devices...</source>
             <translation>自动检测ADB设备...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3594" />
+            <location filename="../core/runner/task_flow.py" line="3559" />
             <source>ADB path is empty, please configure ADB path in settings</source>
             <translation>ADB路径为空，请在控制器中配置ADB路径</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3613" />
+            <location filename="../core/runner/task_flow.py" line="3578" />
             <source>ADB connection address is empty, please configure device connection in settings</source>
             <translation>ADB 连接地址为空，请在控制器中配置设备连接</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2833" />
+            <location filename="../core/runner/task_flow.py" line="2798" />
             <source>try to start emulator</source>
             <translation>尝试启动模拟器</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="727" />
+            <location filename="../core/runner/task_flow.py" line="723" />
             <source>Failed to reconnect to the device.</source>
             <translation>重新连接设备失败。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="765" />
+            <location filename="../core/runner/task_flow.py" line="761" />
             <source>Cached image failed, reconnecting controller...</source>
             <translation>缓存图像失败，正在重新连接控制器...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="772" />
+            <location filename="../core/runner/task_flow.py" line="768" />
             <source>Controller reconnection failed, stopping task flow</source>
             <translation>控制器重连失败，停止任务流</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="780" />
+            <location filename="../core/runner/task_flow.py" line="776" />
             <source>Controller reconnected, retrying current task</source>
             <translation>控制器已重连，正在重试当前任务</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2843" />
+            <location filename="../core/runner/task_flow.py" line="2808" />
             <source>waiting for emulator start...</source>
             <translation>等待模拟器启动中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2871" />
-            <location filename="../core/runner/task_flow.py" line="2996" />
-            <location filename="../core/runner/task_flow.py" line="3003" />
-            <location filename="../core/runner/task_flow.py" line="3058" />
-            <location filename="../core/runner/task_flow.py" line="3146" />
-            <location filename="../core/runner/task_flow.py" line="3153" />
-            <location filename="../core/runner/task_flow.py" line="3196" />
-            <location filename="../core/runner/task_flow.py" line="3438" />
-            <location filename="../core/runner/task_flow.py" line="3444" />
-            <location filename="../core/runner/task_flow.py" line="3489" />
+            <location filename="../core/runner/task_flow.py" line="2836" />
+            <location filename="../core/runner/task_flow.py" line="2961" />
+            <location filename="../core/runner/task_flow.py" line="2968" />
+            <location filename="../core/runner/task_flow.py" line="3023" />
+            <location filename="../core/runner/task_flow.py" line="3111" />
+            <location filename="../core/runner/task_flow.py" line="3118" />
+            <location filename="../core/runner/task_flow.py" line="3161" />
+            <location filename="../core/runner/task_flow.py" line="3403" />
+            <location filename="../core/runner/task_flow.py" line="3409" />
+            <location filename="../core/runner/task_flow.py" line="3454" />
             <source>Device connection failed</source>
             <translation>设备连接失败</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2958" />
+            <location filename="../core/runner/task_flow.py" line="2923" />
             <source>Auto searching Win32 windows...</source>
             <translation>自动搜索Win32窗口...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2971" />
-            <location filename="../core/runner/task_flow.py" line="3132" />
+            <location filename="../core/runner/task_flow.py" line="2936" />
+            <location filename="../core/runner/task_flow.py" line="3097" />
             <source>Window handle (hwnd) is empty, please configure window connection in settings</source>
             <translation>窗口句柄 (hwnd) 为空，请在控制器中配置窗口连接</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3011" />
-            <location filename="../core/runner/task_flow.py" line="3160" />
-            <location filename="../core/runner/task_flow.py" line="3451" />
+            <location filename="../core/runner/task_flow.py" line="2976" />
+            <location filename="../core/runner/task_flow.py" line="3125" />
+            <location filename="../core/runner/task_flow.py" line="3416" />
             <source>try to start program</source>
             <translation>尝试启动程序</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2878" />
+            <location filename="../core/runner/task_flow.py" line="2843" />
             <source>Win32 controller is only supported on Windows</source>
             <translation>Win32 控制器仅在 Windows 系统上受支持。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="890" />
+            <location filename="../core/runner/task_flow.py" line="886" />
             <source>Configuration no longer exists; task flow was not started</source>
             <translation>配置不存在；任务流程未启动</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="907" />
+            <location filename="../core/runner/task_flow.py" line="903" />
             <source>Resource run cancelled</source>
             <translation>资源运行已取消</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="928" />
+            <location filename="../core/runner/task_flow.py" line="924" />
             <source>Controller or resource in current config does not exist in interface. They have been reset to default. Please check and run again.</source>
             <translation>当前配置中的控制器或资源在界面中不存在。它们已被重置为默认值。请检查并重新运行。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="944" />
+            <location filename="../core/runner/task_flow.py" line="941" />
             <source>Starting to load resources...</source>
             <translation>开始加载资源……</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1006" />
+            <location filename="../core/runner/task_flow.py" line="1002" />
             <source>Embedded Agent prepare failed: </source>
             <translation>嵌入式代理准备失败：</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1007" />
+            <location filename="../core/runner/task_flow.py" line="1001" />
             <source>Unknown reason</source>
             <translation>未知原因</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1084" />
+            <location filename="../core/runner/task_flow.py" line="1076" />
             <source>Custom components loading failed, the flow is terminated.</source>
             <translation>自定义组件加载失败，流程已终止。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1098" />
+            <location filename="../core/runner/task_flow.py" line="1087" />
             <source>Embedded aspect ratio checker failed to load, the flow is terminated.</source>
             <translation>内嵌宽高比检查器加载失败，流程已终止。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1585" />
+            <location filename="../core/runner/task_flow.py" line="1421" />
+            <source>Task Flow Failed</source>
+            <translation>任务流程失败</translation>
+        </message>
+        <message>
+            <location filename="../core/runner/task_flow.py" line="1607" />
             <source>Executing pretask: </source>
             <translation>正在执行前置任务：</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1616" />
+            <location filename="../core/runner/task_flow.py" line="1638" />
             <source>Pretask was stopped by user</source>
             <translation>用户已停止前置任务</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1632" />
+            <location filename="../core/runner/task_flow.py" line="1654" />
             <source>Pretask exited with code {code}: {path}</source>
             <translation>前置任务退出，代码 {code}：{path}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1641" />
+            <location filename="../core/runner/task_flow.py" line="1663" />
             <source>Pretask executable not found: </source>
             <translation>未找到前置任务可执行文件：</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1648" />
+            <location filename="../core/runner/task_flow.py" line="1670" />
             <source>Pretask execution failed: </source>
             <translation>前置任务执行失败：</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1682" />
+            <location filename="../core/runner/task_flow.py" line="1704" />
             <source>Base controller/resource task is missing.</source>
             <translation>基础控制器/资源任务缺失。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1703" />
+            <location filename="../core/runner/task_flow.py" line="1725" />
             <source>Current controller does not exist in interface: {}</source>
             <translation>当前控制器在界面中不存在：{}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1704" />
-            <location filename="../core/runner/task_flow.py" line="1709" />
-            <location filename="../core/runner/task_flow.py" line="1720" />
-            <location filename="../core/runner/task_flow.py" line="1721" />
+            <location filename="../core/runner/task_flow.py" line="1726" />
+            <location filename="../core/runner/task_flow.py" line="1731" />
+            <location filename="../core/runner/task_flow.py" line="1742" />
+            <location filename="../core/runner/task_flow.py" line="1743" />
             <source>(empty)</source>
             <translation>(空)</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1708" />
+            <location filename="../core/runner/task_flow.py" line="1730" />
             <source>Current resource does not exist in interface: {}</source>
             <translation>当前资源在界面中不存在：{}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1718" />
+            <location filename="../core/runner/task_flow.py" line="1740" />
             <source>Current resource is not enabled for current controller: {} -&gt; {}</source>
             <translation>当前资源未对当前控制器启用：{} -&gt; {}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1912" />
+            <location filename="../core/runner/task_flow.py" line="1938" />
             <source>Controller name is empty, please configure controller in settings</source>
             <translation>控制器名称为空，请在设置中配置控制器。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="1931" />
-            <location filename="../core/runner/task_flow.py" line="2115" />
+            <location filename="../core/runner/task_flow.py" line="1957" />
+            <location filename="../core/runner/task_flow.py" line="2140" />
             <source>Controller '{}' not found, please reset controller in settings</source>
             <translation>未找到控制器“{}”，请在设置中重置控制器</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2011" />
+            <location filename="../core/runner/task_flow.py" line="2037" />
             <source>this Controller requires admin permission to run</source>
             <translation>此控制器需要管理员权限运行</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2026" />
+            <location filename="../core/runner/task_flow.py" line="2052" />
             <source>Controller configuration is invalid, please reset controller in settings</source>
             <translation>控制器配置无效，请在设置中重置控制器。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2105" />
+            <location filename="../core/runner/task_flow.py" line="2130" />
             <source>Controller config not found, please configure controller first</source>
             <translation>未找到控制器配置，请先配置控制器。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2131" />
+            <location filename="../core/runner/task_flow.py" line="2156" />
             <source>Resource target is empty, please configure resource in settings</source>
             <translation>资源目标为空，请在设置中配置资源。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2151" />
+            <location filename="../core/runner/task_flow.py" line="2175" />
             <source>Resource '{}' not found, please reset resource in settings</source>
             <translation>未找到资源“{}”，请在设置中重置资源。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2203" />
+            <location filename="../core/runner/task_flow.py" line="2227" />
             <source>Resource loading failed: {}</source>
             <translation>资源加载失败：{}</translation>
         </message>
         <message>
+            <location filename="../core/runner/task_flow.py" line="2249" />
             <source>Resource hash mismatch, please consider redownloading the resource package.</source>
-            <translation type="vanished">资源哈希不匹配，请考虑重新下载资源包。</translation>
+            <translation>资源哈希不匹配，请考虑重新下载资源包。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2240" />
+            <location filename="../core/runner/task_flow.py" line="2275" />
             <source>Attached resource loading failed: {}</source>
             <translation>附加资源加载失败：{}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2302" />
-            <location filename="../core/runner/task_flow.py" line="2309" />
             <source>Resource error</source>
-            <translation>资源错误</translation>
+            <translation type="vanished">资源错误</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2306" />
             <source>Resource hash mismatch, running is blocked. Please redownload the resource package.</source>
-            <translation>资源哈希不匹配，运行已被阻止。请重新下载资源包。</translation>
+            <translation type="vanished">资源哈希不匹配，运行已被阻止。请重新下载资源包。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2336" />
+            <location filename="../core/runner/task_flow.py" line="2304" />
             <source>Pipeline check failed, resource loading aborted.</source>
             <translation>流水线检查失败，资源加载已中止。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2342" />
+            <location filename="../core/runner/task_flow.py" line="2310" />
             <source>Pipeline check failed: invalid JSON in {}: {}</source>
             <translation>流水线检查失败：{} 中的 JSON 无效：{}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2347" />
+            <location filename="../core/runner/task_flow.py" line="2315" />
             <source>Pipeline check failed: duplicate node "{}" in {}</source>
             <translation>流水线检查失败：{} 中存在重复节点 "{}"</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2351" />
+            <location filename="../core/runner/task_flow.py" line="2319" />
             <source>Pipeline check failed: duplicate node "{}" in {} (already defined in {})</source>
             <translation>流水线检查失败：{} 中存在重复节点 "{}"（已在 {} 中定义）</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2355" />
+            <location filename="../core/runner/task_flow.py" line="2323" />
             <source>Pipeline check failed: {}</source>
             <translation>流水线检查失败：{}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="2491" />
+            <location filename="../core/runner/task_flow.py" line="2459" />
             <source>Builtin task failed: </source>
             <translation>内置任务失败：</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3046" />
-            <location filename="../core/runner/task_flow.py" line="3184" />
-            <location filename="../core/runner/task_flow.py" line="3477" />
+            <location filename="../core/runner/task_flow.py" line="3011" />
+            <location filename="../core/runner/task_flow.py" line="3149" />
+            <location filename="../core/runner/task_flow.py" line="3442" />
             <source>waiting for program start...</source>
             <translation>等待程序启动中...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3065" />
+            <location filename="../core/runner/task_flow.py" line="3030" />
             <source>Gamepad controller is only supported on Windows</source>
             <translation>Gamepad 控制器仅在 Windows 系统上受支持。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3122" />
+            <location filename="../core/runner/task_flow.py" line="3087" />
             <source>Auto searching desktop windows...</source>
             <translation>自动搜索桌面窗口...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3241" />
+            <location filename="../core/runner/task_flow.py" line="3206" />
             <source>PlayCover UUID is empty, please configure UUID in settings</source>
             <translation>PlayCover UUID 为空，请在设置中配置 UUID。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3253" />
+            <location filename="../core/runner/task_flow.py" line="3218" />
             <source>PlayCover connection address is empty, please configure address in settings</source>
             <translation>PlayCover 连接地址为空，请在设置中配置地址。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3266" />
+            <location filename="../core/runner/task_flow.py" line="3231" />
             <source>Connecting to PlayCover: {address} (UUID: {uuid})</source>
             <translation>正在连接到 PlayCover：{address}（UUID：{uuid}）</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3275" />
+            <location filename="../core/runner/task_flow.py" line="3240" />
             <source>PlayCover connected successfully</source>
             <translation>PlayCover 已成功连接</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3279" />
+            <location filename="../core/runner/task_flow.py" line="3244" />
             <source>Failed to connect to PlayCover</source>
             <translation>连接 PlayCover 失败</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3287" />
+            <location filename="../core/runner/task_flow.py" line="3252" />
             <source>WlRoots controller is only supported on Linux</source>
             <translation>WlRoots 控制器仅在 Linux 上受支持</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3318" />
+            <location filename="../core/runner/task_flow.py" line="3283" />
             <source>WlRoots Wayland socket path is empty, please configure it in settings</source>
             <translation>WlRoots Wayland 套接字路径为空，请在设置中配置</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3335" />
+            <location filename="../core/runner/task_flow.py" line="3300" />
             <source>Connecting to WlRoots: {socket}</source>
             <translation>正在连接到 WlRoots: {socket}</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3340" />
+            <location filename="../core/runner/task_flow.py" line="3305" />
             <source>WlRoots connected successfully</source>
             <translation>WlRoots 连接成功</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3344" />
+            <location filename="../core/runner/task_flow.py" line="3309" />
             <source>Failed to connect to WlRoots</source>
             <translation>无法连接到 WlRoots</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3350" />
+            <location filename="../core/runner/task_flow.py" line="3315" />
             <source>MacOS controller is only supported on macOS</source>
             <translation>MacOS 控制器仅在 macOS 上受支持</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3413" />
+            <location filename="../core/runner/task_flow.py" line="3378" />
             <source>Auto searching MacOS windows...</source>
             <translation>正在自动搜索 MacOS 窗口...</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3424" />
+            <location filename="../core/runner/task_flow.py" line="3389" />
             <source>Window ID is empty, please configure window connection in settings</source>
             <translation>窗口 ID 为空，请在设置中配置窗口连接</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3622" />
+            <location filename="../core/runner/task_flow.py" line="3587" />
             <source>ADB connection port is empty; use host:port (for example 127.0.0.1:5555) or pick a device after starting the emulator.</source>
             <translation>ADB 连接端口为空；请使用 主机:端口 格式（例如 127.0.0.1:5555），或启动模拟器后选择设备。</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="3860" />
-            <location filename="../core/runner/task_flow.py" line="3907" />
+            <location filename="../core/runner/task_flow.py" line="3825" />
+            <location filename="../core/runner/task_flow.py" line="3872" />
             <source> seconds</source>
             <translation> 秒</translation>
         </message>
         <message>
-            <location filename="../core/runner/task_flow.py" line="4316" />
+            <location filename="../core/runner/task_flow.py" line="4277" />
             <source>Notifications are being sent, please wait up to {} seconds</source>
             <translation>通知正在发送中，请稍候，最多{}秒。</translation>
         </message>
@@ -6638,57 +6645,57 @@ You can copy the detailed stack trace below and report it to the developer.</sou
             <translation type="vanished">否</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="409" />
+            <location filename="../view/task_interface/components/list_item.py" line="408" />
             <source>Resource</source>
             <translation>资源</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="411" />
+            <location filename="../view/task_interface/components/list_item.py" line="410" />
             <source>Controller</source>
             <translation>控制器</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="413" />
+            <location filename="../view/task_interface/components/list_item.py" line="412" />
             <source>Post-Action</source>
             <translation>完成后运行</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="415" />
+            <location filename="../view/task_interface/components/list_item.py" line="414" />
             <source>PreTask</source>
             <translation>预任务</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="677" />
+            <location filename="../view/task_interface/components/list_item.py" line="676" />
             <source>Run this task</source>
             <translation>单独运行</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="685" />
+            <location filename="../view/task_interface/components/list_item.py" line="684" />
             <source>Run from here</source>
             <translation>从此处开始运行</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="693" />
+            <location filename="../view/task_interface/components/list_item.py" line="692" />
             <source>Insert task</source>
             <translation>插入任务</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="736" />
+            <location filename="../view/task_interface/components/list_item.py" line="735" />
             <source>No available tasks to add.</source>
             <translation>无可用任务</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="876" />
+            <location filename="../view/task_interface/components/list_item.py" line="875" />
             <source>Delete task</source>
             <translation>删除任务</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="893" />
+            <location filename="../view/task_interface/components/list_item.py" line="892" />
             <source>Delete Task</source>
             <translation>删除任务</translation>
         </message>
         <message>
-            <location filename="../view/task_interface/components/list_item.py" line="894" />
+            <location filename="../view/task_interface/components/list_item.py" line="893" />
             <source>Are you sure you want to delete task '{}'?</source>
             <translation>您确定要删除任务“{}”吗？</translation>
         </message>

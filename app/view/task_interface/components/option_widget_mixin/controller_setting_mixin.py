@@ -4,6 +4,7 @@ from PySide6.QtGui import QIntValidator
 from PySide6.QtCore import QTimer
 from qfluentwidgets import (
     BodyLabel,
+    CheckBox,
     ComboBox,
     LineEdit,
     SwitchButton,
@@ -1400,6 +1401,15 @@ class ControllerSettingWidget(QWidget):
             "address",
             lambda text: self._on_child_option_changed("address", text),
         )
+        # 自动填充模拟器启动数据
+        auto_fill_checkbox = CheckBox(
+            self.tr("Auto Fill Emulator Launch Data")
+        )
+        self.parent_layout.addWidget(auto_fill_checkbox)
+        self.resource_setting_widgets["auto_fill_emulator_launch"] = auto_fill_checkbox
+        auto_fill_checkbox.toggled.connect(
+            self._on_auto_fill_emulator_launch_changed
+        )
         # 模拟器路径
         self._create_resource_line_edit(
             self.tr("Emulator Path"),
@@ -1608,6 +1618,11 @@ class ControllerSettingWidget(QWidget):
             self._on_child_option_changed,
         )
 
+    def _on_auto_fill_emulator_launch_changed(self, checked: bool):
+        if self._syncing:
+            return
+        self._on_child_option_changed("auto_fill_emulator_launch", bool(checked))
+
     def _on_child_option_changed(self, key: str, value: Any):
         """子选项变化处理"""
         if self._syncing:
@@ -1685,6 +1700,7 @@ class ControllerSettingWidget(QWidget):
         adb_widgets = [
             "adb_path",
             "address",
+            "auto_fill_emulator_launch",
             "emulator_path",
             "emulator_params",
             "adb_wait_time",
@@ -1729,6 +1745,7 @@ class ControllerSettingWidget(QWidget):
             adb_defaults = {
                 "adb_path": "",
                 "address": "",
+                "auto_fill_emulator_launch": False,
                 "emulator_path": "",
                 "emulator_params": "",
                 "wait_time": 30,  # 默认等待模拟器启动 30s
@@ -1871,6 +1888,14 @@ class ControllerSettingWidget(QWidget):
                     widget.setText(
                         jsonc.dumps(value) if isinstance(value, dict) else str(value)
                     )
+            elif isinstance(widget, CheckBox) and name in self.current_config[
+                controller_name
+            ]:
+                widget.blockSignals(True)
+                widget.setChecked(
+                    bool(self.current_config[controller_name][name])
+                )
+                widget.blockSignals(False)
             elif (
                 isinstance(widget, ComboBox)
                 and name in self.current_config[controller_name]
@@ -2302,10 +2327,18 @@ class ControllerSettingWidget(QWidget):
         ].device_mapping.get(device_name)
         if find_device_info is None:
             return
+        device_info = dict(find_device_info)
+        controller_cfg = self.current_config.get(current_controller_name, {})
+        if not (
+            isinstance(controller_cfg, dict)
+            and controller_cfg.get("auto_fill_emulator_launch", False)
+        ):
+            device_info.pop("emulator_path", None)
+            device_info.pop("emulator_params", None)
         if not self.service_coordinator.options.update_controller_device(
             current_controller_name,
             device_name,
-            find_device_info,
+            device_info,
         ):
             logger.warning("控制器设备配置保存失败: %s", device_name)
             return
