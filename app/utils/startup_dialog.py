@@ -1,4 +1,4 @@
-﻿#   This file is part of MFW-ChainFlow Assistant.
+#   This file is part of MFW-ChainFlow Assistant.
 
 #   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU Affero General Public License as published
