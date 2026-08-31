@@ -8,7 +8,11 @@ from pathlib import Path
 
 APP_BUNDLE_NAME = "MFW.app"
 APP_EXECUTABLE_RELATIVE_PATH = Path("Contents") / "MacOS" / "MFW"
-UPDATER_NAME = "MFWUpdater.exe" if sys.platform.startswith("win32") else "MFWUpdater"
+UPDATER_DIR_NAME = "MFWUpdater"
+UPDATER_COPY_DIR_NAME = "MFWUpdater1"
+UPDATER_EXECUTABLE_NAME = (
+    "MFWUpdater.exe" if sys.platform.startswith("win32") else "MFWUpdater"
+)
 
 
 def is_packed() -> bool:
@@ -65,6 +69,9 @@ def resolve_install_root(anchor: Path | str | None = None) -> Path:
     if is_app_bundle_layout(resolved_anchor):
         return resolved_anchor.parents[3]
 
+    if resolved_anchor.parent.name in {UPDATER_DIR_NAME, UPDATER_COPY_DIR_NAME}:
+        return resolved_anchor.parent.parent
+
     return resolved_anchor.parent
 
 
@@ -95,14 +102,33 @@ def resolve_main_executable(
     return resolved_anchor
 
 
+def resolve_updater_dir(install_root: Path | str | None = None) -> Path:
+    """返回发行根中的 standalone 更新器目录。"""
+    root = Path(install_root or resolve_install_root()).resolve()
+    return root / UPDATER_DIR_NAME
+
+
+def resolve_updater_copy_dir(install_root: Path | str | None = None) -> Path:
+    """返回更新器运行副本目录（启动更新前由正式目录重命名而来）。"""
+    root = Path(install_root or resolve_install_root()).resolve()
+    return root / UPDATER_COPY_DIR_NAME
+
+
+def resolve_updater_executable(updater_dir: Path | str) -> Path:
+    """返回 standalone 更新器目录内的可执行文件路径。"""
+    return Path(updater_dir).resolve() / UPDATER_EXECUTABLE_NAME
+
+
 def resolve_updater_paths(
     install_root: Path | str | None = None,
 ) -> tuple[Path, Path]:
-    """返回发行根中的正式更新器与运行副本路径。"""
-    root = Path(install_root or resolve_install_root()).resolve()
-    updater = root / UPDATER_NAME
-    updater_copy = updater.with_name(f"{updater.stem}1{updater.suffix}")
-    return updater, updater_copy
+    """返回正式更新器与运行副本的可执行文件路径。"""
+    updater_dir = resolve_updater_dir(install_root)
+    updater_copy_dir = resolve_updater_copy_dir(install_root)
+    return (
+        resolve_updater_executable(updater_dir),
+        resolve_updater_executable(updater_copy_dir),
+    )
 
 
 def resolve_schedule_instance_id() -> str:

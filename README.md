@@ -195,7 +195,8 @@ macOS 发行物使用 Nuitka `app-dist`，目录结构如下：
 ```text
 MFW/
 ├── MFW.app/
-├── MFWUpdater
+├── MFWUpdater/
+│   └── MFWUpdater
 ├── maafw/
 ├── interface.json
 ├── resource/
@@ -203,7 +204,7 @@ MFW/
 └── config/
 ```
 
-请整体移动、解压或更新 `MFW/` 目录，不要只移动 `MFW.app`。应用包保持只读，资源热更新写入外置 `resource/` / `bundle/`；UI 全量更新由外置 `MFWUpdater` 在主程序退出后整包替换 `MFW.app`。
+请整体移动、解压或更新 `MFW/` 目录，不要只移动 `MFW.app`。应用包保持只读，资源热更新写入外置 `resource/` / `bundle/`；UI 全量更新由外置 [`MFW-Updater`](https://github.com/overflow65537/MFW-Updater)（**MIT**）独立仓库编译的 `MFWUpdater/` 在主程序退出后整包替换 `MFW.app`。
 
 ## 许可证
 

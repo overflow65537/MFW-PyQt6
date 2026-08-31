@@ -62,6 +62,8 @@ from app.utils.asset_paths import (
 from app.utils.install_paths import (
     resolve_install_anchor,
     resolve_install_root,
+    resolve_updater_copy_dir,
+    resolve_updater_dir,
     resolve_updater_paths,
 )
 from app.utils.logger import logger
@@ -137,13 +139,19 @@ def start_auto_confirm_countdown(
 
 
 def rename_updater_binary(old_name: str, new_name: str) -> None:
-    """重命名更新器二进制文件，供各界面复用。"""
+    """重命名 standalone 更新器目录，供各界面复用。"""
     import os
+    import shutil
 
-    if os.path.exists(old_name) and os.path.exists(new_name):
-        os.remove(new_name)
-    if os.path.exists(old_name):
-        os.rename(old_name, new_name)
+    old_path = Path(old_name)
+    new_path = Path(new_name)
+    if new_path.exists():
+        if new_path.is_dir():
+            shutil.rmtree(new_path)
+        else:
+            os.remove(new_path)
+    if old_path.exists():
+        os.rename(old_path, new_path)
 
 
 def _is_running_with_admin_privileges() -> bool:
@@ -3039,8 +3047,11 @@ class SettingInterface(QWidget):
 
         try:
             if sys.platform.startswith(("win32", "darwin", "linux")):
-                updater, updater_copy = resolve_updater_paths(resolve_install_root())
-                self._rename_updater(updater, updater_copy)
+                install_root = resolve_install_root()
+                self._rename_updater(
+                    str(resolve_updater_dir(install_root)),
+                    str(resolve_updater_copy_dir(install_root)),
+                )
         except Exception as e:
             self._updater_started = False
             logger.error(f"重命名更新程序失败: {e}")

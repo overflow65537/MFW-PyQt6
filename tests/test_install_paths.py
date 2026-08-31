@@ -5,12 +5,18 @@ from unittest.mock import patch
 
 from app.utils.install_paths import (
     APP_EXECUTABLE_RELATIVE_PATH,
+    UPDATER_COPY_DIR_NAME,
+    UPDATER_DIR_NAME,
+    UPDATER_EXECUTABLE_NAME,
     is_app_bundle_layout,
     normalize_install_anchor,
     resolve_app_i18n_dir,
     resolve_install_root,
     resolve_main_executable,
     resolve_schedule_launch_command,
+    resolve_updater_copy_dir,
+    resolve_updater_dir,
+    resolve_updater_executable,
     resolve_updater_paths,
 )
 
@@ -40,10 +46,15 @@ class InstallPathTests(unittest.TestCase):
 
     def test_resolves_updater_and_running_copy(self):
         root = Path("release").resolve()
+        updater_dir = resolve_updater_dir(root)
+        updater_copy_dir = resolve_updater_copy_dir(root)
         updater, updater_copy = resolve_updater_paths(root)
-        self.assertEqual(updater.parent, root)
-        self.assertEqual(updater_copy.parent, root)
-        self.assertEqual(updater_copy.stem, f"{updater.stem}1")
+        self.assertEqual(updater_dir, root / UPDATER_DIR_NAME)
+        self.assertEqual(updater_copy_dir, root / UPDATER_COPY_DIR_NAME)
+        self.assertEqual(updater, resolve_updater_executable(updater_dir))
+        self.assertEqual(updater_copy, resolve_updater_executable(updater_copy_dir))
+        self.assertEqual(updater.parent, updater_dir)
+        self.assertEqual(updater_copy.parent, updater_copy_dir)
 
     def test_schedule_uses_bundle_executable(self):
         with tempfile.TemporaryDirectory() as raw:

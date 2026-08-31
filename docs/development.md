@@ -17,7 +17,7 @@ MFW.exe --direct-run --force-restart --config-id c_08b08298fcf340d8a028ee6350312
 
 ## 打包
 
-Windows、Linux 与 macOS 均由 `.github/workflows/install.yml` 中的 Nuitka job 构建。Linux 主程序与更新器使用 `onefile`；macOS 主程序使用 `app-dist`，更新器使用 `onefile`。macOS 还需 `imageio`（见 `requirements-nuitka.txt`）以将 PNG 图标转为 `.icns`：
+Windows、Linux 与 macOS 均由 `.github/workflows/install.yml` 中的 Nuitka job 构建主程序。更新器在独立仓库 [overflow65537/MFW-Updater](https://github.com/overflow65537/MFW-Updater) 以 Nuitka `standalone` 编译发布；主仓库 CI 通过 `tools/packaging/fetch_mfw_updater.py` 下载最新 Release 后组装。Linux 主程序使用 `onefile`；macOS 主程序使用 `app-dist`。macOS 还需 `imageio`（见 `requirements-nuitka.txt`）以将 PNG 图标转为 `.icns`：
 
 ```bash
 python -m pip install -r requirements-nuitka.txt
@@ -25,8 +25,9 @@ python -m nuitka --mode=onefile --enable-plugin=pyside6 \
   --linux-icon=app/assets/icons/logo.png --output-filename=MFW main.py
 python -m nuitka --mode=app-dist --enable-plugin=pyside6 \
   --macos-app-mode=gui --macos-app-icon=app/assets/icons/logo.png main.py
-python -m nuitka --mode=onefile --output-filename=MFWUpdater updater.py
 ```
 
-Linux CI 会把 onefile 的 `MFW`、`MFWUpdater` 与外置 `maafw/` 组装为发行根。macOS 则为 `MFW.app`、`MFWUpdater`、`maafw/` 同级。`interface.json(c)`、`resource/`、`bundle/` 和 `config/` 必须保留在主程序外部；调试更新流程时也应从该发行根启动程序。
+更新器源码与打包见独立仓库 [overflow65537/MFW-Updater](https://github.com/overflow65537/MFW-Updater)（本地路径 `D:\WorkSpace\MFW-Updater`）。
+
+Linux CI 会把 onefile 的 `MFW`、自 MFW-Updater Release 下载的 `MFWUpdater/` 与外置 `maafw/` 组装为发行根。macOS 则为 `MFW.app`、`MFWUpdater/`、`maafw/` 同级。`interface.json(c)`、`resource/`、`bundle/` 和 `config/` 必须保留在主程序外部；调试更新流程时也应从该发行根启动程序。
 

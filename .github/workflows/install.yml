@@ -243,7 +243,7 @@ jobs:
           if not rc.is_file():
               raise SystemExit(f"missing generated Qt resource module: {rc}")
 
-      # 在两次 Nuitka 之前写入版本，主程序与 updater 编译时均能读到 __version__
+      # 主程序 Nuitka 编译前写入版本
       - name: Set __version__ for Nuitka compile
         env:
           MFW_VERSION: ${{ needs.meta.outputs.tag }}
@@ -373,58 +373,16 @@ jobs:
             README-en.md=MFW_README-en.md
             LICENSE=MFW_LICENSE
             AUTHORS.md=MFW_AUTHORS.md
-      - name: updater build (Windows)
-        if: matrix.platform == 'win'
-        uses: Nuitka/Nuitka-Action@main
-        with:
-          nuitka-version: ${{ env.NUITKA_GIT_REF }}
-          script-name: updater.py
-          mode: onefile
-          lto: no
-          caching-key: mfw-onefile-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
-          output-file: MFWUpdater
-          windows-console-mode: force
-          company-name: ${{ github.repository_owner }}
-          product-name: MFW Updater
-          file-version: ${{ steps.exe_meta.outputs.win_file_version }}
-          product-version: ${{ steps.exe_meta.outputs.win_product_version }}
-          file-description: MFW update helper (sidecar)
-          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
-
-      - name: updater build (Linux)
-        if: matrix.platform == 'linux'
-        uses: Nuitka/Nuitka-Action@main
-        with:
-          nuitka-version: ${{ env.NUITKA_GIT_REF }}
-          script-name: updater.py
-          mode: onefile
-          lto: no
-          caching-key: mfw-onefile-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
-          output-file: MFWUpdater
-          company-name: ${{ github.repository_owner }}
-          product-name: MFW Updater
-          file-version: ${{ steps.exe_meta.outputs.win_file_version }}
-          product-version: ${{ steps.exe_meta.outputs.win_product_version }}
-          file-description: MFW update helper (sidecar)
-          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
-
-      - name: updater build (macOS)
-        if: matrix.platform == 'macos'
-        uses: Nuitka/Nuitka-Action@main
-        with:
-          nuitka-version: ${{ env.NUITKA_GIT_REF }}
-          script-name: updater.py
-          mode: onefile
-          lto: no
-          caching-key: mfw-onefile-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python_arch }}
-          output-file: MFWUpdater
-          macos-target-arch: ${{ matrix.target_arch }}
-          company-name: ${{ github.repository_owner }}
-          product-name: MFW Updater
-          file-version: ${{ steps.exe_meta.outputs.win_file_version }}
-          product-version: ${{ steps.exe_meta.outputs.win_product_version }}
-          file-description: MFW update helper (sidecar)
-          copyright: "Copyright (C) ${{ github.repository_owner }} and contributors. Licensed under GPL-3.0."
+      - name: Download prebuilt MFWUpdater
+        env:
+          MFW_UPDATER_REPOSITORY: overflow65537/MFW-Updater
+          MFW_UPDATER_TAG: latest
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python tools/packaging/fetch_mfw_updater.py \
+            --platform ${{ matrix.platform }} \
+            --arch ${{ matrix.arch }} \
+            --output build/updater.dist
 
       # standalone：main.dist 内为 maa/bin；迁入 mfw-release 后执行 move_maa_bin_to_maafw，与 MAAFW_BINARY_PATH=maafw 一致
       - name: Assemble mfw-release (Windows)
@@ -433,15 +391,26 @@ jobs:
         run: |
           $rel = Join-Path "build" "mfw-release"
           $srcDist = Join-Path "build" "main.dist"
-          $updExe = Join-Path "build" "MFWUpdater.exe"
+          $updDist = Join-Path "build" "updater.dist"
           $mainBuilt = Join-Path $srcDist "main.exe"
           if (-not (Test-Path -LiteralPath $srcDist -PathType Container)) { Write-Error "missing $srcDist"; Get-ChildItem -LiteralPath build; exit 1 }
           if (-not (Test-Path -LiteralPath $mainBuilt -PathType Leaf)) { Write-Error "missing $mainBuilt"; Get-ChildItem -LiteralPath $srcDist; exit 1 }
-          if (-not (Test-Path -LiteralPath $updExe -PathType Leaf)) { Write-Error "missing $updExe"; Get-ChildItem -LiteralPath build; exit 1 }
+          if (-not (Test-Path -LiteralPath $updDist -PathType Container)) { Write-Error "missing $updDist"; Get-ChildItem -LiteralPath build; exit 1 }
           New-Item -ItemType Directory -Force $rel | Out-Null
           Copy-Item -Path (Join-Path $srcDist '*') -Destination $rel -Recurse -Force
           Rename-Item -LiteralPath (Join-Path $rel "main.exe") -NewName "MFW.exe" -Force
-          Move-Item -LiteralPath $updExe -Destination (Join-Path $rel "MFWUpdater.exe") -Force
+          Copy-Item -LiteralPath $updDist -Destination (Join-Path $rel "MFWUpdater") -Recurse -Force
+          $updExe = Join-Path $rel "MFWUpdater\MFWUpdater.exe"
+          if (-not (Test-Path -LiteralPath $updExe -PathType Leaf)) {
+            $legacyExe = Join-Path $rel "MFWUpdater\updater.exe"
+            if (Test-Path -LiteralPath $legacyExe -PathType Leaf) {
+              Rename-Item -LiteralPath $legacyExe -NewName "MFWUpdater.exe" -Force
+            } else {
+              Write-Error "missing updater executable in $updDist"
+              Get-ChildItem -LiteralPath (Join-Path $rel "MFWUpdater")
+              exit 1
+            }
+          }
           python tools/packaging/move_maa_bin_to_maafw.py $rel
 
       - name: Assemble mfw-release (Linux)
@@ -456,7 +425,7 @@ jobs:
           set -euo pipefail
           rel="build/mfw-release"
           src_dist="build/main.dist"
-          upd_bin="build/MFWUpdater"
+          upd_dist="build/updater.dist"
           onefile=""
           for cand in build/MFW build/main.bin build/main; do
             if [[ -f "$cand" ]]; then
@@ -466,11 +435,14 @@ jobs:
           done
           if [[ -z "$onefile" ]]; then echo "missing Linux onefile"; ls -la build; exit 1; fi
           if [[ ! -d "$src_dist" ]]; then echo "missing $src_dist (Nuitka onefile intermediate)"; ls -la build; exit 1; fi
-          if [[ ! -f "$upd_bin" ]]; then echo "missing $upd_bin"; ls -la build; exit 1; fi
+          if [[ ! -d "$upd_dist" ]]; then echo "missing $upd_dist"; ls -la build; exit 1; fi
           mkdir -p "$rel"
           cp -a "$onefile" "$rel/MFW"
-          mv "$upd_bin" "$rel/MFWUpdater"
-          chmod +x "$rel/MFW" "$rel/MFWUpdater"
+          cp -a "$upd_dist" "$rel/MFWUpdater"
+          if [[ -f "$rel/MFWUpdater/updater" && ! -f "$rel/MFWUpdater/MFWUpdater" ]]; then
+            mv "$rel/MFWUpdater/updater" "$rel/MFWUpdater/MFWUpdater"
+          fi
+          chmod +x "$rel/MFW" "$rel/MFWUpdater/MFWUpdater"
           # onefile 运行时 cwd 为发行根；maa 原生库仍须外置 maafw/（MAAFW_BINARY_PATH）
           python3 tools/packaging/move_maa_bin_to_maafw.py "$src_dist" "$rel"
           cp README.md "$rel/MFW_README.md"
@@ -480,7 +452,7 @@ jobs:
           mkdir -p "$rel/app/assets/icons"
           cp app/assets/icons/logo.png "$rel/app/assets/icons/logo.png"
           test -x "$rel/MFW"
-          test -x "$rel/MFWUpdater"
+          test -x "$rel/MFWUpdater/MFWUpdater"
           test -f "$rel/maafw/libMaaFramework.so"
 
           python3 << 'PY'
@@ -568,9 +540,9 @@ jobs:
           rel="build/mfw-release"
           src_app="build/main.app"
           app="$rel/MFW.app"
-          upd_bin="build/MFWUpdater"
+          upd_dist="build/updater.dist"
           if [[ ! -d "$src_app" ]]; then echo "missing $src_app"; ls -la build; exit 1; fi
-          if [[ ! -f "$upd_bin" ]]; then echo "missing $upd_bin"; ls -la build; exit 1; fi
+          if [[ ! -d "$upd_dist" ]]; then echo "missing $upd_dist"; ls -la build; exit 1; fi
 
           mkdir -p "$rel"
           cp -R "$src_app" "$app"
@@ -583,8 +555,11 @@ jobs:
             echo "missing app executable in $macos_dir"; ls -la "$macos_dir"; exit 1
           fi
 
-          mv "$upd_bin" "$rel/MFWUpdater"
-          chmod +x "$macos_dir/MFW" "$rel/MFWUpdater"
+          cp -a "$upd_dist" "$rel/MFWUpdater"
+          if [[ -f "$rel/MFWUpdater/updater" && ! -f "$rel/MFWUpdater/MFWUpdater" ]]; then
+            mv "$rel/MFWUpdater/updater" "$rel/MFWUpdater/MFWUpdater"
+          fi
+          chmod +x "$macos_dir/MFW" "$rel/MFWUpdater/MFWUpdater"
 
           # Nuitka 不能用 include-package 打 MaaAgentBinary（arm64 ELF .so 会误判为宿主库）；
           # 组装阶段从 site-packages 拷贝 ADB 代理（minicap/minitouch/maatouch）。
@@ -619,7 +594,7 @@ jobs:
           codesign --force --deep --sign - "$app"
           codesign --verify --deep --strict "$app"
           test -x "$macos_dir/MFW"
-          test -x "$rel/MFWUpdater"
+          test -x "$rel/MFWUpdater/MFWUpdater"
           test -f "$rel/maafw/maa/bin/libMaaFramework.dylib"
 
       - name: Generate distribution file list

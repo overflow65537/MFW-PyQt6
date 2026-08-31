@@ -4,13 +4,14 @@
 
 | 脚本 | 作用 |
 |------|------|
+| `fetch_mfw_updater.py` | 从 [MFW-Updater](https://github.com/overflow65537/MFW-Updater) Release 下载预编译 standalone 产物到 `build/updater.dist` |
 | `build_nuitka.py` | 为 `build/mfw-release` 生成 `file_list.txt` |
 | `move_maa_bin_to_maafw.py` | 将 Nuitka 产物内 `maa/bin` 迁到发行根 `maafw/` |
 | `copy_maagentbinary_to_dist.py` | macOS：拷贝 `MaaAgentBinary`（ADB 代理）进 `.app` |
 | `patch_macos_info_plist.py` | macOS：声明 `CFBundleLocalizations`（Qt 其它本地化行为；语言检测走 `AppleLanguages`） |
 | `bundle_macos_openssl.py` | macOS：打入 OpenSSL dylib 并修正 `cryptography` 路径 |
 | `fix_maafw_macos_dylib_paths.py` | macOS：外置 `maafw/` 的 dylib `@executable_path` → `@loader_path` |
-| `codesign_macos_release.py` | macOS：对 `maafw/`、`MFWUpdater` 做 ad-hoc 重签名（path 修正后） |
+| `codesign_macos_release.py` | macOS：对 `maafw/`、`MFWUpdater/` 做 ad-hoc 重签名（path 修正后） |
 
 Nuitka 须收录 `app.builtin_tasks`（`BuiltinTaskLoader` 运行时 `importlib` 加载；见 `main.py` 的 `nuitka-project` 与 CI `include-package`）。
 
@@ -19,6 +20,7 @@ Nuitka 须收录 `app.builtin_tasks`（`BuiltinTaskLoader` 运行时 `importlib`
 macOS `app-dist` 需额外安装 `requirements-nuitka.txt`（`imageio`，PNG → `.icns`）。
 
 ```bash
+python tools/packaging/fetch_mfw_updater.py --platform linux --arch x86_64 --output build/updater.dist
 python tools/packaging/build_nuitka.py --file-list
 python tools/packaging/move_maa_bin_to_maafw.py build/main.dist
 python tools/packaging/move_maa_bin_to_maafw.py build/main.dist build/mfw-release
@@ -26,4 +28,4 @@ python tools/packaging/move_maa_bin_to_maafw.py \
   build/mfw-release/MFW.app/Contents/MacOS build/mfw-release
 ```
 
-Linux `onefile` 发行根：`MFW`、`MFWUpdater` 与 `maafw/` 同级（`maa/bin` 从 Nuitka 留下的 `main.dist` 迁出）。macOS 发行根：`MFW.app`、`MFWUpdater` 与 `maafw/` 同级。
+Linux `onefile` 发行根：`MFW`、`MFWUpdater/` 与 `maafw/` 同级（`maa/bin` 从 Nuitka 留下的 `main.dist` 迁出；更新器为 standalone 目录）。macOS 发行根：`MFW.app`、`MFWUpdater/` 与 `maafw/` 同级。

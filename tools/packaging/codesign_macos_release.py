@@ -41,9 +41,9 @@ def collect_release_macho_files(release_root: Path) -> list[Path]:
     if maafw_root.is_dir():
         targets.extend(iter_macho_files(maafw_root))
 
-    updater = release_root / "MFWUpdater"
-    if updater.is_file() and is_macho_file(updater):
-        targets.append(updater)
+    updater_dir = release_root / "MFWUpdater"
+    if updater_dir.is_dir():
+        targets.extend(iter_macho_files(updater_dir))
 
     # 路径越深越先签，降低 @loader_path 依赖链上的验签失败概率。
     return sorted(set(targets), key=lambda path: len(path.parts), reverse=True)
@@ -89,7 +89,7 @@ def codesign_macos_release(release_root: Path, identity: str = "-") -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Ad-hoc codesign Mach-O files in a macOS release root (maafw/, MFWUpdater)."
+        description="Ad-hoc codesign Mach-O files in a macOS release root (maafw/, MFWUpdater/)."
     )
     parser.add_argument(
         "release_root",

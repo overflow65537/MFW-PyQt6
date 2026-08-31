@@ -186,7 +186,8 @@ macOS is built with Nuitka `app-dist`. Keep the complete distribution together:
 ```text
 MFW/
 ├── MFW.app/
-├── MFWUpdater
+├── MFWUpdater/
+│   └── MFWUpdater
 ├── maafw/
 ├── interface.json
 ├── resource/
@@ -194,7 +195,7 @@ MFW/
 └── config/
 ```
 
-Move or extract the whole `MFW/` directory instead of moving only `MFW.app`. The app bundle remains read-only; resource hot updates write to external `resource/` / `bundle/`, while the external `MFWUpdater` replaces the complete app bundle after MFW exits.
+Move or extract the whole `MFW/` directory instead of moving only `MFW.app`. The app bundle remains read-only; resource hot updates write to external `resource/` / `bundle/`, while the standalone [`MFW-Updater`](https://github.com/overflow65537/MFW-Updater) (**MIT**) sidecar in `MFWUpdater/` replaces the complete app bundle after MFW exits.
 
 ## License
 
