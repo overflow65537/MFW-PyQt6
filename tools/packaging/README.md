@@ -10,6 +10,7 @@
 | `patch_macos_info_plist.py` | macOS：声明 `CFBundleLocalizations`（Qt 其它本地化行为；语言检测走 `AppleLanguages`） |
 | `bundle_macos_openssl.py` | macOS：打入 OpenSSL dylib 并修正 `cryptography` 路径 |
 | `fix_maafw_macos_dylib_paths.py` | macOS：外置 `maafw/` 的 dylib `@executable_path` → `@loader_path` |
+| `codesign_macos_release.py` | macOS：对 `maafw/`、`MFWUpdater` 做 ad-hoc 重签名（path 修正后） |
 
 Nuitka 须收录 `app.builtin_tasks`（`BuiltinTaskLoader` 运行时 `importlib` 加载；见 `main.py` 的 `nuitka-project` 与 CI `include-package`）。
 

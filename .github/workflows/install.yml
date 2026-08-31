@@ -607,6 +607,9 @@ jobs:
           # 外置 maafw 后 @executable_path 仍指向 .app/MacOS，需改为 @loader_path。
           python3 tools/packaging/fix_maafw_macos_dylib_paths.py "$rel/maafw"
 
+          # install_name_tool 会破坏签名；外置 maafw/ 与 MFWUpdater 不在 .app 内，需单独重签。
+          python3 tools/packaging/codesign_macos_release.py "$rel"
+
           cp README.md "$rel/MFW_README.md"
           cp README-en.md "$rel/MFW_README-en.md"
           cp LICENSE "$rel/MFW_LICENSE"
