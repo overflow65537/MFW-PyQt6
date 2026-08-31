@@ -310,6 +310,7 @@ jobs:
             MaaAgentBinary
             app.builtin_tasks
           include-package-data: MaaAgentBinary
+          include-data-dir: app/assets/icons/lucide=app/assets/icons/lucide
           include-data-files: |
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
@@ -339,6 +340,7 @@ jobs:
             MaaAgentBinary
             app.builtin_tasks
           include-package-data: MaaAgentBinary
+          include-data-dir: app/assets/icons/lucide=app/assets/icons/lucide
       - name: Qt GUI with PySide6 (macOS)
         if: matrix.platform == 'macos'
         uses: Nuitka/Nuitka-Action@main
@@ -368,6 +370,7 @@ jobs:
             PIL
             app.builtin_tasks
           include-module: MaaAgentBinary
+          include-data-dir: app/assets/icons/lucide=app/assets/icons/lucide
           include-data-files: |
             README.md=MFW_README.md
             README-en.md=MFW_README-en.md
@@ -378,11 +381,7 @@ jobs:
           MFW_UPDATER_REPOSITORY: overflow65537/MFW-Updater
           MFW_UPDATER_TAG: latest
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python tools/packaging/fetch_mfw_updater.py \
-            --platform ${{ matrix.platform }} \
-            --arch ${{ matrix.arch }} \
-            --output build/updater.dist
+        run: python tools/packaging/fetch_mfw_updater.py --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} --output build/updater.dist
 
       # standalone：main.dist 内为 maa/bin；迁入 mfw-release 后执行 move_maa_bin_to_maafw，与 MAAFW_BINARY_PATH=maafw 一致
       - name: Assemble mfw-release (Windows)
