@@ -1,7 +1,7 @@
 """
-热更新解压辅助（主程序与 MFWUpdater/ 共用）。
+热更新解压辅助。
 
-仅依赖标准库，便于 Nuitka 打成独立 onefile，无需引用 app 包。
+热更新后 interface 同步（版本、agent.embedded、resource.hash）见 sync_interface_after_hotfix。
 """
 
 from __future__ import annotations
@@ -125,7 +125,7 @@ def sync_interface_after_hotfix(
     version: str,
     bundle_path: Path | str,
 ) -> bool:
-    """热更新后同步 interface 版本号，并按 CFA_setting.json 写入 agent.embedded。"""
+    """热更新后同步 interface 版本号、agent.embedded 与 resource.hash。"""
     setting = read_cfa_setting(bundle_path)
     embedded = cfa_setting_embedded(setting)
 
@@ -138,16 +138,25 @@ def sync_interface_after_hotfix(
         old_version = interface.get("version", "unknown")
         interface["version"] = version
         apply_cfa_embedded_to_interface(interface, bundle_path)
+        hash_updated = 0
+        try:
+            from app.core.utils.resource_hash import apply_resource_hashes_to_interface
+
+            hash_updated = apply_resource_hashes_to_interface(interface, bundle_path)
+        except Exception as exc:
+            logger.warning("[热更新] resource.hash 回填失败: %s", exc)
         _write_interface_config(path, interface)
         embedded_note = (
             f", agent.embedded={embedded}" if embedded is not None else ""
         )
+        hash_note = f", resource.hash updated={hash_updated}" if hash_updated else ""
         logger.info(
-            "[热更新] interface 已同步: %s (version %s -> %s%s)",
+            "[热更新] interface 已同步: %s (version %s -> %s%s%s)",
             path.name,
             old_version,
             version,
             embedded_note,
+            hash_note,
         )
         return True
     logger.warning("[热更新] 未能更新 interface 配置")

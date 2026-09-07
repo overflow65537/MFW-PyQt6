@@ -1,6 +1,7 @@
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import jsonc
 import pytest
@@ -11,6 +12,7 @@ from hotfix_extract import (
     apply_cfa_embedded_to_interface,
     sync_interface_after_hotfix,
 )
+from tests.test_resource_hash import _FakeResource
 
 
 @pytest.fixture
@@ -104,9 +106,20 @@ def test_try_load_text_from_path_reads_relative_file():
 
 
 def test_sync_interface_after_hotfix_uses_apply_helper(bundle_dir: Path):
-    interface_paths = [bundle_dir / "interface.json"]
-    assert sync_interface_after_hotfix(interface_paths, "2.0.0", bundle_dir) is True
+    resource_dir = bundle_dir / "res"
+    resource_dir.mkdir()
+    interface_path = bundle_dir / "interface.json"
+    interface = jsonc.loads(interface_path.read_text(encoding="utf-8"))
+    interface["resource"] = [{"name": "main", "path": ["res"], "hash": "old-hash"}]
+    interface_path.write_text(
+        json.dumps(interface, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
-    saved = jsonc.loads((bundle_dir / "interface.json").read_text(encoding="utf-8"))
+    with patch("app.core.utils.resource_hash.Resource", _FakeResource):
+        assert sync_interface_after_hotfix([interface_path], "2.0.0", bundle_dir) is True
+
+    saved = jsonc.loads(interface_path.read_text(encoding="utf-8"))
     assert saved["version"] == "2.0.0"
     assert saved["agent"]["embedded"] is True
+    assert saved["resource"][0]["hash"] == "computed-hash"
