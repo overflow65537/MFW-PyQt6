@@ -1220,6 +1220,31 @@ class TaskService:
                 return task
         return None
 
+    def has_visible_pretask(self) -> bool:
+        """当前 interface 与控制器/资源选择下是否应展示 PreTask。"""
+        from app.core.utils.pretask_visibility import has_visible_pretask_entries
+
+        controller_task = self.get_task(_CONTROLLER_)
+        resource_task = self.get_task(_RESOURCE_)
+
+        current_controller = ""
+        if controller_task and isinstance(controller_task.task_option, dict):
+            current_controller = str(
+                controller_task.task_option.get("controller_type", "") or ""
+            ).strip()
+
+        current_resource = ""
+        if resource_task and isinstance(resource_task.task_option, dict):
+            current_resource = str(
+                resource_task.task_option.get("resource", "") or ""
+            ).strip()
+
+        return has_visible_pretask_entries(
+            self.interface if isinstance(self.interface, dict) else None,
+            current_controller,
+            current_resource,
+        )
+
     def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
         """更新单个任务勾选状态，并仅持久化、通知一次。"""
         config_id = self.config_service.current_config_id

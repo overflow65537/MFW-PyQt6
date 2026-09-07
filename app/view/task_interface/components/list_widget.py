@@ -199,7 +199,7 @@ class TaskDragListWidget(BaseListWidget):
         """
         if task.item_id == _SETTING_:
             return False
-        if task.item_id == _PRETASK_ and not self._has_visible_pretask():
+        if task.item_id == _PRETASK_ and not self.service_coordinator.tasks.has_visible_pretask():
             return False
 
         # View 仅计算是否展示，不回写 TaskItem 业务字段。
@@ -207,17 +207,6 @@ class TaskDragListWidget(BaseListWidget):
         should_show_by_controller = self._should_show_by_controller(task)
         capability_show = should_show_by_resource and should_show_by_controller
         return capability_show
-
-    def _has_visible_pretask(self) -> bool:
-        """interface 未配置 pretask 时不展示 PreTask 行，避免占用受保护槽位。"""
-        try:
-            interface = self.service_coordinator.tasks.interface
-        except Exception:
-            return True
-        if not isinstance(interface, dict):
-            return True
-        pretask_entries = interface.get("pretask")
-        return bool(pretask_entries)
     
     def _should_show_by_resource(self, task: TaskItem) -> bool:
         """根据当前选择的资源判断任务是否应该显示"""

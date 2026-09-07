@@ -25,6 +25,9 @@ class TaskFacade:
     def get_task(self, task_id: str) -> TaskItem | None:
         return snapshot(self._service.get_task(task_id))
 
+    def has_visible_pretask(self) -> bool:
+        return self._service.has_visible_pretask()
+
     def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
         return self._service.update_task_checked(task_id, is_checked)
 
