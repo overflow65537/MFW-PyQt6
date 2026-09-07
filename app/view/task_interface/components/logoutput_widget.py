@@ -47,8 +47,9 @@ class LogoutputWidget(QWidget):
     日志输出组件
     """
 
+    # 仅当整条日志以错误关键词开头，且其后只剩空白/标点时提升等级
     _ERROR_HINT_PATTERN = re.compile(
-        r"错误|錯誤|失败|失敗|\berror\b|\bfailed\b|\bfailure\b",
+        r"^\s*(?:错误|錯誤|失败|失敗|error|failed|failure)\W*$",
         re.IGNORECASE,
     )
 
@@ -415,13 +416,18 @@ class LogoutputWidget(QWidget):
         logger.info(f"[{entry.level}] {entry.text}")
 
     def _normalize_level_by_text(self, level: str, text: str) -> str:
-        """根据日志级别与关键词将消息归一化到最终显示级别。"""
+        """根据日志级别与关键词将消息归一化到最终显示级别。
+
+        资源日志若要以关键词自动升为 ERROR，必须满足：
+        - 关键词位于文本开头（允许前置空白）
+        - 关键词之后直到结尾不能再有文字，只能是空白或标点
+        """
         normalized = (level or "INFO").upper()
         if normalized in {"ERROR", "CRITICAL"}:
             return normalized
 
         message = str(text or "")
-        if self._ERROR_HINT_PATTERN.search(message):
+        if self._ERROR_HINT_PATTERN.match(message):
             return "ERROR"
 
         if normalized in self._level_color:
