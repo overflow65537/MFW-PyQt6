@@ -162,25 +162,47 @@ class OptionService:
                 )
         return form
 
+    def _interface_options(self) -> Dict[str, Any]:
+        interface = self.task_service.interface or {}
+        options = interface.get("option", {})
+        return options if isinstance(options, dict) else {}
+
+    def reveal_options(self, options: Any) -> Any:
+        """解密选项树中的密码字段，供 View 展示。"""
+        from app.core.utils.option_secret import decrypt_option_tree
+
+        return decrypt_option_tree(options, self._interface_options())
+
+    def seal_options(self, options: Any) -> Any:
+        """加密选项树中的密码字段，供持久化。"""
+        from app.core.utils.option_secret import encrypt_option_tree
+
+        return encrypt_option_tree(options, self._interface_options())
+
     def get_options(self) -> Dict[str, Any]:
-        """获取当前任务的选项"""
-        return self.current_options
+        """获取当前任务的选项（密码字段已解密）。"""
+        revealed = self.reveal_options(self.current_options)
+        return revealed if isinstance(revealed, dict) else {}
 
     def get_option(self, option_key: str) -> Any:
-        """获取特定选项"""
-        return self.current_options.get(option_key)
+        """获取特定选项（密码字段已解密）。"""
+        return self.get_options().get(option_key)
 
     def update_option(self, option_key: str, option_value: Any) -> bool:
         """更新选项"""
-        # 更新本地选项字典
-        self.current_options[option_key] = option_value
-        return self._on_option_updated({option_key: option_value})
+        sealed = self.seal_options({option_key: option_value})
+        if not isinstance(sealed, dict):
+            sealed = {option_key: option_value}
+        self.current_options[option_key] = sealed.get(option_key, option_value)
+        return self._on_option_updated(sealed)
 
     def update_options(self, options: Dict[str, Any]) -> bool:
         """批量更新选项"""
-        # 批量更新本地选项字典
-        self.current_options.update(options)
-        return self._on_option_updated(options)
+        sealed = self.seal_options(options)
+        if not isinstance(sealed, dict):
+            sealed = options
+        self.current_options.update(sealed)
+        return self._on_option_updated(sealed)
 
     @staticmethod
     def _normalize_json_value(value: Any) -> Any:
@@ -515,7 +537,10 @@ class OptionService:
 
     def update_setting_options(self, options: Dict[str, Any]) -> bool:
         """保存 Setting 表单值，存储位置由 ConfigService 统一管理。"""
-        return self.task_service.config_service.update_current_setting_options(options)
+        sealed = self.seal_options(options)
+        if not isinstance(sealed, dict):
+            sealed = options
+        return self.task_service.config_service.update_current_setting_options(sealed)
 
     def _resource_option_names(self, resource_name: str) -> tuple[set[str], set[str]]:
         all_names: set[str] = set()
@@ -628,12 +653,15 @@ class OptionService:
             else {}
         )
         resource_name = str(existing.get("resource", "") or "")
+        sealed_resource_options = self.seal_options(resource_options)
+        if not isinstance(sealed_resource_options, dict):
+            sealed_resource_options = resource_options
         resource_task.task_option = self._normalize_resource_task_options(
             existing,
             resource_name,
             {
                 key: value
-                for key, value in resource_options.items()
+                for key, value in sealed_resource_options.items()
                 if key in set(active_option_names)
             },
         )
@@ -866,6 +894,11 @@ class OptionService:
             # 传递 default_case（checkbox 使用列表，select 使用字符串）
             if "default_case" in option_def:
                 field_config["default_case"] = option_def["default_case"]
+            if option_type == "checkbox":
+                if "min_count" in option_def:
+                    field_config["min_count"] = option_def["min_count"]
+                if "max_count" in option_def:
+                    field_config["max_count"] = option_def["max_count"]
 
         return field_config
 
@@ -1068,7 +1101,15 @@ class OptionService:
                     if not isinstance(option_def, dict):
                         continue
                     option_type = (option_def.get("type") or "select").lower()
-                    if option_type not in ("select", "switch", "combobox", ""):
+                    if option_type not in (
+                        "select",
+                        "switch",
+                        "combobox",
+                        "input",
+                        "checkbox",
+                        "hotkey",
+                        "",
+                    ):
                         continue
                     widget_key = f"entry_{idx}_{option_name}"
                     field_config = self.process_option_def(option_def, all_options, widget_key)
@@ -1101,8 +1142,9 @@ class OptionService:
                 pretask_entries[entry_idx] = {"options": {}}
                 entry = pretask_entries[entry_idx]
             entry_options = entry.setdefault("options", {})
-            if isinstance(value, dict) and entry_options.get(option_name) != value:
-                entry_options[option_name] = value
+            sealed_value = self.seal_options({option_name: value}).get(option_name, value)
+            if isinstance(sealed_value, dict) and entry_options.get(option_name) != sealed_value:
+                entry_options[option_name] = sealed_value
 
         task.task_option["pretask_entries"] = pretask_entries
 

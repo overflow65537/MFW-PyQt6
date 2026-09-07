@@ -575,7 +575,17 @@ class TaskListItem(BaseListItem):
                         if labels:
                             result.append("、".join(labels))
                     elif isinstance(option_value, dict):
-                        for sub_value in option_value.values():
+                        from app.core.utils.option_secret import (
+                            PASSWORD_MASK,
+                            password_field_names,
+                        )
+
+                        secret_fields = password_field_names(option_def)
+                        for sub_key, sub_value in option_value.items():
+                            if str(sub_key) in secret_fields:
+                                if sub_value and str(sub_value).strip():
+                                    result.append(PASSWORD_MASK)
+                                continue
                             if sub_value and str(sub_value).strip():
                                 result.append(str(sub_value).strip())
                     else:

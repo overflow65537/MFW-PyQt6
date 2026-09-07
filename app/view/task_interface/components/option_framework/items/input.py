@@ -10,6 +10,7 @@ from qfluentwidgets import LineEdit
 from app.common.signal_bus import signalBus
 from app.utils.logger import logger
 from .base import OptionItemBase
+from .line_edit_factory import create_option_line_edit, should_apply_input_default
 
 
 class InputOptionItem(OptionItemBase):
@@ -70,11 +71,11 @@ class InputOptionItem(OptionItemBase):
                 )
 
             # 创建输入框
-            line_edit = LineEdit()
+            line_edit = create_option_line_edit(input_item)
             self.control_widget = {input_name: line_edit}
 
-            # 设置默认值
-            if "default" in input_item:
+            # 设置默认值（密码字段禁止 default）
+            if should_apply_input_default(input_item) and "default" in input_item:
                 line_edit.setText(str(input_item["default"]))
 
             # 设置占位提示

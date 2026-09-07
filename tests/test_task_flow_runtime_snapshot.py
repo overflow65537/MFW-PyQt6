@@ -272,6 +272,7 @@ class TaskFlowRuntimeSnapshotTests(unittest.IsolatedAsyncioTestCase):
         self.runner.stop_task.assert_awaited_once_with()
         self.assertFalse(self.runner._is_running)
         self.assertEqual("run_failed", telemetry[-1]["event"])
+        self.assertEqual("snapshot failed", telemetry[-1].get("error"))
 
     async def test_cleanup_failure_sets_final_telemetry_to_failed(self):
         self.runner.need_stop = True

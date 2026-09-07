@@ -32,6 +32,9 @@
 | 2026-7-1 | v2.8.1 | `pretask` 支持 `controller` / `resource` 过滤字段，与 `task.controller` / `task.resource` 语义一致 |
 | 2026-7-22 | v2.9.0 | 新增 `telemetry` 匿名遥测（数据埋点）配置字段 |
 | 2026-8-5 | v2.9.1 | 新增 `focus` 消息模板对象的 `trace` 字段，用于按回调消息类型控制遥测是否上传节点结果 |
+| 2026-8-23 | v2.9.2 | 新增 `telemetry.sentry.failure_attachments_sample_rate` 失败诊断附件独立采样率字段 |
+| 2026-8-24 | v2.10.0 | `input` 类型选项的 `inputs[]` 新增 `password` 字段，用于标记密码/密钥输入 |
+| 2026-9-6 | v2.10.1 | `checkbox` 类型新增 `min_count` / `max_count` 字段，用于限制最小 / 最大选择数量 |
 
 ## `interface.json`
 
@@ -40,7 +43,6 @@
 > 该文件可以通过 [schema](https://github.com/MaaXYZ/MaaFramework/blob/main/tools/interface.schema.json) 文件获得提示和校验功能
 >
 > 使用 VSCode 打开 项目模板 文件夹，可自动关联 schema 和文件
-
 ### 整体结构
 
 - interface_version `number`  
@@ -103,7 +105,7 @@
 - description `string`  
   项目描述信息，显示在"关于"页面。支持文件路径、URL或直接文本，内容支持Markdown格式。支持国际化（以`$`开头）。
 
-- telemetry `object` **💡 v2.9.0**  
+- telemetry `object` **? v2.9.0**  
   匿名遥测（数据埋点）配置，用于向资源作者自己的遥测平台上报崩溃与任务运行统计。并非所有 Client 都会支持。可选；未配置时不进行任何遥测。该字段作为遥测配置的统一容器，当前提供 `sentry` 子字段，未来可扩展其他平台。
 
   数据归属与隐私约定：  
@@ -121,6 +123,9 @@
 
     - traces_sample_rate `number`  
       事务采样率，取值 `0`~`1`。可选，默认 `1.0`。任务为低频业务事件，全量上报可获得精确的成功 / 失败统计；用户量较大时可调低以控制 Sentry 配额，但统计将变为抽样。
+
+    - failure_attachments_sample_rate `number` **? v2.9.2**  
+      失败诊断附件独立采样率，取值 `0`~`1`。可选，默认 `1.0`；`0` 表示不上传附件，`1` 表示上传所有符合条件的附件。仅控制随失败 / 错误事件上传的附件，不影响对应的 Error Event、Sentry Logs 或事务采样。Client 不支持采集失败诊断附件时可忽略此字段。
 
     - environment `string`  
       环境标签（如 `production`、`beta`），用于在 Sentry 中区分。可选；缺省由 Client 决定（如使用更新频道，或回退为 `production`）。
@@ -145,10 +150,13 @@
     （仅 Linux）。
 
   - display_short_side `number`  
-    默认缩放分辨率的短边长度，用于屏幕适配。可选，默认720。与`display_long_side`和`display_raw`互斥。
+    默认缩放分辨率的短边长度，用于屏幕适配。可选，默认720。与`display_long_side`、`display_expand`和`display_raw`互斥。
 
   - display_long_side `number`  
-    默认缩放分辨率的长边长度，用于屏幕适配。可选。与`display_short_side`和`display_raw`互斥。
+    默认缩放分辨率的长边长度，用于屏幕适配。可选。与`display_short_side`、`display_expand`和`display_raw`互斥。
+
+  - display_expand `[number, number]`  
+    Unity Canvas Scaler 的 Expand 语义参考分辨率 `[width, height]`：`scale = max(width / raw_width, height / raw_height)`，保持源宽高比，输出两边均不小于参考。可选。与`display_short_side`、`display_long_side`和`display_raw`互斥。
 
   - display_raw `boolean`  
     是否使用原始分辨率进行截图，不进行缩放。可选，默认false。与缩放分辨率设置互斥。
@@ -157,13 +165,13 @@
     是否需要管理员权限运行该控制器。可选，默认 false。  
     在运行任务前，若当前进程不是管理员，会提示并尝试以管理员身份重新启动。
 
-  - attach_resource_path `string[]` **💡 v2.2.0**  
+  - attach_resource_path `string[]` **? v2.2.0**  
     可选。附加资源路径数组。将会在 `resource.path` 加载完成后，额外加载这些路径下的资源。
 
-  - option `string[]` **💡 v2.3.0**  
+  - option `string[]` **? v2.3.0**  
     可选。控制器级的选项配置，为一个字符串数组，数组元素应与外层 option 配置中的键名对应。  
     该选项生成的参数会参与到所有使用该控制器的任务的 pipeline override 中，起到控制器级参数传递的作用。  
-    若被引用的 option 不支持当前 controller/resource 条件，则该 option 的 `pipeline_override`（含其嵌套 `option.option`）不参与合并。 **💡 v2.3.1**
+    若被引用的 option 不支持当前 controller/resource 条件，则该 option 的 `pipeline_override`（含其嵌套 `option.option`）不参与合并。 **? v2.3.1**
 
   - adb `object`  
     `Adb` 控制器的具体配置。  
@@ -233,6 +241,9 @@
     - use_win32_vk_code `bool`
       可选。为 `true` 时按键被视为 Win32 Virtual-Key 键码，内部转换为 Linux evdev 码；为 `false` 时按原始 evdev 码处理。默认 `false`。
 
+    - pipewire_source `string`  
+      可选。`PipeWire` 截图的流来源：`Gamescope` 直连 gamescope 节点（node id 运行时发现），`Portal` 走 xdg-desktop-portal ScreenCast。仅当 `screencap` 为 `PipeWire` 时有效。默认 `Gamescope`。
+
 - resource `object[]`  
   资源配置，为一个对象数组，含有资源加载的信息。
 
@@ -260,9 +271,9 @@
   - option `string[]`  
     可选。资源包级的选项配置，为一个字符串数组，数组元素应与外层 option 配置中的键名对应。  
     该选项生成的参数会参与到所有任务的 pipeline override 中，起到资源包级参数传递的作用。  
-    若被引用的 option 不支持当前 controller/resource 条件，则该 option 的 `pipeline_override`（含其嵌套 `option.option`）不参与合并。 **💡 v2.3.1**
+    若被引用的 option 不支持当前 controller/resource 条件，则该 option 的 `pipeline_override`（含其嵌套 `option.option`）不参与合并。 **? v2.3.1**
 
-  - hash `string` **💡 v2.6.0**  
+  - hash `string` **? v2.6.0**  
     可选。资源完整性校验值。该值应为仅加载 `path` 后通过 `MaaResourceGetHash` 获取的 hash 字符串。  
     校验时机为加载完 `path` 后、加载 `controller.attach_resource_path` 之前。  
     若实际 hash 与该值不匹配，应向用户发出警告（例如建议重新下载资源包），但不应阻止继续使用。  
@@ -285,15 +296,15 @@
     ]
     ```
 
-- pretask `object | object[]` **💡 v2.7.0**  
+- pretask `object | object[]` **? v2.7.0**  
   可选。Controller 启动前执行的预任务配置，可以是单个对象或对象数组。Client 应在创建或连接 Controller 前按顺序启动这些程序，并等待其执行结束。若预任务启动失败或返回非零退出码，Client 应中止本次启动并向用户报告错误。  
   预任务的 CWD 为 interface.json 所在目录。  
   同一 `pretask` 字段也可出现在由顶层 `import` 加载的其他 PI 片段文件中；Client 应将各处的预任务合并为一条有序列表：先执行主 `interface.json` 中的条目（单个对象视为一项），再按 `import` 数组顺序依次追加各被引用文件中的 `pretask`（若为数组则按数组顺序；若为单个对象则视为一项）。实际执行顺序与该合并后的列表一致。  
 
-  - resource `string[]` **💡 v2.8.1**  
+  - resource `string[]` **? v2.8.1**  
     可选。指定该预任务支持的资源包列表。数组元素应与 `resource` 配置中的 `name` 字段对应。若不指定，则表示该预任务在所有资源包中都可用。Client 可将不支持当前资源包的预任务隐藏，或以不可用（灰色/禁用）状态展示以提示用户。
 
-  - controller `string[]` **💡 v2.8.1**  
+  - controller `string[]` **? v2.8.1**  
     可选。指定该预任务支持的控制器类型列表。数组元素应与 `controller` 配置中的 `name` 字段对应。若不指定，则表示该预任务在所有控制器类型中都可用。Client 可将不支持当前控制器的预任务隐藏，或以不可用（灰色/禁用）状态展示以提示用户。
 
   - exec `string`  
@@ -318,6 +329,7 @@
     可选。预任务配置项，为一个数组，数组元素应与外层 `option` 配置中的键名对应。Client 会根据这些配置项让用户进行选择。  
     若设置了 `option`，Client 应将这些 option 的当前取值序列化为**单行紧凑 JSON 字符串**，并自动追加为最后一个参数，位于 `args` 之后。若未设置或为空，则不追加该 JSON 参数。  
     该 JSON 对象以 option 键名为字段名，取值类型与 `preset.task[].option` 中的 `OptionValue` 一致：`select` / `switch` 为 `case.name` 字符串，`checkbox` 为 `case.name` 字符串数组，`input` 为输入字段 `name` 到字符串值的对象。因用户选择而激活的子配置项（`option.option`）也应以其自身 option 键名加入该对象；不满足当前 `controller` / `resource` 限制的 option 不应加入。  
+    传给预任务进程的 JSON 中，`password` 为 `true` 的字段仍应使用解密后的原文（供程序使用），但 Client 不得将该 JSON 或其中的原文写入日志。 **? v2.10.0**  
     `pretask.option` 仅用于生成传给预任务进程的参数，不参与 `pipeline_override` 合并。  
 
   **单个 pretask 示例：**
@@ -443,7 +455,7 @@
 
 <a id="agent-subprocess-env-v25"></a>
 
-### Agent 子进程环境变量 **💡 v2.5.0**
+### Agent 子进程环境变量 **? v2.5.0**
 
 Agent 与 MaaFramework 主进程分离运行时，子进程无法自动获知通用 UI 的名称与版本、界面语言、用户当前选中的控制器与资源包等信息；这些内容也不在 MaaFW C API 的常规回调中暴露。为便于自定义识别/动作等逻辑读取 **Client 侧上下文** 与 **当前 PI 选择在运行时的快照**，约定由 **Client** 在启动 `agent` 子进程时，向进程环境注入下列变量（名称全大写，值为字符串）。
 
@@ -477,7 +489,7 @@ PI_CONTROLLER={"name":"Win32-Window","label":"Win32-默认","description":"默�
 PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
 ```
 
-- group `object[]` **💡 v2.4.0**  
+- group `object[]` **? v2.4.0**  
   可选。任务分组声明，为一个对象数组，用于声明任务分组及其展示属性。
 
   - name `string`  
@@ -532,7 +544,7 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
   - icon `string`  
     任务图标文件路径，相对于项目根目录。用于在用户界面中显示。可选。支持国际化（以`$`开头）。
 
-  - group `string[]` **💡 v2.4.0**  
+  - group `string[]` **? v2.4.0**  
     可选。指定该任务所属的分组列表。数组元素应与顶层 `group` 配置中的 `name` 字段对应。若不指定，则表示该任务不属于任何显式分组。
 
     同一个任务可以同时属于多个分组。Client 应将这些值仅视为分组归属关系；任务身份、勾选状态、预设引用以及配置项取值仍然以 `task.name` 作为唯一键。
@@ -627,20 +639,20 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
   - type `string`  
     配置项类型。可选，默认 `"select"`。可选值：
     - `"select"`: 下拉选项框，用户从预定义的选项中选择一个
-    - `"checkbox"`: 多选框，用户从预定义的选项中选择多个 **💡 v2.3.0**
+    - `"checkbox"`: 多选框，用户从预定义的选项中选择多个 **? v2.3.0**
     - `"input"`: 用户输入框，允许用户手动输入内容
-    - `"hotkey"`: 快捷键捕获框，允许用户通过按键捕获快捷键 **💡 v2.8.0**
+    - `"hotkey"`: 快捷键捕获框，允许用户通过按键捕获快捷键 **? v2.8.0**
     - `"switch"`: 选择框，Yes or No
 
-  - controller `string[]` **💡 v2.3.0**  
+  - controller `string[]` **? v2.3.0**  
     可选。指定该配置项适用的控制器类型列表。数组元素应与 `controller` 配置中的 `name` 字段对应。若不指定，则表示该配置项在所有控制器类型中都可用。  
     当用户选择了某个控制器时，Client 可将不适用于该控制器的配置项隐藏，或以不可用（灰色/禁用）状态展示以提示用户。  
-    当当前控制器不在该列表中时，该配置项视为未激活：其自身及其子配置项（`option.option`）产生的所有 `pipeline_override` 均不参与合并。 **💡 v2.3.1**
+    当当前控制器不在该列表中时，该配置项视为未激活：其自身及其子配置项（`option.option`）产生的所有 `pipeline_override` 均不参与合并。 **? v2.3.1**
 
-  - resource `string[]` **💡 v2.3.0**  
+  - resource `string[]` **? v2.3.0**  
     可选。指定该配置项适用的资源包列表。数组元素应与 `resource` 配置中的 `name` 字段对应。若不指定，则表示该配置项在所有资源包中都可用。  
     当用户选择了某个资源包时，Client 可将不适用于该资源包的配置项隐藏，或以不可用（灰色/禁用）状态展示以提示用户。  
-    当当前资源包不在该列表中时，该配置项视为未激活：其自身及其子配置项（`option.option`）产生的所有 `pipeline_override` 均不参与合并。 **💡 v2.3.1**
+    当当前资源包不在该列表中时，该配置项视为未激活：其自身及其子配置项（`option.option`）产生的所有 `pipeline_override` 均不参与合并。 **? v2.3.1**
 
   - label `string`  
     配置项显示标签，用于在用户界面中展示。支持国际化字符串（以`$`开头）。可选。
@@ -654,7 +666,7 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
   - cases `object[]`  
     仅在 `type` 为 `"select"`/`"checkbox"`/`"switch"` 时使用。可选项，为一个对象数组，含有各个可选项的信息。
 
-    **注意：** 当 `type` 为 `"checkbox"` 时，用户可以同时选中多个 case，所有被选中的 case 的 `pipeline_override` 会按照 `cases` 数组中的定义顺序依次合并生效，与用户勾选的先后顺序无关。
+    **注意：** 当 `type` 为 `"checkbox"` 时，用户可以同时选中多个 case，所有被选中的 case 的 `pipeline_override` 会按照 `cases` 数组中的定义顺序依次合并生效，与用户勾选的先后顺序无关。可通过 `min_count` / `max_count` 限制最少 / 最多选中数量。 **? v2.10.1**
 
     **注意：** 当 `type` 为 `"switch"` 时，仅支持两个 cases，且需遵循以下规则：
     - 如果 `case.name` 为 `"Yes"`、`"yes"`、`"Y"` 或 `"y"` 之一，该 case 会被识别为 **Yes 选项**
@@ -696,7 +708,7 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
       输入字段详细描述信息，帮助用户理解输入要求。支持文件路径、URL或直接文本，内容支持Markdown格式。可选。支持国际化（以`$`开头）。
 
     - default `string`  
-      输入字段的默认值。可选。
+      输入字段的默认值。可选。`password` 为 `true` 时禁止设置此字段；JSON Schema 会拒绝该组合。 **? v2.10.0**
 
     - pipeline_type `string`  
       输入字段在 pipeline_override 中的数据类型。可选值：`"string"`, `"int"`, `"bool"`。当使用 pipeline_override 中的变量替换时，会根据该类型进行类型转换。
@@ -707,8 +719,19 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
     - pattern_msg `string`  
       正则校验用户输入错误时，显示的信息。可选。支持国际化（以`$`开头）。
 
+    - password `bool` **? v2.10.0**  
+      可选，默认 `false`。为 `true` 时，将该输入字段视为密码 / 密钥。
+
+      Client 必须遵守以下约束：
+
+      - **界面：** 使用密码输入框（掩码显示），不得在 UI 中回显原文。已保存的值在界面中同样应掩码展示。
+      - **日志与遥测：** 不得将原文写入日志、遥测、崩溃报告或任何可分享的输出。需要占位时使用掩码（如 `******`），或直接省略该字段。
+      - **配置存储：** 写入用户配置文件时必须加密存储，不得以明文落盘。读取配置后仅在内存中解密，供 `pipeline_override` 替换、`pretask` 传参等运行时使用。
+      - **加密实现：** 算法与密文格式由 Client 自行决定，密文不必跨 Client / 跨设备可互解。建议优先使用操作系统提供的凭据保护（如 Windows DPAPI、macOS Keychain、Linux Secret Service）。
+      - **`default` / `preset`：** 密码字段禁止设置 `default`（JSON Schema 会拒绝 `password: true` 与 `default` 同时出现）。资源作者不要把密码字段写入 `preset`。`interface.json` 通常会随资源分发，明文密钥不得出现在其中。
+
   - hotkeys `object[]`  
-    仅在 `type` 为 `"hotkey"` 时使用。快捷键配置，为一个对象数组，定义用户可捕获的快捷键字段。 **💡 v2.8.0**
+    仅在 `type` 为 `"hotkey"` 时使用。快捷键配置，为一个对象数组，定义用户可捕获的快捷键字段。 **? v2.8.0**
 
     Client 应渲染快捷键捕获控件。用户按下目标键（或组合键）后，Client 将其保存为人类可读的快捷键字符串（如 `"E"`、`"Ctrl+A"`），**不应**直接保存虚拟按键码或 JSON 数组。组合键以 `+` 连接，**末段为主键**，前段依次为修饰键（如 `Ctrl+Shift+A` 中 `A` 为主键，`Ctrl`、`Shift` 为修饰键）。
 
@@ -755,13 +778,24 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
   - default_case `string` | `string[]`  
     默认选项名称。可选。
     - 当 `type` 为 `"select"` / `"switch"` 时，填写单个字符串，Client 使用该值作为选项的初始选中值。
-    - 当 `type` 为 `"checkbox"` 时，填写字符串数组，Client 使用该值作为多选框的初始选中值。 **💡 v2.3.0**
+    - 当 `type` 为 `"checkbox"` 时，填写字符串数组，Client 使用该值作为多选框的初始选中值。 **? v2.3.0**  
+      `default_case` 的元素数量应满足 `min_count` / `max_count`（若已设置）。 **? v2.10.1**
 
-- global_option `string[]` **💡 v2.3.0**  
+  - min_count `number` **? v2.10.1**  
+    仅在 `type` 为 `"checkbox"` 时使用。可选，默认 `0`。用户至少需要选中的 case 数量，为非负整数。  
+    为 `0` 时允许不选。该值不应大于 `cases` 的长度；若同时设置了 `max_count`，则不应大于 `max_count`。  
+    Client 应在用户选择时校验：选中数量少于 `min_count` 时提示用户补选，不应带着不满足下限的选择启动任务。
+
+  - max_count `number` **? v2.10.1**  
+    仅在 `type` 为 `"checkbox"` 时使用。可选。用户最多可以选中的 case 数量，为非负整数。不设置表示不限制（最多可选中全部 case）。  
+    该值不应大于 `cases` 的长度；若同时设置了 `min_count`，则不应小于 `min_count`。  
+    Client 应在用户选择时阻止超过 `max_count` 的勾选。
+
+- global_option `string[]` **? v2.3.0**  
   可选。全局选项配置，为一个字符串数组，数组元素应与 `option` 配置中的键名对应。  
   该选项生成的参数会参与到所有任务的 pipeline override 中，无论用户选择了什么资源包或控制器。  
   与 `resource.option` 和 `controller.option` 不同，全局选项不依赖于任何资源包或控制器的选择。  
-  但 `global_option` 引用的 option 仍需满足该 option 自身的 `resource` / `controller` 限制；不满足时不应用任何 `pipeline_override`。 **💡 v2.3.1**
+  但 `global_option` 引用的 option 仍需满足该 option 自身的 `resource` / `controller` 限制；不满足时不应用任何 `pipeline_override`。 **? v2.3.1**
 
   ```jsonc
   "global_option": [
@@ -770,7 +804,7 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
   ]
   ```
 
-- setting `object[]` **💡 v2.8.0**  
+- setting `object[]` **? v2.8.0**  
   可选。任务设置页 UI 声明，供 MXU 等 Client 渲染全局任务配置专用设置区域。
   每个元素描述一个设置分区；Client 可按数组顺序渲染各分区。
 
@@ -805,9 +839,9 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
   ]
   ```
 
-- import `string[]` **💡 v2.2.0**  
+- import `string[]` **? v2.2.0**  
     可选。导入其他 PI 文件的路径数组。文件相对路径为 interface.json 同目录下的相对路径。  
-    支持导入这些文件中的 `task`、`option`、`preset` **💡 v2.3.0**、`group` **💡 v2.4.0**、`pretask` **💡 v2.7.0**、`global_option` 与 `setting` **💡 v2.8.0** 字段。  
+    支持导入这些文件中的 `task`、`option`、`preset` **? v2.3.0**、`group` **? v2.4.0**、`pretask` **? v2.7.0**、`global_option` 与 `setting` **? v2.8.0** 字段。  
     Client 会依次加载这些文件，并将它们的内容与当前文件进行合并，从而实现配置的拆分和复用。
 
     **合并规则：**
@@ -816,12 +850,12 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
     | --- | --- |
     | `task` | 追加到主文件 `task` 数组末尾 |
     | `option` | 对象合并；同名键以后导入文件为准 |
-    | `global_option` | 追加到主文件数组末尾；按 option 键名去重，保留先出现的项 **💡 v2.8.0** |
-    | `setting` | 追加到主文件 `setting` 数组末尾 **💡 v2.8.0** |
+    | `global_option` | 追加到主文件数组末尾；按 option 键名去重，保留先出现的项 **? v2.8.0** |
+    | `setting` | 追加到主文件 `setting` 数组末尾 **? v2.8.0** |
     | `preset` | 追加到主文件 `preset` 数组末尾 |
     | `group` | 追加到主文件 `group` 数组末尾；按 `name` 去重，保留先出现的项 |
 
-- preset `object[]` **💡 v2.3.0**  
+- preset `object[]` **? v2.3.0**  
   可选。预设配置，为一个对象数组。每个预设是一套预定义的任务勾选状态与选项值的快照，用户可一键应用，快速切换不同使用场景。
 
   - name `string`  
@@ -854,6 +888,8 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
       | `checkbox` | `string[]`（`case.name` 数组） | `["自动战斗", "自动拾取"]` |
       | `input` | `record<string, string>`（输入字段 name → 值） | `{ "章节号": "4" }` |
       | `hotkey` | `record<string, string>`（快捷键字段 name → 快捷键字符串） | `{ "FightCombo": "E" }` |
+
+      `password` 为 `true` 的输入字段不要写入 `preset`。 **? v2.10.0**
 
   **预设示例：**
 
@@ -932,7 +968,7 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
   }
   ```
 
-### Option 覆盖顺序 **💡 v2.3.0**
+### Option 覆盖顺序 **? v2.3.0**
 
 各级 option 生成的 `pipeline_override` 会按照以下顺序依次合并，**后合并的会覆盖先合并的同名字段**：
 
@@ -943,9 +979,9 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
 
 即：`task.option` > `controller.option` > `resource.option` > `global_option`。
 
-在进入上述合并顺序前，需先过滤“未激活”的 option。任何不满足当前 `controller` / `resource` 条件的 option（包括来自 `global_option`、`resource.option`、`controller.option`、`task.option` 以及嵌套 `option.option`）都不得产生 `pipeline_override`。 **💡 v2.3.1**
+在进入上述合并顺序前，需先过滤“未激活”的 option。任何不满足当前 `controller` / `resource` 条件的 option（包括来自 `global_option`、`resource.option`、`controller.option`、`task.option` 以及嵌套 `option.option`）都不得产生 `pipeline_override`。 **? v2.3.1**
 
-`pretask.option` 不参与上述覆盖顺序；它只会将 option 的当前取值序列化为预任务进程的最后一个参数。 **💡 v2.7.0**
+`pretask.option` 不参与上述覆盖顺序；它只会将 option 的当前取值序列化为预任务进程的最后一个参数。 **? v2.7.0**
 
 这样设计的理由是：越具体的配置（任务级）应当具有越高的优先级，越通用的配置（全局级）则作为兜底默认值。
 
@@ -1026,7 +1062,43 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
 }
 ```
 
-#### checkbox 类型选项示例 💡 v2.3.0
+#### password 输入字段示例 ? v2.10.0
+
+同一 `input` 选项中可以混合普通字段与密码字段。密码字段不要填写 `default`。
+
+```jsonc
+{
+  "option": {
+    "账号登录": {
+      "type": "input",
+      "label": "$账号登录",
+      "inputs": [
+        {
+          "name": "username",
+          "label": "$用户名",
+          "pipeline_type": "string"
+        },
+        {
+          "name": "password",
+          "label": "$密码",
+          "pipeline_type": "string",
+          "password": true
+        }
+      ],
+      "pipeline_override": {
+        "Login": {
+          "custom_action_param": {
+            "username": "{username}",
+            "password": "{password}"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+#### checkbox 类型选项示例 ? v2.3.0
 
 ```jsonc
 {
@@ -1035,6 +1107,8 @@ PI_RESOURCE={"name":"官服","label":"官服","path":["./resource"]}
       "type": "checkbox",
       "label": "$战斗划火柴",
       "description": "选择要启用的划火柴功能，可多选",
+      "min_count": 1,
+      "max_count": 2,
       "default_case": ["普通划火柴", "蓄力划火柴"],
       "cases": [
         {
@@ -1178,7 +1252,7 @@ typedef void(MAA_CALL* MaaEventCallback)(
 }
 ```
 
-**完整写法（对象）：** 可通过 `display` 指定展示渠道，通过 `trace` 控制是否上传遥测。 **💡 v2.3.0**（`trace` 为 **💡 v2.9.1**）
+**完整写法（对象）：** 可通过 `display` 指定展示渠道，通过 `trace` 控制是否上传遥测。 **? v2.3.0**（`trace` 为 **? v2.9.1**）
 
 ```jsonc
 "focus": {
@@ -1190,7 +1264,7 @@ typedef void(MAA_CALL* MaaEventCallback)(
 }
 ```
 
-##### `display` 可选值 **💡 v2.3.0**
+##### `display` 可选值 **? v2.3.0**
 
 | 值 | 说明 | 行为特征 |
 |----|------|----------|
@@ -1205,17 +1279,17 @@ typedef void(MAA_CALL* MaaEventCallback)(
 ```jsonc
 "focus": {
     "Node.Action.Succeeded": {
-        "content": "✅ {name} 执行成功",
+        "content": "? {name} 执行成功",
         "display": ["log", "toast"]
     },
     "Node.Action.Failed": {
-        "content": "❌ 执行失败，请检查环境",
+        "content": "? 执行失败，请检查环境",
         "display": ["log", "modal"]
     }
 }
 ```
 
-##### `trace` 默认值 **💡 v2.9.1**
+##### `trace` 默认值 **? v2.9.1**
 
 在已配置 `telemetry.sentry` 且 `tracing` 启用（或未显式关闭）的前提下：
 
@@ -1283,8 +1357,8 @@ typedef void(MAA_CALL* MaaEventCallback)(
 2. 检查解析后的对象中是否存在 `focus` 字段
 3. 若存在，根据 `message` 参数在 `focus` 中查找对应的模板（字符串或对象）
 4. 若模板为字符串，则 `content` 即为该字符串，`display` 视为 `["log"]`，`trace` 使用默认值；若为对象，则分别读取 `content`、`display`、`trace`
-5. 若存在 `content`，使用 `details_json` 中的数据替换占位符（如 `{name}`、`{task_id}`），再根据 `display` 指定的渠道展示给用户 **💡 v2.3.0**
-6. 解析有效 `trace`：对象中显式给出则用之，否则使用默认值；在全局遥测已启用时，仅当有效值为 `true` 才上传本次节点结果 **💡 v2.9.1**
+5. 若存在 `content`，使用 `details_json` 中的数据替换占位符（如 `{name}`、`{task_id}`），再根据 `display` 指定的渠道展示给用户 **? v2.3.0**
+6. 解析有效 `trace`：对象中显式给出则用之，否则使用默认值；在全局遥测已启用时，仅当有效值为 `true` 才上传本次节点结果 **? v2.9.1**
 
 以上述示例为例，收到 `Node.Action.Starting` 时，应在日志中追加并弹出 toast：`NodeA 开始执行，任务 ID: 12345`
 

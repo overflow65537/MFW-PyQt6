@@ -456,26 +456,36 @@ class ConfigService:
         """更新配置"""
         return self.save_config(config_id, config_data)
 
+    def _interface_options(self) -> Dict[str, Any]:
+        interface = self.repo.interface if isinstance(self.repo.interface, dict) else {}
+        options = interface.get("option", {})
+        return options if isinstance(options, dict) else {}
+
     def get_current_setting_options(self) -> Dict[str, Any]:
         """获取当前配置的 setting 选项（统一存储于 Resource.task_option.setting_options）。"""
+        from app.core.utils.option_secret import decrypt_option_tree
+
         config = self.get_current_config()
         resource_task = next((task for task in config.tasks if task.item_id == _RESOURCE_), None)
+        stored: Dict[str, Any] = {}
         if resource_task and isinstance(resource_task.task_option, dict):
             setting_options = resource_task.task_option.get("setting_options")
             if isinstance(setting_options, dict):
-                return dict(setting_options)
+                stored = dict(setting_options)
+            else:
+                # 向后兼容：迁移前可能仍在 Resource.global_options
+                legacy_nested = resource_task.task_option.get("global_options")
+                if isinstance(legacy_nested, dict):
+                    stored = dict(legacy_nested)
 
-            # 向后兼容：迁移前可能仍在 Resource.global_options
-            legacy_nested = resource_task.task_option.get("global_options")
-            if isinstance(legacy_nested, dict):
-                return dict(legacy_nested)
+        if not stored:
+            # 向后兼容：历史根层 global_options
+            legacy_root = getattr(config, "global_options", {})
+            if isinstance(legacy_root, dict):
+                stored = dict(legacy_root)
 
-        # 向后兼容：历史根层 global_options
-        legacy_root = getattr(config, "global_options", {})
-        if isinstance(legacy_root, dict):
-            return dict(legacy_root)
-
-        return {}
+        revealed = decrypt_option_tree(stored, self._interface_options())
+        return revealed if isinstance(revealed, dict) else {}
 
     def update_current_setting_options(self, setting_options: Dict[str, Any]) -> bool:
         """更新当前配置的 setting 选项（写入 Resource.task_option.setting_options）。"""

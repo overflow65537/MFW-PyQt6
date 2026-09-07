@@ -25,7 +25,7 @@ from app.core.item import TaskItem, ConfigItem
 from app.view.task_interface.components.list_item import TaskListItem, ConfigListItem
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
-from app.common.constants import _PRETASK_, _RESOURCE_, _CONTROLLER_, _SETTING_, POST_ACTION
+from app.common.constants import _PRETASK_, _RESOURCE_, _CONTROLLER_, _SETTING_
 
 
 class BaseListWidget(ListWidget):
@@ -199,12 +199,25 @@ class TaskDragListWidget(BaseListWidget):
         """
         if task.item_id == _SETTING_:
             return False
+        if task.item_id == _PRETASK_ and not self._has_visible_pretask():
+            return False
 
         # View 仅计算是否展示，不回写 TaskItem 业务字段。
         should_show_by_resource = self._should_show_by_resource(task)
         should_show_by_controller = self._should_show_by_controller(task)
         capability_show = should_show_by_resource and should_show_by_controller
         return capability_show
+
+    def _has_visible_pretask(self) -> bool:
+        """interface 未配置 pretask 时不展示 PreTask 行，避免占用受保护槽位。"""
+        try:
+            interface = self.service_coordinator.tasks.interface
+        except Exception:
+            return True
+        if not isinstance(interface, dict):
+            return True
+        pretask_entries = interface.get("pretask")
+        return bool(pretask_entries)
     
     def _should_show_by_resource(self, task: TaskItem) -> bool:
         """根据当前选择的资源判断任务是否应该显示"""
@@ -737,27 +750,21 @@ class TaskDragListWidget(BaseListWidget):
         return tasks
 
     def _protected_positions(self, tasks: list[TaskItem]) -> dict[int, str]:
-        """Remember base task ids that must stay in reserved slots."""
-        protected: dict[int, str] = {
-            0: _PRETASK_,
-            1: _CONTROLLER_,
-            2: _RESOURCE_,
+        """Record base task rows that must remain fixed during drag."""
+        return {
+            idx: task.item_id
+            for idx, task in enumerate(tasks)
+            if task.is_base_task()
         }
-        if tasks:
-            protected[len(tasks) - 1] = POST_ACTION
-        return {idx: task_id for idx, task_id in protected.items() if 0 <= idx < len(tasks)}
 
     def _base_positions_intact(
         self, tasks: list[TaskItem], protected: dict[int, str]
     ) -> bool:
-        """Verify base tasks in reserved slots keep their original ids."""
+        """Verify base tasks still occupy their original rows after a drop."""
         for idx, expected_id in protected.items():
             if idx < 0 or idx >= len(tasks):
                 return False
             if tasks[idx].item_id != expected_id:
-                return False
-        for idx, task in enumerate(tasks):
-            if idx < 3 and task.item_id not in (_PRETASK_, _CONTROLLER_, _RESOURCE_):
                 return False
         return True
 

@@ -9,7 +9,12 @@ from PySide6.QtWidgets import QWidget
 from qfluentwidgets import FlowLayout, TogglePushButton
 
 from app.common.fluent_tooltip import apply_fluent_tooltip
+from app.common.signal_bus import signalBus
 from app.core.utils.option_branches_compat import set_option_branches
+from app.core.utils.option_checkbox import (
+    clamp_checkbox_selection,
+    get_checkbox_limits,
+)
 from app.utils.logger import logger
 from .base import OptionItemBase
 
@@ -101,6 +106,7 @@ class CheckBoxOptionItem(OptionItemBase):
         default_case = self.config.get("default_case", [])
         if isinstance(default_case, str):
             default_case = [default_case]
+        default_case = clamp_checkbox_selection(default_case, self.config)
 
         for toggle_button in self._toggle_buttons:
             name = self._button_name_map[toggle_button]
@@ -112,9 +118,32 @@ class CheckBoxOptionItem(OptionItemBase):
         # 触发初始子选项显示（跳过动画）
         self._update_children_for_checkbox(skip_animation=True)
 
-    def _on_toggle_changed(self, _checked: bool):
+    def _on_toggle_changed(self, checked: bool):
         """任一选项按钮状态改变"""
+        selected = self._collect_selected_names()
+        min_count, max_count = get_checkbox_limits(self.config)
+        sender = self.sender()
+        if (
+            checked
+            and max_count is not None
+            and len(selected) > max_count
+            and isinstance(sender, TogglePushButton)
+        ):
+            sender.blockSignals(True)
+            sender.setChecked(False)
+            sender.blockSignals(False)
+            signalBus.info_bar_requested.emit(
+                "warning",
+                self.tr("You can select at most {} items").format(max_count),
+            )
+            return
+
         self.current_value = self._collect_selected_names()
+        if len(self.current_value) < min_count:
+            signalBus.info_bar_requested.emit(
+                "warning",
+                self.tr("Please select at least {} items").format(min_count),
+            )
         self._update_children_for_checkbox()
         self.option_changed.emit(self.key, self.current_value)
 
@@ -187,6 +216,7 @@ class CheckBoxOptionItem(OptionItemBase):
             logger.warning(f"checkbox 值类型不正确: {type(value)}, 值: {value}")
             return
 
+        value = clamp_checkbox_selection(value, self.config)
         value_set = set(str(v) for v in value)
 
         for toggle_button in self._toggle_buttons:

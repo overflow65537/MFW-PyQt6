@@ -19,6 +19,11 @@ from PySide6.QtCore import QObject, Slot
 from app.common.__version__ import __version__
 from app.common.config import cfg
 from app.core.item import RunnerEvents
+from app.core.utils.telemetry_attachments import (
+    collect_failure_diagnostic_files,
+    parse_unit_interval,
+    should_sample_attachments,
+)
 from app.utils.logger import logger
 from app.utils.version_policy import version_disallows_auto_update
 
@@ -88,6 +93,9 @@ def build_task_option_summary(
                         break
                     summary[f"{option_name}.{field_name}"] = _bounded_value(field_value)
         elif option_type == "input" and isinstance(value, Mapping):
+            from app.core.utils.option_secret import password_field_names
+
+            secret_fields = password_field_names(option_def)
             input_types = {
                 str(item.get("name")): str(item.get("pipeline_type", "string")).lower()
                 for item in option_def.get("inputs", [])
@@ -96,6 +104,8 @@ def build_task_option_summary(
             for field_name, field_value in value.items():
                 if len(summary) >= MAX_OPTION_ITEMS:
                     break
+                if str(field_name) in secret_fields:
+                    continue
                 key = f"{option_name}.{field_name}"
                 if input_types.get(str(field_name)) in ("int", "bool"):
                     summary[key] = _bounded_value(field_value)
@@ -137,6 +147,7 @@ class TelemetryService(QObject):
         self._init_guard: Any = None
         self._active = False
         self._tracing = False
+        self._failure_attachments_sample_rate = 1.0
         self._session_started = False
         self._configuration_key: tuple[Any, ...] | None = None
         self._lock = threading.RLock()
@@ -247,11 +258,15 @@ class TelemetryService(QObject):
         enabled = bool(cfg.get(cfg.telemetry_enabled))
         forced_disabled = self.is_forced_disabled(self._interface)
         tracing = sentry_config.get("tracing", True) is not False
-        try:
-            sample_rate = float(sentry_config.get("traces_sample_rate", 1.0))
-        except (TypeError, ValueError):
-            sample_rate = 1.0
-        sample_rate = max(0.0, min(1.0, sample_rate)) if tracing else 0.0
+        sample_rate = parse_unit_interval(
+            sentry_config.get("traces_sample_rate", 1.0), default=1.0
+        )
+        if not tracing:
+            sample_rate = 0.0
+        self._failure_attachments_sample_rate = parse_unit_interval(
+            sentry_config.get("failure_attachments_sample_rate", 1.0),
+            default=1.0,
+        )
 
         environment = str(sentry_config.get("environment", "") or "").strip()
         if not environment:
@@ -271,6 +286,7 @@ class TelemetryService(QObject):
             forced_disabled,
             tracing,
             sample_rate,
+            self._failure_attachments_sample_rate,
             environment,
             project_name,
             project_version,
@@ -496,6 +512,20 @@ class TelemetryService(QObject):
         with self._lock:
             self._finish_run(state, cancelled=False)
 
+    def on_run_failed(
+        self,
+        *,
+        attachments: list[Mapping[str, Any]] | None = None,
+        error: str | None = None,
+        _state: _TraceState | None = None,
+    ) -> None:
+        """上报失败 Error Event，并按独立采样率附加诊断文件。"""
+        state = _state or self._default_trace_state
+        if self._active and self._sentry is not None:
+            self._capture_failure_event(error, list(attachments or []))
+        with self._lock:
+            self._finish_run(state, failed=True)
+
     def on_run_cancelled(self, *, _state: _TraceState | None = None) -> None:
         state = _state or self._default_trace_state
         with self._lock:
@@ -553,6 +583,13 @@ class TelemetryService(QObject):
             )
         elif event == "run_finished":
             self.on_run_finished(_state=state)
+        elif event == "run_failed":
+            raw_attachments = payload.get("attachments")
+            self.on_run_failed(
+                attachments=raw_attachments if isinstance(raw_attachments, list) else [],
+                error=str(payload.get("error") or "") or None,
+                _state=state,
+            )
         elif event == "run_cancelled":
             self.on_run_cancelled(_state=state)
 
@@ -590,19 +627,91 @@ class TelemetryService(QObject):
     def _on_callback(self, payload: dict) -> None:
         self._on_callback_from(self.runner_events, payload)
 
-    def _finish_run(self, state: _TraceState, cancelled: bool) -> None:
+    def _capture_failure_event(
+        self, error: str | None, extra_attachments: list[Any]
+    ) -> None:
+        sentry = self._sentry
+        if sentry is None:
+            return
+        include_attachments = should_sample_attachments(
+            self._failure_attachments_sample_rate
+        )
+        attachments: list[dict[str, Any]] = []
+        if include_attachments:
+            attachments.extend(collect_failure_diagnostic_files())
+            for item in extra_attachments:
+                if isinstance(item, Mapping):
+                    attachments.append(dict(item))
+
+        scope_cm = self._open_sentry_scope()
+        try:
+            scope = scope_cm.__enter__() if scope_cm is not None else None
+            if include_attachments and scope is not None:
+                for item in attachments:
+                    self._add_scope_attachment(scope, item)
+            capture = getattr(sentry, "capture_message", None)
+            if callable(capture):
+                capture(
+                    error or "mfw.task_run.failed",
+                    level="error",
+                )
+        except Exception as exc:
+            logger.debug("上报失败遥测事件失败: %s", exc)
+        finally:
+            if scope_cm is not None:
+                try:
+                    scope_cm.__exit__(None, None, None)
+                except Exception:
+                    pass
+
+    def _open_sentry_scope(self) -> Any:
+        sentry = self._sentry
+        if sentry is None:
+            return None
+        for name in ("new_scope", "isolation_scope", "push_scope"):
+            factory = getattr(sentry, name, None)
+            if callable(factory):
+                try:
+                    return factory()
+                except Exception:
+                    continue
+        return None
+
+    @staticmethod
+    def _add_scope_attachment(scope: Any, item: Mapping[str, Any]) -> None:
+        data = item.get("bytes")
+        filename = str(item.get("filename") or "attachment.bin")
+        content_type = str(item.get("content_type") or "application/octet-stream")
+        if not isinstance(data, (bytes, bytearray)) or not data:
+            return
+        add = getattr(scope, "add_attachment", None)
+        if not callable(add):
+            return
+        try:
+            add(bytes=bytes(data), filename=filename, content_type=content_type)
+        except TypeError:
+            try:
+                add(bytes(data), filename)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def _finish_run(
+        self, state: _TraceState, cancelled: bool = False, failed: bool = False
+    ) -> None:
+        if failed:
+            result, status = "failed", "internal_error"
+        elif cancelled:
+            result, status = "cancelled", "cancelled"
+        else:
+            result, status = "completed", "ok"
         for task_id, span in list(state.task_spans.items()):
-            self._finish_span(span, "cancelled" if cancelled else "ok")
+            self._finish_span(span, status)
             state.task_spans.pop(task_id, None)
         if state.transaction is not None:
-            self._set_data(
-                state.transaction,
-                "result",
-                "cancelled" if cancelled else "completed",
-            )
-            self._finish_span(
-                state.transaction, "cancelled" if cancelled else "ok"
-            )
+            self._set_data(state.transaction, "result", result)
+            self._finish_span(state.transaction, status)
         state.transaction = None
         state.pending_tasks.clear()
         state.active_task_id = None

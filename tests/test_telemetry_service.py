@@ -15,6 +15,34 @@ from app.core.service.telemetry_service import (
 )
 
 
+def _enabled_interface(**sentry_extra) -> dict:
+    sentry = {"dsn": "https://example.invalid/1"}
+    sentry.update(sentry_extra)
+    return {
+        "name": "demo",
+        "version": "1.0.0",
+        "telemetry": {"sentry": sentry},
+        "option": {},
+    }
+
+
+def _cfg_get(item):
+    return True if item is cfg.telemetry_enabled else 2
+
+
+def _make_service(fake_sentry, **sentry_extra) -> TelemetryService:
+    with (
+        patch.object(cfg, "get", side_effect=_cfg_get),
+        patch(
+            "app.core.service.telemetry_service.importlib.import_module",
+            return_value=fake_sentry,
+        ),
+    ):
+        return TelemetryService(
+            RunnerEvents(), _enabled_interface(**sentry_extra), debug_override=False
+        )
+
+
 class FakeSpan:
     def __init__(self, op: str = "", description: str = ""):
         self.op = op
@@ -47,12 +75,28 @@ class FakeGuard:
         self.closed = True
 
 
+class FakeScope:
+    def __init__(self):
+        self.attachments: list[dict[str, object]] = []
+
+    def add_attachment(self, **kwargs):
+        self.attachments.append(kwargs)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+
 class FakeSentry:
     def __init__(self):
         self.guard = FakeGuard()
         self.transaction: FakeSpan | None = None
         self.transactions: list[FakeSpan] = []
         self.init_kwargs: dict[str, object] = {}
+        self.messages: list[dict[str, object]] = []
+        self.scopes: list[FakeScope] = []
 
     def init(self, **kwargs):
         self.init_kwargs = kwargs
@@ -68,6 +112,14 @@ class FakeSentry:
         self.transaction = FakeSpan(op, name)
         self.transactions.append(self.transaction)
         return self.transaction
+
+    def new_scope(self):
+        scope = FakeScope()
+        self.scopes.append(scope)
+        return scope
+
+    def capture_message(self, message, level="info"):
+        self.messages.append({"message": message, "level": level})
 
     def flush(self, timeout: int):
         pass
@@ -137,6 +189,24 @@ class TestOptionSummary(unittest.TestCase):
         self.assertEqual("快速", summary["模式"])
         self.assertEqual("Ctrl+A", summary["键位.攻击"])
         self.assertNotIn("C:/private/file", summary.values())
+
+    def test_password_input_is_omitted_from_summary(self):
+        definitions = {
+            "账号登录": {
+                "type": "input",
+                "inputs": [
+                    {"name": "username", "pipeline_type": "string"},
+                    {"name": "password", "pipeline_type": "string", "password": True},
+                ],
+            }
+        }
+        values = {
+            "账号登录": {"value": {"username": "alice", "password": "s3cret"}},
+        }
+        summary = build_task_option_summary(values, definitions)
+        self.assertEqual("filled", summary["账号登录.username"])
+        self.assertNotIn("账号登录.password", summary)
+        self.assertNotIn("s3cret", summary.values())
 
 
 class TestTelemetryConfiguration(unittest.TestCase):
@@ -281,6 +351,134 @@ class TestTelemetryConfiguration(unittest.TestCase):
 
             events_a.telemetry.emit({"event": "run_finished"})
             self.assertTrue(transaction_a.finished)
+
+
+class TestFailureAttachmentsAndRunFailed(unittest.TestCase):
+    def test_sample_rate_is_parsed_from_interface(self):
+        service = _make_service(FakeSentry(), failure_attachments_sample_rate=0)
+        self.assertEqual(0.0, service._failure_attachments_sample_rate)
+
+        service = _make_service(FakeSentry(), failure_attachments_sample_rate=2)
+        self.assertEqual(1.0, service._failure_attachments_sample_rate)
+
+    def test_attachment_rate_does_not_change_trace_sampling(self):
+        fake_sentry = FakeSentry()
+        service = _make_service(
+            fake_sentry,
+            failure_attachments_sample_rate=0,
+            traces_sample_rate=0.8,
+        )
+        self.assertEqual(0.8, fake_sentry.init_kwargs["traces_sample_rate"])
+        self.assertEqual(0.0, service._failure_attachments_sample_rate)
+
+    def test_run_failed_captures_error_when_tracing_disabled(self):
+        fake_sentry = FakeSentry()
+        service = _make_service(fake_sentry, tracing=False)
+        self.assertTrue(service.is_active)
+        self.assertFalse(service._tracing)
+        self.assertEqual(0.0, fake_sentry.init_kwargs["traces_sample_rate"])
+
+        with patch(
+            "app.core.service.telemetry_service.collect_failure_diagnostic_files",
+            return_value=[
+                {
+                    "filename": "maafw.log.tail.txt",
+                    "content_type": "text/plain",
+                    "bytes": b"log",
+                }
+            ],
+        ):
+            service.on_run_failed(error="boom")
+
+        self.assertEqual(
+            [{"message": "boom", "level": "error"}], fake_sentry.messages
+        )
+        self.assertEqual(1, len(fake_sentry.scopes))
+        self.assertEqual("maafw.log.tail.txt", fake_sentry.scopes[0].attachments[0]["filename"])
+        self.assertIsNone(fake_sentry.transaction)
+
+    def test_rate_zero_omits_attachments_but_still_reports_error(self):
+        fake_sentry = FakeSentry()
+        service = _make_service(fake_sentry, failure_attachments_sample_rate=0)
+        with patch(
+            "app.core.service.telemetry_service.collect_failure_diagnostic_files",
+            return_value=[
+                {
+                    "filename": "maafw.log.tail.txt",
+                    "content_type": "text/plain",
+                    "bytes": b"log",
+                }
+            ],
+        ) as collect:
+            service.on_run_failed(
+                attachments=[
+                    {
+                        "filename": "screenshot.png",
+                        "content_type": "image/png",
+                        "bytes": b"png",
+                    }
+                ],
+                error="failed",
+            )
+        collect.assert_not_called()
+        self.assertEqual(
+            [{"message": "failed", "level": "error"}], fake_sentry.messages
+        )
+        self.assertEqual([], fake_sentry.scopes[0].attachments)
+
+    def test_run_failed_finishes_transaction_as_failed(self):
+        fake_sentry = FakeSentry()
+        service = _make_service(fake_sentry)
+        service.on_run_start(["Task"], {"name": "Win32", "type": "Win32"})
+        transaction = fake_sentry.transaction
+        self.assertIsNotNone(transaction)
+
+        with patch(
+            "app.core.service.telemetry_service.collect_failure_diagnostic_files",
+            return_value=[],
+        ):
+            service.on_run_failed(
+                attachments=[
+                    {
+                        "filename": "screenshot.png",
+                        "content_type": "image/png",
+                        "bytes": b"png",
+                    }
+                ],
+                error="task failed",
+            )
+
+        self.assertTrue(transaction.finished)
+        self.assertEqual("internal_error", transaction.status)
+        self.assertEqual("failed", transaction.data["result"])
+        self.assertEqual("screenshot.png", fake_sentry.scopes[0].attachments[0]["filename"])
+        self.assertEqual(b"png", fake_sentry.scopes[0].attachments[0]["bytes"])
+
+    def test_run_failed_event_payload_is_routed(self):
+        fake_sentry = FakeSentry()
+        service = _make_service(fake_sentry)
+        service.on_run_start(["Task"])
+        with patch(
+            "app.core.service.telemetry_service.collect_failure_diagnostic_files",
+            return_value=[],
+        ):
+            service.runner_events.telemetry.emit(
+                {
+                    "event": "run_failed",
+                    "error": "pipeline failed",
+                    "attachments": [
+                        {
+                            "filename": "screenshot.png",
+                            "content_type": "image/png",
+                            "bytes": b"png",
+                        }
+                    ],
+                }
+            )
+
+        self.assertEqual("pipeline failed", fake_sentry.messages[0]["message"])
+        self.assertEqual("failed", fake_sentry.transaction.data["result"])
+        self.assertTrue(fake_sentry.transaction.finished)
 
 
 if __name__ == "__main__":

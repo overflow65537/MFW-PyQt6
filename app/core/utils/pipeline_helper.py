@@ -555,11 +555,15 @@ def _get_input_pipeline_override(
 
     result = copy.deepcopy(base_override)
 
+    from app.core.utils.option_secret import decrypt_input_values
+
+    runtime_values = decrypt_input_values(option_config, input_values)
+
     # 替换占位符
-    result = _replace_placeholders(result, input_values)
+    result = _replace_placeholders(result, runtime_values)
 
     # 处理类型转换
-    result = _convert_types(result, option_config, input_values)
+    result = _convert_types(result, option_config, runtime_values)
 
     return result
 

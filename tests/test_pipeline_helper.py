@@ -64,6 +64,21 @@ def _base_interface() -> dict:
                     },
                 ],
             },
+            "账号登录": {
+                "type": "input",
+                "inputs": [
+                    {"name": "username", "pipeline_type": "string"},
+                    {"name": "password", "pipeline_type": "string", "password": True},
+                ],
+                "pipeline_override": {
+                    "Login": {
+                        "custom_action_param": {
+                            "username": "{username}",
+                            "password": "{password}",
+                        }
+                    }
+                },
+            },
             "自定义关卡": {
                 "type": "input",
                 "inputs": [
@@ -279,6 +294,26 @@ class TestGetPipelineOverrideFromTaskOption(unittest.TestCase):
         )
         self.assertEqual("MainChapter_4", override["EnterTheShow"]["next"])
         self.assertEqual(20000, override["EnterTheShow"]["timeout"])
+
+    def test_password_input_is_decrypted_before_placeholder_replace(self):
+        try:
+            from app.utils.crypto import crypto_manager
+        except ModuleNotFoundError:
+            self.skipTest("cryptography is not installed")
+
+        override = get_pipeline_override_from_task_option(
+            self.interface,
+            {
+                "账号登录": {
+                    "value": {
+                        "username": "alice",
+                        "password": crypto_manager.encrypt_text("s3cret"),
+                    }
+                }
+            },
+        )
+        self.assertEqual("alice", override["Login"]["custom_action_param"]["username"])
+        self.assertEqual("s3cret", override["Login"]["custom_action_param"]["password"])
 
     def test_input_wrapped_value_replaces_placeholder(self):
         override = get_pipeline_override_from_task_option(

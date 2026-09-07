@@ -569,10 +569,13 @@ class TaskService:
             if option_type == "checkbox":
                 # checkbox 类型：preset_value 应为 string[]（case.name 数组）
                 if isinstance(preset_value, list):
-                    current_option["value"] = list(preset_value)
+                    from app.core.utils.option_checkbox import clamp_checkbox_selection
+
+                    clamped = clamp_checkbox_selection(preset_value, option_template)
+                    current_option["value"] = list(clamped)
                     # 更新 children 的 hidden 状态
                     self._update_children_visibility_checkbox(
-                        current_option, preset_value, option_key, option_template, interface_options
+                        current_option, clamped, option_key, option_template, interface_options
                     )
             elif option_type in ("select", "switch"):
                 # select/switch：规范为 case.name 字符串；兼容 JSON 中的数字/布尔
@@ -589,9 +592,20 @@ class TaskService:
             elif option_type in ("input", "hotkey"):
                 # input/hotkey 类型：preset_value 应为 record<string, string>
                 if isinstance(preset_value, dict):
+                    from app.core.utils.option_secret import (
+                        strip_password_fields_from_preset,
+                    )
+
+                    safe_preset = (
+                        strip_password_fields_from_preset(option_template, preset_value)
+                        if option_type == "input"
+                        else preset_value
+                    )
+                    if not isinstance(safe_preset, dict):
+                        continue
                     if not isinstance(current_option.get("value"), dict):
                         current_option["value"] = {}
-                    current_option["value"].update(preset_value)
+                    current_option["value"].update(safe_preset)
 
     def _update_children_visibility_select(
         self,
@@ -907,6 +921,10 @@ class TaskService:
                 nested_values: dict[str, Any] = {}
                 for input_config in inputs:
                     input_name = input_config.get("name")
+                    if input_config.get("password"):
+                        if input_name:
+                            nested_values[input_name] = ""
+                        continue
                     default_value = input_config.get("default", "")
                     pipeline_type = input_config.get("pipeline_type", "string")
 
@@ -926,9 +944,14 @@ class TaskService:
 
                 if option_type == "checkbox":
                     # checkbox 类型：default_case 是列表，value 也是列表
+                    from app.core.utils.option_checkbox import clamp_checkbox_selection
+
                     default_case_names = option_template.get("default_case", [])
                     if isinstance(default_case_names, str):
                         default_case_names = [default_case_names]
+                    default_case_names = clamp_checkbox_selection(
+                        default_case_names, option_template
+                    )
                     # 如果没有指定 default_case，默认不选中任何项
                     selected_case_names_set = set(default_case_names)
                     option_result: dict[str, Any] = {"value": list(default_case_names)}

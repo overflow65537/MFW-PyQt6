@@ -17,13 +17,16 @@ class OptionFacade:
 
     @property
     def current_options(self) -> dict[str, Any]:
-        return snapshot(self._service.current_options)
+        return snapshot(self._service.get_options())
 
     def clear_selection(self) -> None:
         self._service.clear_selection()
 
     def get_options(self) -> dict[str, Any]:
         return snapshot(self._service.get_options())
+
+    def reveal_options(self, options: Any) -> Any:
+        return snapshot(self._service.reveal_options(snapshot(options)))
 
     def get_option(self, option_key: str) -> Any:
         return snapshot(self._service.get_option(option_key))

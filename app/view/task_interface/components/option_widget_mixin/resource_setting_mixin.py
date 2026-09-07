@@ -507,6 +507,10 @@ class ResourceSettingMixin:
                     if len(v) == 1 and "value" in v:
                         v = v["value"]
                 option_config[k] = v
+
+        revealed = option_service.reveal_options(option_config)
+        if isinstance(revealed, dict):
+            option_config = revealed
         
         # 创建或更新选项表单组件
         if self.resource_option_form_widget is None:

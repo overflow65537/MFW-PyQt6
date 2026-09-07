@@ -495,7 +495,7 @@ class TaskFlowRunner(QObject):
         interface = self._runtime_interface or {}
 
         # PI_INTERFACE_VERSION: Client 实现的 PI 扩展能力版本
-        env_vars["PI_INTERFACE_VERSION"] = "v2.9.1"
+        env_vars["PI_INTERFACE_VERSION"] = "v2.10.1"
 
         # PI_CLIENT_NAME
         env_vars["PI_CLIENT_NAME"] = "MFW"
@@ -613,6 +613,20 @@ class TaskFlowRunner(QObject):
                 return _ndarray_to_png_bytes(img)
         except Exception:
             pass
+        return None
+
+    async def _get_telemetry_screenshot_bytes(self) -> bytes | None:
+        """失败诊断附件用截图，不依赖通知截图开关。"""
+        if not getattr(self, "maafw", None) or not getattr(
+            self.maafw, "controller", None
+        ):
+            return None
+        try:
+            img = await self.maafw.screencap_test()
+            if img is not None:
+                return _ndarray_to_png_bytes(img)
+        except Exception:
+            logger.debug("采集失败诊断截图失败", exc_info=True)
         return None
 
     async def _save_stop_screenshot(self, manual: bool = False) -> None:
@@ -927,6 +941,15 @@ class TaskFlowRunner(QObject):
                 self.log_output.emit("ERROR", invalid_reason)
                 await self.stop_task()
                 raise TaskFlowExecutionError(invalid_reason)
+
+            checkbox_reason = self._validate_checkbox_selection_limits(
+                task_id if is_single_task_mode else None
+            )
+            if checkbox_reason is not None:
+                self.log_output.emit("ERROR", checkbox_reason)
+                self.info_bar_requested.emit("warning", checkbox_reason)
+                await self.stop_task()
+                raise TaskFlowExecutionError(checkbox_reason)
 
             # 先执行预任务（在资源加载和控制器连接之前）
             if not await self._execute_pretasks():
@@ -1406,7 +1429,24 @@ class TaskFlowRunner(QObject):
                 telemetry_event = "run_cancelled"
             else:
                 telemetry_event = "run_finished"
-            self.runner_events.telemetry.emit({"event": telemetry_event})
+            telemetry_payload: dict[str, Any] = {"event": telemetry_event}
+            if telemetry_event == "run_failed":
+                if flow_error is not None:
+                    telemetry_payload["error"] = str(flow_error)
+                screenshot = None
+                try:
+                    screenshot = await self._get_telemetry_screenshot_bytes()
+                except Exception:
+                    logger.debug("采集失败诊断截图失败", exc_info=True)
+                if screenshot:
+                    telemetry_payload["attachments"] = [
+                        {
+                            "filename": "screenshot.png",
+                            "content_type": "image/png",
+                            "bytes": screenshot,
+                        }
+                    ]
+            self.runner_events.telemetry.emit(telemetry_payload)
 
             # 取消不冒充完成；仅对最终成功或失败发送流程汇总通知。
             if (
@@ -1595,7 +1635,16 @@ class TaskFlowRunner(QObject):
                 entry_options = pretask_option_entries[idx].get("options", {}) or {}
 
             if entry_options:
-                payload = json.dumps(entry_options, ensure_ascii=False, separators=(",", ":"))
+                from app.core.utils.option_secret import decrypt_option_tree
+
+                runtime_options = decrypt_option_tree(
+                    entry_options, interface.get("option", {})
+                )
+                if not isinstance(runtime_options, dict):
+                    runtime_options = entry_options
+                payload = json.dumps(
+                    runtime_options, ensure_ascii=False, separators=(",", ":")
+                )
                 args.append(payload)
 
             exec_target = Path(exec_path)
@@ -1683,6 +1732,55 @@ class TaskFlowRunner(QObject):
             "CRITICAL": self.tr("CRITICAL"),
         }
         return level_map.get(level_upper, level)
+
+    def _validate_checkbox_selection_limits(
+        self, single_task_id: str | None = None
+    ) -> str | None:
+        """启动前校验 checkbox 的 min_count / max_count。"""
+        from app.core.utils.option_checkbox import collect_checkbox_violations
+
+        interface = self._runtime_interface or {}
+        option_defs = interface.get("option", {})
+        if not isinstance(option_defs, dict):
+            return None
+
+        option_maps: list[Any] = []
+        resource_task = self._get_task(_RESOURCE_)
+        if resource_task and isinstance(resource_task.task_option, dict):
+            option_maps.append(resource_task.task_option)
+        controller_task = self._get_task(_CONTROLLER_)
+        if controller_task and isinstance(controller_task.task_option, dict):
+            option_maps.append(controller_task.task_option)
+        pretask_task = self._get_task(_PRETASK_)
+        if pretask_task and isinstance(pretask_task.task_option, dict):
+            option_maps.append(pretask_task.task_option)
+
+        for task in self._get_tasks():
+            if task.is_base_task() or task.is_hidden:
+                continue
+            if single_task_id:
+                if task.item_id != single_task_id:
+                    continue
+            elif not task.is_checked:
+                continue
+            if isinstance(task.task_option, dict):
+                option_maps.append(task.task_option)
+
+        violations = []
+        for option_map in option_maps:
+            violations.extend(collect_checkbox_violations(option_map, option_defs))
+        if not violations:
+            return None
+
+        first = violations[0]
+        label = first.option_label or first.option_name
+        if first.kind == "min":
+            return self.tr(
+                "Option \"{name}\" requires at least {count} selected items"
+            ).format(name=label, count=first.min_count)
+        return self.tr(
+            "Option \"{name}\" allows at most {count} selected items"
+        ).format(name=label, count=first.max_count)
 
     def _validate_base_controller_and_resource(self) -> str | None:
         """校验当前配置中的控制器/资源是否存在于 interface。"""
