@@ -63,7 +63,7 @@ def test_compute_resource_hash_for_paths_multi_path(tmp_path: Path):
     second.mkdir()
 
     with patch(
-        "app.core.utils.resource_hash.Resource",
+        "maa.resource.Resource",
         _FakeResource,
     ):
         result = compute_resource_hash_for_paths(
@@ -77,7 +77,7 @@ def test_compute_resource_hash_for_paths_multi_path(tmp_path: Path):
 
 def test_compute_resource_hash_returns_none_when_path_missing(tmp_path: Path):
     with patch(
-        "app.core.utils.resource_hash.Resource",
+        "maa.resource.Resource",
         _FakeResource,
     ):
         assert compute_resource_hash_for_paths(tmp_path, ["missing"]) is None
@@ -93,7 +93,7 @@ def test_compute_resource_hash_returns_none_when_load_fails(tmp_path: Path):
             return MagicMock(wait=lambda: _FakeWaitResult(False))
 
     with patch(
-        "app.core.utils.resource_hash.Resource",
+        "maa.resource.Resource",
         _FailResource,
     ):
         assert compute_resource_hash_for_paths(tmp_path, ["res"]) is None
@@ -113,7 +113,7 @@ def test_apply_resource_hashes_overwrites_existing(tmp_path: Path):
     }
 
     with patch(
-        "app.core.utils.resource_hash.Resource",
+        "maa.resource.Resource",
         _FakeResource,
     ):
         updated = apply_resource_hashes_to_interface(interface, tmp_path)
@@ -133,7 +133,7 @@ def test_apply_resource_hashes_skips_failed_entry(tmp_path: Path):
     }
 
     with patch(
-        "app.core.utils.resource_hash.Resource",
+        "maa.resource.Resource",
         _FakeResource,
     ):
         updated = apply_resource_hashes_to_interface(interface, tmp_path)
@@ -162,7 +162,7 @@ def test_sync_interface_after_hotfix_writes_hash(tmp_path: Path):
     )
 
     with patch(
-        "app.core.utils.resource_hash.Resource",
+        "maa.resource.Resource",
         _FakeResource,
     ):
         assert (

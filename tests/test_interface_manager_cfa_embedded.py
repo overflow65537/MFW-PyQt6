@@ -116,7 +116,7 @@ def test_sync_interface_after_hotfix_uses_apply_helper(bundle_dir: Path):
         encoding="utf-8",
     )
 
-    with patch("app.core.utils.resource_hash.Resource", _FakeResource):
+    with patch("maa.resource.Resource", _FakeResource):
         assert sync_interface_after_hotfix([interface_path], "2.0.0", bundle_dir) is True
 
     saved = jsonc.loads(interface_path.read_text(encoding="utf-8"))
