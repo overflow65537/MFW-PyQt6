@@ -5365,6 +5365,22 @@ Please check for updates first, or visit the GitHub releases page.</source>
             <translation>启动更新器失败：{}</translation>
         </message>
         <message>
+            <location filename="../view/setting_interface/setting_interface.py" line="3059" />
+            <location filename="../view/setting_interface/setting_interface.py" line="3204" />
+            <source>Updater not found: {}. Please ensure the MFWUpdater folder exists in the installation directory.</source>
+            <translation>未找到更新器：{}。请确认安装目录中存在 MFWUpdater 文件夹。</translation>
+        </message>
+        <message>
+            <location filename="../view/setting_interface/setting_interface.py" line="3086" />
+            <source>Access denied while preparing the updater: {}. Please check file permissions or run as administrator.</source>
+            <translation>准备更新器时权限不足：{}。请检查文件权限，或以管理员身份运行。</translation>
+        </message>
+        <message>
+            <location filename="../view/setting_interface/setting_interface.py" line="3245" />
+            <source>Access denied while starting the updater: {}. Please check file permissions or run as administrator.</source>
+            <translation>启动更新器时权限不足：{}。请检查文件权限，或以管理员身份运行。</translation>
+        </message>
+        <message>
             <location filename="../view/setting_interface/setting_interface.py" line="3103" />
             <source>Update package not found, please try updating again.</source>
             <translation>未找到更新包，请重试更新。</translation>

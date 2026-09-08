@@ -145,13 +145,14 @@ def rename_updater_binary(old_name: str, new_name: str) -> None:
 
     old_path = Path(old_name)
     new_path = Path(new_name)
+    if not old_path.exists():
+        raise FileNotFoundError(str(old_path))
     if new_path.exists():
         if new_path.is_dir():
             shutil.rmtree(new_path)
         else:
             os.remove(new_path)
-    if old_path.exists():
-        os.rename(old_path, new_path)
+    os.rename(old_path, new_path)
 
 
 def _is_running_with_admin_privileges() -> bool:
@@ -185,6 +186,11 @@ def _start_windows_process_with_admin(executable: Path, args: list[str]) -> None
         None, "runas", str(executable), cmdline, working_dir, 1
     )
     if result <= 32:
+        # ShellExecuteW: 2=SE_ERR_FNF, 5=SE_ERR_ACCESSDENIED
+        if result == 2:
+            raise FileNotFoundError(str(executable))
+        if result == 5:
+            raise PermissionError(str(executable))
         raise RuntimeError(f"以管理员权限启动更新器失败: ShellExecuteW 返回值 {result}")
 
 
@@ -228,6 +234,8 @@ def launch_updater_process(*extra_args: str) -> None:
         logger.debug("构造更新器父进程参数失败（将继续尝试启动更新器）: %s", exc)
 
     _, resolved_executable = resolve_updater_paths(install_root)
+    if not resolved_executable.is_file():
+        raise FileNotFoundError(str(resolved_executable))
     if sys.platform.startswith("win32"):
         args = (
             ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
@@ -241,6 +249,8 @@ def launch_updater_process(*extra_args: str) -> None:
             try:
                 _start_windows_process_with_admin(resolved_executable, args)
                 return
+            except (FileNotFoundError, PermissionError):
+                raise
             except Exception as exc:
                 logger.warning(
                     "管理员方式启动更新程序失败，回退为普通启动: %s", exc
@@ -256,7 +266,20 @@ def launch_updater_process(*extra_args: str) -> None:
     else:
         raise NotImplementedError("Unsupported platform")
 
-    subprocess.Popen(cmd, cwd=str(install_root))
+    try:
+        subprocess.Popen(cmd, cwd=str(install_root))
+    except FileNotFoundError as e:
+        raise FileNotFoundError(str(resolved_executable)) from e
+    except PermissionError as e:
+        raise PermissionError(str(resolved_executable)) from e
+    except OSError as e:
+        # Windows: WinError 2=找不到文件，WinError 5=拒绝访问
+        winerror = getattr(e, "winerror", None)
+        if winerror == 2:
+            raise FileNotFoundError(str(resolved_executable)) from e
+        if winerror == 5:
+            raise PermissionError(str(resolved_executable)) from e
+        raise
 
 
 class SettingInterface(QWidget):
@@ -3052,6 +3075,30 @@ class SettingInterface(QWidget):
                     str(resolve_updater_dir(install_root)),
                     str(resolve_updater_copy_dir(install_root)),
                 )
+        except FileNotFoundError as e:
+            self._updater_started = False
+            logger.error("更新器未找到，无法重命名: %s", e)
+            signalBus.info_bar_requested.emit(
+                "error",
+                self.tr(
+                    "Updater not found: {}. Please ensure the MFWUpdater folder exists in the installation directory."
+                ).format(str(e)),
+            )
+            if notify_if_cancel:
+                signalBus.update_stopped.emit(3)
+            return
+        except PermissionError as e:
+            self._updater_started = False
+            logger.error("重命名更新器权限不足: %s", e)
+            signalBus.info_bar_requested.emit(
+                "error",
+                self.tr(
+                    "Access denied while preparing the updater: {}. Please check file permissions or run as administrator."
+                ).format(str(e)),
+            )
+            if notify_if_cancel:
+                signalBus.update_stopped.emit(3)
+            return
         except Exception as e:
             self._updater_started = False
             logger.error(f"重命名更新程序失败: {e}")
@@ -3198,6 +3245,24 @@ class SettingInterface(QWidget):
             extra_args = [FLAG_DIRECT_RUN] if self._propagate_direct_run_arg else []
             launch_updater_process(*extra_args)
             return True
+        except FileNotFoundError as e:
+            logger.error("更新器未找到，无法启动: %s", e)
+            signalBus.info_bar_requested.emit(
+                "error",
+                self.tr(
+                    "Updater not found: {}. Please ensure the MFWUpdater folder exists in the installation directory."
+                ).format(str(e)),
+            )
+            return False
+        except PermissionError as e:
+            logger.error("启动更新器权限不足: %s", e)
+            signalBus.info_bar_requested.emit(
+                "error",
+                self.tr(
+                    "Access denied while starting the updater: {}. Please check file permissions or run as administrator."
+                ).format(str(e)),
+            )
+            return False
         except Exception as e:
             logger.error(f"启动更新程序失败: {e}")
             signalBus.info_bar_requested.emit(
