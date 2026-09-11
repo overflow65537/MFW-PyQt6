@@ -131,6 +131,43 @@ def resolve_updater_paths(
     )
 
 
+def rename_updater_binary(old_name: str | Path, new_name: str | Path) -> bool:
+    """将正式更新器目录重命名为运行副本目录。
+
+    正式目录不存在时跳过并返回 False，避免增量包未带回 ``MFWUpdater/`` 时
+    误删已有 ``MFWUpdater1/``。成功重命名返回 True。
+    """
+    import os
+    import shutil
+
+    old_path = Path(old_name)
+    new_path = Path(new_name)
+    if not old_path.exists():
+        return False
+    if new_path.exists():
+        if new_path.is_dir():
+            shutil.rmtree(new_path)
+        else:
+            os.remove(new_path)
+    os.rename(old_path, new_path)
+    return True
+
+
+def prepare_updater_runtime_copy(
+    install_root: Path | str | None = None,
+) -> tuple[bool, Path]:
+    """准备更新器运行副本：正式目录存在则重命名，否则保留已有副本。
+
+    Returns:
+        (是否执行了重命名, 运行副本目录路径)
+    """
+    root = Path(install_root or resolve_install_root()).resolve()
+    updater_dir = resolve_updater_dir(root)
+    updater_copy_dir = resolve_updater_copy_dir(root)
+    renamed = rename_updater_binary(updater_dir, updater_copy_dir)
+    return renamed, updater_copy_dir
+
+
 def resolve_schedule_instance_id() -> str:
     """为当前安装实例生成稳定的短标识，用于隔离系统计划任务命名空间。"""
     anchor = str(normalize_install_anchor(resolve_install_anchor()))

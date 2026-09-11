@@ -60,10 +60,9 @@ from app.utils.asset_paths import (
     resolve_window_icon,
 )
 from app.utils.install_paths import (
+    prepare_updater_runtime_copy,
     resolve_install_anchor,
     resolve_install_root,
-    resolve_updater_copy_dir,
-    resolve_updater_dir,
     resolve_updater_paths,
 )
 from app.utils.logger import logger
@@ -136,23 +135,6 @@ def start_auto_confirm_countdown(
         QTimer.singleShot(1000, lambda: tick(remaining - 1))
 
     QTimer.singleShot(0, lambda: tick(seconds))
-
-
-def rename_updater_binary(old_name: str, new_name: str) -> None:
-    """重命名 standalone 更新器目录，供各界面复用。"""
-    import os
-    import shutil
-
-    old_path = Path(old_name)
-    new_path = Path(new_name)
-    if not old_path.exists():
-        raise FileNotFoundError(str(old_path))
-    if new_path.exists():
-        if new_path.is_dir():
-            shutil.rmtree(new_path)
-        else:
-            os.remove(new_path)
-    os.rename(old_path, new_path)
 
 
 def _is_running_with_admin_privileges() -> bool:
@@ -3071,22 +3053,12 @@ class SettingInterface(QWidget):
         try:
             if sys.platform.startswith(("win32", "darwin", "linux")):
                 install_root = resolve_install_root()
-                self._rename_updater(
-                    str(resolve_updater_dir(install_root)),
-                    str(resolve_updater_copy_dir(install_root)),
-                )
-        except FileNotFoundError as e:
-            self._updater_started = False
-            logger.error("更新器未找到，无法重命名: %s", e)
-            signalBus.info_bar_requested.emit(
-                "error",
-                self.tr(
-                    "Updater not found: {}. Please ensure the MFWUpdater folder exists in the installation directory."
-                ).format(str(e)),
-            )
-            if notify_if_cancel:
-                signalBus.update_stopped.emit(3)
-            return
+                renamed, updater_copy_dir = prepare_updater_runtime_copy(install_root)
+                if not renamed:
+                    logger.info(
+                        "正式更新器目录不存在，跳过重命名，将尝试启动: %s",
+                        updater_copy_dir,
+                    )
         except PermissionError as e:
             self._updater_started = False
             logger.error("重命名更新器权限不足: %s", e)
@@ -3234,10 +3206,6 @@ class SettingInterface(QWidget):
             template,
             logger_prefix="立即更新",
         )
-
-    def _rename_updater(self, old_name, new_name):
-        """重命名更新程序，复用模块级工具函数。"""
-        rename_updater_binary(str(old_name), str(new_name))
 
     def _start_updater(self) -> bool:
         """启动更新程序（允许更新器自行显示界面）。"""

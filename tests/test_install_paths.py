@@ -56,6 +56,50 @@ class InstallPathTests(unittest.TestCase):
         self.assertEqual(updater.parent, updater_dir)
         self.assertEqual(updater_copy.parent, updater_copy_dir)
 
+    def test_prepare_updater_skips_rename_when_official_dir_missing(self):
+        from app.utils.install_paths import (
+            prepare_updater_runtime_copy,
+            rename_updater_binary,
+        )
+
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            copy_dir = root / UPDATER_COPY_DIR_NAME
+            copy_dir.mkdir()
+            (copy_dir / UPDATER_EXECUTABLE_NAME).touch()
+
+            self.assertFalse(
+                rename_updater_binary(root / UPDATER_DIR_NAME, copy_dir)
+            )
+            self.assertTrue(copy_dir.exists())
+            self.assertTrue((copy_dir / UPDATER_EXECUTABLE_NAME).exists())
+
+            renamed, runtime_dir = prepare_updater_runtime_copy(root)
+            self.assertFalse(renamed)
+            self.assertEqual(runtime_dir, copy_dir.resolve())
+            self.assertTrue(copy_dir.exists())
+            self.assertTrue((copy_dir / UPDATER_EXECUTABLE_NAME).exists())
+
+    def test_prepare_updater_renames_when_official_dir_exists(self):
+        from app.utils.install_paths import prepare_updater_runtime_copy
+
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            official = root / UPDATER_DIR_NAME
+            copy_dir = root / UPDATER_COPY_DIR_NAME
+            official.mkdir()
+            (official / UPDATER_EXECUTABLE_NAME).touch()
+            copy_dir.mkdir()
+            (copy_dir / "stale.txt").touch()
+
+            renamed, runtime_dir = prepare_updater_runtime_copy(root)
+            self.assertTrue(renamed)
+            self.assertEqual(runtime_dir, copy_dir.resolve())
+            self.assertFalse(official.exists())
+            self.assertTrue(copy_dir.exists())
+            self.assertTrue((copy_dir / UPDATER_EXECUTABLE_NAME).exists())
+            self.assertFalse((copy_dir / "stale.txt").exists())
+
     def test_schedule_uses_bundle_executable(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
