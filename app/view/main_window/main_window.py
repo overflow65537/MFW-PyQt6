@@ -66,6 +66,9 @@ from PySide6.QtGui import (
     QPen,
     QFont,
     QPainterPath,
+    QDragEnterEvent,
+    QDragMoveEvent,
+    QDropEvent,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -111,6 +114,7 @@ from app.utils.logger import logger
 from app.utils.release_notes import _safe_path_segment, _safe_version_file_stem
 from app.utils.asset_paths import DEFAULT_APP_LOGO_FILE, app_logo_icon
 from app.utils.version_policy import resolve_resource_version
+from app.utils.local_update import path_is_update_archive_readable
 from app.core.core import ServiceCoordinator
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
 from app.view.main_window.log_zip_dialog import (
@@ -771,10 +775,52 @@ class MainWindow(MSFluentWindow):
         self.splashScreen.raise_()
 
         self._set_initial_geometry()
+        self.setAcceptDrops(True)
         self.show()
         self._init_background_layer()
         QApplication.processEvents()
         self._schedule_mica_effect()
+
+    def _dropped_update_archive_path(self, event) -> Path | None:
+        """从拖放事件中取出第一个可读的本地更新压缩包路径。"""
+        mime = event.mimeData()
+        if mime is None or not mime.hasUrls():
+            return None
+        for url in mime.urls():
+            if not url.isLocalFile():
+                continue
+            candidate = Path(url.toLocalFile())
+            if candidate.is_file() and path_is_update_archive_readable(candidate):
+                return candidate
+        return None
+
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+        if self._dropped_update_archive_path(event) is not None:
+            event.acceptProposedAction()
+            return
+        super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event: QDragMoveEvent) -> None:
+        if self._dropped_update_archive_path(event) is not None:
+            event.acceptProposedAction()
+            return
+        super().dragMoveEvent(event)
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        package = self._dropped_update_archive_path(event)
+        if package is None:
+            super().dropEvent(event)
+            return
+        event.acceptProposedAction()
+        setting_interface = getattr(self, "SettingInterface", None)
+        if setting_interface is None:
+            logger.warning("SettingInterface 不存在，无法处理拖入的更新包")
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Settings page is not ready, cannot apply update")
+            )
+            return
+        logger.info("收到拖入的更新包: %s", package)
+        setting_interface.apply_dropped_update_package(package)
 
     def _startup_page_interface_map(self) -> dict[str, QWidget | None]:
         """启动页 key 到对应界面的映射（不含 Bundle/Announcement）。"""

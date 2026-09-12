@@ -66,7 +66,11 @@ from app.utils.install_paths import (
     resolve_updater_paths,
 )
 from app.utils.logger import logger
-from app.utils.update import Update, path_is_update_archive_readable
+from app.utils.update import Update
+from app.utils.local_update import (
+    path_is_update_archive_readable,
+    stage_local_update_package,
+)
 from app.view.setting_interface.widget.proxy_setting_card import ProxySettingCard
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.release_notes import (
@@ -2719,6 +2723,56 @@ class SettingInterface(QWidget):
             logger.info("发现本地更新包: %s", candidate)
             return candidate
         return None
+
+    def apply_dropped_update_package(self, source_path: Path | str) -> bool:
+        """将拖入的更新压缩包暂存为全量包并启动外部更新器。"""
+        if self._updater_started:
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("Updater is already starting")
+            )
+            return False
+        if self._updater and self._updater.isRunning():
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("Update is already running")
+            )
+            return False
+
+        source = Path(source_path)
+        try:
+            staged = stage_local_update_package(source)
+        except FileNotFoundError:
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Update package not found")
+            )
+            return False
+        except ValueError:
+            signalBus.info_bar_requested.emit(
+                "error",
+                self.tr(
+                    "Unsupported update package. Please drop a zip / tar.gz / 7z archive."
+                ),
+            )
+            return False
+        except Exception as exc:
+            logger.exception("暂存本地更新包失败: %s", source)
+            signalBus.info_bar_requested.emit(
+                "error",
+                self.tr("Failed to prepare local update package: {}").format(str(exc)),
+            )
+            return False
+
+        logger.info("拖入更新包已就绪: %s", staged)
+        signalBus.info_bar_requested.emit(
+            "success", self.tr("Local update package ready")
+        )
+        if not self._refresh_local_update_package(restart_required=True):
+            signalBus.info_bar_requested.emit(
+                "error",
+                self.tr("Update package not found, please try updating again."),
+            )
+            return False
+        self._handle_instant_update()
+        return True
 
     def _load_local_update_metadata(self) -> Dict[str, Any] | None:
         metadata_path = Path.cwd() / "update" / "new_version" / "update_metadata.json"

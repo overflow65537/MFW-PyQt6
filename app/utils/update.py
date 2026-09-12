@@ -62,6 +62,13 @@ from app.utils.archive_seven import (
     import_py7zr,
     path_readable_by_py7zr,
 )
+from app.utils.local_update import (
+    local_update_package_dir,
+    path_is_update_archive_readable,
+    path_is_zip_backed_archive,
+    stage_local_update_package,
+    write_local_update_metadata,
+)
 from hotfix_extract import (
     CFA_SETTING_FILENAME,
     LEGACY_UPDATE_FLAG_FILENAME,
@@ -71,43 +78,6 @@ from hotfix_extract import (
     read_cfa_setting,
     sync_interface_after_hotfix,
 )
-
-
-def path_is_zip_backed_archive(path: Path | str) -> bool:
-    """
-    判断路径是否为可直接用 zipfile 打开的归档：
-    - .zip 视为是；
-    - .exe 则尝试打开（ZIP 尾结构的自解压包，如常见 Inno/部分打包器产物）。
-    """
-    p = Path(path)
-    name_lower = p.name.lower()
-    if name_lower.endswith(".zip"):
-        return True
-    if name_lower.endswith(".exe"):
-        try:
-            with zipfile.ZipFile(p, "r", metadata_encoding="utf-8") as zf:
-                zf.namelist()
-            return True
-        except (zipfile.BadZipFile, OSError):
-            return False
-    return False
-
-
-def path_is_update_archive_readable(path: Path | str) -> bool:
-    """本地/更新器可识别的更新包：zip、tar.gz/tgz、.7z、ZIP 型 exe、7z SFX exe。"""
-    p = Path(path)
-    nl = p.name.lower()
-    if nl.endswith(".zip"):
-        return True
-    if nl.endswith((".tar.gz", ".tgz")):
-        return True
-    if nl.endswith(".7z"):
-        return path_readable_by_py7zr(p)
-    if nl.endswith(".exe"):
-        if path_is_zip_backed_archive(p):
-            return True
-        return path_readable_by_py7zr(p)
-    return False
 
 
 def collect_hotfix_resource_dirs(
@@ -633,18 +603,15 @@ class BaseUpdate(QThread):
         attempts: int,
         package_name: str,
     ) -> None:
-        data = {
-            "source": source,
-            "mode": mode,
-            "version": str(version) if version else "",
-            "package_name": package_name,
-            "download_time": datetime.utcnow().isoformat() + "Z",
-            "attempts": attempts,
-        }
-        metadata_path = download_dir / "update_metadata.json"
         try:
-            with open(metadata_path, "w", encoding="utf-8") as f:
-                jsonc.dump(data, f, indent=2, ensure_ascii=False)
+            metadata_path = write_local_update_metadata(
+                download_dir,
+                source=source,
+                mode=mode,
+                version=version,
+                attempts=attempts,
+                package_name=package_name,
+            )
             logger.info("已写入更新元数据: %s", metadata_path)
         except Exception as exc:
             logger.warning("记录更新元数据失败: %s", exc)
