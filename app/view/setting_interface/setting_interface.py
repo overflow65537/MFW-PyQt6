@@ -161,15 +161,24 @@ def _is_running_with_admin_privileges() -> bool:
     return False
 
 
-def _start_windows_process_with_admin(executable: Path, args: list[str]) -> None:
-    """使用 ShellExecuteW(runas) 在 Windows 上以管理员权限启动更新器。"""
+def _start_windows_process_with_admin(
+    executable: Path,
+    args: list[str],
+    *,
+    working_dir: Path | str,
+) -> None:
+    """使用 ShellExecuteW(runas) 在 Windows 上以管理员权限启动更新器。
+
+    ``working_dir`` 必须是安装根：更新器按 cwd 定位 ``update/new_version``，
+    不可用更新器可执行文件所在目录（``MFWUpdater1/``）。
+    """
     import ctypes
     import subprocess as _subprocess
 
     cmdline = _subprocess.list2cmdline(args)
-    working_dir = str(executable.parent)
+    working_dir_str = str(working_dir)
     result = ctypes.windll.shell32.ShellExecuteW(
-        None, "runas", str(executable), cmdline, working_dir, 1
+        None, "runas", str(executable), cmdline, working_dir_str, 1
     )
     if result <= 32:
         # ShellExecuteW: 2=SE_ERR_FNF, 5=SE_ERR_ACCESSDENIED
@@ -233,7 +242,11 @@ def launch_updater_process(*extra_args: str) -> None:
                 "主程序具有管理员权限，使用管理员方式启动更新程序: %s", command_line
             )
             try:
-                _start_windows_process_with_admin(resolved_executable, args)
+                _start_windows_process_with_admin(
+                    resolved_executable,
+                    args,
+                    working_dir=install_root,
+                )
                 return
             except (FileNotFoundError, PermissionError):
                 raise
