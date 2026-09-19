@@ -52,7 +52,8 @@ class BuiltinTaskContext:
         sleep: Callable[[float], Awaitable[bool]],
         is_stopping: Callable[[], bool],
         notify_system: Callable[[str], None],
-        notify_external: Callable[[str, str], None],
+        notify_external: Callable[[str, str, bytes | None], None],
+        capture_screenshot: Callable[[], Awaitable[bytes | None]],
         start_process: Callable[[str, list[str] | str | None, bool], Awaitable[int | None]],
         play_system_sound: Callable[[], Awaitable[None]],
         tr: Callable[[str], str] | None = None,
@@ -62,6 +63,7 @@ class BuiltinTaskContext:
         self._is_stopping = is_stopping
         self._notify_system = notify_system
         self._notify_external = notify_external
+        self._capture_screenshot = capture_screenshot
         self._start_process = start_process
         self._play_system_sound = play_system_sound
         self._tr = tr or (lambda text: text)
@@ -78,8 +80,16 @@ class BuiltinTaskContext:
     def notify_system(self, message: str) -> None:
         self._notify_system(message)
 
-    def notify_external(self, title: str, text: str) -> None:
-        self._notify_external(title, text)
+    def notify_external(
+        self,
+        title: str,
+        text: str,
+        image_bytes: bytes | None = None,
+    ) -> None:
+        self._notify_external(title, text, image_bytes)
+
+    async def capture_screenshot(self) -> bytes | None:
+        return await self._capture_screenshot()
 
     async def start_process(
         self, path: str, args: list[str] | str | None = None, wait: bool = False

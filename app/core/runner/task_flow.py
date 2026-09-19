@@ -603,6 +603,10 @@ class TaskFlowRunner(QObject):
         """若设置中开启「随通知发送截图」且控制器可用，则截屏并返回 PNG 字节，否则返回 None。"""
         if not cfg.get(cfg.notice_send_screenshot):
             return None
+        return await self._capture_screenshot_bytes()
+
+    async def _capture_screenshot_bytes(self) -> bytes | None:
+        """截取当前控制器画面，不读取全局通知截图开关。"""
         if not getattr(self, "maafw", None) or not getattr(
             self.maafw, "controller", None
         ):
@@ -612,7 +616,7 @@ class TaskFlowRunner(QObject):
             if img is not None:
                 return _ndarray_to_png_bytes(img)
         except Exception:
-            pass
+            logger.debug("采集外部通知截图失败", exc_info=True)
         return None
 
     async def _get_telemetry_screenshot_bytes(self) -> bytes | None:
@@ -2576,9 +2580,12 @@ class TaskFlowRunner(QObject):
             notify_system=lambda message: self.runner_events.focus_notification.emit(
                 str(message)
             ),
-            notify_external=lambda title, text: send_all_enabled_channels(
-                str(title), str(text)
+            notify_external=lambda title, text, image_bytes=None: send_all_enabled_channels(
+                str(title),
+                str(text),
+                image_bytes=image_bytes,
             ),
+            capture_screenshot=self._capture_screenshot_bytes,
             start_process=self._builtin_start_process,
             play_system_sound=self._builtin_play_system_sound,
             tr=lambda text: self._builtin_task_loader.i18n_service.translate_text(

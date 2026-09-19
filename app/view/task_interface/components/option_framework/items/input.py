@@ -5,12 +5,18 @@ Input 选项项
 import re
 from typing import Any, Dict, Optional
 
-from qfluentwidgets import LineEdit
+from qfluentwidgets import LineEdit, TextEdit
 
 from app.common.signal_bus import signalBus
 from app.utils.logger import logger
 from .base import OptionItemBase
-from .line_edit_factory import create_option_line_edit, should_apply_input_default
+from .line_edit_factory import (
+    connect_option_input_changed,
+    create_option_line_edit,
+    read_option_input,
+    should_apply_input_default,
+    write_option_input,
+)
 
 
 class InputOptionItem(OptionItemBase):
@@ -76,7 +82,7 @@ class InputOptionItem(OptionItemBase):
 
             # 设置默认值（密码字段禁止 default）
             if should_apply_input_default(input_item) and "default" in input_item:
-                line_edit.setText(str(input_item["default"]))
+                write_option_input(line_edit, input_item["default"])
 
             # 设置占位提示
             placeholder = input_item.get("label") or self.config.get("label", "")
@@ -84,7 +90,7 @@ class InputOptionItem(OptionItemBase):
                 line_edit.setPlaceholderText(placeholder)
 
             # 添加验证规则
-            if "verify" in input_item:
+            if "verify" in input_item and isinstance(line_edit, LineEdit):
                 verify_pattern = input_item["verify"]
                 pattern_msg = input_item.get("pattern_msg") or self.config.get(
                     "pattern_msg"
@@ -92,7 +98,8 @@ class InputOptionItem(OptionItemBase):
                 self._connect_validator(line_edit, verify_pattern, pattern_msg)
 
             # 连接信号
-            line_edit.textChanged.connect(
+            connect_option_input_changed(
+                line_edit,
                 lambda text, name=input_name: self._on_lineedit_changed(name, text)
             )
 
@@ -131,11 +138,12 @@ class InputOptionItem(OptionItemBase):
         if isinstance(self.control_widget, dict):
             # 字典形式存储的输入框
             self.current_value = {
-                name: widget.text() for name, widget in self.control_widget.items()
+                name: read_option_input(widget)
+                for name, widget in self.control_widget.items()
             }
-        elif isinstance(self.control_widget, LineEdit):
+        elif isinstance(self.control_widget, (LineEdit, TextEdit)):
             # 单个输入框
-            self.current_value = self.control_widget.text()
+            self.current_value = read_option_input(self.control_widget)
         else:
             logger.warning("input 类型的控件未初始化，无法读取默认值")
 
@@ -168,7 +176,7 @@ class InputOptionItem(OptionItemBase):
                         widget = self.control_widget[input_name]
                         widget.blockSignals(True)
                         try:
-                            widget.setText(str(input_value))
+                            write_option_input(widget, input_value)
                             self.current_value[input_name] = str(input_value)
                         finally:
                             widget.blockSignals(False)
@@ -179,11 +187,11 @@ class InputOptionItem(OptionItemBase):
                 widget.blockSignals(True)
                 try:
                     text_value = "" if lineedit_value is None else str(lineedit_value)
-                    widget.setText(text_value)
+                    write_option_input(widget, text_value)
                     self.current_value[input_name] = text_value
                 finally:
                     widget.blockSignals(False)
-        elif isinstance(self.control_widget, LineEdit):
+        elif isinstance(self.control_widget, (LineEdit, TextEdit)):
             # 单个输入框
             text_value = ""
             if isinstance(lineedit_value, dict):
@@ -193,7 +201,7 @@ class InputOptionItem(OptionItemBase):
                 text_value = str(lineedit_value)
             self.control_widget.blockSignals(True)
             try:
-                self.control_widget.setText(text_value)
+                write_option_input(self.control_widget, text_value)
                 self.current_value = text_value
             finally:
                 self.control_widget.blockSignals(False)

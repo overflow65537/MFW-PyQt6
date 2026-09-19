@@ -26,6 +26,7 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_external_notification_label": "外部通知",
         "builtin_external_notification_description": "向当前已启用的外部通知渠道发送消息。",
         "builtin_external_notification_option_label": "外部通知",
+        "builtin_include_screenshot_label": "本次发送附带截图",
         "builtin_title_label": "标题",
         "builtin_default_system_notification": "MFW 内置任务通知",
         "builtin_default_external_notification": "MFW 内置任务外部通知",
@@ -36,6 +37,7 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_log_wait_until_empty": "内置定时等待缺少目标时间，已跳过。",
         "builtin_log_wait_until_invalid": "无法解析定时等待目标时间：{time}",
         "builtin_log_wait_until_target": "内置任务等待至 {time}。",
+        "builtin_log_external_screenshot_unavailable": "未能获取通知截图，本次仅发送正文。",
     },
     "zh_tw": {
         "builtin_group_label": "框架內建任務",
@@ -62,6 +64,7 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_external_notification_label": "外部通知",
         "builtin_external_notification_description": "向目前已啟用的外部通知通道傳送訊息。",
         "builtin_external_notification_option_label": "外部通知",
+        "builtin_include_screenshot_label": "本次傳送附帶截圖",
         "builtin_title_label": "標題",
         "builtin_default_system_notification": "MFW 內建任務通知",
         "builtin_default_external_notification": "MFW 內建任務外部通知",
@@ -72,6 +75,7 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_log_wait_until_empty": "內建定時等待缺少目標時間，已略過。",
         "builtin_log_wait_until_invalid": "無法解析定時等待目標時間：{time}",
         "builtin_log_wait_until_target": "內建任務等待至 {time}。",
+        "builtin_log_external_screenshot_unavailable": "無法取得通知截圖，本次僅傳送正文。",
     },
     "ja_jp": {
         "builtin_group_label": "フレームワーク組み込みタスク",
@@ -98,6 +102,7 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_external_notification_label": "外部通知",
         "builtin_external_notification_description": "現在有効なすべての外部通知チャンネルにメッセージを送信します。",
         "builtin_external_notification_option_label": "外部通知",
+        "builtin_include_screenshot_label": "今回の送信にスクリーンショットを添付",
         "builtin_title_label": "タイトル",
         "builtin_default_system_notification": "MFW 組み込みタスク通知",
         "builtin_default_external_notification": "MFW 組み込みタスク外部通知",
@@ -108,6 +113,7 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_log_wait_until_empty": "組み込みの時刻待機タスクの対象時刻が空のため、スキップしました。",
         "builtin_log_wait_until_invalid": "時刻待機の対象時刻を解析できませんでした: {time}",
         "builtin_log_wait_until_target": "組み込みタスクは {time} まで待機します。",
+        "builtin_log_external_screenshot_unavailable": "通知用のスクリーンショットを取得できなかったため、本文のみ送信します。",
     },
     "en_us": {
         "builtin_group_label": "Framework Built-in Tasks",
@@ -134,6 +140,7 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_external_notification_label": "External Notification",
         "builtin_external_notification_description": "Send a message to all currently enabled external notification channels.",
         "builtin_external_notification_option_label": "External Notification",
+        "builtin_include_screenshot_label": "Attach screenshot to this message",
         "builtin_title_label": "Title",
         "builtin_default_system_notification": "MFW builtin task notification",
         "builtin_default_external_notification": "MFW builtin task external notification",
@@ -144,5 +151,6 @@ DEFAULT_BUILTIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "builtin_log_wait_until_empty": "Builtin wait-until target time is empty, skipped.",
         "builtin_log_wait_until_invalid": "Failed to parse builtin wait-until target time: {time}",
         "builtin_log_wait_until_target": "Builtin task waits until {time}.",
+        "builtin_log_external_screenshot_unavailable": "Could not capture a screenshot; only the message body will be sent.",
     },
 }

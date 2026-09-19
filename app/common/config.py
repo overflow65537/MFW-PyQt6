@@ -253,7 +253,7 @@ class Config(QConfig):
     Notice_Gotify_token = ConfigItem("Notice", "Gotify_token", "")
     Notice_Gotify_priority = ConfigItem("Notice", "Gotify_priority", "0")
 
-    # 通用 Webhook：向任意 URL POST JSON（title/message），可选 Bearer Token
+    # 通用 Webhook：发送文本/富文本及可选 base64 图片，可选 Bearer Token
     Notice_Webhook_status = ConfigItem("Notice", "Webhook_status", False)
     Notice_Webhook_url = ConfigItem("Notice", "Webhook_url", "")
     Notice_Webhook_token = ConfigItem("Notice", "Webhook_token", "")
@@ -272,10 +272,6 @@ class Config(QConfig):
     when_post_task = ConfigItem("Notice", "when_post_task", True)  # 任务流完成时
     when_task_timeout = ConfigItem("Notice", "when_task_timeout", True)  # 任务超时
     when_task_finished = ConfigItem("Notice", "when_task_finished", False)  # 保留兼容性
-    # 外部通知发送格式：plain=纯文本，html=HTML（如邮件正文）
-    notice_send_format = OptionsConfigItem(
-        "Notice", "notice_send_format", "plain", OptionsValidator(["plain", "html"])
-    )
     # 是否随通知发送截图（任务流发送通知时若控制器可用则附带当前截图）
     notice_send_screenshot = ConfigItem(
         "Notice", "notice_send_screenshot", False, BoolValidator()

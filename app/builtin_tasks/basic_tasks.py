@@ -121,15 +121,29 @@ async def execute_system_notification(context, task_option: dict[str, Any]):
 
 
 async def execute_external_notification(context, task_option: dict[str, Any]):
-    title = str(_nested_value(task_option, "external_notice", "title", "") or "").strip()
     text = str(_nested_value(task_option, "external_notice", "text", "") or "").strip()
-    if not title:
-        title = "MFW"
+    legacy_title = str(
+        _nested_value(task_option, "external_notice", "title", "") or ""
+    ).strip()
+    if (
+        text in {"", "$builtin_default_external_notification"}
+        and legacy_title
+        and legacy_title != "MFW"
+    ):
+        text = legacy_title
     if not text:
         text = "$builtin_default_external_notification"
-    title = context.tr(title)
     text = context.tr(text)
-    context.notify_external(title, text)
+
+    image_bytes = None
+    if _switch_enabled(task_option, "include_screenshot", False):
+        image_bytes = await context.capture_screenshot()
+        if image_bytes is None:
+            context.log(
+                "WARNING",
+                context.tr("$builtin_log_external_screenshot_unavailable"),
+            )
+    context.notify_external("MFW", text, image_bytes)
     return True
 
 
@@ -220,15 +234,23 @@ def get_builtin_tasks():
             "name": "BuiltinExternalNotification",
             "label": "$builtin_external_notification_label",
             "description": "$builtin_external_notification_description",
-            "options": ["external_notice"],
+            "options": ["external_notice", "include_screenshot"],
             "option_defs": {
                 "external_notice": _input_option(
                     "$builtin_external_notification_option_label",
                     [
-                        {"name": "title", "label": "$builtin_title_label", "default": "MFW"},
-                        {"name": "text", "label": "$builtin_message_label", "default": "$builtin_default_external_notification"},
+                        {
+                            "name": "text",
+                            "label": "$builtin_message_label",
+                            "default": "$builtin_default_external_notification",
+                            "multiline": True,
+                        },
                     ],
-                )
+                ),
+                "include_screenshot": _switch_option(
+                    "$builtin_include_screenshot_label",
+                    False,
+                ),
             },
             "execute": execute_external_notification,
         },

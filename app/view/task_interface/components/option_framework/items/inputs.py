@@ -11,7 +11,13 @@ from qfluentwidgets import LineEdit
 from app.common.signal_bus import signalBus
 from app.utils.logger import logger
 from .base import OptionItemBase
-from .line_edit_factory import create_option_line_edit, should_apply_input_default
+from .line_edit_factory import (
+    connect_option_input_changed,
+    create_option_line_edit,
+    read_option_input,
+    should_apply_input_default,
+    write_option_input,
+)
 
 
 class InputsOptionItem(OptionItemBase):
@@ -88,14 +94,14 @@ class InputsOptionItem(OptionItemBase):
 
             # 设置默认值（密码字段禁止 default）
             if should_apply_input_default(input_item) and "default" in input_item:
-                line_edit.setText(str(input_item["default"]))
+                write_option_input(line_edit, input_item["default"])
 
             # 设置占位提示
             if input_label_text:
                 line_edit.setPlaceholderText(input_label_text)
 
             # 添加验证规则
-            if "verify" in input_item:
+            if "verify" in input_item and isinstance(line_edit, LineEdit):
                 verify_pattern = input_item["verify"]
                 pattern_msg = input_item.get("pattern_msg") or self.config.get(
                     "pattern_msg"
@@ -106,7 +112,8 @@ class InputsOptionItem(OptionItemBase):
             self.main_option_layout.addLayout(input_container)
 
             # 连接信号
-            line_edit.textChanged.connect(
+            connect_option_input_changed(
+                line_edit,
                 lambda text, name=input_name: self._on_lineedit_changed(name, text)
             )
 
@@ -116,7 +123,8 @@ class InputsOptionItem(OptionItemBase):
         """初始化配置值"""
         if isinstance(self.control_widget, dict):
             self.current_value = {
-                name: widget.text() for name, widget in self.control_widget.items()
+                name: read_option_input(widget)
+                for name, widget in self.control_widget.items()
             }
         else:
             logger.warning("inputs 类型的控件未初始化，无法读取默认值")
@@ -146,7 +154,7 @@ class InputsOptionItem(OptionItemBase):
                         widget = self.control_widget[input_name]
                         widget.blockSignals(True)
                         try:
-                            widget.setText(str(input_value))
+                            write_option_input(widget, input_value)
                             if isinstance(self.current_value, dict):
                                 self.current_value[input_name] = str(input_value)
                         finally:

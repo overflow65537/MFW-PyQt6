@@ -568,7 +568,8 @@ class WebhookNoticeType(BaseNoticeType):
         webhook_status_title.setText(self.tr("Webhook Status:"))
         hint_label.setText(
             self.tr(
-                "POSTs JSON {title, message, text} to any URL. "
+                "POSTs JSON with text, HTML, Markdown, and optional base64 image fields. "
+                "If the endpoint rejects image JSON, MFW retries it as multipart form data. "
                 "Use for custom endpoints; prefer dedicated channels for Gotify/Lark/etc."
             )
         )
