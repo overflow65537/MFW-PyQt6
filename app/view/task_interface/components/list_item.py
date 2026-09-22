@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Signal, Qt, QTimer
-from PySide6.QtGui import QPalette, QGuiApplication, QPixmap, QColor
+from PySide6.QtGui import QGuiApplication, QPixmap, QColor
 
 from qfluentwidgets import (
     CheckBox,
@@ -63,11 +63,18 @@ class BaseListItem(QWidget):
         qconfig.themeChanged.connect(self._apply_theme_colors)
 
     def _resolve_text_color(self) -> str:
-        """根据当前主题返回可读的文本颜色"""
-        color = self.palette().color(QPalette.ColorRole.WindowText)
-        if not isDarkTheme() and color.lightness() > 220:
-            return "#202020"
-        return color.name()
+        """根据当前主题返回可读的文本颜色。
+
+        必须用 isDarkTheme()，不能读 palette.WindowText：
+        themeChanged 触发时列表项调色板往往还没刷新；隐藏或非激活项还会给出
+        Inactive 组的灰色。这个快照会被写进 name_label 的 stylesheet 并锁死，
+        标题栏只设了 font-size，所以看起来“只有任务字体不跟主题”。
+        """
+        return "#f5f5f5" if isDarkTheme() else "#202020"
+
+    def _resolve_option_color(self) -> str:
+        """选项摘要用弱化色，但仍需随深浅主题切换。"""
+        return "#9a9a9a" if isDarkTheme() else "#808080"
 
     def _apply_theme_colors(self, *_):
         """应用主题颜色到名称标签"""
@@ -235,11 +242,12 @@ class TaskListItem(BaseListItem):
             self._apply_theme_colors()
 
     def _apply_theme_colors(self, *_):
-        """应用主题颜色到名称标签，同时保持选项标签的灰色小字体样式"""
+        """应用主题颜色到名称标签，同时刷新选项摘要的弱化色"""
         super()._apply_theme_colors()
-        # 选项标签保持灰色小字体样式，不受主题变化影响
         if hasattr(self, "option_label"):
-            self.option_label.setStyleSheet("color: gray; font-size: 11px;")
+            self.option_label.setStyleSheet(
+                f"color: {self._resolve_option_color()}; font-size: 11px;"
+            )
             # 确保字体大小有效
             self._ensure_font_valid(self.option_label)
 
@@ -452,8 +460,10 @@ class TaskListItem(BaseListItem):
         label.setFixedHeight(12)  # 从 20 调整为 12
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         label.setWordWrap(False)  # 不换行
-        # 设置样式，使文本更小更淡
-        label.setStyleSheet("color: gray; font-size: 11px;")
+        # 设置样式，使文本更小更淡，颜色随主题变化
+        label.setStyleSheet(
+            f"color: {self._resolve_option_color()}; font-size: 11px;"
+        )
         # 确保字体大小有效，防止出现负数
         self._ensure_font_valid(label)
         # 禁用文本选择，让所有事件（点击、拖动等）直接作用于父组件 ListItem
