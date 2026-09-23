@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtWidgets import QApplication
 
 from app.core.runner.runtime_context import (
     RuntimeLogStore,
@@ -17,7 +17,7 @@ from app.view.task_interface.components.logoutput_widget import LogoutputWidget
 class RuntimeUiReplayTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QCoreApplication.instance() or QCoreApplication([])
+        cls.app = QApplication.instance() or QApplication([])
 
     def test_log_binding_disconnects_old_store_and_replays_new_history(self):
         store_a = RuntimeLogStore()

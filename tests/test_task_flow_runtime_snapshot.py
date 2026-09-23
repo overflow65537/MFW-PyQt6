@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtWidgets import QApplication
 
 from app.common.constants import _CONTROLLER_, _RESOURCE_
 from app.core.item import ConfigItem, RunnerEvents, TaskItem
@@ -44,7 +44,7 @@ class _ConfigService:
 class TaskFlowRuntimeSnapshotTests(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QCoreApplication.instance() or QCoreApplication([])
+        cls.app = QApplication.instance() or QApplication([])
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

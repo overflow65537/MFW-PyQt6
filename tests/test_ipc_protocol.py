@@ -2,7 +2,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtWidgets import QApplication
 
 from app.ipc.local_client import LocalIpcClient
 from app.ipc.local_server import (
@@ -129,7 +129,7 @@ class _FakeSocket:
 class LocalIpcServerFramingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QCoreApplication.instance() or QCoreApplication([])
+        cls.app = QApplication.instance() or QApplication([])
 
     def _make_server(self):
         server = LocalIpcServer("test-ipc")

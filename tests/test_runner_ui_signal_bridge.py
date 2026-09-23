@@ -3,7 +3,8 @@ import inspect
 import unittest
 from pathlib import Path
 
-from PySide6.QtCore import QCoreApplication, Qt
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication
 
 from app.common.signal_bus import signalBus
 from app.core.core import _RunnerUiSignalBridge, ServiceCoordinator
@@ -17,7 +18,7 @@ RUNNER_ROOT = PROJECT_ROOT / "app" / "core" / "runner"
 class RunnerUiSignalBridgeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QCoreApplication.instance() or QCoreApplication([])
+        cls.app = QApplication.instance() or QApplication([])
 
     def test_start_button_status_is_forwarded_once_with_payload_unchanged(self):
         runner_events = RunnerEvents()

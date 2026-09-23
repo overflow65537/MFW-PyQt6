@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtWidgets import QApplication
 
 from app.core.core import _CoreUiSignalBridge, ServiceCoordinator
 from app.core.facade.config_facade import ConfigFacade
@@ -84,7 +84,7 @@ class Stage5ArchitectureGuardTests(unittest.TestCase):
 class ScheduleBoundaryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QCoreApplication.instance() or QCoreApplication([])
+        cls.app = QApplication.instance() or QApplication([])
 
     def test_schedule_notifications_are_structured_service_signals(self):
         backend = SimpleNamespace(is_supported=False)

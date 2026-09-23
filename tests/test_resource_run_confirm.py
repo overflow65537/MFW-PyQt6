@@ -108,9 +108,10 @@ class ResourceRunAcknowledgeTest(unittest.TestCase):
 class ConfirmResourceRunRunnerTest(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):
-        from PySide6.QtCore import QCoreApplication
+        from PySide6.QtWidgets import QApplication
 
-        cls.app = QCoreApplication.instance() or QCoreApplication([])
+        cls.app = QApplication.instance() or QApplication([])
+
     def _runner(self, *, acknowledged: bool):
         events = RunnerEvents()
         runner = SimpleNamespace(

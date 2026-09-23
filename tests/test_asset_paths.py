@@ -13,11 +13,11 @@ class AssetPathTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         try:
-            from PySide6.QtGui import QGuiApplication
+            from PySide6.QtWidgets import QApplication
         except ImportError:
             cls._qt_app = None
             return
-        cls._qt_app = QGuiApplication.instance() or QGuiApplication(sys.argv)
+        cls._qt_app = QApplication.instance() or QApplication(sys.argv)
 
     def test_default_logo_path_constants(self):
         self.assertEqual(DEFAULT_APP_LOGO_FILE, "app/assets/icons/logo.png")

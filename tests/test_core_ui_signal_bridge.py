@@ -2,7 +2,8 @@ import inspect
 import re
 import unittest
 
-from PySide6.QtCore import QCoreApplication, Qt
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication
 
 from app.common.constants import _CONTROLLER_, _RESOURCE_, POST_ACTION
 from app.core.core import _CoreUiSignalBridge, ServiceCoordinator
@@ -17,7 +18,7 @@ from app.core.service.option_service import OptionService
 class CoreUiSignalBridgeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QCoreApplication.instance() or QCoreApplication([])
+        cls.app = QApplication.instance() or QApplication([])
 
     def setUp(self):
         self.core_signals = CoreSignalBus()

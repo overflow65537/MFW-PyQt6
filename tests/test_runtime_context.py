@@ -3,7 +3,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, call, patch
 
-from PySide6.QtCore import QCoreApplication, QObject, Signal
+from PySide6.QtCore import QObject, Signal
+from PySide6.QtWidgets import QApplication
 
 from app.core.core import ServiceCoordinator
 from app.core.item import RunnerEvents
@@ -15,7 +16,7 @@ from app.core.service.telemetry_service import TelemetryService
 class RuntimeContextIsolationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QCoreApplication.instance() or QCoreApplication([])
+        cls.app = QApplication.instance() or QApplication([])
 
     def _create_contexts(self):
         with (
@@ -689,7 +690,7 @@ class RuntimeContextRegistryTests(unittest.TestCase):
 class TelemetryRuntimeBindingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QCoreApplication.instance() or QCoreApplication([])
+        cls.app = QApplication.instance() or QApplication([])
 
     def test_switching_events_disconnects_previous_context(self):
         events_a = RunnerEvents()
