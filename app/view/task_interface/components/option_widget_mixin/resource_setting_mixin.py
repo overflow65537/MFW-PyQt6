@@ -162,9 +162,10 @@ class ResourceSettingMixin:
                         self.set_description("", has_options=True)
                 # 保存资源选项到Resource任务
                 self._auto_save_resource_option(new_resource_name)
-                # 获取当前资源的选项名称列表
-                # 更新资源选项（如果有）
+                # 资源变化后重算 resource.option 与 Setting/global_option
+                # （后者按 option.resource / option.controller 过滤）
                 self._update_resource_options()
+                self._update_global_options()
                 break
 
     def _auto_save_resource_option(self, resource_name: str, skip_sync_check: bool = False):
@@ -286,9 +287,10 @@ class ResourceSettingMixin:
         # 恢复信号
         resource_combo.blockSignals(False)
         
-        # 填充完成后，根据当前资源更新资源选项与全局选项（如果有）
+        # 填充完成后，根据当前资源更新资源选项与 Setting/global_option
         if target_label or (target and curren_config):
             self._update_resource_options()
+            self._update_global_options()
     
     def _get_current_resource_dict(self) -> Optional[Dict[str, Any]]:
         """获取当前资源的配置字典"""
