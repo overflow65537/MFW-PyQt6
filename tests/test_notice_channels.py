@@ -5,7 +5,7 @@ import hashlib
 import unittest
 from unittest.mock import patch
 
-from app.utils.notice import DingTalk, Lark, QYWX, SMTP, Webhook
+from app.utils.notice import DingTalk, Lark, NoticeErrorCode, OneBot, QYWX, SMTP, Webhook
 from app.utils.notice_content import build_simple_message
 
 
@@ -95,6 +95,62 @@ class TestNoticeChannels(unittest.TestCase):
         self.assertEqual(self.message["text"], data["text"])
         self.assertEqual("screenshot.png", files["image"][0])
         self.assertEqual("image/png", files["image"][2])
+
+    def test_onebot_text_only_segment(self):
+        message = dict(self.message)
+        message.pop("image_bytes", None)
+
+        segments = OneBot().msg(message)
+
+        self.assertEqual(1, len(segments))
+        self.assertEqual("text", segments[0]["type"])
+        self.assertEqual(f"Title\n{message['text']}", segments[0]["data"]["text"])
+
+    def test_onebot_appends_base64_image_segment(self):
+        segments = OneBot().msg(self.message)
+
+        self.assertEqual(2, len(segments))
+        self.assertEqual("image", segments[1]["type"])
+        self.assertTrue(segments[1]["data"]["file"].startswith("base64://"))
+
+    def _onebot_cfg(self, target_type: str, target_id: str):
+        from app.common.config import cfg
+
+        def fake_get(item):
+            if item is cfg.Notice_OneBot_url:
+                return "http://127.0.0.1:5700/"
+            if item is cfg.Notice_OneBot_target_type:
+                return target_type
+            if item is cfg.Notice_OneBot_target_id:
+                return target_id
+            return ""
+
+        return fake_get
+
+    def test_onebot_private_endpoint_uses_user_id(self):
+        message = dict(self.message)
+        message.pop("image_bytes", None)
+        with patch("app.utils.notice.cfg.get", side_effect=self._onebot_cfg("private", "123456")):
+            request = OneBot().build_request(message)
+
+        self.assertNotIsInstance(request, NoticeErrorCode)
+        endpoint, payload, headers = request
+        self.assertEqual("http://127.0.0.1:5700/send_private_msg", endpoint)
+        self.assertEqual(123456, payload["user_id"])
+        self.assertNotIn("group_id", payload)
+        self.assertNotIn("Authorization", headers)
+
+    def test_onebot_group_endpoint_uses_group_id(self):
+        message = dict(self.message)
+        message.pop("image_bytes", None)
+        with patch("app.utils.notice.cfg.get", side_effect=self._onebot_cfg("group", "987654")):
+            request = OneBot().build_request(message)
+
+        self.assertNotIsInstance(request, NoticeErrorCode)
+        endpoint, payload, _headers = request
+        self.assertEqual("http://127.0.0.1:5700/send_group_msg", endpoint)
+        self.assertEqual(987654, payload["group_id"])
+        self.assertNotIn("user_id", payload)
 
 
 if __name__ == "__main__":

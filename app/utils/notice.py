@@ -98,6 +98,7 @@ def decode_key(key_name) -> str:
         "QYWX": cfg.Notice_QYWX_key,
         "gotify": cfg.Notice_Gotify_token,
         "webhook": cfg.Notice_Webhook_token,
+        "onebot": cfg.Notice_OneBot_token,
     }
 
     config_item = mapping.get(key_name)
@@ -583,6 +584,90 @@ class Webhook:
             return NoticeErrorCode.NETWORK_ERROR
 
 
+class OneBot:
+    """OneBot v11 HTTP API（NapCat / LLOneBot / go-cqhttp）。"""
+
+    def __init__(self) -> None:
+        self.correct_url = r"^https?://.+"
+
+    def msg(self, msg_dict: dict) -> list[dict]:
+        title = str(msg_dict.get("title", "") or "").strip()
+        text = str(msg_dict.get("text", "") or "").strip()
+        body = "\n".join(part for part in (title, text) if part)
+        segments: list[dict] = []
+        if body:
+            segments.append({"type": "text", "data": {"text": body}})
+        image_bytes = msg_dict.get("image_bytes")
+        if image_bytes:
+            image_payload = encode_image_payload(image_bytes)
+            segments.append(
+                {
+                    "type": "image",
+                    "data": {"file": f"base64://{image_payload.base64_data}"},
+                }
+            )
+        return segments
+
+    def build_request(self, msg_dict: dict) -> tuple[str, dict, dict] | NoticeErrorCode:
+        url = (cfg.get(cfg.Notice_OneBot_url) or "").strip().rstrip("/")
+        if not url:
+            logger.error("OneBot URL为空")
+            return NoticeErrorCode.PARAM_EMPTY
+        if not re.match(self.correct_url, url):
+            logger.error("OneBot URL不正确")
+            return NoticeErrorCode.PARAM_INVALID
+
+        target_id = str(cfg.get(cfg.Notice_OneBot_target_id) or "").strip()
+        if not target_id.isdigit():
+            logger.error("OneBot 目标 ID 无效")
+            return NoticeErrorCode.PARAM_INVALID
+
+        segments = self.msg(msg_dict)
+        if not segments:
+            logger.error("OneBot 消息为空")
+            return NoticeErrorCode.PARAM_EMPTY
+
+        target_type = str(cfg.get(cfg.Notice_OneBot_target_type) or "private").strip().lower()
+        if target_type == "group":
+            endpoint = f"{url}/send_group_msg"
+            payload = {"group_id": int(target_id), "message": segments}
+        else:
+            endpoint = f"{url}/send_private_msg"
+            payload = {"user_id": int(target_id), "message": segments}
+
+        headers = {"Content-Type": "application/json"}
+        token = decode_key("onebot")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        return endpoint, payload, headers
+
+    def send(self, msg_dict: dict) -> NoticeErrorCode:
+        request = self.build_request(msg_dict)
+        if isinstance(request, NoticeErrorCode):
+            return request
+        endpoint, payload, headers = request
+        try:
+            response = requests.post(
+                url=endpoint,
+                json=payload,
+                headers=headers,
+                timeout=15,
+            )
+            data = response.json()
+        except Exception as e:
+            info = normalize_network_error(e, source="onebot")
+            set_notice_error_context("onebot", info)
+            logger.error(info.log_message)
+            return NoticeErrorCode.NETWORK_ERROR
+
+        status = str(data.get("status", "")).lower()
+        retcode = data.get("retcode")
+        if status == "ok" and retcode in (0, "0"):
+            return NoticeErrorCode.SUCCESS
+        logger.error("OneBot 发送失败: %s", data)
+        return NoticeErrorCode.RESPONSE_ERROR
+
+
 dingtalk = DingTalk()
 lark = Lark()
 smtp = SMTP()
@@ -590,6 +675,7 @@ wxpusher = WxPusher()
 qywx = QYWX()
 gotify = Gotify()
 webhook = Webhook()
+onebot = OneBot()
 
 
 class NoticeSendThread(QThread):
@@ -611,6 +697,7 @@ class NoticeSendThread(QThread):
             "qywx": QYWX_send,
             "gotify": gotify_send,
             "webhook": webhook_send,
+            "onebot": onebot_send,
         }
 
     def add_task(self, notice_type, msg_dict, status):
@@ -893,6 +980,21 @@ def webhook_send(
     return result
 
 
+def onebot_send(
+    msg_dict: dict | None = None,
+    status: bool = False,
+) -> NoticeErrorCode:
+    if not status:
+        logger.info("OneBot 未启用")
+        return NoticeErrorCode.DISABLED
+
+    msg_dict = _normalize_message_dict(msg_dict or {"title": "Test", "text": "Test"})
+    result = onebot.send(msg_dict)
+    if result == NoticeErrorCode.SUCCESS:
+        logger.info("OneBot 发送成功")
+    return result
+
+
 NOTICE_CHANNEL_STATUS = {
     "dingtalk": cfg.Notice_DingTalk_status,
     "lark": cfg.Notice_Lark_status,
@@ -901,6 +1003,7 @@ NOTICE_CHANNEL_STATUS = {
     "qywx": cfg.Notice_QYWX_status,
     "gotify": cfg.Notice_Gotify_status,
     "webhook": cfg.Notice_Webhook_status,
+    "onebot": cfg.Notice_OneBot_status,
 }
 
 NOTICE_EVENT_CONFIG = {

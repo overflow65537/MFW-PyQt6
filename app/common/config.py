@@ -258,6 +258,13 @@ class Config(QConfig):
     Notice_Webhook_url = ConfigItem("Notice", "Webhook_url", "")
     Notice_Webhook_token = ConfigItem("Notice", "Webhook_token", "")
 
+    # OneBot v11 HTTP API（NapCat / LLOneBot / go-cqhttp）
+    Notice_OneBot_status = ConfigItem("Notice", "OneBot_status", False)
+    Notice_OneBot_url = ConfigItem("Notice", "OneBot_url", "")
+    Notice_OneBot_token = ConfigItem("Notice", "OneBot_token", "")
+    Notice_OneBot_target_type = ConfigItem("Notice", "OneBot_target_type", "private")
+    Notice_OneBot_target_id = ConfigItem("Notice", "OneBot_target_id", "")
+
     when_start_up = ConfigItem("Notice", "when_start_up", False)
     # 通知时机配置，分别控制不同场景下的通知发送
     when_flow_started = ConfigItem("Notice", "when_flow_started", False)  # 任务流启动时

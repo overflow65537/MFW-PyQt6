@@ -11,6 +11,7 @@ from qfluentwidgets import (
     SwitchButton,
     CheckBox,
     SubtitleLabel,
+    ComboBox,
 )
 
 from app.utils.logger import logger
@@ -74,6 +75,7 @@ class BaseNoticeType(MessageBoxBase):
             "QYWX": cfg.Notice_QYWX_key,
             "gotify": cfg.Notice_Gotify_token,
             "webhook": cfg.Notice_Webhook_token,
+            "onebot": cfg.Notice_OneBot_token,
         }
         cfg_key = mapping.get(key_name)
         if cfg_key is None:
@@ -608,6 +610,85 @@ class WebhookNoticeType(BaseNoticeType):
             self.encrypt_key(self.webhook_token_input.text()),
         )
         cfg.set(cfg.Notice_Webhook_status, self.webhook_status_switch.isChecked())
+
+
+class OneBotNoticeType(BaseNoticeType):
+    """OneBot v11 HTTP 通知配置对话框"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent, "OneBot")
+        self.add_fields()
+
+    def add_fields(self):
+        """添加 OneBot 相关的输入框"""
+        url_title = BodyLabel(self)
+        token_title = BodyLabel(self)
+        target_type_title = BodyLabel(self)
+        target_id_title = BodyLabel(self)
+        status_title = BodyLabel(self)
+
+        self.onebot_url_input = LineEdit(self)
+        self.onebot_token_input = PasswordLineEdit(self)
+        self.onebot_target_type_combo = ComboBox(self)
+        self.onebot_target_id_input = LineEdit(self)
+        self.onebot_status_switch = SwitchButton(self)
+
+        url_title.setText(self.tr("OneBot HTTP API URL:"))
+        token_title.setText(self.tr("Access Token (optional):"))
+        target_type_title.setText(self.tr("Target Type:"))
+        target_id_title.setText(self.tr("Target ID:"))
+        status_title.setText(self.tr("OneBot Status:"))
+
+        self.onebot_target_type_combo.addItem(self.tr("Private"), userData="private")
+        self.onebot_target_type_combo.addItem(self.tr("Group"), userData="group")
+        self.onebot_url_input.setPlaceholderText("http://127.0.0.1:5700")
+        self.onebot_target_id_input.setPlaceholderText(self.tr("QQ or group number"))
+
+        self.onebot_url_input.setText(cfg.get(cfg.Notice_OneBot_url))
+        self.onebot_token_input.setText(self.decode_key("onebot"))
+        target_type = str(cfg.get(cfg.Notice_OneBot_target_type) or "private").strip().lower()
+        target_index = self.onebot_target_type_combo.findData(target_type)
+        if target_index >= 0:
+            self.onebot_target_type_combo.setCurrentIndex(target_index)
+        self.onebot_target_id_input.setText(cfg.get(cfg.Notice_OneBot_target_id))
+        self.onebot_status_switch.setChecked(cfg.get(cfg.Notice_OneBot_status))
+
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(url_title)
+        col1.addWidget(token_title)
+        col1.addWidget(target_type_title)
+        col1.addWidget(target_id_title)
+        col1.addWidget(status_title)
+
+        col2.addWidget(self.onebot_url_input)
+        col2.addWidget(self.onebot_token_input)
+        col2.addWidget(self.onebot_target_type_combo)
+        col2.addWidget(self.onebot_target_id_input)
+        col2.addWidget(self.onebot_status_switch)
+
+        main_layout = QHBoxLayout()
+        main_layout.addLayout(col1)
+        main_layout.addLayout(col2)
+
+        self.viewLayout.addLayout(main_layout)
+        self.onebot_url_input.textChanged.connect(self.save_fields)
+        self.onebot_token_input.textChanged.connect(self.save_fields)
+        self.onebot_target_type_combo.currentIndexChanged.connect(self.save_fields)
+        self.onebot_target_id_input.textChanged.connect(self.save_fields)
+
+    def save_fields(self):
+        """保存 OneBot 相关的输入框"""
+        target_type = self.onebot_target_type_combo.currentData() or "private"
+        cfg.set(cfg.Notice_OneBot_url, self.onebot_url_input.text().strip())
+        cfg.set(
+            cfg.Notice_OneBot_token,
+            self.encrypt_key(self.onebot_token_input.text()),
+        )
+        cfg.set(cfg.Notice_OneBot_target_type, str(target_type))
+        cfg.set(cfg.Notice_OneBot_target_id, self.onebot_target_id_input.text().strip())
+        cfg.set(cfg.Notice_OneBot_status, self.onebot_status_switch.isChecked())
 
 
 class NoticeTimingDialog(MessageBoxBase):

@@ -93,6 +93,7 @@ from app.view.setting_interface.widget.notice_type import (
     WxPusherNoticeType,
     GotifyNoticeType,
     WebhookNoticeType,
+    OneBotNoticeType,
     NoticeTimingDialog,
 )
 
@@ -394,6 +395,7 @@ class SettingInterface(QWidget):
         self.QYWX_noticeTypeCard.clicked.connect(self._on_qywx_notice_clicked)
         self.gotify_noticeTypeCard.clicked.connect(self._on_gotify_notice_clicked)
         self.webhook_noticeTypeCard.clicked.connect(self._on_webhook_notice_clicked)
+        self.onebot_noticeTypeCard.clicked.connect(self._on_onebot_notice_clicked)
         self.notice_timing_card.clicked.connect(self._on_notice_timing_clicked)
 
     def _setup_ui(self):
@@ -1412,6 +1414,19 @@ class SettingInterface(QWidget):
             parent=self.noticeGroup,
         )
 
+        if cfg.get(cfg.Notice_OneBot_status):
+            onebot_content = self.tr("OneBot Notification Enabled")
+        else:
+            onebot_content = self.tr("OneBot Notification Disabled")
+
+        self.onebot_noticeTypeCard = PrimaryPushSettingCard(
+            text=self.tr("Modify"),
+            icon=FIF.SEND,
+            title=self.tr("OneBot"),
+            content=onebot_content,
+            parent=self.noticeGroup,
+        )
+
         self.noticeGroup.addSettingCard(self.dingtalk_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.lark_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
@@ -1419,6 +1434,7 @@ class SettingInterface(QWidget):
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.gotify_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.webhook_noticeTypeCard)
+        self.noticeGroup.addSettingCard(self.onebot_noticeTypeCard)
 
         # 是否随通知发送截图
         self.notice_send_screenshot_card = SwitchSettingCard(
@@ -2544,6 +2560,12 @@ class SettingInterface(QWidget):
             else:
                 content = self.tr("Webhook Notification Disabled")
             self.webhook_noticeTypeCard.setContent(content)
+        elif notice_type == "OneBot":
+            if cfg.get(cfg.Notice_OneBot_status):
+                content = self.tr("OneBot Notification Enabled")
+            else:
+                content = self.tr("OneBot Notification Disabled")
+            self.onebot_noticeTypeCard.setContent(content)
 
     def _on_dingtalk_notice_clicked(self):
         """处理钉钉通知卡片点击事件"""
@@ -2594,6 +2616,13 @@ class SettingInterface(QWidget):
         dialog = WebhookNoticeType(parent)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._update_notice_card_status("Webhook")
+
+    def _on_onebot_notice_clicked(self):
+        """处理 OneBot 通知卡片点击事件"""
+        parent = self.window() or self
+        dialog = OneBotNoticeType(parent)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._update_notice_card_status("OneBot")
 
     def _on_notice_timing_clicked(self):
         """处理通知时机设置卡片点击事件"""
