@@ -3512,22 +3512,22 @@ interface.name 欄位可能與 multi_config.json 中的套件金鑰不符。請�
         <message>
             <location filename="../view/schedule_interface/schedule_interface.py" line="160" />
             <source>schedule_interface_info</source>
-            <translation>schedule_interface_info</translation>
+            <translation>目前平台尚未接入系統計劃任務，儲存後不會自動執行。</translation>
         </message>
         <message>
             <location filename="../view/schedule_interface/schedule_interface.py" line="155" />
             <source>schedule_interface_info_windows</source>
-            <translation>schedule_interface_info_windows</translation>
+            <translation>計劃任務將註冊到 Windows 工作排程器（資料夾：MFW-ChainFlow Assistant），無需保持 MFW 常駐。若到點已有執行個體正在執行，預設跳過；勾選「強制開始」時將附帶 --force-restart。</translation>
         </message>
         <message>
             <location filename="../view/schedule_interface/schedule_interface.py" line="157" />
             <source>schedule_interface_info_macos</source>
-            <translation>schedule_interface_info_macos</translation>
+            <translation>計劃任務將寫入目前使用者的 crontab（標記區塊：MFW-ChainFlow Assistant），無需保持 MFW 常駐。若到點已有執行個體正在執行，預設跳過；勾選「強制開始」時將附帶 --force-restart。</translation>
         </message>
         <message>
             <location filename="../view/schedule_interface/schedule_interface.py" line="159" />
             <source>schedule_interface_info_linux</source>
-            <translation>schedule_interface_info_linux</translation>
+            <translation>計劃任務將寫入目前使用者的 crontab（標記區塊：MFW-ChainFlow Assistant），無需保持 MFW 常駐。若到點已有執行個體正在執行，預設跳過；勾選「強制開始」時將附帶 --force-restart。</translation>
         </message>
         <message>
             <location filename="../view/schedule_interface/schedule_interface.py" line="177" />
