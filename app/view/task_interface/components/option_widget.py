@@ -51,6 +51,18 @@ from app.common.signal_bus import signalBus
 from ....core.core import ServiceCoordinator
 
 
+def setup_description_content_layout(layout: QVBoxLayout, content: BodyLabel) -> None:
+    """把功能描述正文放进布局，并按换行后的实际高度撑开。
+
+    不能对这个布局设置 AlignTop。富文本标签的 sizeHint 常常矮于
+    heightForWidth；AlignTop 会把标签锁在 sizeHint 上，多出来的行被裁掉，
+    滚动区域也滚不到这些内容。
+    """
+    content.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+    layout.addWidget(content)
+    layout.setAlignment(Qt.AlignmentFlag(0))
+
+
 class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTaskSettingMixin):
     current_config: Dict[str, Any]
     parent_layout: QVBoxLayout
@@ -271,9 +283,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, PreTas
             Qt.ContextMenuPolicy.NoContextMenu
         )
         self.description_content.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.description_layout.addWidget(self.description_content)
-
-        self.description_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        setup_description_content_layout(
+            self.description_layout, self.description_content
+        )
 
         # 创建滚动区域来包裹内容
         self.description_scroll_area = ScrollArea()
