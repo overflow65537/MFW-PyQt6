@@ -226,6 +226,23 @@ class RuntimeContextLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(RuntimeState.FAILED, context.state)
         self.assertIsNone(context.run_task)
         self.assertFalse(context.is_running)
+        self.assertEqual(
+            ["Runtime config-a failed: runner failed"],
+            [entry.text for entry in context.logs.entries],
+        )
+
+    async def test_notified_runner_failure_is_not_logged_again(self):
+        from app.core.runner.task_flow import TaskFlowExecutionError
+
+        error = TaskFlowExecutionError("device connection failed", user_notified=True)
+        context, runner, _ = self._create_context("config-a", error)
+
+        self.assertTrue(await context.start())
+        await self._finish_context(context)
+
+        runner.run_tasks_flow.assert_awaited_once()
+        self.assertEqual(RuntimeState.FAILED, context.state)
+        self.assertEqual((), context.logs.entries)
 
     async def test_immediate_starting_stop_keeps_event_loop_responsive(self):
         context, runner, _ = self._create_context("config-a")

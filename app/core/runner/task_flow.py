@@ -78,7 +78,37 @@ CACHED_IMAGE_ERROR = "Failed to get cached image."
 
 
 class TaskFlowExecutionError(RuntimeError):
-    """Raised after cleanup when one or more tasks failed."""
+    """任务流失败。user_notified 为真表示用户日志里已经有这条原因。"""
+
+    def __init__(self, message: str, *, user_notified: bool = False):
+        super().__init__(message)
+        self.user_notified = user_notified
+
+
+def mark_user_facing_error(exc: BaseException) -> None:
+    """标记这条异常已经展示给用户，外层不要再写一遍。"""
+    try:
+        exc.user_notified = True  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+
+def user_facing_error_already_shown(
+    exc: BaseException, log_messages: list[tuple[str, str, str]]
+) -> bool:
+    """用户日志里是否已经出现过这条失败原因。"""
+    if getattr(exc, "user_notified", False):
+        return True
+    message = str(exc).strip()
+    if not message:
+        return False
+    for level, text, _timestamp in log_messages:
+        if str(level).upper() not in {"ERROR", "CRITICAL"}:
+            continue
+        logged = str(text).strip()
+        if logged == message or message in logged:
+            return True
+    return False
 
 
 def _ndarray_to_png_bytes(ndarray) -> bytes | None:
@@ -959,7 +989,10 @@ class TaskFlowRunner(QObject):
             if not await self._execute_pretasks():
                 if self.need_stop:
                     return
-                raise TaskFlowExecutionError("前置任务执行失败")
+                raise TaskFlowExecutionError(
+                    "前置任务执行失败",
+                    user_notified=self._user_error_already_logged(),
+                )
             if self.need_stop:
                 return
 
@@ -967,7 +1000,10 @@ class TaskFlowRunner(QObject):
             logger.info("开始加载资源...")
             self.log_output.emit("INFO", self.tr("Starting to load resources..."))
             if not await self.load_resources(resource_cfg.task_option):
-                raise TaskFlowExecutionError("资源加载失败")
+                raise TaskFlowExecutionError(
+                    "资源加载失败",
+                    user_notified=self._user_error_already_logged(),
+                )
             if self.need_stop:
                 return
             logger.info("资源加载完成")
@@ -1163,7 +1199,8 @@ class TaskFlowRunner(QObject):
                     or self.tr("Failed to connect to the device."),
                 )
                 raise TaskFlowExecutionError(
-                    self._connect_error_reason or "设备连接失败"
+                    self._connect_error_reason or "设备连接失败",
+                    user_notified=self._user_error_already_logged(),
                 )
             self._active_controller_raw = controller_cfg.task_option
             self._active_resource_target = resource_target
@@ -1324,7 +1361,8 @@ class TaskFlowRunner(QObject):
             if failed_task_ids and not self._manual_stop:
                 raise TaskFlowExecutionError(
                     f"{len(failed_task_ids)} task(s) failed: "
-                    + ", ".join(failed_task_ids)
+                    + ", ".join(failed_task_ids),
+                    user_notified=self._user_error_already_logged(),
                 )
 
         except asyncio.CancelledError:
@@ -1333,7 +1371,11 @@ class TaskFlowRunner(QObject):
         except Exception as exc:
             flow_error = exc
             logger.exception("任务流程执行异常")
-            self.log_output.emit("ERROR", self.tr("Task flow error: ") + str(exc))
+            if not user_facing_error_already_shown(exc, self._log_messages):
+                self.log_output.emit(
+                    "ERROR", self.tr("Task flow error: ") + str(exc)
+                )
+            mark_user_facing_error(exc)
         finally:
             # 任务流退出信号优先发出，让监控和按钮立即结束运行态展示。
             if not self._task_flow_finished_emitted:
@@ -2768,6 +2810,13 @@ class TaskFlowRunner(QObject):
             not self.need_stop
             and not self._manual_stop
             and all(status != "failed" for status in self._task_results.values())
+        )
+
+    def _user_error_already_logged(self) -> bool:
+        """本次任务流是否已经向用户输出过错误日志。"""
+        return any(
+            str(level).upper() in {"ERROR", "CRITICAL"}
+            for level, _text, _timestamp in self._log_messages
         )
 
     def _get_collected_logs(self) -> str:

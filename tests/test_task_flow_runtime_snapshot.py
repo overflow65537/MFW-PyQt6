@@ -235,7 +235,11 @@ class TaskFlowRuntimeSnapshotTests(unittest.IsolatedAsyncioTestCase):
         self.runner._prepare_runtime_snapshot = Mock(return_value=False)
         self.runner.stop_task = AsyncMock()
         telemetry = []
+        user_logs = []
         self.runner.runner_events.telemetry.connect(telemetry.append)
+        self.runner.runner_events.log_output.connect(
+            lambda level, text: user_logs.append((level, text))
+        )
 
         with (
             patch("app.core.runner.task_flow.send_notice"),
@@ -244,12 +248,16 @@ class TaskFlowRuntimeSnapshotTests(unittest.IsolatedAsyncioTestCase):
                 new=AsyncMock(),
             ),
         ):
-            with self.assertRaises(TaskFlowExecutionError):
+            with self.assertRaises(TaskFlowExecutionError) as caught:
                 await self.runner.run_tasks_flow()
 
         self.runner.stop_task.assert_awaited_once_with(post_stop=False)
         self.assertFalse(self.runner._is_running)
         self.assertEqual("run_failed", telemetry[-1]["event"])
+        reason = str(caught.exception)
+        matching = [text for level, text in user_logs if reason in text]
+        self.assertEqual(matching, [reason])
+        self.assertTrue(caught.exception.user_notified)
 
     async def test_snapshot_exception_is_reported_after_cleanup(self):
         self.runner._prepare_runtime_snapshot = Mock(
@@ -257,7 +265,11 @@ class TaskFlowRuntimeSnapshotTests(unittest.IsolatedAsyncioTestCase):
         )
         self.runner.stop_task = AsyncMock()
         telemetry = []
+        user_logs = []
         self.runner.runner_events.telemetry.connect(telemetry.append)
+        self.runner.runner_events.log_output.connect(
+            lambda level, text: user_logs.append((level, text))
+        )
 
         with (
             patch("app.core.runner.task_flow.send_notice"),
@@ -266,13 +278,16 @@ class TaskFlowRuntimeSnapshotTests(unittest.IsolatedAsyncioTestCase):
                 new=AsyncMock(),
             ),
         ):
-            with self.assertRaisesRegex(RuntimeError, "snapshot failed"):
+            with self.assertRaisesRegex(RuntimeError, "snapshot failed") as caught:
                 await self.runner.run_tasks_flow()
 
         self.runner.stop_task.assert_awaited_once_with(post_stop=False)
         self.assertFalse(self.runner._is_running)
         self.assertEqual("run_failed", telemetry[-1]["event"])
         self.assertEqual("snapshot failed", telemetry[-1].get("error"))
+        error_logs = [text for level, text in user_logs if level == "ERROR"]
+        self.assertEqual(error_logs, ["Task flow error: snapshot failed"])
+        self.assertTrue(getattr(caught.exception, "user_notified", False))
 
     async def test_cleanup_failure_sets_final_telemetry_to_failed(self):
         self.runner.need_stop = True

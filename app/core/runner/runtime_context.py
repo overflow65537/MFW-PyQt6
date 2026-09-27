@@ -261,7 +261,9 @@ class RuntimeContext(QObject):
         except Exception as exc:
             failed = True
             logger.exception("Runtime %s failed", self.config_id)
-            self.logs.append("ERROR", f"Runtime {self.config_id} failed: {exc}")
+            # 任务流已经把失败原因写进用户日志，这里再追加会让同一条报错出现多次。
+            if not getattr(exc, "user_notified", False):
+                self.logs.append("ERROR", f"Runtime {self.config_id} failed: {exc}")
             self._set_state(RuntimeState.FAILED)
         finally:
             async with self._lifecycle_lock:
