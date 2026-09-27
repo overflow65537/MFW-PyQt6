@@ -261,6 +261,8 @@ class TaskListItem(BaseListItem):
         self._apply_interface_constraints()
         # 更新图标
         self._update_icon()
+        if hasattr(self, "option_label"):
+            self._update_option_display()
 
     def _init_ui(self):
         # 创建水平布局
@@ -643,6 +645,43 @@ class TaskListItem(BaseListItem):
 
         return result
 
+    def _set_option_summary(self, text: str) -> None:
+        """用和其他任务相同的灰色小字显示当前选择。"""
+        display_text = text.strip()
+        if display_text:
+            self._option_full_text = display_text
+            self.option_label.setToolTip(display_text)
+            self.option_label.setText(display_text)
+            return
+        self._option_full_text = ""
+        self.option_label.setText("")
+        self.option_label.setToolTip("")
+
+    def _named_entry_label(self, section: str, name: str) -> str:
+        """按 interface 中的 name 取已翻译的 label。"""
+        raw = str(name or "").strip()
+        if not raw:
+            return ""
+        entries = self.interface.get(section, []) if isinstance(self.interface, dict) else []
+        if not isinstance(entries, list):
+            return raw
+        for entry in entries:
+            if isinstance(entry, dict) and str(entry.get("name", "")) == raw:
+                label = str(entry.get("label") or raw).strip()
+                return label or raw
+        return raw
+
+    def _base_task_option_summary(self) -> str | None:
+        """控制器显示当前类型，资源显示当前激活项。其他基础任务不显示。"""
+        if self.task.item_id not in (_CONTROLLER_, _RESOURCE_):
+            return None
+        task_option = self.task.task_option if isinstance(self.task.task_option, dict) else {}
+        if self.task.item_id == _CONTROLLER_:
+            return self._named_entry_label(
+                "controller", task_option.get("controller_type", "")
+            )
+        return self._named_entry_label("resource", task_option.get("resource", ""))
+
     def _update_option_display(self):
         """更新选项显示"""
         # 尝试从 service_coordinator 获取最新的 task 对象，确保使用最新的 task_option
@@ -655,11 +694,14 @@ class TaskListItem(BaseListItem):
                 # 如果获取失败，继续使用当前的 task 对象
                 pass
 
-        # 如果是基础任务，不显示选项
+        base_summary = self._base_task_option_summary()
+        if base_summary is not None:
+            self._set_option_summary(base_summary)
+            return
+
+        # 其他基础任务不显示选项
         if self.task.is_base_task():
-            self._option_full_text = ""
-            self.option_label.setText("")
-            self.option_label.setToolTip("")
+            self._set_option_summary("")
             return
 
         # 提取选项值（只显示当前选择的选项）
@@ -671,16 +713,7 @@ class TaskListItem(BaseListItem):
         )
 
         # 组合显示文本
-        if option_values:
-            display_text = " · ".join(option_values)
-            self._option_full_text = display_text
-            self.option_label.setToolTip(display_text)  # 设置工具提示以便查看完整内容
-            # 交给 OptionLabel 自己判断是否需要滚动
-            self.option_label.setText(display_text)
-        else:
-            self._option_full_text = ""
-            self.option_label.setText("")
-            self.option_label.setToolTip("")
+        self._set_option_summary(" · ".join(option_values) if option_values else "")
 
     def on_checkbox_changed(self, state):
         # 复选框状态变更处理
