@@ -35,7 +35,7 @@ _LOGURU_TO_UI = {
     "CRITICAL": "CRITICAL",
 }
 
-_CLIENT_PATH_MARKERS = ("/app/", "\\app\\")
+_CLIENT_APP_ROOT: Path | None = None
 
 
 def _logging_level_to_ui(levelno: int) -> str:
@@ -92,10 +92,22 @@ def _build_allowed_roots(
     return tuple(prefixes)
 
 
+def _client_app_root() -> Path:
+    """MFW 主程序 app 包目录（绝对路径，懒加载缓存）。"""
+    global _CLIENT_APP_ROOT
+    if _CLIENT_APP_ROOT is None:
+        import app as mfw_app
+
+        _CLIENT_APP_ROOT = Path(mfw_app.__file__).resolve().parent
+    return _CLIENT_APP_ROOT
+
+
 def _is_client_log_path(file_path: str) -> bool:
     """主程序 app/ 目录下的日志不得进入 UI 桥接（避免与 logoutput_widget 形成环）。"""
-    normalized = _normalize_path(file_path)
-    return any(marker in normalized for marker in _CLIENT_PATH_MARKERS)
+    try:
+        return Path(file_path).resolve().is_relative_to(_client_app_root())
+    except (OSError, ValueError, TypeError):
+        return False
 
 
 def _is_under_custom_roots(file_path: str, allowed_roots: tuple[str, ...]) -> bool:
