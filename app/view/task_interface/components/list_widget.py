@@ -66,6 +66,29 @@ class BaseListWidget(ListWidget):
                 )
                 break
 
+    def set_hover_item_widget(self, widget: QWidget | None) -> None:
+        """把 qfluentwidgets 的悬浮高亮同步到指定行组件。
+
+        qfluentwidgets 的 `ListBase` 只靠 viewport 的 `entered` 信号（MouseMove）更新
+        `delegate.hoverRow`，但本项目每一行都是用 `setItemWidget` 放进 viewport 的真实
+        QWidget：行组件会吃掉 MouseMove，viewport 只在行与行之间那几像素镂空处才收得到
+        移动，于是悬浮高亮只在那几像素里更新，看起来比鼠标慢一拍（配置行被撑满整行时
+        几乎完全不更新）。行组件自身的 Enter 事件是可靠的，由它来补齐。
+        """
+        row = -1
+        if widget is not None:
+            for i in range(self.count()):
+                if self.itemWidget(self.item(i)) is widget:
+                    row = i
+                    break
+            if row == -1:
+                # 行正在重建/尚未挂进列表，保持现状，别把高亮清掉
+                return
+        if self.delegate.hoverRow == row:
+            return
+        self.delegate.setHoverRow(row)
+        self.viewport().update()
+
     def wheelEvent(self, event):
         """缩小滚轮滚动幅度，提升细腻度"""
         delta = event.pixelDelta().y()

@@ -134,6 +134,23 @@ class BaseListItem(QWidget):
                 break
             parent = parent.parent()
 
+    def enterEvent(self, event):
+        """鼠标进入本行时，主动告诉父列表更新悬浮高亮。
+
+        行组件是真实的 QWidget，会吃掉 MouseMove，父列表的 viewport 因此收不到移动，
+        qfluentwidgets 只靠 viewport 的 `entered` 信号更新 `delegate.hoverRow`，高亮就会
+        比鼠标慢一拍（配置行被撑满整行时几乎完全不更新）。Enter 事件不受影响，用它补齐。
+        """
+        super().enterEvent(event)
+        parent = self.parent()
+        while parent is not None:
+            # 不给 list_widget 加导入依赖（会循环导入），按约定方法名调用
+            setter = getattr(parent, "set_hover_item_widget", None)
+            if callable(setter):
+                setter(self)
+                return
+            parent = parent.parent()
+
     def _create_icon_label(
         self, icon_path: str, base_path: Path | None = None
     ) -> BodyLabel:
