@@ -725,21 +725,38 @@ class TaskService:
 
         logger.info("interface 数据重新加载完成")
 
-    def refresh_hidden_flags(self) -> None:
+    def refresh_hidden_flags(self, tasks: Optional[List[TaskItem]] = None) -> None:
         """根据当前 Resource/Controller 选项以及 interface 约束刷新每个任务的 is_hidden。
 
         设计目标：任务配置层给出“可运行配置”，runner 只需要读取 is_checked/is_hidden。
+
+        Args:
+            tasks: 待刷新的任务列表；缺省时刷新 ``self.current_tasks``。
+                runner 的运行时快照是配置反序列化得到的独立对象，不携带 is_hidden
+                （见 ``TaskItem.to_dict``），因此需要显式传入以便重算。
         """
         try:
+            task_list = list(tasks) if tasks is not None else list(self.current_tasks or [])
+
             # 当前资源与控制器类型（为空则视为“不过滤”）
             resource_name = ""
             controller_type = ""
 
-            res_task = self.get_task(_RESOURCE_)
+            res_task = next(
+                (t for t in task_list if isinstance(t, TaskItem) and t.item_id == _RESOURCE_),
+                None,
+            )
+            if res_task is None:
+                res_task = self.get_task(_RESOURCE_)
             if res_task and isinstance(res_task.task_option, dict):
                 resource_name = str(res_task.task_option.get("resource", "") or "").strip()
 
-            ctrl_task = self.get_task(_CONTROLLER_)
+            ctrl_task = next(
+                (t for t in task_list if isinstance(t, TaskItem) and t.item_id == _CONTROLLER_),
+                None,
+            )
+            if ctrl_task is None:
+                ctrl_task = self.get_task(_CONTROLLER_)
             if ctrl_task and isinstance(ctrl_task.task_option, dict):
                 controller_type = str(ctrl_task.task_option.get("controller_type", "") or "").strip()
 
@@ -769,7 +786,7 @@ class TaskService:
                 allowed_norm = {s.lower() for s in allowed if s}
                 return current.strip().lower() in allowed_norm
 
-            for t in self.current_tasks or []:
+            for t in task_list:
                 if not isinstance(t, TaskItem):
                     continue
                 if t.is_base_task():

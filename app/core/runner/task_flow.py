@@ -945,6 +945,10 @@ class TaskFlowRunner(QObject):
             self._reload_interface_for_current_bundle()
             if self.need_stop:
                 return
+            # 运行时快照中的任务对象由配置反序列化而来，不携带配置层计算的 is_hidden
+            # （TaskItem.to_dict 不保存该字段），这里按当前 Resource/Controller 约束重算，
+            # 避免出现“界面上隐藏的任务仍被执行”的情况。
+            self.task_service.refresh_hidden_flags(self._runtime_tasks)
             if not await self._confirm_resource_run_if_needed():
                 self._manual_stop = True
                 logger.info("用户取消首次资源运行确认，已停止任务流")
