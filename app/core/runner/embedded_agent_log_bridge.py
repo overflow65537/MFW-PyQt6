@@ -37,6 +37,10 @@ _LOGURU_TO_UI = {
 
 _CLIENT_APP_ROOT: Path | None = None
 
+# 目录真实路径缓存：realpath 有文件系统开销，而 sys.modules 里同一目录会被反复问到。
+_CANONICAL_DIR_CACHE: dict[str, str] = {}
+_CANONICAL_DIR_CACHE_LIMIT = 512
+
 
 def _logging_level_to_ui(levelno: int) -> str:
     return _LOGGING_TO_UI.get(levelno, "INFO")
@@ -72,6 +76,29 @@ def _normalize_absolute_path(file_path: str | Path) -> str:
         return _normalize_path(str(file_path))
 
 
+def _canonical_path(file_path: str | Path) -> str:
+    """真实路径（展开 8.3 短名与软链接），按所在目录缓存以避免重复的系统调用。
+
+    Windows 上同一目录可能以短名（``C:\\Users\\RUNNER~1\\...``）或长名出现：
+    ``Path.resolve()`` / ``realpath`` 给出长名，而调用方传入的字符串可能是短名，
+    只按字面规范化前缀比较会漏判（CI 的 TEMP 就是短名）。
+    """
+    normalized = _normalize_absolute_path(file_path)
+    directory, _, name = normalized.rpartition("/")
+    if not name:
+        return ""
+    canonical_dir = _CANONICAL_DIR_CACHE.get(directory)
+    if canonical_dir is None:
+        try:
+            canonical_dir = _normalize_path(os.path.realpath(directory))
+        except (ValueError, OSError):
+            canonical_dir = ""
+        if len(_CANONICAL_DIR_CACHE) >= _CANONICAL_DIR_CACHE_LIMIT:
+            _CANONICAL_DIR_CACHE.clear()
+        _CANONICAL_DIR_CACHE[directory] = canonical_dir
+    return f"{canonical_dir}/{name}" if canonical_dir else ""
+
+
 def _build_allowed_roots(
     custom_root: Path, extra_roots: Sequence[Path] = ()
 ) -> tuple[str, ...]:
@@ -79,16 +106,23 @@ def _build_allowed_roots(
     将 interface 解析的 custom 目录（及额外根）转为用于路径比对的规范前缀。
 
     custom_root: 对应 interface 注入的 custom 字段（agent 入口脚本所在目录）。
+
+    每个根同时记录“字面规范化”与“真实路径”两种前缀：调用方可能给短名或未
+    resolve 的绝对路径，而模块 ``__file__`` 来自已 resolve 的 sys.path 条目（或相反），
+    只存一种形式会漏判。
     """
     ordered: list[Path] = [custom_root, *extra_roots]
     prefixes: list[str] = []
     seen: set[str] = set()
     for raw in ordered:
-        prefix = _normalize_absolute_path(raw).rstrip("/") + "/"
-        if prefix in seen:
-            continue
-        seen.add(prefix)
-        prefixes.append(prefix)
+        for base in (_normalize_absolute_path(raw), _canonical_path(raw)):
+            if not base:
+                continue
+            prefix = base.rstrip("/") + "/"
+            if prefix in seen:
+                continue
+            seen.add(prefix)
+            prefixes.append(prefix)
     return tuple(prefixes)
 
 
@@ -113,8 +147,10 @@ def _is_client_log_path(file_path: str) -> bool:
 def _is_under_custom_roots(file_path: str, allowed_roots: tuple[str, ...]) -> bool:
     if not file_path or not allowed_roots or _is_client_log_path(file_path):
         return False
-    normalized = _normalize_absolute_path(file_path)
-    return any(normalized.startswith(root) for root in allowed_roots)
+    if _normalize_absolute_path(file_path).startswith(allowed_roots):
+        return True
+    # 字面形式不一致（8.3 短名 / 软链接）时再按真实路径比一次。
+    return _canonical_path(file_path).startswith(allowed_roots)
 
 
 def _should_skip_logging_logger(logger_obj: logging.Logger) -> bool:

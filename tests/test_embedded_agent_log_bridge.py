@@ -1,4 +1,5 @@
 import logging
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,6 +8,17 @@ from app.core.runner.embedded_agent_log_bridge import (
     EmbeddedAgentLogBridge,
     collect_agent_loggers,
 )
+
+
+def _windows_short_path(path: Path) -> Path:
+    """Windows 8.3 短名；非 Windows 或该卷未启用短名时原样返回。"""
+    if os.name != "nt":
+        return path
+    import ctypes
+
+    buffer = ctypes.create_unicode_buffer(512)
+    length = ctypes.windll.kernel32.GetShortPathNameW(str(path), buffer, 512)
+    return Path(buffer.value) if length else path
 
 
 class EmbeddedAgentLogBridgeTests(unittest.TestCase):
@@ -195,6 +207,54 @@ class EmbeddedAgentLogBridgeTests(unittest.TestCase):
                 any(
                     isinstance(x, logging.Logger)
                     and x.name == "agent.sink.resolution_check"
+                    for x in loggers
+                )
+            )
+
+    def test_collects_loggers_when_file_path_uses_windows_short_name(self):
+        """TEMP 常是 8.3 短名（C:\\Users\\RUNNER~1\\...）：模块 __file__ 保留短名，
+        而 allowed 前缀来自 Path.resolve() 的长名，不得因此漏判。"""
+        with tempfile.TemporaryDirectory(prefix="MFWLogBridgeShortName") as temp_dir:
+            custom_root = Path(temp_dir) / "MPAcustom" / "agent"
+            sink_dir = custom_root / "sink"
+            sink_dir.mkdir(parents=True)
+            (sink_dir / "short_name_check.py").write_text(
+                "\n".join(
+                    [
+                        "import logging",
+                        "logger = logging.getLogger('agent.sink.short_name_check')",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            short_root = _windows_short_path(custom_root)
+            if str(short_root) == str(custom_root.resolve()):
+                self.skipTest("当前卷未启用 8.3 短名，构造不出短名/长名不一致的场景")
+
+            import importlib.util
+            import sys
+
+            spec = importlib.util.spec_from_file_location(
+                "sink.short_name_check",
+                short_root / "sink" / "short_name_check.py",
+            )
+            assert spec and spec.loader
+            module = importlib.util.module_from_spec(spec)
+            sys.modules["sink.short_name_check"] = module
+            try:
+                spec.loader.exec_module(module)
+                allowed = (
+                    str(custom_root.resolve()).replace("\\", "/").lower() + "/",
+                )
+                loggers = collect_agent_loggers(short_root, allowed)
+            finally:
+                sys.modules.pop("sink.short_name_check", None)
+
+            self.assertTrue(
+                any(
+                    isinstance(x, logging.Logger)
+                    and x.name == "agent.sink.short_name_check"
                     for x in loggers
                 )
             )
