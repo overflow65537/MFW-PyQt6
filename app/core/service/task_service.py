@@ -36,6 +36,13 @@ DEFAULT_SPEEDRUN_CONFIG: Dict[str, Any] = {
 }
 
 
+def _option_value(raw: Any) -> str:
+    """读取 task_option 中的基础任务取值，兼容历史配置的 ``{"value": ...}`` 形态。"""
+    if isinstance(raw, dict):
+        return str(raw.get("value", "") or "").strip()
+    return str(raw or "").strip()
+
+
 class TaskService:
     """任务服务实现"""
 
@@ -725,7 +732,11 @@ class TaskService:
 
         logger.info("interface 数据重新加载完成")
 
-    def refresh_hidden_flags(self, tasks: Optional[List[TaskItem]] = None) -> None:
+    def refresh_hidden_flags(
+        self,
+        tasks: Optional[List[TaskItem]] = None,
+        interface: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """根据当前 Resource/Controller 选项以及 interface 约束刷新每个任务的 is_hidden。
 
         设计目标：任务配置层给出“可运行配置”，runner 只需要读取 is_checked/is_hidden。
@@ -734,9 +745,15 @@ class TaskService:
             tasks: 待刷新的任务列表；缺省时刷新 ``self.current_tasks``。
                 runner 的运行时快照是配置反序列化得到的独立对象，不携带 is_hidden
                 （见 ``TaskItem.to_dict``），因此需要显式传入以便重算。
+            interface: 判定 resource/controller 约束所用的 interface；缺省时使用
+                ``self.interface``。runner 应传入自己按当前 bundle 加载的 interface，
+                否则后台运行非活动配置时会读到全局（活动配置）的约束。
         """
         try:
             task_list = list(tasks) if tasks is not None else list(self.current_tasks or [])
+            # 显式传入任务列表时不再回落到 current_tasks：那是“活动配置”的任务，
+            # 后台运行其他配置时会读到另一份配置的 controller/resource。
+            fallback_to_current = tasks is None
 
             # 当前资源与控制器类型（为空则视为“不过滤”）
             resource_name = ""
@@ -746,21 +763,26 @@ class TaskService:
                 (t for t in task_list if isinstance(t, TaskItem) and t.item_id == _RESOURCE_),
                 None,
             )
-            if res_task is None:
+            if res_task is None and fallback_to_current:
                 res_task = self.get_task(_RESOURCE_)
             if res_task and isinstance(res_task.task_option, dict):
-                resource_name = str(res_task.task_option.get("resource", "") or "").strip()
+                resource_name = _option_value(res_task.task_option.get("resource"))
 
             ctrl_task = next(
                 (t for t in task_list if isinstance(t, TaskItem) and t.item_id == _CONTROLLER_),
                 None,
             )
-            if ctrl_task is None:
+            if ctrl_task is None and fallback_to_current:
                 ctrl_task = self.get_task(_CONTROLLER_)
             if ctrl_task and isinstance(ctrl_task.task_option, dict):
-                controller_type = str(ctrl_task.task_option.get("controller_type", "") or "").strip()
+                controller_type = _option_value(ctrl_task.task_option.get("controller_type"))
 
-            interface_tasks = self.interface.get("task", []) if isinstance(self.interface, dict) else []
+            source_interface = interface if interface is not None else self.interface
+            interface_tasks = (
+                source_interface.get("task", [])
+                if isinstance(source_interface, dict)
+                else []
+            )
             # name -> def 快速索引
             task_def_map: dict[str, dict] = {}
             if isinstance(interface_tasks, list):

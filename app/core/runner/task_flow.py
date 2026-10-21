@@ -253,6 +253,19 @@ class TaskFlowRunner(QObject):
         self._runtime_setting_options = options
         return True
 
+    def _refresh_runtime_hidden_flags(self) -> None:
+        """按当前 bundle 的 interface 重算快照任务的 is_hidden。
+
+        快照任务由配置反序列化而来，不携带配置层计算的标记（``TaskItem.to_dict``
+        不保存该字段）。这里必须显式传入 ``_runtime_interface``，不能用
+        ``TaskService.interface``：后者是“活动配置”的全局 interface，在后台运行
+        非活动配置或多个 bundle 并发运行时与当前 bundle 不一致。
+        """
+        self.task_service.refresh_hidden_flags(
+            self._runtime_tasks,
+            interface=self._runtime_interface,
+        )
+
     def _get_tasks(self) -> list[TaskItem]:
         if self._runtime_snapshot_ready:
             return self._runtime_tasks
@@ -885,7 +898,8 @@ class TaskFlowRunner(QObject):
 
         # 初始化任务状态：仅在完整运行时将所有选中的任务设置为等待中
         # 单独运行时，只会在对应的任务处显示进行中/完成/失败，不显示等待图标
-        # 使用 QTimer 延迟发送，确保任务列表 UI 已经准备好
+        # 使用 QTimer 延迟 200ms 发送，确保任务列表 UI 已经准备好；
+        # 实际排程点在运行时快照的 is_hidden 重算之后（见 _refresh_runtime_hidden_flags）。
         def set_waiting_status():
             # 只在完整运行模式（非单任务模式）时设置等待状态
             if not is_single_task_mode:
@@ -905,9 +919,6 @@ class TaskFlowRunner(QObject):
                     ):
                         # 完整运行时，设置当前起始任务及之后的选中任务为等待中
                         self.task_status_changed.emit(task.item_id, "waiting")
-
-        # 延迟 200ms 发送，确保任务列表已经渲染完成
-        QTimer.singleShot(200, set_waiting_status)
 
         # 初始化日志收集列表
         self._log_messages.clear()
@@ -946,9 +957,11 @@ class TaskFlowRunner(QObject):
             if self.need_stop:
                 return
             # 运行时快照中的任务对象由配置反序列化而来，不携带配置层计算的 is_hidden
-            # （TaskItem.to_dict 不保存该字段），这里按当前 Resource/Controller 约束重算，
-            # 避免出现“界面上隐藏的任务仍被执行”的情况。
-            self.task_service.refresh_hidden_flags(self._runtime_tasks)
+            # （TaskItem.to_dict 不保存该字段），这里按当前 bundle 的 Resource/Controller
+            # 约束重算，避免出现“界面上隐藏的任务仍被执行”的情况。
+            self._refresh_runtime_hidden_flags()
+            # 隐藏标记就绪后再发等待状态，避免把已隐藏的任务标成等待中
+            QTimer.singleShot(200, set_waiting_status)
             if not await self._confirm_resource_run_if_needed():
                 self._manual_stop = True
                 logger.info("用户取消首次资源运行确认，已停止任务流")
@@ -1575,6 +1588,7 @@ class TaskFlowRunner(QObject):
                 return tasks
             # 执行层只关心"任务是否被禁用"，不展开禁用原因
             if self._is_task_disabled(task):
+                self._note_hidden_task_skipped(task)
                 return tasks
             if not task.is_checked:
                 return tasks
@@ -1596,6 +1610,7 @@ class TaskFlowRunner(QObject):
                 continue
 
             if self._is_task_disabled(task):
+                self._note_hidden_task_skipped(task)
                 continue
 
             tasks.append(task)
@@ -1992,6 +2007,12 @@ class TaskFlowRunner(QObject):
         if isinstance(controller_type_raw, dict):
             return str(controller_type_raw.get("value", "") or "").strip()
         return ""
+
+    def _get_current_controller_name(self) -> str:
+        controller_task = self._get_task(_CONTROLLER_)
+        if not controller_task or not isinstance(controller_task.task_option, dict):
+            return ""
+        return self._extract_configured_controller_name(controller_task.task_option)
 
     def _get_current_resource_name(self) -> str:
         resource_task = self._get_task(_RESOURCE_)
@@ -4743,3 +4764,13 @@ class TaskFlowRunner(QObject):
         """
         # 约定：任务流执行前由配置层（TaskService/Coordinator/UI）刷新过 is_hidden
         return bool(task.is_hidden)
+
+    def _note_hidden_task_skipped(self, task: TaskItem) -> None:
+        """记录被 controller/resource 约束跳过的任务，避免“勾了却不跑”无处排查。"""
+        logger.info(
+            "任务 '%s' 受当前 controller/resource 约束限制，已跳过执行"
+            "（controller=%s, resource=%s）",
+            task.name,
+            self._get_current_controller_name(),
+            self._get_current_resource_name(),
+        )
