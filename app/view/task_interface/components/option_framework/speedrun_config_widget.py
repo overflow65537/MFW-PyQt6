@@ -12,6 +12,7 @@ from qfluentwidgets import (
     qconfig,
 )
 
+from app.common.fluent_form import form_label
 from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.core.facade.task_facade import DEFAULT_SPEEDRUN_CONFIG
 from app.core.speedrun.conditions.cron import DEFAULT_CRON_EXPRESSION
@@ -62,7 +63,7 @@ class SpeedrunConfigWidget(QWidget):
         self.condition_combo.addItem(self.tr("Always"), userData="always")
         self.condition_combo.addItem(self.tr("Run Count"), userData="run_count")
         self.condition_combo.addItem(self.tr("Cron"), userData="cron")
-        form.addRow(self.tr("Condition Type"), self.condition_combo)
+        form.addRow(form_label(self.tr("Condition Type")), self.condition_combo)
         self.main_layout.addLayout(form)
 
         config_title = BodyLabel(self.tr("Condition Configuration"))
@@ -78,21 +79,21 @@ class SpeedrunConfigWidget(QWidget):
         self.period_combo.addItem(self.tr("Daily"), userData="daily")
         self.period_combo.addItem(self.tr("Weekly"), userData="weekly")
         self.period_combo.addItem(self.tr("Monthly"), userData="monthly")
-        layout.addRow(self.tr("Period"), self.period_combo)
+        layout.addRow(form_label(self.tr("Period")), self.period_combo)
 
         self.run_count_weekday_combo = self._build_weekday_combo()
-        layout.addRow(self.tr("Weekday"), self.run_count_weekday_combo)
+        layout.addRow(form_label(self.tr("Weekday")), self.run_count_weekday_combo)
 
         self.run_count_month_day_combo = self._build_month_day_combo()
-        layout.addRow(self.tr("Day"), self.run_count_month_day_combo)
+        layout.addRow(form_label(self.tr("Day")), self.run_count_month_day_combo)
 
         self.refresh_hour_combo = self._build_hour_combo()
-        layout.addRow(self.tr("Refresh Timeline"), self.refresh_hour_combo)
+        layout.addRow(form_label(self.tr("Refresh Timeline")), self.refresh_hour_combo)
 
         self.run_once_switch = SwitchButton(self)
         self.run_once_switch.setOnText(self.tr("Enabled"))
         self.run_once_switch.setOffText(self.tr("Disabled"))
-        layout.addRow(self.tr("Run Once Per Period"), self.run_once_switch)
+        layout.addRow(form_label(self.tr("Run Once Per Period")), self.run_once_switch)
 
         self._init_run_count_tooltips()
 
@@ -161,7 +162,7 @@ class SpeedrunConfigWidget(QWidget):
             self.tr("minute hour day month weekday, e.g. 0 9 * * *")
         )
         self.cron_input.setClearButtonEnabled(True)
-        layout.addRow(self.tr("Cron Expression"), self.cron_input)
+        layout.addRow(form_label(self.tr("Cron Expression")), self.cron_input)
         self.cron_section, self.cron_line = self._wrap_with_indicator(container)
         self.main_layout.addWidget(self.cron_section)
 
@@ -177,7 +178,7 @@ class SpeedrunConfigWidget(QWidget):
         self.action_combo = ComboBox(self)
         self.action_combo.addItem(self.tr("Run"), userData="normal_run")
         self.action_combo.addItem(self.tr("Skip"), userData="skip")
-        form.addRow(self.tr("Execution Type"), self.action_combo)
+        form.addRow(form_label(self.tr("Execution Type")), self.action_combo)
         self.main_layout.addLayout(form)
 
         config_title = BodyLabel(self.tr("Execution Configuration"))
@@ -188,12 +189,14 @@ class SpeedrunConfigWidget(QWidget):
         self.notify_switch = SwitchButton(self)
         self.notify_switch.setOnText(self.tr("Enabled"))
         self.notify_switch.setOffText(self.tr("Disabled"))
-        config_form.addRow(self.tr("Notify"), self.notify_switch)
+        config_form.addRow(form_label(self.tr("Notify")), self.notify_switch)
 
         self.external_notify_switch = SwitchButton(self)
         self.external_notify_switch.setOnText(self.tr("Enabled"))
         self.external_notify_switch.setOffText(self.tr("Disabled"))
-        config_form.addRow(self.tr("External Notify"), self.external_notify_switch)
+        config_form.addRow(
+            form_label(self.tr("External Notify")), self.external_notify_switch
+        )
         self.main_layout.addLayout(config_form)
 
     def _build_hour_combo(self) -> ComboBox:

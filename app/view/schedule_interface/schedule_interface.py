@@ -37,6 +37,7 @@ from qfluentwidgets import (
     TimePicker,
 )
 
+from app.common.fluent_form import form_label
 from app.common.fluent_tooltip import apply_fluent_tooltip
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
@@ -176,7 +177,7 @@ class ScheduleInterface(QWidget):
         self.config_selector = ComboBox()
         self.config_selector.setPlaceholderText(self.tr("Select configuration"))
         self.config_selector.setMinimumWidth(280)
-        config_form.addRow(self.tr("Configuration"), self.config_selector)
+        config_form.addRow(form_label(self.tr("Configuration")), self.config_selector)
         card_layout.addLayout(config_form)
 
         type_label = BodyLabel(self.tr("Trigger type"))
@@ -276,7 +277,7 @@ class ScheduleInterface(QWidget):
         widget.setLayout(layout)
 
         self.single_datetime = self._build_datetime_control()
-        layout.addRow(self.tr("Start"), self.single_datetime)
+        layout.addRow(form_label(self.tr("Start")), self.single_datetime)
         return widget
 
     def _build_daily_trigger_widget(self) -> QWidget:
@@ -297,8 +298,8 @@ class ScheduleInterface(QWidget):
         interval_widget = QWidget()
         interval_widget.setLayout(interval_row)
 
-        layout.addRow(self.tr("Start"), self.daily_datetime)
-        layout.addRow(self.tr("Every"), interval_widget)
+        layout.addRow(form_label(self.tr("Start")), self.daily_datetime)
+        layout.addRow(form_label(self.tr("Every")), interval_widget)
         return widget
 
     def _build_weekly_trigger_widget(self) -> QWidget:
@@ -320,8 +321,8 @@ class ScheduleInterface(QWidget):
         interval_widget = QWidget()
         interval_widget.setLayout(interval_row)
 
-        form.addRow(self.tr("Start"), self.weekly_datetime)
-        form.addRow(self.tr("Every"), interval_widget)
+        form.addRow(form_label(self.tr("Start")), self.weekly_datetime)
+        form.addRow(form_label(self.tr("Every")), interval_widget)
         outer.addLayout(form)
 
         weekday_label = BodyLabel(self.tr("Weekdays"))
@@ -338,7 +339,7 @@ class ScheduleInterface(QWidget):
 
         form = self._make_form_layout()
         self.monthly_datetime = self._build_datetime_control()
-        form.addRow(self.tr("Start"), self.monthly_datetime)
+        form.addRow(form_label(self.tr("Start")), self.monthly_datetime)
 
         self.monthly_month_combo = ComboBox()
         self.monthly_month_combo.addItem(self.tr("Every month"), userData=0)
@@ -362,12 +363,12 @@ class ScheduleInterface(QWidget):
                 ),
                 userData=month,
             )
-        form.addRow(self.tr("Month"), self.monthly_month_combo)
+        form.addRow(form_label(self.tr("Month")), self.monthly_month_combo)
 
         self.monthly_day_combo = ComboBox()
         for day in range(1, 32):
             self.monthly_day_combo.addItem(str(day), userData=day)
-        form.addRow(self.tr("Day"), self.monthly_day_combo)
+        form.addRow(form_label(self.tr("Day")), self.monthly_day_combo)
         outer.addLayout(form)
 
         self.monthly_use_ordinal_checkbox = CheckBox(self.tr("Use ordinal weekday"))
@@ -402,8 +403,8 @@ class ScheduleInterface(QWidget):
 
         self._ordinal_form_widget = QWidget()
         self._ordinal_form_widget.setLayout(ordinal_form)
-        ordinal_form.addRow(self.tr("Ordinal"), self.monthly_ordinal_combo)
-        ordinal_form.addRow(self.tr("Weekday"), self.monthly_weekday_combo)
+        ordinal_form.addRow(form_label(self.tr("Ordinal")), self.monthly_ordinal_combo)
+        ordinal_form.addRow(form_label(self.tr("Weekday")), self.monthly_weekday_combo)
         self._ordinal_form_widget.setVisible(False)
         outer.addWidget(self._ordinal_form_widget)
 
