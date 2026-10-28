@@ -249,6 +249,19 @@ class ScheduleInterface(QWidget):
 
         return card
 
+    def _make_interval_spin(self, maximum: int) -> SpinBox:
+        """创建间隔数字框。
+
+        这里刻意不限制宽度：qfluentwidgets 的 SpinBox 为右侧两个箭头按钮在
+        QSS 里预留了 ``padding: 0 80px 0 10px``，宽度不足时数字会被裁掉
+        （此前固定成 96px，文本区只剩十几像素，界面上看起来就是一个没有数字
+        的空框）。交给 sizeHint 决定，它已经把这部分内边距算进去了。
+        """
+        spin = SpinBox()
+        spin.setRange(1, maximum)
+        spin.setValue(1)
+        return spin
+
     def _build_datetime_control(self) -> ZhDateTimeInput:
         datetime_input = ZhDateTimeInput()
         datetime_input.setDateTime(self._default_qdatetime())
@@ -272,10 +285,7 @@ class ScheduleInterface(QWidget):
         widget.setLayout(layout)
 
         self.daily_datetime = self._build_datetime_control()
-        self.daily_interval_spin = SpinBox()
-        self.daily_interval_spin.setRange(1, 365)
-        self.daily_interval_spin.setValue(1)
-        self.daily_interval_spin.setFixedWidth(96)
+        self.daily_interval_spin = self._make_interval_spin(365)
 
         interval_row = QHBoxLayout()
         interval_row.setContentsMargins(0, 0, 0, 0)
@@ -299,10 +309,7 @@ class ScheduleInterface(QWidget):
 
         form = self._make_form_layout()
         self.weekly_datetime = self._build_datetime_control()
-        self.weekly_interval_spin = SpinBox()
-        self.weekly_interval_spin.setRange(1, 52)
-        self.weekly_interval_spin.setValue(1)
-        self.weekly_interval_spin.setFixedWidth(96)
+        self.weekly_interval_spin = self._make_interval_spin(52)
 
         interval_row = QHBoxLayout()
         interval_row.setContentsMargins(0, 0, 0, 0)
