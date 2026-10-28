@@ -17,13 +17,28 @@ SCHEDULE_WEEKLY = "weekly"
 SCHEDULE_MONTHLY = "monthly"
 
 
+def _to_naive_local(value: Optional[datetime]) -> Optional[datetime]:
+    """将带时区的 datetime 归一到本地时间并去掉 tzinfo。
+
+    模块内部统一使用本地无时区 datetime：Windows 计划任务接口返回的
+    ``NextRunTime`` / ``LastRunTime`` 来自 ``Get-ScheduledTaskInfo`` 的
+    ``ToString('o')``，是带偏移量的时间（如 ``2025-06-18T09:30:00.0000000+08:00``），
+    与内部用 ``datetime.now()`` 算出来的时间混用会在排序、比较时抛出
+    ``TypeError: can't compare offset-naive and offset-aware datetimes``。
+    """
+    if value is None or value.tzinfo is None:
+        return value
+    return value.astimezone().replace(tzinfo=None)
+
+
 def _parse_iso(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         return None
+    return _to_naive_local(parsed)
 
 
 @dataclass
@@ -443,7 +458,11 @@ class ScheduleService(QObject):
         return True
 
     def _sort_schedules(self) -> None:
-        self._schedules.sort(key=lambda entry: (entry.next_run is None, entry.next_run))
+        def sort_key(entry: ScheduleEntry) -> tuple[bool, datetime]:
+            next_run = _to_naive_local(entry.next_run)
+            return (next_run is None, next_run if next_run else datetime.min)
+
+        self._schedules.sort(key=sort_key)
 
     def _log_info(self, message: str) -> None:
         logger.info(message)
