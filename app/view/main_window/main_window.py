@@ -37,7 +37,7 @@ import shutil
 import sys
 import threading
 import zipfile
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from collections import OrderedDict
 from pathlib import Path
@@ -116,6 +116,10 @@ from app.utils.asset_paths import DEFAULT_APP_LOGO_FILE, app_logo_icon
 from app.utils.version_policy import resolve_resource_version
 from app.utils.local_update import path_is_update_archive_readable
 from app.core.core import ServiceCoordinator
+from app.core.utils.debug_cleanup import (
+    build_debug_retention,
+    cleanup_old_debug_files,
+)
 from app.core.utils.maafw_log_files import (
     ACTIVE_LOG_NAME,
     LEGACY_BACKUP_LOG_NAMES,
@@ -123,6 +127,7 @@ from app.core.utils.maafw_log_files import (
     read_log_tail,
     should_tail_trim,
 )
+from app.utils.maafw_version import maafw_manages_debug_images
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
 from app.view.main_window.log_zip_dialog import (
     LogZipDialog,
@@ -1910,49 +1915,15 @@ class MainWindow(MSFluentWindow):
         return safe or "Unknown"
 
     def _cleanup_old_files(self, debug_dir: Path) -> None:
-        """清理debug目录中的旧文件。
+        """清理 debug 目录中的旧文件。
 
-        - on_error 文件夹内的文件，只保留三天内的
-        - stop 文件夹内的文件，只保留三天内的
-        - vision 文件夹内的文件，只保留一天内的
+        保留时长随 MaaFramework 版本变化（分工见 ``app/core/utils/debug_cleanup.py``）：
+        5.x 由 MFW 用 vision 1 天 / on_error 3 天兜底；6.0 起框架自己维护这两个目录，
+        MFW 只保留 ``stop`` 清理，并把阈值放宽到框架同档。
         """
-        now = datetime.now()
-        three_days_ago = now - timedelta(days=3)
-        one_day_ago = now - timedelta(days=1)
-
-        for subdir_name, cutoff in (
-            ("on_error", three_days_ago),
-            ("stop", three_days_ago),
-        ):
-            target_dir = debug_dir / subdir_name
-            if not target_dir.exists() or not target_dir.is_dir():
-                continue
-            for file_path in target_dir.iterdir():
-                if not file_path.is_file():
-                    continue
-                try:
-                    mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
-                    if mtime < cutoff:
-                        file_path.unlink()
-                        logger.info(
-                            f"删除过期文件（{subdir_name}，超过3天）：{file_path}"
-                        )
-                except Exception as exc:
-                    logger.warning(f"清理{subdir_name}文件失败：{file_path} ({exc})")
-
-        # 清理 vision 文件夹内的文件（保留一天内的）
-        vision_dir = debug_dir / "vision"
-        if vision_dir.exists() and vision_dir.is_dir():
-            for file_path in vision_dir.iterdir():
-                if file_path.is_file():
-                    try:
-                        # 获取文件的修改时间
-                        mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
-                        if mtime < one_day_ago:
-                            file_path.unlink()
-                            logger.info(f"删除过期文件（vision，超过1天）：{file_path}")
-                    except Exception as exc:
-                        logger.warning(f"清理vision文件失败：{file_path} ({exc})")
+        retention = build_debug_retention(maafw_manages_debug_images())
+        for file_path in cleanup_old_debug_files(debug_dir, retention):
+            logger.info(f"删除过期文件：{file_path}")
 
     def _write_locked_log(
         self,

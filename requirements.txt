@@ -2,6 +2,7 @@ numpy
 qasync
 asyncify
 requests
+# 6.0 起 MaaAgent 协议升到 9（第三方 agent 需一起升级），暂不自动跟进
 MaaFw>=5.16.1,<6
 psutil
 PySide6-Fluent-Widgets
