@@ -116,6 +116,13 @@ from app.utils.asset_paths import DEFAULT_APP_LOGO_FILE, app_logo_icon
 from app.utils.version_policy import resolve_resource_version
 from app.utils.local_update import path_is_update_archive_readable
 from app.core.core import ServiceCoordinator
+from app.core.utils.maafw_log_files import (
+    ACTIVE_LOG_NAME,
+    LEGACY_BACKUP_LOG_NAMES,
+    iter_maafw_log_files,
+    read_log_tail,
+    should_tail_trim,
+)
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
 from app.view.main_window.log_zip_dialog import (
     LogZipDialog,
@@ -266,9 +273,9 @@ class MainWindow(MSFluentWindow):
 
     # 可能被占用的日志文件名（需要特殊读取方式）
     _LOCKED_LOG_NAMES = {
-        "maafw.log",
+        ACTIVE_LOG_NAME,
         "clash.log",
-        "maafw.log.bak",
+        *LEGACY_BACKUP_LOG_NAMES,
     }
     _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".webp", ".gif"}
     _OTHER_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg"}
@@ -1633,11 +1640,9 @@ class MainWindow(MSFluentWindow):
             )
 
         if options.include_maafw_logs:
-            for log_path in sorted(
-                debug_dir.glob("maafw*.log*"), key=lambda p: str(p).lower()
-            ):
-                if log_path.is_file():
-                    _add_file(log_path, "maafw_logs", options.maafw_logs_time_range)
+            # 5.13 起备份是 maafw.bak.<时间戳>.log，6.0 起还会压缩成 .log.gz
+            for log_path in iter_maafw_log_files(debug_dir):
+                _add_file(log_path, "maafw_logs", options.maafw_logs_time_range)
 
         if options.include_gui_logs:
             for log_path in sorted(
@@ -1959,20 +1964,19 @@ class MainWindow(MSFluentWindow):
     ) -> None:
         """读取可能被占用的日志文件并写入压缩包。
 
-        对 maafw 日志（含 .bak）做大小判断：
+        对 maafw 的未压缩日志（``maafw.log`` 与旧备份 ``maa.bak.log`` /
+        ``maafw.log.bak``）做大小判断：
         - 小于约 100MB：完整保存
         - 大于约 100MB：仅保留末尾约 100MB 的内容，并尽量按行对齐（从下一行开始截取）
+
+        MaaFramework 5.13 起的轮转备份 ``maafw.bak.<时间戳>.log``（6.0 起还有
+        ``.log.gz``）已经受轮转阈值约束，且 gzip 为二进制，不做截断、按原样写入。
         其他被占用日志（如 clash.log）仍然完整读取。
         """
-        # 针对 maafw 日志做“只保留末尾 100MB”的特殊处理
-        SPECIAL_TAIL_LOGS = {
-            "maafw.log",
-            "maafw.log.bak",
-        }
         MAX_TAIL_BYTES = 100 * 1024 * 1024  # 约 100MB
 
         try:
-            if file_path.name in SPECIAL_TAIL_LOGS:
+            if should_tail_trim(file_path.name):
                 try:
                     file_size = file_path.stat().st_size
                 except OSError:
@@ -1988,19 +1992,11 @@ class MainWindow(MSFluentWindow):
                     return
 
                 # 大于 100MB：只保留末尾约 100MB，并按行对齐
-                with file_path.open("rb") as f:
-                    # 从文件末尾回退 MAX_TAIL_BYTES
-                    start_pos = max(0, file_size - MAX_TAIL_BYTES)
-                    f.seek(start_pos)
-                    tail = f.read(MAX_TAIL_BYTES)
-                    if cancel_event is not None and cancel_event.is_set():
-                        raise LogZipCancelled()
-
-                # 为了“按行数保存”，从第一个换行符之后开始，避免半行
-                newline_index = tail.find(b"\n")
-                if newline_index != -1:
-                    tail = tail[newline_index + 1 :]
-
+                if cancel_event is not None and cancel_event.is_set():
+                    raise LogZipCancelled()
+                tail = read_log_tail(file_path, MAX_TAIL_BYTES)
+                if cancel_event is not None and cancel_event.is_set():
+                    raise LogZipCancelled()
                 zip_file.writestr(arcname, tail)
             else:
                 # 其他被占用日志（如 clash.log）仍然尝试完整读取
